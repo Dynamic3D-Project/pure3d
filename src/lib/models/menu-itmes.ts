@@ -1,10 +1,5 @@
 export default [
-	{ title: 'Blog', path: '/blog', displayTitle: 'Blog' },
+	{ title: 'Collections', path: '/collections', displayTitle: 'Collections' },
+	{ title: 'Editions', path: '/editions', displayTitle: 'Editions' },
 	{ title: 'About', path: '/about', displayTitle: 'About' }
-
-	// {
-	// 	title: 'Latest Work',
-	// 	path: '/work',
-	// 	displayTitle: 'Latest Work'
-	// }
 ];

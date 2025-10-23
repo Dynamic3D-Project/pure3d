@@ -1,0 +1,92 @@
+[
+  {
+    "id": "50-years-maastricht",
+    "slug": "50-years-maastricht",
+    "title": "50 Years of Maastricht University",
+    "description": "A commemorative collection celebrating five decades of academic excellence and innovation at Maastricht University from 1976 to 2026.",
+    "thumbnail": "https://images.unsplash.com/photo-1562774053-701939374585?w=600&h=800&fit=crop",
+    "editionIds": ["otoscopy-training-head", "rembrandt-birthplace", "akua-ba-figure"],
+    "created": "2024-01-15"
+  },
+  {
+    "id": "modern-art-3d",
+    "slug": "modern-art-3d",
+    "title": "Modern Art in 3D",
+    "description": "A Glimpse into the Modern Art Collection of the Museum van Bommel van Dam. Since these works, representing a variety of art, are not part of a permanent museum display, this project provides a venue to share their hidden stories to both a local and and a global audience.",
+    "thumbnail": "https://images.unsplash.com/photo-1547826039-bfc35e0f1ea8?w=600&h=800&fit=crop",
+    "editionIds": ["maarten-van-bommel", "masker-met-mobiele", "schoonhoven"],
+    "created": "2024-02-20"
+  },
+  {
+    "id": "born-digital-archives",
+    "slug": "born-digital-archives",
+    "title": "Revisiting the Born-digital Archives of The Nieuwe Instituut",
+    "description": "Exploring digital-native architectural archives and their preservation challenges in the modern era.",
+    "thumbnail": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600&h=800&fit=crop",
+    "editionIds": ["church-of-our-lady", "codex-cospi"],
+    "created": "2024-03-10"
+  },
+  {
+    "id": "contested-memories",
+    "slug": "contested-memories",
+    "title": "Contested Memories",
+    "description": "A collection examining historical narratives and their multiple interpretations through 3D digitization.",
+    "thumbnail": "https://images.unsplash.com/photo-1464207687429-7505649dae38?w=600&h=800&fit=crop",
+    "editionIds": ["paperweight-maastricht", "kermit-frog"],
+    "created": "2024-04-05"
+  },
+  {
+    "id": "genealogy-home-cinema",
+    "slug": "genealogy-home-cinema",
+    "title": "A Genealogy of Home Cinema",
+    "description": "Tracing the evolution of home entertainment technology through preserved artifacts and interactive exhibits.",
+    "thumbnail": "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=600&h=800&fit=crop",
+    "editionIds": ["uno-card-game", "lele-mexican-doll"],
+    "created": "2024-05-12"
+  },
+  {
+    "id": "muffins-journey",
+    "slug": "muffins-journey",
+    "title": "Muffin's Journey",
+    "description": "An archaeological journey following the life and travels of a remarkable historical figure.",
+    "thumbnail": "https://images.unsplash.com/photo-1461360228754-6e81c478b882?w=600&h=800&fit=crop",
+    "editionIds": ["moana", "sheriff-woody"],
+    "created": "2024-06-18"
+  },
+  {
+    "id": "let-there-be-light",
+    "slug": "let-there-be-light",
+    "title": "Let There Be Light",
+    "description": "An illuminating collection exploring the role of light in art, architecture, and human experience.",
+    "thumbnail": "https://images.unsplash.com/photo-1604076984203-587c92ab2e58?w=600&h=800&fit=crop",
+    "editionIds": ["my-little-pony", "pikachu"],
+    "created": "2024-07-22"
+  },
+  {
+    "id": "rembrandt-leiden",
+    "slug": "rembrandt-leiden",
+    "title": "The Birthplace of Rembrandt in Leiden",
+    "description": "A detailed digital reconstruction of the early life and environment of master painter Rembrandt van Rijn.",
+    "thumbnail": "https://images.unsplash.com/photo-1513346940221-6f673d962e97?w=600&h=800&fit=crop",
+    "editionIds": ["eyele-crown", "volendam-doll"],
+    "created": "2024-08-30"
+  },
+  {
+    "id": "vlooienburg-jewish",
+    "slug": "vlooienburg-jewish",
+    "title": "Vlooienburg Jewish Amsterdam",
+    "description": "Documenting the rich cultural heritage of Amsterdam's historic Jewish quarter through digital preservation.",
+    "thumbnail": "https://images.unsplash.com/photo-1534351590666-13e3e96b5017?w=600&h=800&fit=crop",
+    "editionIds": ["merida-princess", "exploring-dragon"],
+    "created": "2024-09-14"
+  },
+  {
+    "id": "codex-cospi",
+    "slug": "codex-cospi-collection",
+    "title": "Codex Cospi",
+    "description": "A digital exploration of one of the most important pre-Columbian Mesoamerican manuscripts.",
+    "thumbnail": "https://images.unsplash.com/photo-1582582621959-48d27397dc69?w=600&h=800&fit=crop",
+    "editionIds": ["asian-princess", "ken-barbie"],
+    "created": "2024-10-05"
+  }
+]
