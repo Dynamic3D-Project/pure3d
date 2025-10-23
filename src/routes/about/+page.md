@@ -1,34 +1,18 @@
-# About This Project
 
-This is a **SvelteKit** application with **PocketBase** as the backend, now enhanced with **MDsveX** for markdown-powered pages!
+## What is PURE3D?
+PURE3D is a national infrastructure dedicated to the publication and preservation of 3D scholarship, spearheaded by Dr. Costas Papadopoulos and Prof. Susan Schreibman at Maastricht University, The Netherlands. The project aims to redefine how 3D cultural heritage and scholarly outputs are presented, preserved, and evaluated, fostering innovation in 3D-based research across the humanities and social sciences. Unlike traditional practices where 3D models are often detached from scholarly narratives, PURE3D integrates these models as primary scholarly outputs. By contextualising them with annotations, multimedia content, and metadata, PURE3D transforms them into multimodal resources that are impossible to replicate in print. This approach not only enhances accessibility but also ensures that both the models and their interpretative processes become part of the academic record.
 
-## Features
+Phase 1 (2020–2024): Funded by the Platform Digitale Infrastructuur – Social Sciences & Humanities (PDI-SSH), this phase focused on developing the foundational infrastructure through pilot projects. These pilots informed user requirements and helped build a collaborative community of researchers to co-develop, test, and use the platform. Supported by NWO's Open Science Fund, a follow-up project, OPER3D (2024), explores workflows for peer review and evaluation of 3D scholarly editions, transforming PURE3D into a robust publication infrastructure.
 
-- 🚀 SvelteKit 5 with Svelte Runes
-- 🗄️ PocketBase for backend and authentication
-- 🎨 DaisyUI + Tailwind CSS for styling
-- 📝 MDsveX for markdown content
-- ✅ Todo management with real-time updates
-- 📰 Blog posts system
+Future Developments (2025-2028): Funding from the Lorentz Centre/eScience Center will allow the project team to investigate the concept of paradata—the documentation of decision-making processes in creating 3D models—and its application within PURE3D. This also includes bringing together a group of 25 scholars for a workshop hosted at the Lorentz Centre in September 2025. Additional support from the eScience Centre throuhg the Open eScience Call will also enable the infrastructure to integrate advanced analytical tools to enhance the scholarly potential of 3D Scholarly Editions.
 
-## What is MDsveX?
+To learn more about PURE3D’s mission and ongoing developments, visit the [PURE3D website](https://pure3d.eu/).
 
-MDsveX allows you to write Svelte components inside markdown files. You can use:
+## What is a PURE3D Project?
+A 3D model can be turned into a 3D Scholarly Edition. However, a project may have more than a single edition. Therefore, PURE3D allows authors to develop a series of editions group together under a thematic project. For example, our project 'Let there be light' developed by the Netherlands Mijnmusem consists of several 3D Scholarly editions of mining lamps. This allows for better categorisation and retrieval of editions and can provide better search options in the future.
 
-- Standard markdown syntax
-- Frontmatter for metadata
-- Svelte components inline
+## What is a 3D Scholarly Edition?
+A 3D Scholarly Edition is an innovative form of digital publication where 3D models serve as the primary "text", accompanied by rich contextual, interpretative, and process-oriented information. Unlike traditional scholarly outputs that separate 3D models from their corresponding research narratives, 3DSEs integrate these elements into a unified, interactive environment designed to enhance scholarly communication and knowledge production.
 
-<div class="alert alert-info mt-6">
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-  </svg>
-  <span>This page is written in Markdown! Check out <code>src/routes/about/+page.md</code></span>
-</div>
-
-## Navigation
-
-<div class="flex gap-4 mt-6">
-  <a href="/" class="btn btn-primary">Home (Todos)</a>
-  <a href="/blog" class="btn btn-secondary">Blog</a>
-</div>
+## Publish a 3D Scholarly Edition
+Are you interested in turning your 3D model into a peer-reviewed 3D scholarly edition. You can find instructions for authors, submission guidelines and evaluation criteria, and examples of already published 3D Scholarly Editions on the [PURE3D website](https://pure3d.eu/) under 'Publish with Us'.
