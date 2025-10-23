@@ -1,0 +1,127 @@
+@import './lib/assets/css/scrollbar-color.css';
+
+@import 'tailwindcss';
+
+@plugin "daisyui" {
+  themes: all;
+}
+
+@plugin "@tailwindcss/typography";
+@plugin "@tailwindcss/forms";
+@plugin "@tailwindcss/container-queries";
+
+@plugin "daisyui/theme" {
+  name: 'ctw';
+  default: false;
+  /* set as default */
+  prefersdark: false;
+  /* set as default dark mode (prefers-color-scheme:dark) */
+  color-scheme: dark;
+  /* color of browser-provided UI */
+
+  --color-primary: #ffb83d;
+  --color-primary-focus: #db8b00;
+  --color-primary-content: black;
+  --color-secondary: #5e9c91;
+  --color-secondary-focus: #3e655f;
+  --color-secondary-content: #ffffff;
+  --color-accent: #37cdbe;
+  --color-accent-focus: #2aa79b;
+  --color-accent-content: #ffffff;
+  --color-neutral: #3d4451;
+  --color-neutral-focus: #2a2e37;
+  --color-neutral-content: #ffffff;
+  --color-base-100: #171717;
+  --color-base-200: #333;
+  --color-base-300: #555;
+  --color-base-content: #e8e8e8;
+  --color-info: #2094f3;
+  --color-success: #009485;
+  --color-warning: #ff9900;
+  --color-error: #ff5724;
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+div {
+  color: var(--color-base-content);
+}
+
+pre code {
+  @apply font-mono text-base;
+}
+
+a[target='_blank'] {
+  @apply underline;
+}
+
+/* Target tables within prose to make them scrollable */
+.prose {
+  overflow-x: auto;
+  /* Allows horizontal scrolling on the prose container */
+}
+
+.prose table {
+  min-width: 100%;
+  /* Ensures tables are not less than the width of their container */
+  display: block;
+  /* Changes table display from table to block to work with overflow */
+  white-space: nowrap;
+  /* Prevents wrapping within the table cells */
+}
+
+.prose table td,
+.prose table th {
+  white-space: normal;
+  /* Allows text to wrap within the cell */
+  word-wrap: break-word;
+  /* Breaks long words if necessary to fit within the cell */
+  min-width: 120px;
+  /* Ensures a minimum width for smaller content */
+  max-width: 250px;
+  /* Limits the width to prevent extremely wide cells */
+}
+
+/* Global toast styles */
+.toaster {
+  margin-top: 60px;
+}
+
+/* Floating label form styles */
+.form-control-float {
+  @apply relative;
+}
+
+.form-control-float input {
+  @apply border-base-300 h-12 w-full rounded-lg border bg-transparent px-3 pt-4 pb-1;
+}
+
+.form-control-float label {
+  @apply text-base-content/70 pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm transition-all duration-200;
+}
+
+.form-control-float input:focus-within~label,
+.form-control-float input:not(:placeholder-shown)~label {
+  @apply text-primary -translate-y-3/4 transform text-xs;
+}
+
+.form-control-float input:focus-within {
+  @apply border-primary outline-none;
+}

@@ -1,0 +1,82 @@
+[
+  {
+    "email": "alice.smith@example.com",
+    "password": "password123",
+    "passwordConfirm": "password123",
+    "name": "Alice Smith",
+    "emailVisibility": true,
+    "verified": true
+  },
+  {
+    "email": "bob.johnson@example.com",
+    "password": "password123",
+    "passwordConfirm": "password123",
+    "name": "Bob Johnson",
+    "emailVisibility": false,
+    "verified": true
+  },
+  {
+    "email": "carol.williams@example.com",
+    "password": "password123",
+    "passwordConfirm": "password123",
+    "name": "Carol Williams",
+    "emailVisibility": true,
+    "verified": false
+  },
+  {
+    "email": "david.brown@example.com",
+    "password": "password123",
+    "passwordConfirm": "password123",
+    "name": "David Brown",
+    "emailVisibility": true,
+    "verified": true
+  },
+  {
+    "email": "emma.davis@example.com",
+    "password": "password123",
+    "passwordConfirm": "password123",
+    "name": "Emma Davis",
+    "emailVisibility": false,
+    "verified": true
+  },
+  {
+    "email": "frank.miller@example.com",
+    "password": "password123",
+    "passwordConfirm": "password123",
+    "name": "Frank Miller",
+    "emailVisibility": true,
+    "verified": true
+  },
+  {
+    "email": "grace.wilson@example.com",
+    "password": "password123",
+    "passwordConfirm": "password123",
+    "name": "Grace Wilson",
+    "emailVisibility": true,
+    "verified": false
+  },
+  {
+    "email": "henry.moore@example.com",
+    "password": "password123",
+    "passwordConfirm": "password123",
+    "name": "Henry Moore",
+    "emailVisibility": false,
+    "verified": true
+  },
+  {
+    "email": "isabelle.taylor@example.com",
+    "password": "password123",
+    "passwordConfirm": "password123",
+    "name": "Isabelle Taylor",
+    "emailVisibility": true,
+    "verified": true
+  },
+  {
+    "email": "jack.anderson@example.com",
+    "password": "password123",
+    "passwordConfirm": "password123",
+    "name": "Jack Anderson",
+    "emailVisibility": true,
+    "verified": true
+  }
+]
