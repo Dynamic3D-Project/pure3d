@@ -46,6 +46,10 @@
 		name="description"
 		content="Browse all 3D editions in our digital humanities and heritage collection."
 	/>
+
+	<!-- Preconnect to Voyager API domain for faster iframe loading -->
+	<link rel="preconnect" href="https://3d-api.si.edu" crossorigin />
+	<link rel="dns-prefetch" href="https://3d-api.si.edu" />
 </svelte:head>
 
 <div class="container mx-auto px-4 py-12 max-w-7xl">

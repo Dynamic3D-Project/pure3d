@@ -3,15 +3,28 @@
 	import editionsData from '$lib/data/editions.json';
 	import { page } from '$app/stores';
 
-	const slug = $page.params.slug;
-	const edition: Edition | undefined = editionsData.find((e) => e.slug === slug);
+	// Make edition reactive to slug changes
+	let edition = $derived(editionsData.find((e) => e.slug === $page.params.slug));
 
 	let activeTab = $state<'description' | 'metadata' | 'peer-review' | 'printables'>('description');
+	let iframeElement: HTMLIFrameElement | undefined = $state();
+
+	// Watch for URL changes and update iframe src
+	$effect(() => {
+		const voyagerUrl = edition?.voyagerUrl;
+		if (iframeElement && voyagerUrl && iframeElement.src !== voyagerUrl) {
+			iframeElement.src = voyagerUrl;
+		}
+	});
 </script>
 
 <svelte:head>
 	<title>{edition?.title || 'Edition'} | Pure 3D</title>
 	<meta name="description" content={edition?.description || 'View edition details'} />
+
+	<!-- Preconnect to Voyager API for faster loading -->
+	<link rel="preconnect" href="https://3d-api.si.edu" crossorigin />
+	<link rel="dns-prefetch" href="https://3d-api.si.edu" />
 </svelte:head>
 
 {#if edition}
@@ -20,8 +33,8 @@
 			<!-- Breadcrumbs -->
 			<nav class="text-sm breadcrumbs mb-6">
 				<ul>
-					<li><a href="/" class="link link-hover">Home</a></li>
-					<li><a href="/editions" class="link link-hover">Editions</a></li>
+					<li><a href="/" data-sveltekit-preload-data="hover" class="link link-hover">Home</a></li>
+					<li><a href="/editions" data-sveltekit-preload-data="hover" class="link link-hover">Editions</a></li>
 					<li class="text-base-content/70">{edition.title}</li>
 				</ul>
 			</nav>
@@ -37,14 +50,17 @@
 					</div>
 
 					<!-- Voyager 3D Viewer -->
-					<div class="card bg-base-200 shadow-xl">
+					<div class="card bg-base-200 shadow-xl overflow-hidden">
 						<div class="card-body p-0">
-							<div class="relative w-full" style="padding-top: 75%;">
+							<div class="relative w-full" style="padding-top: 75%; background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);">
+								<!-- Iframe with eager loading - persists across navigation -->
 								<iframe
+									bind:this={iframeElement}
 									name="Smithsonian Voyager"
 									src={edition.voyagerUrl}
 									title={edition.title}
 									class="absolute top-0 left-0 w-full h-full border-0"
+									loading="eager"
 									allow="xr; xr-spatial-tracking; fullscreen"
 								></iframe>
 							</div>
@@ -183,7 +199,7 @@
 
 			<!-- Back Button -->
 			<div class="flex justify-center mt-12">
-				<a href="/editions" class="btn btn-outline btn-lg">
+				<a href="/editions" data-sveltekit-preload-data="hover" class="btn btn-outline btn-lg">
 					← Back to Editions
 				</a>
 			</div>
@@ -196,7 +212,7 @@
 			<p class="text-base-content/70 mb-8">
 				The edition you're looking for doesn't exist or has been removed.
 			</p>
-			<a href="/editions" class="btn btn-primary">View All Editions</a>
+			<a href="/editions" data-sveltekit-preload-data="hover" class="btn btn-primary">View All Editions</a>
 		</div>
 	</div>
 {/if}

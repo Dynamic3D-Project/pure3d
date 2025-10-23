@@ -31,6 +31,7 @@
 			</div>
 			<a
 				href="/"
+				data-sveltekit-preload-data="hover"
 				class="rounded-lg bg-neutral px-4 py-2 text-sm font-medium text-neutral-content hover:bg-neutral-focus"
 			>
 				← Todos
@@ -58,7 +59,7 @@
 		<div class="space-y-6">
 			{#each posts as post (post.id)}
 				<article class="rounded-lg border border-base-300 bg-base-100 p-6 shadow-sm transition hover:shadow-md">
-					<a href="/blog/{post.id}" class="block">
+					<a href="/blog/{post.id}" data-sveltekit-preload-data="hover" class="block">
 						<h2 class="text-2xl font-semibold text-base-content hover:text-primary transition">
 							{post.title}
 						</h2>

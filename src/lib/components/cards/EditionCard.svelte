@@ -6,10 +6,21 @@
 	}
 
 	let { edition }: Props = $props();
+
+	// Prefetch iframe URL on hover
+	function prefetchIframe() {
+		const link = document.createElement('link');
+		link.rel = 'prefetch';
+		link.as = 'document';
+		link.href = edition.voyagerUrl;
+		document.head.appendChild(link);
+	}
 </script>
 
 <a
 	href={`/editions/${edition.slug}`}
+	data-sveltekit-preload-data="hover"
+	onmouseenter={prefetchIframe}
 	class="group card bg-base-100 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden"
 >
 	<figure class="relative overflow-hidden aspect-square">

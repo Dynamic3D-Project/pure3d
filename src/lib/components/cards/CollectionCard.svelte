@@ -10,6 +10,7 @@
 
 <a
 	href={`/collections/${collection.slug}`}
+	data-sveltekit-preload-data="hover"
 	class="group card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden"
 >
 	<figure class="relative overflow-hidden aspect-[3/4]">

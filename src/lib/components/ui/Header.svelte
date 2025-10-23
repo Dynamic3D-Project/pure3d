@@ -33,6 +33,7 @@
 			<a
 				class="no-drag mr-3 h-auto max-w-[140px] flex-initial shrink-0 select-none sm:max-w-[160px]"
 				href="/"
+				data-sveltekit-preload-data="hover"
 			>
 				<Logo />
 			</a>
@@ -50,6 +51,7 @@
 						onclick={() => (activeCategory = link.title)}
 						class:active={activeCategory === link.title}
 						href={link.path}
+						data-sveltekit-preload-data="hover"
 					>
 						{link.displayTitle}
 					</a>

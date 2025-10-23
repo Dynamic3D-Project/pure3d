@@ -25,8 +25,8 @@
 		<div class="mb-12">
 			<nav class="text-sm breadcrumbs mb-6">
 				<ul>
-					<li><a href="/" class="link link-hover">Home</a></li>
-					<li><a href="/collections" class="link link-hover">Collections</a></li>
+					<li><a href="/" data-sveltekit-preload-data="hover" class="link link-hover">Home</a></li>
+					<li><a href="/collections" data-sveltekit-preload-data="hover" class="link link-hover">Collections</a></li>
 					<li class="text-base-content/70">{collection.title}</li>
 				</ul>
 			</nav>
@@ -58,7 +58,7 @@
 
 		<!-- Back Button -->
 		<div class="flex justify-center mt-12">
-			<a href="/collections" class="btn btn-outline btn-lg">
+			<a href="/collections" data-sveltekit-preload-data="hover" class="btn btn-outline btn-lg">
 				← Back to Collections
 			</a>
 		</div>
@@ -70,7 +70,7 @@
 			<p class="text-base-content/70 mb-8">
 				The collection you're looking for doesn't exist or has been removed.
 			</p>
-			<a href="/collections" class="btn btn-primary">View All Collections</a>
+			<a href="/collections" data-sveltekit-preload-data="hover" class="btn btn-primary">View All Collections</a>
 		</div>
 	</div>
 {/if}
