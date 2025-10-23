@@ -38,7 +38,9 @@
 	{:else if !pb.authStore.isValid}
 		<div class="py-12 text-center">
 			<h2 class="mb-4 text-2xl font-bold">Welcome!</h2>
-			<p class="text-base-content/70">Please login using the button in the header to view your todos.</p>
+			<p class="text-base-content/70">
+				Please login using the button in the header to view your collections and editions.
+			</p>
 		</div>
 	{:else}
 		<Todos initialTodos={todos} userId={pb.authStore.model?.id} {error} />
