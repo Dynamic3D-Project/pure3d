@@ -9,18 +9,18 @@
 	<meta name="description" content="Demonstration of Voyager API integration modes" />
 </svelte:head>
 
-<div class="container mx-auto px-4 py-12 max-w-7xl">
+<div class=" mx-auto px-4 py-12">
 	<!-- Header -->
-	<div class="text-center mb-12">
-		<h1 class="text-4xl md:text-5xl font-bold mb-4">Voyager API Demo</h1>
-		<p class="text-lg text-base-content/70 max-w-3xl mx-auto">
+	<div class="mb-12 text-center">
+		<h1 class="mb-4 text-4xl font-bold md:text-5xl">Voyager API Demo</h1>
+		<p class="mx-auto max-w-3xl text-lg text-base-content/70">
 			Compare iframe embedding vs direct component integration with full API control
 		</p>
 	</div>
 
 	<!-- Mode Toggle -->
-	<div class="flex justify-center mb-8">
-		<div class="tabs tabs-boxed">
+	<div class="mb-8 flex justify-center">
+		<div class="tabs-boxed tabs">
 			<button
 				class="tab"
 				class:tab-active={activeMode === 'iframe'}
@@ -39,7 +39,7 @@
 	</div>
 
 	<!-- Explanation Cards -->
-	<div class="grid md:grid-cols-2 gap-6 mb-12">
+	<div class="mb-12 grid gap-6 md:grid-cols-2">
 		<!-- Iframe Mode Info -->
 		<div class="card bg-base-200 shadow-xl">
 			<div class="card-body">
@@ -71,12 +71,12 @@
 						<li>No programmatic control (cross-origin)</li>
 					</ul>
 				</div>
-				<div class="alert alert-info mt-4">
+				<div class="mt-4 alert alert-info">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						fill="none"
 						viewBox="0 0 24 24"
-						class="stroke-current shrink-0 w-6 h-6"
+						class="h-6 w-6 shrink-0 stroke-current"
 					>
 						<path
 							stroke-linecap="round"
@@ -122,10 +122,10 @@
 						<li>Requires CORS-enabled content</li>
 					</ul>
 				</div>
-				<div class="alert alert-warning mt-4">
+				<div class="mt-4 alert alert-warning">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
-						class="stroke-current shrink-0 h-6 w-6"
+						class="h-6 w-6 shrink-0 stroke-current"
 						fill="none"
 						viewBox="0 0 24 24"
 					>
@@ -143,10 +143,10 @@
 	</div>
 
 	<!-- Viewer Demo -->
-	<div class="card bg-base-100 shadow-2xl">
+	<!-- <div class="card bg-base-100 shadow-2xl">
 		<div class="card-body">
 			{#if activeMode === 'iframe'}
-				<h2 class="card-title mb-4">Iframe Embedding Example</h2>
+				<h2 class="mb-4 card-title">Iframe Embedding Example</h2>
 				<VoyagerViewer
 					url="https://3d-api.si.edu/voyager/3d_package:d8c6443e-4ebc-11ea-b77f-2e728ce88125"
 					title="Apollo 11 Command Module"
@@ -154,21 +154,23 @@
 				/>
 				<div class="mt-4">
 					<div class="mockup-code text-xs">
-						<pre><code>&lt;VoyagerViewer
+						<pre><code
+								>&lt;VoyagerViewer
   url="https://3d-api.si.edu/voyager/3d_package:..."
   title="Apollo 11 Command Module"
   direct={'{false}'}
-/&gt;</code></pre>
+/&gt;</code
+							></pre>
 					</div>
 				</div>
 			{:else}
-				<h2 class="card-title mb-4">Direct Embedding with Full API Control</h2>
-				<div class="alert alert-info mb-4">
+				<h2 class="mb-4 card-title">Direct Embedding with Full API Control</h2>
+				<div class="mb-4 alert alert-info">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						fill="none"
 						viewBox="0 0 24 24"
-						class="stroke-current shrink-0 w-6 h-6"
+						class="h-6 w-6 shrink-0 stroke-current"
 					>
 						<path
 							stroke-linecap="round"
@@ -181,15 +183,15 @@
 						<p class="font-bold">Clean UI - API Controlled</p>
 						<p class="text-sm">
 							All UI elements are hidden by default (<code class="text-xs">uiMode="none"</code>).
-							Use the API controls below to toggle annotations, reader, tours, and other UI elements.
-							This gives you complete programmatic control over the viewer experience.
+							Use the API controls below to toggle annotations, reader, tours, and other UI
+							elements. This gives you complete programmatic control over the viewer experience.
 						</p>
 					</div>
 				</div>
-				<div class="alert alert-warning mb-4">
+				<div class="mb-4 alert alert-warning">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
-						class="stroke-current shrink-0 h-6 w-6"
+						class="h-6 w-6 shrink-0 stroke-current"
 						fill="none"
 						viewBox="0 0 24 24"
 					>
@@ -203,10 +205,10 @@
 					<div>
 						<p class="font-bold">Demo Limitation</p>
 						<p class="text-sm">
-							Smithsonian's hosted content doesn't support direct embedding due to CORS restrictions.
-							To fully test this mode with your own content:
+							Smithsonian's hosted content doesn't support direct embedding due to CORS
+							restrictions. To fully test this mode with your own content:
 						</p>
-						<ul class="text-xs mt-2 ml-4 list-disc">
+						<ul class="mt-2 ml-4 list-disc text-xs">
 							<li>Self-host your Voyager documents (SVX files)</li>
 							<li>Configure proper CORS headers on your server</li>
 							<li>Update the url and document parameters</li>
@@ -225,7 +227,8 @@
 				/>
 				<div class="mt-4">
 					<div class="mockup-code text-xs">
-						<pre><code>&lt;VoyagerViewer
+						<pre><code
+								>&lt;VoyagerViewer
   url="https://your-domain.com/content/path/"
   document="document.json"
   title="Your 3D Model"
@@ -235,16 +238,17 @@
   enableControls={'{true}'}  // Keep camera controls enabled
   showPrompt={'{false}'}     // Hide interaction prompt
   showReader={'{false}'}     // Hide reader initially
-/&gt;</code></pre>
+/&gt;</code
+							></pre>
 					</div>
 				</div>
 			{/if}
 		</div>
-	</div>
+	</div> -->
 
 	<!-- API Documentation -->
 	<div class="mt-12">
-		<h2 class="text-2xl font-bold mb-6">Available API Methods</h2>
+		<h2 class="mb-6 text-2xl font-bold">Available API Methods</h2>
 		<div class="overflow-x-auto">
 			<table class="table table-zebra">
 				<thead>
@@ -371,7 +375,7 @@
 
 		<!-- Events Section -->
 		<div class="mt-8">
-			<h3 class="text-xl font-bold mb-4">Events</h3>
+			<h3 class="mb-4 text-xl font-bold">Events</h3>
 			<div class="overflow-x-auto">
 				<table class="table table-zebra">
 					<thead>
@@ -400,13 +404,13 @@
 
 	<!-- Resources -->
 	<div class="mt-12">
-		<h2 class="text-2xl font-bold mb-6">Resources</h2>
-		<div class="grid md:grid-cols-3 gap-4">
+		<h2 class="mb-6 text-2xl font-bold">Resources</h2>
+		<div class="grid gap-4 md:grid-cols-3">
 			<a
 				href="https://smithsonian.github.io/dpo-voyager/explorer/api/"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="card bg-base-200 hover:bg-base-300 transition-colors"
+				class="card bg-base-200 transition-colors hover:bg-base-300"
 			>
 				<div class="card-body">
 					<h3 class="card-title text-base">Official API Docs</h3>
@@ -417,7 +421,7 @@
 				href="https://smithsonian.github.io/dpo-voyager/explorer/api-examples/"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="card bg-base-200 hover:bg-base-300 transition-colors"
+				class="card bg-base-200 transition-colors hover:bg-base-300"
 			>
 				<div class="card-body">
 					<h3 class="card-title text-base">API Examples</h3>
@@ -428,7 +432,7 @@
 				href="https://github.com/Smithsonian/dpo-voyager"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="card bg-base-200 hover:bg-base-300 transition-colors"
+				class="card bg-base-200 transition-colors hover:bg-base-300"
 			>
 				<div class="card-body">
 					<h3 class="card-title text-base">GitHub Repository</h3>

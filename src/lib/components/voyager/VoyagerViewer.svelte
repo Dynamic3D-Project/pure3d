@@ -297,9 +297,37 @@
 				</div>
 			</div>
 
-			<!-- Control Toolbar -->
-			<div class="voyager-controls card bg-base-300 shadow-lg p-4 mb-4">
-				<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+			<!-- Two Column Layout: Viewer Left, Controls Right -->
+			<div class="grid lg:grid-cols-[1fr_400px] gap-4">
+				<!-- Left Column: Viewer -->
+				<div class="order-2 lg:order-1">
+					<!-- Voyager Explorer Component -->
+					<div class="relative w-full bg-gradient-to-b from-slate-700 to-slate-900" style="padding-top: 75%;">
+						{#if isScriptLoaded}
+							<voyager-explorer
+								bind:this={voyagerElement}
+								id="voyager"
+								class="absolute top-0 left-0 w-full h-full"
+								root={url}
+								document={documentPath || 'document.json'}
+								{title}
+								uimode={showVoyagerUI ? 'all' : uiMode}
+								controls={enableControls}
+								prompt={showPrompt}
+							></voyager-explorer>
+						{:else}
+							<div class="absolute inset-0 flex items-center justify-center">
+								<div class="loading loading-spinner loading-lg"></div>
+							</div>
+						{/if}
+					</div>
+				</div>
+
+				<!-- Right Column: Controls -->
+				<div class="order-1 lg:order-2">
+					<!-- Control Toolbar -->
+					<div class="voyager-controls card bg-base-300 shadow-lg p-4 max-h-[80vh] overflow-y-auto">
+						<div class="space-y-4">
 					<!-- Camera Orbit Controls -->
 					<div class="space-y-2">
 						<h3 class="font-semibold text-sm">Camera Orbit</h3>
@@ -330,6 +358,19 @@
 								class="range range-xs"
 								aria-label="Camera pitch angle"
 							/>
+						</div>
+					</div>
+
+					<!-- Camera Actions -->
+					<div class="space-y-2">
+						<h3 class="font-semibold text-sm">Camera Actions</h3>
+						<div class="flex gap-2">
+							<button class="btn btn-sm btn-outline flex-1" onclick={resetCamera}>
+								Reset
+							</button>
+							<button class="btn btn-sm btn-outline flex-1" onclick={getCurrentCameraPosition}>
+								Get Position
+							</button>
 						</div>
 					</div>
 
@@ -383,20 +424,8 @@
 						</div>
 					</div>
 
-					<!-- Camera Actions -->
-					<div class="space-y-2">
-						<h3 class="font-semibold text-sm">Camera Actions</h3>
-						<button class="btn btn-sm btn-outline w-full" onclick={resetCamera}>
-							Reset Camera
-						</button>
-						<button class="btn btn-sm btn-outline w-full" onclick={getCurrentCameraPosition}>
-							Get Position
-						</button>
-					</div>
-				</div>
-
 				<!-- Language & Display Controls -->
-				<div class="grid md:grid-cols-2 gap-4 mt-4">
+				<div class="space-y-4">
 					<!-- Language Selector -->
 					<div class="space-y-2">
 						<h3 class="font-semibold text-sm">Language</h3>
@@ -414,7 +443,7 @@
 					<!-- Display Toggles -->
 					<div class="space-y-2">
 						<h3 class="font-semibold text-sm">Display Toggles</h3>
-						<div class="grid grid-cols-2 gap-2">
+						<div class="grid grid-cols-3 gap-2">
 							<button class="btn btn-xs btn-outline" onclick={toggleAnnotations}>
 								Annotations
 							</button>
@@ -438,8 +467,8 @@
 				</div>
 
 				<!-- Background Controls -->
-				<div class="mt-4">
-					<h3 class="font-semibold text-sm mb-2">Background Style</h3>
+				<div class="space-y-2">
+					<h3 class="font-semibold text-sm">Background Style</h3>
 					<div class="flex gap-2 mb-3">
 						<button
 							class="btn btn-xs btn-outline flex-1"
@@ -461,8 +490,8 @@
 						</button>
 					</div>
 
-					<h3 class="font-semibold text-sm mb-2">Quick Colors</h3>
-					<div class="grid grid-cols-4 gap-2">
+					<h3 class="font-semibold text-sm">Quick Colors</h3>
+					<div class="grid grid-cols-3 gap-2">
 						<button
 							class="btn btn-xs btn-outline"
 							onclick={() => setBackgroundColor('#1a1a1a', '#0a0a0a')}
@@ -612,29 +641,11 @@
 						</div>
 					</div>
 				{/if}
+						</div>
+					</div>
+				</div>
 			</div>
 		{/if}
-
-		<!-- Voyager Explorer Component -->
-		<div class="relative w-full bg-gradient-to-b from-slate-700 to-slate-900" style="padding-top: 75%;">
-			{#if isScriptLoaded}
-				<voyager-explorer
-					bind:this={voyagerElement}
-					id="voyager"
-					class="absolute top-0 left-0 w-full h-full"
-					root={url}
-					document={documentPath || 'document.json'}
-					{title}
-					uimode={showVoyagerUI ? 'all' : uiMode}
-					controls={enableControls}
-					prompt={showPrompt}
-				></voyager-explorer>
-			{:else}
-				<div class="absolute inset-0 flex items-center justify-center">
-					<div class="loading loading-spinner loading-lg"></div>
-				</div>
-			{/if}
-		</div>
 	</div>
 {:else}
 	<!-- Iframe Mode (No API Control) -->
