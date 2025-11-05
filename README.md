@@ -27,14 +27,13 @@ Pure3D provides an interactive way to view and explore 3D digitized artifacts, a
 
 ```sh
 git clone <your-repo-url>
-cd pure3D-26
-bun install
+cd pure3D
 ```
 
 2. **Start development**
-
+It will set up the frontend and Backend fully. If not set .env all values will be created by default.
 ```sh
-docker compose up
+docker compose up -d
 ```
 
 This starts:
@@ -43,38 +42,31 @@ This starts:
 
 3. **Setup PocketBase** (first run only)
 
-Visit `http://localhost:8090/_/` to create your admin account, then import the database schema from `pocketbase/pb_schema/collections.json`
+Visit `http://localhost:8090/_/` to create your admin account, then import the database schema from
+`pocketbase/pb_schema/collections.json`
 
-## Development Commands
+# Features
 
-```sh
-# Start development
-docker compose up
+### Pure3D Frontend
+- [-] Fix scrollbar layout shift on navigation (added `scrollbar-gutter: stable`)
+- [x] Optimize Voyager iframe loading with persistent iframe architecture
+- [x] Add SvelteKit prefetching to all navigation links
+- [x] Add Voyager background gradient for seamless loading
 
-# Run locally (without Docker)
-bun run dev
 
-# Build for production
-bun run build
+  - [ ] Add next/previous navigation on edition pages
+  - [ ] Implement edition comparison view
+  - [ ] Add keyboard shortcuts for navigation
 
-# Format and lint
-bun run format
-bun run lint
-```
+### Pure3D Backend
 
-## Project Structure
+### Installation scripts
+- [x] Docker compose
+- [ ] Automigration files on first run
+- [ ]
+- Docs
+  - [ ] Docker Compose
 
-```
-src/
-├── routes/              # SvelteKit pages
-├── lib/
-│   ├── components/      # Reusable components
-│   ├── data/           # Collections and editions data
-│   └── types/          # TypeScript types
-pocketbase/
-├── pb_data/            # Database files
-└── pb_schema/          # Schema exports
-```
 
 ## Resources
 

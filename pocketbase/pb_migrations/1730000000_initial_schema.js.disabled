@@ -1,0 +1,384 @@
+/// <reference path="../pb_data/types.d.ts" />
+migrate((app) => {
+  // ============================================================================
+  // USERS COLLECTION
+  // ============================================================================
+  const users = new Collection({
+    id: "pb_users_001",
+    name: "users",
+    type: "base",
+    system: false,
+    fields: [
+      {
+        id: "text_id",
+        name: "id",
+        type: "text",
+        required: true,
+        presentable: false,
+        unique: false,
+        primaryKey: true,
+        autogeneratePattern: "[a-z0-9]{15}",
+        hidden: false,
+        system: true,
+        min: 15,
+        max: 15,
+        pattern: "^[a-z0-9]+$"
+      },
+      {
+        id: "user_hash",
+        name: "user",
+        type: "text",
+        required: true,
+        presentable: false,
+        unique: true,
+        system: false,
+        hidden: false,
+        min: 0,
+        max: 0,
+        pattern: ""
+      },
+      {
+        id: "email",
+        name: "email",
+        type: "email",
+        required: true,
+        presentable: false,
+        unique: false,
+        system: false,
+        hidden: false,
+        exceptDomains: [],
+        onlyDomains: []
+      },
+      {
+        id: "nickname",
+        name: "nickname",
+        type: "text",
+        required: true,
+        presentable: true,
+        unique: false,
+        system: false,
+        hidden: false,
+        min: 0,
+        max: 0,
+        pattern: ""
+      },
+      {
+        id: "role",
+        name: "role",
+        type: "select",
+        required: true,
+        presentable: false,
+        unique: false,
+        system: false,
+        hidden: false,
+        values: ["root", "admin", "editor", "viewer"],
+        maxSelect: 1
+      },
+      {
+        id: "autodate_created",
+        name: "created",
+        type: "autodate",
+        required: false,
+        presentable: false,
+        unique: false,
+        system: false,
+        hidden: false,
+        onCreate: true,
+        onUpdate: false
+      },
+      {
+        id: "autodate_updated",
+        name: "updated",
+        type: "autodate",
+        required: false,
+        presentable: false,
+        unique: false,
+        system: false,
+        hidden: false,
+        onCreate: true,
+        onUpdate: true
+      }
+    ],
+    indexes: [
+      "CREATE INDEX idx_users_user ON users (user)",
+      "CREATE INDEX idx_users_email ON users (email)"
+    ],
+    listRule: "@request.auth.id != ''",
+    viewRule: "@request.auth.id != ''",
+    createRule: "@request.auth.role = 'root' || @request.auth.role = 'admin'",
+    updateRule: "@request.auth.role = 'root' || @request.auth.role = 'admin'",
+    deleteRule: "@request.auth.role = 'root'"
+  });
+
+  // ============================================================================
+  // SITE COLLECTION
+  // ============================================================================
+  const site = new Collection({
+    id: "pb_site_001",
+    name: "site",
+    type: "base",
+    system: false,
+    fields: [
+      {
+        id: "text_id_site",
+        name: "id",
+        type: "text",
+        required: true,
+        presentable: false,
+        unique: false,
+        primaryKey: true,
+        autogeneratePattern: "[a-z0-9]{15}",
+        hidden: false,
+        system: true,
+        min: 15,
+        max: 15,
+        pattern: "^[a-z0-9]+$"
+      },
+      {
+        id: "site_name",
+        name: "name",
+        type: "text",
+        required: true,
+        presentable: true,
+        unique: false,
+        system: false,
+        hidden: false,
+        min: 0,
+        max: 0,
+        pattern: ""
+      },
+      {
+        id: "blog",
+        name: "blog",
+        type: "url",
+        required: false,
+        presentable: false,
+        unique: false,
+        system: false,
+        hidden: false,
+        exceptDomains: [],
+        onlyDomains: []
+      },
+      {
+        id: "last_published",
+        name: "lastPublished",
+        type: "date",
+        required: false,
+        presentable: false,
+        unique: false,
+        system: false,
+        hidden: false,
+        min: "",
+        max: ""
+      },
+      {
+        id: "processing",
+        name: "processing",
+        type: "bool",
+        required: false,
+        presentable: false,
+        unique: false,
+        system: false,
+        hidden: false
+      },
+      {
+        id: "featured",
+        name: "featured",
+        type: "json",
+        required: false,
+        presentable: false,
+        unique: false,
+        system: false,
+        hidden: false,
+        maxSize: 0
+      },
+      {
+        id: "published_count",
+        name: "publishedProjectCount",
+        type: "number",
+        required: false,
+        presentable: false,
+        unique: false,
+        system: false,
+        hidden: false,
+        min: null,
+        max: null,
+        noDecimal: true
+      },
+      {
+        id: "sweeper_start",
+        name: "sweeperStartTm",
+        type: "date",
+        required: false,
+        presentable: false,
+        unique: false,
+        system: false,
+        hidden: false,
+        min: "",
+        max: ""
+      },
+      {
+        id: "dc_created_site",
+        name: "dcDateCreated",
+        type: "date",
+        required: false,
+        presentable: false,
+        unique: false,
+        system: false,
+        hidden: false,
+        min: "",
+        max: ""
+      },
+      {
+        id: "dc_modified_site",
+        name: "dcDateModified",
+        type: "date",
+        required: false,
+        presentable: false,
+        unique: false,
+        system: false,
+        hidden: false,
+        min: "",
+        max: ""
+      },
+      {
+        id: "autodate_created_site",
+        name: "created",
+        type: "autodate",
+        required: false,
+        presentable: false,
+        unique: false,
+        system: false,
+        hidden: false,
+        onCreate: true,
+        onUpdate: false
+      },
+      {
+        id: "autodate_updated_site",
+        name: "updated",
+        type: "autodate",
+        required: false,
+        presentable: false,
+        unique: false,
+        system: false,
+        hidden: false,
+        onCreate: true,
+        onUpdate: true
+      }
+    ],
+    indexes: [],
+    listRule: "",
+    viewRule: "",
+    createRule: "@request.auth.role = 'root'",
+    updateRule: "@request.auth.role = 'root' || @request.auth.role = 'admin'",
+    deleteRule: null
+  });
+
+  // ============================================================================
+  // KEYWORDS COLLECTION
+  // ============================================================================
+  const keywords = new Collection({
+    id: "pb_keywords_001",
+    name: "keywords",
+    type: "base",
+    system: false,
+    fields: [
+      {
+        id: "text_id_keywords",
+        name: "id",
+        type: "text",
+        required: true,
+        presentable: false,
+        unique: false,
+        primaryKey: true,
+        autogeneratePattern: "[a-z0-9]{15}",
+        hidden: false,
+        system: true,
+        min: 15,
+        max: 15,
+        pattern: "^[a-z0-9]+$"
+      },
+      {
+        id: "keyword_name",
+        name: "name",
+        type: "select",
+        required: true,
+        presentable: false,
+        unique: false,
+        system: false,
+        hidden: false,
+        values: ["country", "period", "audience", "subject", "language", "license", "funder"],
+        maxSelect: 1
+      },
+      {
+        id: "keyword_value",
+        name: "value",
+        type: "text",
+        required: true,
+        presentable: true,
+        unique: false,
+        system: false,
+        hidden: false,
+        min: 0,
+        max: 0,
+        pattern: ""
+      },
+      {
+        id: "autodate_created_keywords",
+        name: "created",
+        type: "autodate",
+        required: false,
+        presentable: false,
+        unique: false,
+        system: false,
+        hidden: false,
+        onCreate: true,
+        onUpdate: false
+      },
+      {
+        id: "autodate_updated_keywords",
+        name: "updated",
+        type: "autodate",
+        required: false,
+        presentable: false,
+        unique: false,
+        system: false,
+        hidden: false,
+        onCreate: true,
+        onUpdate: true
+      }
+    ],
+    indexes: [
+      "CREATE UNIQUE INDEX idx_keywords_name_value ON keywords (name, value)",
+      "CREATE INDEX idx_keywords_name ON keywords (name)"
+    ],
+    listRule: "",
+    viewRule: "",
+    createRule: "@request.auth.role = 'root' || @request.auth.role = 'admin'",
+    updateRule: "@request.auth.role = 'root' || @request.auth.role = 'admin'",
+    deleteRule: "@request.auth.role = 'root'"
+  });
+
+  // Save collections - must save in dependency order
+  app.save(site);
+  app.save(users);
+  app.save(keywords);
+
+  return null;
+}, (app) => {
+  // Rollback - delete in reverse order
+  const collections = ["keywords", "users", "site"];
+
+  collections.forEach(name => {
+    try {
+      const collection = app.findCollectionByNameOrId(name);
+      if (collection) {
+        app.delete(collection);
+      }
+    } catch (e) {
+      console.log(`Could not delete collection ${name}:`, e);
+    }
+  });
+
+  return null;
+});

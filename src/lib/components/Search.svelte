@@ -46,8 +46,12 @@
 
 			// Build combined results for keyboard navigation
 			allResults = [
-				...todos.items.map(todo => ({ type: 'todo' as const, data: todo, url: '/' })),
-				...posts.items.map(post => ({ type: 'post' as const, data: post, url: `/blog/${post.id}` }))
+				...todos.items.map((todo) => ({ type: 'todo' as const, data: todo, url: '/' })),
+				...posts.items.map((post) => ({
+					type: 'post' as const,
+					data: post,
+					url: `/blog/${post.id}`
+				}))
 			];
 
 			selectedIndex = -1;
@@ -97,7 +101,11 @@
 		}
 
 		// Prevent arrow keys from moving cursor when dropdown is open
-		if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && showResults && allResults.length > 0) {
+		if (
+			(event.key === 'ArrowDown' || event.key === 'ArrowUp') &&
+			showResults &&
+			allResults.length > 0
+		) {
 			event.preventDefault();
 			console.log('   ✅ preventDefault() called');
 		}
@@ -105,7 +113,12 @@
 		switch (event.key) {
 			case 'ArrowDown':
 				if (!showResults || allResults.length === 0) {
-					console.log('   ❌ ArrowDown blocked: showResults =', showResults, 'length =', allResults.length);
+					console.log(
+						'   ❌ ArrowDown blocked: showResults =',
+						showResults,
+						'length =',
+						allResults.length
+					);
 					return;
 				}
 				selectedIndex = selectedIndex < allResults.length - 1 ? selectedIndex + 1 : 0;
@@ -114,7 +127,12 @@
 				break;
 			case 'ArrowUp':
 				if (!showResults || allResults.length === 0) {
-					console.log('   ❌ ArrowUp blocked: showResults =', showResults, 'length =', allResults.length);
+					console.log(
+						'   ❌ ArrowUp blocked: showResults =',
+						showResults,
+						'length =',
+						allResults.length
+					);
 					return;
 				}
 				selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : allResults.length - 1;
@@ -160,13 +178,8 @@
 <svelte:window onclick={handleClickOutside} />
 
 <div class="search-container relative">
-	<label class="input input-bordered flex items-center gap-2">
-		<svg
-			class="h-5 w-5 opacity-70"
-			fill="none"
-			stroke="currentColor"
-			viewBox="0 0 24 24"
-		>
+	<label class="input-bordered input flex items-center gap-2">
+		<svg class="h-5 w-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<path
 				stroke-linecap="round"
 				stroke-linejoin="round"
@@ -178,7 +191,7 @@
 			type="text"
 			bind:this={searchInputElement}
 			bind:value={searchQuery}
-			placeholder="Search todos and posts..."
+			placeholder="Search Collections..."
 			class="grow"
 			onfocus={() => {
 				if (searchQuery.trim()) showResults = true;
@@ -187,11 +200,13 @@
 	</label>
 
 	{#if showResults && searchQuery.trim()}
-		<div class="card card-compact absolute z-50 mt-2 w-full bg-base-100 shadow-xl max-h-96 overflow-y-auto">
+		<div
+			class="card-compact card absolute z-50 mt-2 max-h-96 w-full overflow-y-auto bg-base-100 shadow-xl"
+		>
 			<div class="card-body p-0">
 				{#if searching}
 					<div class="p-4 text-center text-sm opacity-70">
-						<span class="loading loading-spinner loading-sm"></span>
+						<span class="loading loading-sm loading-spinner"></span>
 						<span class="ml-2">Searching...</span>
 					</div>
 				{:else if todoResults.length === 0 && postResults.length === 0}
@@ -229,10 +244,10 @@
 												d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
 											/>
 										</svg>
-										<div class="flex-1 min-w-0">
-											<div class="font-medium truncate">{todo.name}</div>
+										<div class="min-w-0 flex-1">
+											<div class="truncate font-medium">{todo.name}</div>
 											{#if todo.Description}
-												<div class="text-xs opacity-70 truncate">{todo.Description}</div>
+												<div class="truncate text-xs opacity-70">{todo.Description}</div>
 											{/if}
 										</div>
 									</a>
@@ -271,9 +286,9 @@
 												d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
 											/>
 										</svg>
-										<div class="flex-1 min-w-0">
-											<div class="font-medium truncate">{post.title}</div>
-											<div class="text-xs opacity-70 truncate">
+										<div class="min-w-0 flex-1">
+											<div class="truncate font-medium">{post.title}</div>
+											<div class="truncate text-xs opacity-70">
 												{new Date(post.created).toLocaleDateString()}
 											</div>
 										</div>

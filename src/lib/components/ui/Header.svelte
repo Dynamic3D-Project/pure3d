@@ -44,10 +44,10 @@
 				</div>
 			{/if}
 			<!-- Desktop menu -->
-			<div class="z-10 hidden w-full flex-1 justify-end space-x-4 sm:flex lg:space-x-8">
+			<div class="z-10 hidden w-full flex-1 justify-end space-x-2 sm:flex lg:space-x-4">
 				{#each menuItems as link}
 					<a
-						class="menu-link"
+						class="btn btn-ghost"
 						onclick={() => (activeCategory = link.title)}
 						class:active={activeCategory === link.title}
 						href={link.path}
