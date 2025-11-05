@@ -6,6 +6,7 @@
 	import { toggleMenu } from '$lib/stores/menu.store';
 	import IconamoonMenuBurgerHorizontalBold from '~icons/iconamoon/menu-burger-horizontal-bold';
 	import menuItems from '$lib/models/menu-itmes';
+	import { page } from '$app/stores';
 
 	import ThemeChange from '$lib/components/ui/ThemeChange/ThemeChange.svelte';
 
@@ -14,7 +15,23 @@
 	}
 
 	let { showSearch = true }: Props = $props();
-	let activeCategory = $state('');
+
+	// Check if a menu item is active based on current path
+	function isActive(itemPath: string): boolean {
+		const currentPath = $page.url.pathname;
+
+		// Exact match for home
+		if (itemPath === '/' && currentPath === '/') {
+			return true;
+		}
+
+		// For other paths, check if current path starts with item path
+		if (itemPath !== '/' && currentPath.startsWith(itemPath)) {
+			return true;
+		}
+
+		return false;
+	}
 </script>
 
 <nav class="bien-nav mb-10">
@@ -48,8 +65,7 @@
 				{#each menuItems as link}
 					<a
 						class="btn btn-ghost"
-						onclick={() => (activeCategory = link.title)}
-						class:active={activeCategory === link.title}
+						class:btn-active={isActive(link.path)}
 						href={link.path}
 						data-sveltekit-preload-data="hover"
 					>
@@ -58,7 +74,7 @@
 				{/each}
 			</div>
 
-			<FeedbackButton class="hidden sm:block" />
+			<!-- <FeedbackButton class="hidden sm:block" /> -->
 			<ThemeChange class="z-50 ml-auto sm:ml-14 " />
 
 			<Login />
@@ -67,14 +83,6 @@
 </nav>
 
 <style>
-	.menu-link {
-		/* @apply hover:text-secondary font-medium transition; */
-	}
-
-	.menu-link.active {
-		@apply text-[var(--color-primary)];
-	}
-
 	/* Frosted navigation header */
 	nav {
 		z-index: 10000;

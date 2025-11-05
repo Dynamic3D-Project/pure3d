@@ -11,6 +11,7 @@ const PB_URL = process.env.POCKETBASE_URL || 'http://pocketbase:8090';
 const ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL!;
 const ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD!;
 const JSON_DIR = 'data/json-output';
+const PUBLIC_PB_URL = process.env.PUBLIC_POCKETBASE_URL || 'http://localhost:8090';
 
 const pb = new PocketBase(PB_URL);
 
@@ -505,8 +506,8 @@ async function main() {
   console.log('   ✅ editionUsers (270 records)');
   console.log('\n   Total: 832 documents imported!');
   console.log('\n🎉 Your PocketBase is ready to use!');
-  console.log('   Admin UI: http://localhost:7090/_/');
-  console.log('   API: http://localhost:7090/api/\n');
+  console.log(`   Admin UI: ${PUBLIC_PB_URL}/_/`);
+  console.log(`   API: ${PUBLIC_PB_URL}/api/\n`);
 }
 
 main().catch((error) => {

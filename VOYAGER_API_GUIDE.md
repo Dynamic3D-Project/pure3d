@@ -136,6 +136,27 @@ interface Props {
 
   /** Show control toolbar (only available in direct mode) */
   showControls?: boolean;
+
+  /** UI mode - controls which UI elements are visible initially
+   * Options: "none" (hide all), "none|title" (only title), "all" (show all)
+   * Default: "none" for API-controlled mode
+   */
+  uiMode?: string;
+
+  /** Enable/disable camera controls
+   * Default: true
+   */
+  enableControls?: boolean;
+
+  /** Show/hide interaction prompt
+   * Default: false
+   */
+  showPrompt?: boolean;
+
+  /** Show/hide reader initially
+   * Default: false
+   */
+  showReader?: boolean;
 }
 ```
 
@@ -150,7 +171,7 @@ interface Props {
 />
 ```
 
-#### Direct with Controls
+#### Direct with Controls (Clean UI)
 
 ```svelte
 <VoyagerViewer
@@ -159,6 +180,106 @@ interface Props {
   title="Apollo Model"
   direct={true}
   showControls={true}
+  uiMode="none"
+  enableControls={true}
+  showPrompt={false}
+  showReader={false}
+/>
+```
+
+This configuration provides:
+- ✅ Clean viewer with no UI elements visible
+- ✅ Camera controls enabled (user can orbit/zoom)
+- ✅ Full API control to toggle UI elements
+- ✅ No interaction prompts or popups
+
+#### Show Specific UI Elements
+
+```svelte
+<!-- Show only title and menu -->
+<VoyagerViewer
+  url="https://my-site.com/models/apollo/"
+  document="scene.svx.json"
+  title="Apollo Model"
+  direct={true}
+  uiMode="none|title|menu"
+/>
+```
+
+## UI Configuration
+
+### Controlling Initial UI Visibility
+
+The `uiMode` attribute controls which UI elements are visible when Voyager first loads. This is perfect for creating clean, API-controlled experiences.
+
+#### UI Mode Options
+
+```svelte
+<!-- Hide everything (cleanest API-controlled mode) -->
+<VoyagerViewer uiMode="none" />
+
+<!-- Show only title -->
+<VoyagerViewer uiMode="none|title" />
+
+<!-- Show all UI elements (default Voyager behavior) -->
+<VoyagerViewer uiMode="all" />
+
+<!-- Combine multiple elements -->
+<VoyagerViewer uiMode="none|title|menu|tools" />
+```
+
+#### Available UI Elements
+
+The following elements can be combined in `uiMode` using the pipe (`|`) character:
+
+- `title` - Scene/model title
+- `menu` - Main menu bar
+- `tools` - Tools panel
+- `annotations` - Annotation markers
+- `reader` - Article reader panel
+- `tours` - Tours panel
+- `all` - All UI elements
+- `none` - No UI elements
+
+#### Additional Configuration Attributes
+
+```svelte
+<!-- Disable camera controls completely -->
+<VoyagerViewer enableControls={false} />
+
+<!-- Hide the interaction prompt -->
+<VoyagerViewer showPrompt={false} />
+
+<!-- Start with reader open -->
+<VoyagerViewer showReader={true} />
+```
+
+### Best Practices
+
+**For API-Controlled Experiences:**
+```svelte
+<VoyagerViewer
+  uiMode="none"
+  enableControls={true}    // Allow user to orbit/zoom
+  showPrompt={false}       // No popups
+  showReader={false}       // Start clean
+  showControls={true}      // Show your custom controls
+/>
+```
+
+**For Standard Viewer:**
+```svelte
+<VoyagerViewer
+  uiMode="all"
+  direct={true}
+/>
+```
+
+**For Minimal Viewer with Branding:**
+```svelte
+<VoyagerViewer
+  uiMode="none|title"
+  enableControls={true}
 />
 ```
 
@@ -178,13 +299,20 @@ setCameraOrbit(yaw: number, pitch: number)
 //   pitch: -90 to 90 degrees
 
 // Get current camera position
-getCameraOrbit() // Returns: { yaw: number, pitch: number }
+getCameraOrbit(type?: string)
+// Parameters:
+//   type: 'min' | 'max' | 'active' (optional)
+// Returns: [yaw, pitch] in radians
 
 // Set camera offset
 setCameraOffset(x: number, y: number, z: number)
+// Parameters: x, y, z in scene units
 
 // Get camera offset
-getCameraOffset() // Returns: { x, y, z }
+getCameraOffset(type?: string)
+// Parameters:
+//   type: 'min' | 'max' | 'active' (optional)
+// Returns: [x, y, z]
 ```
 
 #### Annotations
@@ -198,7 +326,12 @@ setActiveAnnotation(id: string)
 toggleAnnotations()
 
 // Get all available annotations
-getAnnotations() // Returns: Array<{ id: string, title: string, ... }>
+getAnnotations()
+// Returns: Array<{
+//   id: string,
+//   titles: { EN: string, ... },
+//   ...
+// }>
 ```
 
 #### Articles
@@ -211,22 +344,55 @@ setActiveArticle(id: string)
 toggleReader()
 
 // Get all available articles
-getArticles() // Returns: Array<{ id: string, title: string, ... }>
+getArticles()
+// Returns: Array<{
+//   id: string,
+//   titles: { EN: string, ... },
+//   ...
+// }>
 ```
 
 #### Tours
 
 ```javascript
+// Navigate to a specific tour step
+setTourStep(tourIdx: number, stepIdx: number, interpolate?: boolean)
+// Parameters:
+//   tourIdx: tour index
+//   stepIdx: step index within tour
+//   interpolate: animate transition (optional)
+
 // Toggle tours panel
 toggleTours()
 ```
 
-#### Language
+#### UI Controls
 
 ```javascript
+// Toggle extended tools panel
+toggleTools()
+
+// Toggle measurement tool
+toggleMeasurement()
+
+// Set background style
+setBackgroundStyle(style: string)
+// Parameters:
+//   style: 'Solid' | 'LinearGradient' | 'RadialGradient'
+
+// Set background color(s)
+setBackgroundColor(color0: string, color1?: string)
+// Parameters:
+//   color0: CSS color value
+//   color1: CSS color value (optional, for gradients)
+
+// Enable AR mode (platform dependent)
+enableAR()
+
 // Set interface language
 setLanguage(languageCode: string)
-// Example: setLanguage('en'), setLanguage('es')
+// Parameters:
+//   languageCode: ISO 639-1 code (e.g., 'en', 'es', 'fr')
 ```
 
 ### Events

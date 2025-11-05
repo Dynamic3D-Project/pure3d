@@ -162,7 +162,30 @@
 					</div>
 				</div>
 			{:else}
-				<h2 class="card-title mb-4">Direct Embedding with API Controls</h2>
+				<h2 class="card-title mb-4">Direct Embedding with Full API Control</h2>
+				<div class="alert alert-info mb-4">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						fill="none"
+						viewBox="0 0 24 24"
+						class="stroke-current shrink-0 w-6 h-6"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+						></path>
+					</svg>
+					<div>
+						<p class="font-bold">Clean UI - API Controlled</p>
+						<p class="text-sm">
+							All UI elements are hidden by default (<code class="text-xs">uiMode="none"</code>).
+							Use the API controls below to toggle annotations, reader, tours, and other UI elements.
+							This gives you complete programmatic control over the viewer experience.
+						</p>
+					</div>
+				</div>
 				<div class="alert alert-warning mb-4">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -180,13 +203,13 @@
 					<div>
 						<p class="font-bold">Demo Limitation</p>
 						<p class="text-sm">
-							This demo shows the UI controls, but Smithsonian's hosted content doesn't support
-							direct embedding due to CORS restrictions. To use this mode, you'll need to:
+							Smithsonian's hosted content doesn't support direct embedding due to CORS restrictions.
+							To fully test this mode with your own content:
 						</p>
 						<ul class="text-xs mt-2 ml-4 list-disc">
 							<li>Self-host your Voyager documents (SVX files)</li>
 							<li>Configure proper CORS headers on your server</li>
-							<li>Use the document parameter to point to your SVX file</li>
+							<li>Update the url and document parameters</li>
 						</ul>
 					</div>
 				</div>
@@ -196,6 +219,9 @@
 					title="Apollo 11 Command Module"
 					direct={true}
 					showControls={true}
+					uiMode="none"
+					enableControls={true}
+					showPrompt={false}
 				/>
 				<div class="mt-4">
 					<div class="mockup-code text-xs">
@@ -205,6 +231,10 @@
   title="Your 3D Model"
   direct={'{true}'}
   showControls={'{true}'}
+  uiMode="none"           // Hide all UI elements initially
+  enableControls={'{true}'}  // Keep camera controls enabled
+  showPrompt={'{false}'}     // Hide interaction prompt
+  showReader={'{false}'}     // Hide reader initially
 /&gt;</code></pre>
 					</div>
 				</div>
@@ -219,64 +249,152 @@
 			<table class="table table-zebra">
 				<thead>
 					<tr>
+						<th>Category</th>
 						<th>Method</th>
 						<th>Description</th>
 						<th>Parameters</th>
 					</tr>
 				</thead>
 				<tbody>
+					<!-- Camera Control -->
 					<tr>
+						<td rowspan="4" class="font-semibold">Camera</td>
 						<td><code class="text-sm">setCameraOrbit(yaw, pitch)</code></td>
-						<td>Control camera rotation</td>
-						<td>yaw: -180 to 180, pitch: -90 to 90</td>
+						<td>Set orbital camera angles</td>
+						<td>yaw, pitch: degrees</td>
 					</tr>
 					<tr>
+						<td><code class="text-sm">getCameraOrbit(type?)</code></td>
+						<td>Get camera angles</td>
+						<td>type: 'min'|'max'|'active' - returns [yaw, pitch]</td>
+					</tr>
+					<tr>
+						<td><code class="text-sm">setCameraOffset(x, y, z)</code></td>
+						<td>Set orbit navigation offset</td>
+						<td>x, y, z: scene units</td>
+					</tr>
+					<tr>
+						<td><code class="text-sm">getCameraOffset(type?)</code></td>
+						<td>Get camera offset</td>
+						<td>type: 'min'|'max'|'active' - returns [x, y, z]</td>
+					</tr>
+
+					<!-- Annotations -->
+					<tr>
+						<td rowspan="3" class="font-semibold">Annotations</td>
 						<td><code class="text-sm">setActiveAnnotation(id)</code></td>
-						<td>Activate a specific annotation</td>
-						<td>id: annotation identifier string</td>
-					</tr>
-					<tr>
-						<td><code class="text-sm">setActiveArticle(id)</code></td>
-						<td>Open a specific article</td>
-						<td>id: article identifier string</td>
+						<td>Activate specific annotation</td>
+						<td>id: annotation identifier</td>
 					</tr>
 					<tr>
 						<td><code class="text-sm">toggleAnnotations()</code></td>
-						<td>Show/hide all annotations</td>
-						<td>none</td>
-					</tr>
-					<tr>
-						<td><code class="text-sm">toggleReader()</code></td>
-						<td>Show/hide article reader</td>
-						<td>none</td>
-					</tr>
-					<tr>
-						<td><code class="text-sm">toggleTours()</code></td>
-						<td>Show/hide tours panel</td>
+						<td>Toggle all annotations visibility</td>
 						<td>none</td>
 					</tr>
 					<tr>
 						<td><code class="text-sm">getAnnotations()</code></td>
-						<td>Retrieve all available annotations</td>
+						<td>Get all annotations</td>
 						<td>none - returns array</td>
+					</tr>
+
+					<!-- Articles -->
+					<tr>
+						<td rowspan="3" class="font-semibold">Articles</td>
+						<td><code class="text-sm">setActiveArticle(id)</code></td>
+						<td>Open specific article</td>
+						<td>id: article identifier</td>
+					</tr>
+					<tr>
+						<td><code class="text-sm">toggleReader()</code></td>
+						<td>Toggle article reader panel</td>
+						<td>none</td>
 					</tr>
 					<tr>
 						<td><code class="text-sm">getArticles()</code></td>
-						<td>Retrieve all available articles</td>
+						<td>Get all articles</td>
 						<td>none - returns array</td>
 					</tr>
+
+					<!-- Tours -->
 					<tr>
-						<td><code class="text-sm">getCameraOrbit()</code></td>
-						<td>Get current camera position</td>
-						<td>none - returns {'{yaw, pitch}'}</td>
+						<td rowspan="3" class="font-semibold">Tours</td>
+						<td><code class="text-sm">setTourStep(tourIdx, stepIdx, interpolate?)</code></td>
+						<td>Navigate to tour step</td>
+						<td>tourIdx, stepIdx: indices; interpolate: boolean</td>
+					</tr>
+					<tr>
+						<td><code class="text-sm">toggleTours()</code></td>
+						<td>Toggle tours panel</td>
+						<td>none</td>
+					</tr>
+					<tr>
+						<td><code class="text-sm">getTours()</code></td>
+						<td>Get all tours</td>
+						<td>none - returns array</td>
+					</tr>
+
+					<!-- UI Controls -->
+					<tr>
+						<td rowspan="6" class="font-semibold">UI</td>
+						<td><code class="text-sm">toggleTools()</code></td>
+						<td>Toggle extended tools panel</td>
+						<td>none</td>
+					</tr>
+					<tr>
+						<td><code class="text-sm">toggleMeasurement()</code></td>
+						<td>Toggle measurement tool</td>
+						<td>none</td>
+					</tr>
+					<tr>
+						<td><code class="text-sm">setBackgroundStyle(style)</code></td>
+						<td>Set background appearance</td>
+						<td>style: 'Solid'|'LinearGradient'|'RadialGradient'</td>
+					</tr>
+					<tr>
+						<td><code class="text-sm">setBackgroundColor(color0, color1?)</code></td>
+						<td>Set background color(s)</td>
+						<td>color0, color1: CSS color values</td>
 					</tr>
 					<tr>
 						<td><code class="text-sm">setLanguage(id)</code></td>
 						<td>Change interface language</td>
-						<td>id: language code (e.g., 'en', 'es')</td>
+						<td>id: ISO 639-1 code (e.g., 'en', 'es')</td>
+					</tr>
+					<tr>
+						<td><code class="text-sm">enableAR()</code></td>
+						<td>Request AR session</td>
+						<td>none - platform dependent</td>
 					</tr>
 				</tbody>
 			</table>
+		</div>
+
+		<!-- Events Section -->
+		<div class="mt-8">
+			<h3 class="text-xl font-bold mb-4">Events</h3>
+			<div class="overflow-x-auto">
+				<table class="table table-zebra">
+					<thead>
+						<tr>
+							<th>Event</th>
+							<th>Description</th>
+							<th>Event Detail</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><code class="text-sm">model-load</code></td>
+							<td>Fires after model loads</td>
+							<td>derivative quality level</td>
+						</tr>
+						<tr>
+							<td><code class="text-sm">annotation-active</code></td>
+							<td>Fires when annotation state changes</td>
+							<td>annotation ID or null</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
 		</div>
 	</div>
 
