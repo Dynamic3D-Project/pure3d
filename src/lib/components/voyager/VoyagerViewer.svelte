@@ -438,52 +438,115 @@
 				</div>
 
 				<!-- Background Controls -->
-				<div class="mt-4 grid md:grid-cols-2 gap-4">
-					<div class="space-y-2">
-						<h3 class="font-semibold text-sm">Background Style</h3>
-						<div class="flex gap-2">
-							<button
-								class="btn btn-xs btn-outline flex-1"
-								onclick={() => setBackgroundStyle('Solid')}
-							>
-								Solid
-							</button>
-							<button
-								class="btn btn-xs btn-outline flex-1"
-								onclick={() => setBackgroundStyle('LinearGradient')}
-							>
-								Linear
-							</button>
-							<button
-								class="btn btn-xs btn-outline flex-1"
-								onclick={() => setBackgroundStyle('RadialGradient')}
-							>
-								Radial
-							</button>
-						</div>
+				<div class="mt-4">
+					<h3 class="font-semibold text-sm mb-2">Background Style</h3>
+					<div class="flex gap-2 mb-3">
+						<button
+							class="btn btn-xs btn-outline flex-1"
+							onclick={() => setBackgroundStyle('Solid')}
+						>
+							Solid
+						</button>
+						<button
+							class="btn btn-xs btn-outline flex-1"
+							onclick={() => setBackgroundStyle('LinearGradient')}
+						>
+							Linear
+						</button>
+						<button
+							class="btn btn-xs btn-outline flex-1"
+							onclick={() => setBackgroundStyle('RadialGradient')}
+						>
+							Radial
+						</button>
 					</div>
-					<div class="space-y-2">
-						<h3 class="font-semibold text-sm">Quick Colors</h3>
-						<div class="flex gap-2">
-							<button
-								class="btn btn-xs btn-outline flex-1"
-								onclick={() => setBackgroundColor('#1a1a1a', '#0a0a0a')}
-							>
-								Dark
-							</button>
-							<button
-								class="btn btn-xs btn-outline flex-1"
-								onclick={() => setBackgroundColor('#ffffff', '#e0e0e0')}
-							>
-								Light
-							</button>
-							<button
-								class="btn btn-xs btn-outline flex-1"
-								onclick={() => setBackgroundColor('#1e3a8a', '#0c1d3f')}
-							>
-								Blue
-							</button>
-						</div>
+
+					<h3 class="font-semibold text-sm mb-2">Quick Colors</h3>
+					<div class="grid grid-cols-4 gap-2">
+						<button
+							class="btn btn-xs btn-outline"
+							onclick={() => setBackgroundColor('#1a1a1a', '#0a0a0a')}
+							title="Dark gray gradient"
+						>
+							Dark
+						</button>
+						<button
+							class="btn btn-xs btn-outline"
+							onclick={() => setBackgroundColor('#ffffff', '#e0e0e0')}
+							title="White to light gray"
+						>
+							Light
+						</button>
+						<button
+							class="btn btn-xs btn-outline"
+							onclick={() => setBackgroundColor('#1e3a8a', '#0c1d3f')}
+							title="Deep blue gradient"
+						>
+							Blue
+						</button>
+						<button
+							class="btn btn-xs btn-outline"
+							onclick={() => setBackgroundColor('#7c3aed', '#4c1d95')}
+							title="Purple gradient"
+						>
+							Purple
+						</button>
+						<button
+							class="btn btn-xs btn-outline"
+							onclick={() => setBackgroundColor('#dc2626', '#7f1d1d')}
+							title="Red gradient"
+						>
+							Red
+						</button>
+						<button
+							class="btn btn-xs btn-outline"
+							onclick={() => setBackgroundColor('#059669', '#064e3b')}
+							title="Green gradient"
+						>
+							Green
+						</button>
+						<button
+							class="btn btn-xs btn-outline"
+							onclick={() => setBackgroundColor('#ea580c', '#7c2d12')}
+							title="Orange gradient"
+						>
+							Orange
+						</button>
+						<button
+							class="btn btn-xs btn-outline"
+							onclick={() => setBackgroundColor('#0891b2', '#164e63')}
+							title="Cyan gradient"
+						>
+							Cyan
+						</button>
+						<button
+							class="btn btn-xs btn-outline"
+							onclick={() => setBackgroundColor('#ec4899', '#831843')}
+							title="Pink gradient"
+						>
+							Pink
+						</button>
+						<button
+							class="btn btn-xs btn-outline"
+							onclick={() => setBackgroundColor('#eab308', '#713f12')}
+							title="Gold gradient"
+						>
+							Gold
+						</button>
+						<button
+							class="btn btn-xs btn-outline"
+							onclick={() => setBackgroundColor('#14b8a6', '#134e4a')}
+							title="Teal gradient"
+						>
+							Teal
+						</button>
+						<button
+							class="btn btn-xs btn-outline"
+							onclick={() => setBackgroundColor('#f97316', '#9a3412')}
+							title="Amber gradient"
+						>
+							Amber
+						</button>
 					</div>
 				</div>
 
