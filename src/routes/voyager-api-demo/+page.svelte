@@ -143,7 +143,7 @@
 	</div>
 
 	<!-- Viewer Demo -->
-	<!-- <div class="card bg-base-100 shadow-2xl">
+	<div class="card bg-base-100 shadow-2xl">
 		<div class="card-body">
 			{#if activeMode === 'iframe'}
 				<h2 class="mb-4 card-title">Iframe Embedding Example</h2>
@@ -244,7 +244,7 @@
 				</div>
 			{/if}
 		</div>
-	</div> -->
+	</div>
 
 	<!-- API Documentation -->
 	<div class="mt-12">
