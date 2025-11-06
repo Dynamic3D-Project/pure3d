@@ -73,7 +73,6 @@ export async function getEditions() {
 
 	try {
 		const result = await pb.collection('editions').getList(1, 500, {
-			sort: '-created',
 			filter: 'isPublished = true',
 			expand: 'collection'
 		});
