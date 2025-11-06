@@ -1,9 +1,10 @@
 <script lang="ts">
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
-	import type { Edition } from '$lib/types/collection';
-	import editionsData from '$lib/data/editions.json';
+	import type { PageData } from './$types';
 
-	const editions: Edition[] = editionsData;
+	let { data }: { data: PageData } = $props();
+
+	const editions = data.editions;
 
 	let searchQuery = $state('');
 	let selectedTag = $state<string | null>(null);

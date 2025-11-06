@@ -197,12 +197,18 @@ class PocketBaseImporter {
     let imported = 0;
     for (const doc of data) {
       try {
+        const projectPubNum = doc.pubNum || 0;
+        const thumbnailUrl = projectPubNum > 0
+          ? `https://editions.pure3d.eu/project/${projectPubNum}/icon.png`
+          : undefined;
+
         const result = await this.createRecord('projects', {
           title: doc.title,
           siteId: siteId,
           isVisible: doc.isVisible !== false,
           lastPublished: doc.lastPublished,
-          pubNum: doc.pubNum || 0,
+          pubNum: projectPubNum,
+          thumbnail: thumbnailUrl,
           dcTitle: doc.dc?.title,
           dcSubtitle: doc.dc?.subtitle,
           dcCreator: doc.dc?.creator || [],
@@ -243,11 +249,23 @@ class PocketBaseImporter {
           throw new Error(`Project ID not found: ${doc.projectId}`);
         }
 
+        // Fetch project to get its pubNum for thumbnail URL
+        const projectResponse = await fetch(`${this.baseUrl}/api/collections/projects/records/${pbProjectId}`, {
+          headers: { 'Authorization': this.token }
+        });
+        const project = await projectResponse.json();
+        const projectPubNum = project.pubNum;
+        const editionPubNum = doc.pubNum || 1;
+
+        // Construct thumbnail URL
+        const thumbnailUrl = `https://editions.pure3d.eu/project/${projectPubNum}/edition/${editionPubNum}/icon.png`;
+
         const result = await this.createRecord('editions', {
           title: doc.title,
           projectId: pbProjectId,
           isPublished: doc.isPublished === true,
           pubNum: doc.pubNum || 0,
+          thumbnail: thumbnailUrl,
           dcTitle: doc.dc?.title,
           dcSubtitle: doc.dc?.subtitle,
           dcCreator: doc.dc?.creator || [],

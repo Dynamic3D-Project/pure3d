@@ -1,26 +1,18 @@
 <script lang="ts">
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
-	import type { Collection, Edition } from '$lib/types/collection';
-	import collectionsData from '$lib/data/collections.json';
-	import editionsData from '$lib/data/editions.json';
-	import { page } from '$app/stores';
+	import type { PageData } from './$types';
 
-	const slug = $page.params.slug;
-	const collection: Collection | undefined = collectionsData.find((c) => c.slug === slug);
+	let { data }: { data: PageData } = $props();
 
-	let editions: Edition[] = [];
-	if (collection) {
-		editions = editionsData.filter((e) => collection.editionIds.includes(e.id));
-	}
+	const { collection, editions } = data;
 </script>
 
 <svelte:head>
-	<title>{collection?.title || 'Collection'} | Pure 3D</title>
-	<meta name="description" content={collection?.description || 'View collection details'} />
+	<title>{collection.title} | Pure 3D</title>
+	<meta name="description" content={collection.description} />
 </svelte:head>
 
-{#if collection}
-	<div class="container mx-auto px-4 py-12 max-w-7xl">
+<div class="container mx-auto px-4 py-12 max-w-7xl">
 		<!-- Collection Header -->
 		<div class="mb-12">
 			<nav class="text-sm breadcrumbs mb-6">
@@ -56,21 +48,10 @@
 			{/if}
 		</div>
 
-		<!-- Back Button -->
-		<div class="flex justify-center mt-12">
-			<a href="/collections" data-sveltekit-preload-data="hover" class="btn btn-outline btn-lg">
-				← Back to Collections
-			</a>
-		</div>
+	<!-- Back Button -->
+	<div class="flex justify-center mt-12">
+		<a href="/collections" data-sveltekit-preload-data="hover" class="btn btn-outline btn-lg">
+			← Back to Collections
+		</a>
 	</div>
-{:else}
-	<div class="container mx-auto px-4 py-12 text-center">
-		<div class="max-w-md mx-auto">
-			<h1 class="text-3xl font-bold mb-4">Collection Not Found</h1>
-			<p class="text-base-content/70 mb-8">
-				The collection you're looking for doesn't exist or has been removed.
-			</p>
-			<a href="/collections" data-sveltekit-preload-data="hover" class="btn btn-primary">View All Collections</a>
-		</div>
-	</div>
-{/if}
+</div>

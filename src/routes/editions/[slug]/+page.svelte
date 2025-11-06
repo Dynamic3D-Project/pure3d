@@ -1,17 +1,16 @@
 <script lang="ts">
-	import type { Edition } from '$lib/types/collection';
-	import editionsData from '$lib/data/editions.json';
-	import { page } from '$app/stores';
+	import type { PageData } from './$types';
 
-	// Make edition reactive to slug changes
-	let edition = $derived(editionsData.find((e) => e.slug === $page.params.slug));
+	let { data }: { data: PageData } = $props();
+
+	const edition = data.edition;
 
 	let activeTab = $state<'description' | 'metadata' | 'peer-review' | 'printables'>('description');
 	let iframeElement: HTMLIFrameElement | undefined = $state();
 
 	// Watch for URL changes and update iframe src
 	$effect(() => {
-		const voyagerUrl = edition?.voyagerUrl;
+		const voyagerUrl = edition.voyagerUrl;
 		if (iframeElement && voyagerUrl && iframeElement.src !== voyagerUrl) {
 			iframeElement.src = voyagerUrl;
 		}
@@ -19,16 +18,15 @@
 </script>
 
 <svelte:head>
-	<title>{edition?.title || 'Edition'} | Pure 3D</title>
-	<meta name="description" content={edition?.description || 'View edition details'} />
+	<title>{edition.title} | Pure 3D</title>
+	<meta name="description" content={edition.description} />
 
 	<!-- Preconnect to Voyager API for faster loading -->
 	<link rel="preconnect" href="https://3d-api.si.edu" crossorigin />
 	<link rel="dns-prefetch" href="https://3d-api.si.edu" />
 </svelte:head>
 
-{#if edition}
-	<div class="min-h-screen bg-base-100">
+<div class="min-h-screen bg-base-100">
 		<div class="container mx-auto px-4 py-8 max-w-7xl">
 			<!-- Breadcrumbs -->
 			<nav class="text-sm breadcrumbs mb-6">
@@ -197,22 +195,11 @@
 				</div>
 			</div>
 
-			<!-- Back Button -->
-			<div class="flex justify-center mt-12">
-				<a href="/editions" data-sveltekit-preload-data="hover" class="btn btn-outline btn-lg">
-					← Back to Editions
-				</a>
-			</div>
+		<!-- Back Button -->
+		<div class="flex justify-center mt-12">
+			<a href="/editions" data-sveltekit-preload-data="hover" class="btn btn-outline btn-lg">
+				← Back to Editions
+			</a>
 		</div>
 	</div>
-{:else}
-	<div class="container mx-auto px-4 py-12 text-center">
-		<div class="max-w-md mx-auto">
-			<h1 class="text-3xl font-bold mb-4">Edition Not Found</h1>
-			<p class="text-base-content/70 mb-8">
-				The edition you're looking for doesn't exist or has been removed.
-			</p>
-			<a href="/editions" data-sveltekit-preload-data="hover" class="btn btn-primary">View All Editions</a>
-		</div>
-	</div>
-{/if}
+</div>

@@ -1,9 +1,10 @@
 <script lang="ts">
 	import CollectionCard from '$lib/components/cards/CollectionCard.svelte';
-	import type { Collection } from '$lib/types/collection';
-	import collectionsData from '$lib/data/collections.json';
+	import type { PageData } from './$types';
 
-	const collections: Collection[] = collectionsData;
+	let { data }: { data: PageData } = $props();
+
+	const { collections } = data;
 </script>
 
 <svelte:head>

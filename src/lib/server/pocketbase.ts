@@ -1,0 +1,157 @@
+import PocketBase from 'pocketbase';
+import { POCKETBASE_URL } from '$env/static/private';
+
+/**
+ * Create a PocketBase client for server-side use
+ */
+export function createPocketBaseClient() {
+	const pb = new PocketBase(POCKETBASE_URL || 'http://127.0.0.1:7090');
+
+	// Disable auto-cancellation for server-side requests
+	pb.autoCancellation(false);
+
+	return pb;
+}
+
+/**
+ * Get all collections
+ */
+export async function getCollections() {
+	const pb = createPocketBaseClient();
+
+	try {
+		const records = await pb.collection('collections').getFullList({
+			sort: 'pubNum',
+			filter: 'isVisible = true'
+		});
+
+		return records.map(record => ({
+			id: record.id,
+			title: record.title,
+			thumbnail: record.thumbnail,
+			isVisible: record.isVisible,
+			pubNum: record.pubNum,
+			dcTitle: record.dcTitle,
+			dcAbstract: record.dcAbstract
+		}));
+	} catch (error) {
+		console.error('Error fetching collections:', error);
+		return [];
+	}
+}
+
+/**
+ * Get a single collection by ID
+ */
+export async function getCollection(id: string) {
+	const pb = createPocketBaseClient();
+
+	try {
+		const record = await pb.collection('collections').getOne(id);
+
+		return {
+			id: record.id,
+			title: record.title,
+			thumbnail: record.thumbnail,
+			isVisible: record.isVisible,
+			pubNum: record.pubNum,
+			dcTitle: record.dcTitle,
+			dcAbstract: record.dcAbstract
+		};
+	} catch (error) {
+		console.error('Error fetching collection:', error);
+		return null;
+	}
+}
+
+/**
+ * Get all editions
+ */
+export async function getEditions() {
+	const pb = createPocketBaseClient();
+
+	try {
+		const records = await pb.collection('editions').getFullList({
+			sort: '-created',
+			filter: 'isPublished = true',
+			expand: 'collection'
+		});
+
+		return records.map(record => ({
+			id: record.id,
+			title: record.title,
+			thumbnail: record.thumbnail,
+			isPublished: record.isPublished,
+			pubNum: record.pubNum,
+			dcTitle: record.dcTitle,
+			dcAbstract: record.dcAbstract,
+			dcCreator: record.dcCreator,
+			dcKeyword: record.dcKeyword,
+			collectionId: record.collection,
+			collection: record.expand?.collection
+		}));
+	} catch (error) {
+		console.error('Error fetching editions:', error);
+		return [];
+	}
+}
+
+/**
+ * Get editions for a specific collection
+ */
+export async function getEditionsByCollection(collectionId: string) {
+	const pb = createPocketBaseClient();
+
+	try {
+		const records = await pb.collection('editions').getFullList({
+			sort: 'pubNum',
+			filter: `collection = "${collectionId}" && isPublished = true`
+		});
+
+		return records.map(record => ({
+			id: record.id,
+			title: record.title,
+			thumbnail: record.thumbnail,
+			isPublished: record.isPublished,
+			pubNum: record.pubNum,
+			dcTitle: record.dcTitle,
+			dcAbstract: record.dcAbstract,
+			dcCreator: record.dcCreator,
+			dcKeyword: record.dcKeyword,
+			collectionId: record.collection
+		}));
+	} catch (error) {
+		console.error('Error fetching editions for collection:', error);
+		return [];
+	}
+}
+
+/**
+ * Get a single edition by ID
+ */
+export async function getEdition(id: string) {
+	const pb = createPocketBaseClient();
+
+	try {
+		const record = await pb.collection('editions').getOne(id, {
+			expand: 'collection'
+		});
+
+		return {
+			id: record.id,
+			title: record.title,
+			thumbnail: record.thumbnail,
+			isPublished: record.isPublished,
+			pubNum: record.pubNum,
+			dcTitle: record.dcTitle,
+			dcAbstract: record.dcAbstract,
+			dcCreator: record.dcCreator,
+			dcKeyword: record.dcKeyword,
+			collectionId: record.collection,
+			collection: record.expand?.collection
+		};
+	} catch (error) {
+		console.error('Error fetching edition:', error);
+		return null;
+	}
+}

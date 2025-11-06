@@ -21,10 +21,10 @@ migrate((app) => {
       {
         "autogeneratePattern": "",
         "hidden": false,
-        "id": "text724990059",
+        "id": "text1579384326",
         "max": 0,
         "min": 0,
-        "name": "title",
+        "name": "name",
         "pattern": "",
         "presentable": false,
         "primaryKey": false,
@@ -33,50 +33,42 @@ migrate((app) => {
         "type": "text"
       },
       {
-        "convertURLs": false,
+        "exceptDomains": null,
         "hidden": false,
-        "id": "editor4274335913",
-        "maxSize": 0,
-        "name": "content",
+        "id": "url3222622531",
+        "name": "blog",
+        "onlyDomains": null,
         "presentable": false,
         "required": false,
         "system": false,
-        "type": "editor"
+        "type": "url"
       },
       {
         "hidden": false,
-        "id": "autodate2990389176",
-        "name": "created",
-        "onCreate": true,
-        "onUpdate": false,
+        "id": "number2243812316",
+        "max": null,
+        "min": null,
+        "name": "publishedProjectCount",
+        "onlyInt": false,
         "presentable": false,
+        "required": false,
         "system": false,
-        "type": "autodate"
-      },
-      {
-        "hidden": false,
-        "id": "autodate3332085495",
-        "name": "updated",
-        "onCreate": true,
-        "onUpdate": true,
-        "presentable": false,
-        "system": false,
-        "type": "autodate"
+        "type": "number"
       }
     ],
-    "id": "pbc_1125843985",
+    "id": "pbc_1313762900",
     "indexes": [],
-    "listRule": null,
-    "name": "posts",
+    "listRule": "",
+    "name": "site",
     "system": false,
     "type": "base",
     "updateRule": null,
-    "viewRule": null
+    "viewRule": ""
   });
 
   return app.save(collection);
 }, (app) => {
-  const collection = app.findCollectionByNameOrId("pbc_1125843985");
+  const collection = app.findCollectionByNameOrId("pbc_1313762900");
 
   return app.delete(collection);
 })

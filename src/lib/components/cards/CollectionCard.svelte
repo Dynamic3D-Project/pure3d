@@ -29,7 +29,7 @@
 		</h3>
 		<p class="text-sm text-base-content/70 line-clamp-2">{collection.description}</p>
 		<div class="card-actions justify-end mt-2">
-			<div class="badge badge-outline text-xs">{collection.editionIds.length} editions</div>
+			<div class="badge badge-outline text-xs">{collection.editionCount || collection.editionIds?.length || 0} editions</div>
 		</div>
 	</div>
 </a>

@@ -1,92 +1,195 @@
 [
   {
-    "id": "50-years-maastricht",
-    "slug": "50-years-maastricht",
-    "title": "50 Years of Maastricht University",
-    "description": "A commemorative collection celebrating five decades of academic excellence and innovation at Maastricht University from 1976 to 2026.",
-    "thumbnail": "https://images.unsplash.com/photo-1562774053-701939374585?w=600&h=800&fit=crop",
-    "editionIds": ["otoscopy-training-head", "rembrandt-birthplace", "akua-ba-figure"],
-    "created": "2024-01-15"
-  },
-  {
-    "id": "modern-art-3d",
-    "slug": "modern-art-3d",
-    "title": "Modern Art in 3D",
-    "description": "A Glimpse into the Modern Art Collection of the Museum van Bommel van Dam. Since these works, representing a variety of art, are not part of a permanent museum display, this project provides a venue to share their hidden stories to both a local and and a global audience.",
-    "thumbnail": "https://images.unsplash.com/photo-1547826039-bfc35e0f1ea8?w=600&h=800&fit=crop",
-    "editionIds": ["maarten-van-bommel", "masker-met-mobiele", "schoonhoven"],
-    "created": "2024-02-20"
-  },
-  {
-    "id": "born-digital-archives",
-    "slug": "born-digital-archives",
-    "title": "Revisiting the Born-digital Archives of The Nieuwe Instituut",
-    "description": "Exploring digital-native architectural archives and their preservation challenges in the modern era.",
-    "thumbnail": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600&h=800&fit=crop",
-    "editionIds": ["church-of-our-lady", "codex-cospi"],
-    "created": "2024-03-10"
-  },
-  {
     "id": "contested-memories",
     "slug": "contested-memories",
     "title": "Contested Memories",
-    "description": "A collection examining historical narratives and their multiple interpretations through 3D digitization.",
-    "thumbnail": "https://images.unsplash.com/photo-1464207687429-7505649dae38?w=600&h=800&fit=crop",
-    "editionIds": ["paperweight-maastricht", "kermit-frog"],
-    "created": "2024-04-05"
+    "description": "Contested Memories is a long-term research project investigating the Battle\nof Mount Street Bridge through new technologies. The battle was the first\nconfrontation on Wednesday 26 April 1916 between the Irish Volunteers and the\nBritish troops sent to quell the Irish Easter Rising. The 3D editions\ndeveloped as part of the project each tell the story of the battle from a\ndifferent perspective, focusing on key buildings and combatants. ",
+    "thumbnail": "https://editions.pure3d.eu/project/1/icon.png",
+    "editionIds": [
+      "the-battle-at-25-northumberland-road"
+    ],
+    "created": "2025-11-06"
   },
   {
-    "id": "genealogy-home-cinema",
-    "slug": "genealogy-home-cinema",
-    "title": "A Genealogy of Home Cinema",
-    "description": "Tracing the evolution of home entertainment technology through preserved artifacts and interactive exhibits.",
-    "thumbnail": "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=600&h=800&fit=crop",
-    "editionIds": ["uno-card-game", "lele-mexican-doll"],
-    "created": "2024-05-12"
+    "id": "vlooienburg-jewish-amsterdam",
+    "slug": "vlooienburg-jewish-amsterdam",
+    "title": "Vlooienburg Jewish Amsterdam\n\n",
+    "description": "The project is a 3D reconstruction of Vlooienburg, what is now the\nWaterloopleinbuurt in Amsterdam, made by the University of Amsterdam's 4D Research Lab. The reconstructions were made for the research project Diaspora and Identity, which investigated Jewish material culture and customs in Amsterdam over the period 1600 - 1800 AD. The aim of the reconstructions was to visualize the historical transformations of Vlooienburg for a target audience of museum visitors. It was presented in a desktop/touchscreen VR environment that visitors to the exhibit \"Waterlooplein, de buurt binnenstebuiten\" (okt/nov 2020) could interact with. Different historical periods could be seen in the application: 1625, 1675 and 1890. Not only Vlooienburg, but also Valkenburg, a neighbouring island, could be accessed this way. In addition, it included a simple 3D visualization of the excavations from 1980. Visitors were also able to take a look at a typical dining room of a Portuguese-Jewish family from around 1650. The reconstructions have been produced on the basis of extensive cartographic, archaeological, and\narchitecture-historical research by a team of digital/virtual archaeologists, in close collaboration with experts in various domains of the cultural history of the area. Since the neighbourhood doesn’t exist anymore, and very few traces in the current urban layout of the area are visible, 3D/VR is the only way to create an experience of revisiting the area.",
+    "thumbnail": "https://editions.pure3d.eu/project/7/icon.png",
+    "editionIds": [
+      "the-diaconie-weeshuis-amsterdam-1656-1888",
+      "a-4d-walk-around-the-block"
+    ],
+    "created": "2025-11-06"
   },
   {
-    "id": "muffins-journey",
-    "slug": "muffins-journey",
-    "title": "Muffin's Journey",
-    "description": "An archaeological journey following the life and travels of a remarkable historical figure.",
-    "thumbnail": "https://images.unsplash.com/photo-1461360228754-6e81c478b882?w=600&h=800&fit=crop",
-    "editionIds": ["moana", "sheriff-woody"],
-    "created": "2024-06-18"
+    "id": "revisiting-the-born-digital-archives-of-the-nieuwe-instituut",
+    "slug": "revisiting-the-born-digital-archives-of-the-nieuwe-instituut",
+    "title": "Revisiting the Born-digital Archives of The Nieuwe Instituut",
+    "description": "The Nieuwe Instituute is home to many born-digital archives of modern\narchitecture and design. This project seeks to revisit these archival to\nre-discover the narratives and cultural trends of architectural design from\nmodern and contemporary architects. Since architectural models of the digital\nera are designed using specialized software, it is a challenge to archive and\npreserve the raw data and to connect other research files back to the 3D\nmodel. This project explores the implications of that re-mapping of various\nforms of born-digital data in ways that showcase and contextualize the\narchitect’s vision. ",
+    "thumbnail": "https://editions.pure3d.eu/project/5/icon.png",
+    "editionIds": [
+      "mvrdv-the-hannover-expo-2000"
+    ],
+    "created": "2025-11-06"
+  },
+  {
+    "id": "modern-art-in-3d",
+    "slug": "modern-art-in-3d",
+    "title": "Modern Art in 3D ",
+    "description": "This project contains a series of 3D digital editions of artworks held at the Museum van Bommel van Dam. Since these works, representing a variety of art, are not part of a permanent museum display, this project provides a venue to share their hidden stories to both a local and and a global audience.",
+    "thumbnail": "https://editions.pure3d.eu/project/4/icon.png",
+    "editionIds": [
+      "maarten-van-bommel-op-bank",
+      "masker-met-mobiele-onderkaak",
+      "schoonhoven-r-62-13",
+      "akuaba-child-figure"
+    ],
+    "created": "2025-11-06"
+  },
+  {
+    "id": "the-birthplace-of-rembrandt-in-leiden",
+    "slug": "the-birthplace-of-rembrandt-in-leiden",
+    "title": "The Birthplace of Rembrandt in Leiden",
+    "description": "A 3D virtual reconstruction of the house where Rembrandt van Rijn was born in 1606 in Leiden, the Netherlands. In commemoration of the 350th anniversary of Rembrandt's death in 2019, the tourism and marketing department of Leiden collaborated with Erfgoed Leiden, the regional heritage department, to create a 3D mofel. As the original birthplace of the renowned painter no longer exists, and the surrounding area has changed significantly over time, this project involved a multidisciplinary approach, involving archivists, building archaeologists, and a 3D artist. Through meticulous historical research, reliable data was collected, evaluated for accuracy, and categorized using a reliability matrix. The project culminated in the creation of a comprehensive virtual reconstruction, capturing the essence of Rembrandt's early years in Leiden.",
+    "thumbnail": "https://editions.pure3d.eu/project/6/icon.png",
+    "editionIds": [
+      "rembrandts-birthplace"
+    ],
+    "created": "2025-11-06"
   },
   {
     "id": "let-there-be-light",
     "slug": "let-there-be-light",
     "title": "Let There Be Light",
-    "description": "An illuminating collection exploring the role of light in art, architecture, and human experience.",
-    "thumbnail": "https://images.unsplash.com/photo-1604076984203-587c92ab2e58?w=600&h=800&fit=crop",
-    "editionIds": ["my-little-pony", "pikachu"],
-    "created": "2024-07-22"
+    "description": "This project includes a selection of 3D digitized mining lamps which are on long-term loan to the Nederlands Mijnmuseum. Through rich and engaging descriptions of the artifacts, these lamps serve as a mini-history of the mines, of the technologies used, as well as mining culture.",
+    "thumbnail": "https://editions.pure3d.eu/project/2/icon.png",
+    "editionIds": [
+      "petrol-lamp",
+      "attachable-helmet-lamp",
+      "davy-lamp",
+      "frosch-lamp"
+    ],
+    "created": "2025-11-06"
   },
   {
-    "id": "rembrandt-leiden",
-    "slug": "rembrandt-leiden",
-    "title": "The Birthplace of Rembrandt in Leiden",
-    "description": "A detailed digital reconstruction of the early life and environment of master painter Rembrandt van Rijn.",
-    "thumbnail": "https://images.unsplash.com/photo-1513346940221-6f673d962e97?w=600&h=800&fit=crop",
-    "editionIds": ["eyele-crown", "volendam-doll"],
-    "created": "2024-08-30"
+    "id": "maastricht-1748",
+    "slug": "maastricht-1748",
+    "title": "Maastricht 1748",
+    "description": "In 1748, the French military made a scale model of the city of Maastricht to\nplan their strategic military conquest of the fortified city. This maquette\ntoday is stored in the French city of Lille but was in 2017 cleaned and\nassembled on behalf of the Municipality of Maastricht in order to create a 3D\ndigitization version of the maquette. This project utilizes the 3D model as a\nway to narrate and reveal the histories of Maastricht from Roman times until\nthe present. ",
+    "thumbnail": "https://editions.pure3d.eu/project/3/icon.png",
+    "editionIds": [
+      "the-church-of-our-lady-and-its-claustral-belt"
+    ],
+    "created": "2025-11-06"
   },
   {
-    "id": "vlooienburg-jewish",
-    "slug": "vlooienburg-jewish",
-    "title": "Vlooienburg Jewish Amsterdam",
-    "description": "Documenting the rich cultural heritage of Amsterdam's historic Jewish quarter through digital preservation.",
-    "thumbnail": "https://images.unsplash.com/photo-1534351590666-13e3e96b5017?w=600&h=800&fit=crop",
-    "editionIds": ["merida-princess", "exploring-dragon"],
-    "created": "2024-09-14"
+    "id": "toys-with-voice",
+    "slug": "toys-with-voice",
+    "title": "Toys with Voice",
+    "description": "Toys, as cultural artefacts, offer a unique lens through which we can critically examine societal norms, challenge stereotypes, explore notions of gender and social behaviour, scrutinise body image, consider aspects of race, ethnicity, and engage with the impacts of technological innovation and geographical contexts on play. This project delves into the broader social, cultural, and historical contexts that shape and are shaped by the act of playing, and becomes a repository of narratives, utilising toys as symbolic surrogates to articulate interconnected and non-linear stories.",
+    "thumbnail": "https://editions.pure3d.eu/project/13/icon.png",
+    "editionIds": [
+      "lel-the-mexican-rag-doll",
+      "sherriff-woody-pride-a-toy-hisstory",
+      "barbies-life-beyond-the-plastic",
+      "the-baby-doll",
+      "baby-yoda-cutifying-a-franchise",
+      "exploring-oriental-fantasy-fiction-the-dragon-and-his-companion",
+      "ken-not-just-barbies-accessory",
+      "the-volendam-dutch-doll-a-toy-of-another-time",
+      "inside-the-fantastical-world-of-mickey-mouse",
+      "the-asian-princess-mulan",
+      "guns-as-toys",
+      "unboxing-the-pink-baby-lol-surprise-doll",
+      "funko-pop-n82-sansa-stark",
+      "the-model-train-not-just-a-toy",
+      "uno-the-story-of-the-number-one-card-game",
+      "from-painter-to-pop-icon-the-vincent-van-gogh-funko-pop",
+      "deciphering-the-wizards-magic-in-the-cultural-symbolic-and-commercial-realm",
+      "pikachu-a-cultural-icon-getting-a-gender",
+      "pardoes-a-timeless-symbol-of-magic-dreams-and-storytelling-in-efteling",
+      "my-little-pony-more-than-magical-universe",
+      "chess-from-game-to-metaphor",
+      "totoro-with-dai-traditional-clothes",
+      "moana",
+      "merida-the-disney-princess-who-breaks-from-tradition",
+      "eyela-the-elven-crown-princess-of-bayala",
+      "kermit-the-frog-shaping-legacy-identity-and-pop-culture",
+      "et-the-extra-terrestrial",
+      "porcelain-penny-doll-in-workers-clothes"
+    ],
+    "created": "2025-11-06"
+  },
+  {
+    "id": "muffins-journey",
+    "slug": "muffins-journey",
+    "title": "Muffin's Journey",
+    "description": "This edition traces the story of Muffin, a dinosaur, whose skeleton, or at least partial skeleton, is now housed at the Tate Geological Museum in Wyoming. Muffin (so named as the edition explains, during the excavation) is a late Jurassic sauropod from the Haplocanthosaurus genus. The edition covers Muffin’s journey, from its excavation at the Como Bluff Historic Palentological Site in Wyoming, to its storage and physical re-assemblage at the Tate Geological Museum, to the creation of the 3D model. This edition offers an interpretation of a possible reconstruction of Muffin’s remains for scientific researchers while also providing background and context that appeals to a wider audience.",
+    "thumbnail": "https://editions.pure3d.eu/project/21/icon.png",
+    "editionIds": [
+      "muffins-journey"
+    ],
+    "created": "2025-11-06"
   },
   {
     "id": "codex-cospi",
-    "slug": "codex-cospi-collection",
+    "slug": "codex-cospi",
     "title": "Codex Cospi",
-    "description": "A digital exploration of one of the most important pre-Columbian Mesoamerican manuscripts.",
-    "thumbnail": "https://images.unsplash.com/photo-1582582621959-48d27397dc69?w=600&h=800&fit=crop",
-    "editionIds": ["asian-princess", "ken-barbie"],
-    "created": "2024-10-05"
+    "description": "The Codex Cospi is one of the few surviving precolonial Mesoamerican manuscripts, making it an invaluable resource for understanding indigenous Mesoamerican culture. The 3D Scholarly Digital Edition of the Codex Cospi was created to consolidate this cultural treasure into an accessible, dynamic, and interactive multimedia resource. In this context, the 3D model of the manuscript serves as both a comprehensive \"container\" and an interpretative focal point, bringing together various resources to enhance the manuscript experience. Beginning with the 3D model visualisation, users can explore annotations, articles, images, videos, audio, and external links, all of which are functionally interconnected. This seamless integration enables a multi-layered and interconnected study, merging direct engagement with the Codex and its broader contextual insights. The digital representation of the Codex was developed as part of the digital twin for the temporary exhibition The Other Renaissance: Ulisse Aldrovandi, the Wonders of the World. This edition aims to deepen the understanding of a key exhibit piece, allowing it to transcend its role in the wider museum narrative and emerge as the central subject of its own story.",
+    "thumbnail": "https://editions.pure3d.eu/project/14/icon.png",
+    "editionIds": [
+      "codex-cospi"
+    ],
+    "created": "2025-11-06"
+  },
+  {
+    "id": "a-genealogy-of-home-cinema",
+    "slug": "a-genealogy-of-home-cinema",
+    "title": "A Genealogy of Home Cinema\n",
+    "description": "A Genealogy of Home Cinema is a media historical exploration of the emergence of home cinema at the beginning of the 20th century. Specifically, it focuses on two early home cinema technologies, their histories and user practices: (1) the Kinora motion photography viewer (1896-1914) and (2) the Pathé Baby 9.5mm film projector (1922-1932). Both objects are part of the media archaeological collection of the Luxembourg Centre for Contemporary and Digital History (C2DH) at the University of Luxembourg.",
+    "thumbnail": "https://editions.pure3d.eu/project/20/icon.png",
+    "editionIds": [
+      "the-kinora"
+    ],
+    "created": "2025-11-06"
+  },
+  {
+    "id": "pure3ds-first-call-for-projects",
+    "slug": "pure3ds-first-call-for-projects",
+    "title": "PURE3D's First Call for Projects ",
+    "description": "In June 2023 PURE3D launched its first call for new 3D Digital Scholarly Editions. Six editions were chosen to further test PURE3D's architecture as well as to conceptually broaden the range of editions being created. The resultant editions are diverse historically and disciplinary, as well as in the uses of 3D to create scholarly arguments. Five of the editions are included in this project: Whale-bottle-shoe by Francien Bossema (Migelien Gerritzen Fellow at the Rijksmuseum, the Centrum Wiskunde & Informatica [CWI]); 3D Düwelsteene by Louise Tharandt (a contractor archaeologist and researcher at the University of Cologne); The Private Library of Pieter de Graeff (1638-1707) by Chiara Piccoli, (Research Fellow and Data Scientist at the 4D Research Lab, Faculty of Humanities, University of Amsterdam); Church of St. Johannis in Mainz by Igor Piotr Bajena (PhD candidate of the Architecture and Design Cultures, Alma Mater Studiorum University of Bologna); and Westergasfabriek Through the Years by Francesca Fabbri (PhD candidate of Cultural and Environmental Heritage, Department of Cultural Heritage, University of Bologna). The editions of Tim van der Heijden (Assistant Professor, Open University of the Netherlands) will be published as a separate project. ",
+    "thumbnail": "https://editions.pure3d.eu/project/18/icon.png",
+    "editionIds": [
+      "the-private-library-of-pieter-de-graeff-1638-1707-at-herengracht-573-amsterdam",
+      "church-of-st-johannis-in-mainz",
+      "whale-bottle-shoe",
+      "3d-dwelsteene",
+      "westergasfabriek-through-the-years-a-digital-reconstruction"
+    ],
+    "created": "2025-11-06"
+  },
+  {
+    "id": "the-tambourine-player",
+    "slug": "the-tambourine-player",
+    "title": "The Tambourine Player\n",
+    "description": "The tambourine player is a small-size standing terracotta figurine from the Cypro-Archaic II period (ca. 600–480 BCE) in Cyprus, depicting a female musician playing a small drum. The figurine’s body is flat and elongated, but its lower part is missing, making it incomplete. This edition provides insights into the morphological and functional aspects of the figurine, deepening our understanding of terracotta production and the island culture while also shedding light on the modelling process. Moreover, the 3D model offers the opportunity to explore the clay figurine from all angles interactively, offering a tactile-like experience.",
+    "thumbnail": "https://editions.pure3d.eu/project/23/icon.png",
+    "editionIds": [
+      "the-tambourine-player"
+    ],
+    "created": "2025-11-06"
+  },
+  {
+    "id": "50-years-of-maastricht-university",
+    "slug": "50-years-of-maastricht-university",
+    "title": "50 Years of Maastricht University",
+    "description": "This collection is part of a broader commemorative initiative marking Maastricht University’s 50th anniversary in 2026. Officially founded on 9 January 1976 with the signing of the founding charter by Queen Juliana, the university has since grown into an internationally recognized institution. To reflect on its development and identity, a selection of historically significant objects has been assembled for both physical and digital presentation.\n\nThe collection features objects that narrate the university’s past, supporting both long-term preservation and public engagement. By translating archival and material culture into digital form, the project encourages users to explore institutional history through interactive, object-centered experiences.",
+    "thumbnail": "https://editions.pure3d.eu/project/22/icon.png",
+    "editionIds": [
+      "paperweight-of-maastricht-university",
+      "otoscopy-training-head"
+    ],
+    "created": "2025-11-06"
   }
 ]
