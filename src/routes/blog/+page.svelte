@@ -34,7 +34,7 @@
 				data-sveltekit-preload-data="hover"
 				class="rounded-lg bg-neutral px-4 py-2 text-sm font-medium text-neutral-content hover:bg-neutral-focus"
 			>
-				← Todos
+				← Home
 			</a>
 		</div>
 		<div class="max-w-2xl">

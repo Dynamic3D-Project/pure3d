@@ -77,19 +77,38 @@ export async function getEditions() {
 			expand: 'collection'
 		});
 
-		return records.map(record => ({
-			id: record.id,
-			title: record.title,
-			thumbnail: record.thumbnail,
-			isPublished: record.isPublished,
-			pubNum: record.pubNum,
-			dcTitle: record.dcTitle,
-			dcAbstract: record.dcAbstract,
-			dcCreator: record.dcCreator,
-			dcKeyword: record.dcKeyword,
-			collectionId: record.collection,
-			collection: record.expand?.collection
-		}));
+		return records.map(record => {
+			const collection = record.expand?.collection;
+			const collectionPubNum = collection?.pubNum || 0;
+			const editionPubNum = record.pubNum || 1;
+
+			// Generate Voyager URL
+			const voyagerUrl = collectionPubNum > 0
+				? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/voyager`
+				: '';
+
+			return {
+				id: record.id,
+				slug: record.id,
+				title: record.dcTitle || record.title,
+				description: record.dcAbstract || '',
+				authors: Array.isArray(record.dcCreator) ? record.dcCreator.join(', ') : '',
+				thumbnail: record.thumbnail,
+				voyagerUrl,
+				usageConditions: '',
+				alternativeVersion: null,
+				tags: Array.isArray(record.dcKeyword) ? record.dcKeyword : [],
+				created: record.created,
+				isPublished: record.isPublished,
+				pubNum: record.pubNum,
+				dcTitle: record.dcTitle,
+				dcAbstract: record.dcAbstract,
+				dcCreator: record.dcCreator,
+				dcKeyword: record.dcKeyword,
+				collectionId: record.collection,
+				collection: record.expand?.collection
+			};
+		});
 	} catch (error) {
 		console.error('Error fetching editions:', error);
 		return [];
@@ -105,21 +124,41 @@ export async function getEditionsByCollection(collectionId: string) {
 	try {
 		const records = await pb.collection('editions').getFullList({
 			sort: 'pubNum',
-			filter: `collection = "${collectionId}" && isPublished = true`
+			filter: `collection = "${collectionId}" && isPublished = true`,
+			expand: 'collection'
 		});
 
-		return records.map(record => ({
-			id: record.id,
-			title: record.title,
-			thumbnail: record.thumbnail,
-			isPublished: record.isPublished,
-			pubNum: record.pubNum,
-			dcTitle: record.dcTitle,
-			dcAbstract: record.dcAbstract,
-			dcCreator: record.dcCreator,
-			dcKeyword: record.dcKeyword,
-			collectionId: record.collection
-		}));
+		return records.map(record => {
+			const collection = record.expand?.collection;
+			const collectionPubNum = collection?.pubNum || 0;
+			const editionPubNum = record.pubNum || 1;
+
+			// Generate Voyager URL
+			const voyagerUrl = collectionPubNum > 0
+				? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/voyager`
+				: '';
+
+			return {
+				id: record.id,
+				slug: record.id,
+				title: record.dcTitle || record.title,
+				description: record.dcAbstract || '',
+				authors: Array.isArray(record.dcCreator) ? record.dcCreator.join(', ') : '',
+				thumbnail: record.thumbnail,
+				voyagerUrl,
+				usageConditions: '',
+				alternativeVersion: null,
+				tags: Array.isArray(record.dcKeyword) ? record.dcKeyword : [],
+				created: record.created,
+				isPublished: record.isPublished,
+				pubNum: record.pubNum,
+				dcTitle: record.dcTitle,
+				dcAbstract: record.dcAbstract,
+				dcCreator: record.dcCreator,
+				dcKeyword: record.dcKeyword,
+				collectionId: record.collection
+			};
+		});
 	} catch (error) {
 		console.error('Error fetching editions for collection:', error);
 		return [];
@@ -137,10 +176,27 @@ export async function getEdition(id: string) {
 			expand: 'collection'
 		});
 
+		const collection = record.expand?.collection;
+		const collectionPubNum = collection?.pubNum || 0;
+		const editionPubNum = record.pubNum || 1;
+
+		// Generate Voyager URL
+		const voyagerUrl = collectionPubNum > 0
+			? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/voyager`
+			: '';
+
 		return {
 			id: record.id,
-			title: record.title,
+			slug: record.id,
+			title: record.dcTitle || record.title,
+			description: record.dcAbstract || '',
+			authors: Array.isArray(record.dcCreator) ? record.dcCreator.join(', ') : '',
 			thumbnail: record.thumbnail,
+			voyagerUrl,
+			usageConditions: '',
+			alternativeVersion: null,
+			tags: Array.isArray(record.dcKeyword) ? record.dcKeyword : [],
+			created: record.created,
 			isPublished: record.isPublished,
 			pubNum: record.pubNum,
 			dcTitle: record.dcTitle,
