@@ -5,7 +5,6 @@ services:
       - '${POCKETBASE_PORT:-8090}:8090'
     volumes:
       - ./pocketbase/pb_data:/pb/pb_data
-      - ./pocketbase/pb_migrations:/pb/pb_migrations
       - ./pocketbase-entrypoint.sh:/entrypoint.sh:ro
     environment:
       - POCKETBASE_ADMIN_EMAIL=${POCKETBASE_ADMIN_EMAIL:-admin@admin.local}
@@ -24,7 +23,7 @@ services:
       retries: 5
     restart: unless-stopped
     entrypoint: ["/bin/sh", "/entrypoint.sh"]
-    command: ["pocketbase", "serve", "--http=0.0.0.0:8090", "--dir=/pb/pb_data", "--migrationsDir=/pb/pb_migrations"]
+    command: ["pocketbase", "serve", "--http=0.0.0.0:8090", "--dir=/pb/pb_data"]
 
   pocketbase-setup:
     image: oven/bun:1

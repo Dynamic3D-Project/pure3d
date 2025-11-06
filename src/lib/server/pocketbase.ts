@@ -20,10 +20,11 @@ export async function getCollections() {
 	const pb = createPocketBaseClient();
 
 	try {
-		const records = await pb.collection('collections').getFullList({
+		const result = await pb.collection('collections').getList(1, 500, {
 			sort: 'pubNum',
 			filter: 'isVisible = true'
 		});
+		const records = result.items;
 
 		return records.map(record => ({
 			id: record.id,
@@ -71,11 +72,12 @@ export async function getEditions() {
 	const pb = createPocketBaseClient();
 
 	try {
-		const records = await pb.collection('editions').getFullList({
+		const result = await pb.collection('editions').getList(1, 500, {
 			sort: '-created',
 			filter: 'isPublished = true',
 			expand: 'collection'
 		});
+		const records = result.items;
 
 		return records.map(record => {
 			const collection = record.expand?.collection;
@@ -122,11 +124,12 @@ export async function getEditionsByCollection(collectionId: string) {
 	const pb = createPocketBaseClient();
 
 	try {
-		const records = await pb.collection('editions').getFullList({
+		const result = await pb.collection('editions').getList(1, 500, {
 			sort: 'pubNum',
 			filter: `collection = "${collectionId}" && isPublished = true`,
 			expand: 'collection'
 		});
+		const records = result.items;
 
 		return records.map(record => {
 			const collection = record.expand?.collection;
