@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
- * Complete PocketBase Setup: Creates collections and imports data
- * Single unified script using PocketBase SDK
+ * Imports data from JSON files into PocketBase
+ * Run this AFTER create-pocketbase-collections.ts
  */
 import PocketBase from 'pocketbase';
 import { readFileSync } from 'fs';
@@ -15,130 +15,8 @@ const PUBLIC_PB_URL = process.env.PUBLIC_POCKETBASE_URL || 'http://localhost:809
 
 const pb = new PocketBase(PB_URL);
 
-// Collection definitions (simplified for API compatibility)
-const COLLECTIONS = {
-  site: {
-    name: 'site',
-    type: "base",
-    fields: [
-      { name: 'name', type: 'text', required: true },
-      { name: 'blog', type: 'url', required: false },
-      { name: 'lastPublished', type: 'date', required: false },
-      { name: 'processing', type: 'bool', required: false },
-      { name: 'featured', type: 'json', required: false },
-      { name: 'publishedProjectCount', type: 'number', required: false },
-      { name: 'sweeperStartTm', type: 'date', required: false },
-      { name: 'dcDateCreated', type: 'date', required: false },
-      { name: 'dcDateModified', type: 'date', required: false }
-    ]
-  },
-  users: {
-    name: 'users',
-    type: "base",
-    fields: [
-      { name: 'user', type: 'text', required: true },
-      { name: 'email', type: 'email', required: true },
-      { name: 'nickname', type: 'text', required: true },
-      { name: 'role', type: 'select', required: true, options: { values: ['root', 'admin', 'editor', 'viewer'], maxSelect: 1 }}
-    ]
-  },
-  keywords: {
-    name: 'keywords',
-    type: "base",
-    fields: [
-      { name: 'name', type: 'select', required: true, options: { values: ['country', 'period', 'audience', 'subject', 'language', 'license', 'funder'], maxSelect: 1 }},
-      { name: 'value', type: 'text', required: true }
-    ]
-  },
-  collections: {
-    name: 'collections',
-    type: "base",
-    fields: [
-      { name: 'title', type: 'text', required: true },
-      { name: 'siteId', type: 'relation', required: true, options: { collectionId: '', cascadeDelete: false, maxSelect: 1 }},
-      { name: 'isVisible', type: 'bool', required: false },
-      { name: 'lastPublished', type: 'date', required: false },
-      { name: 'pubNum', type: 'number', required: false },
-      { name: 'thumbnail', type: 'url', required: false },
-      { name: 'dcTitle', type: 'text', required: false },
-      { name: 'dcSubtitle', type: 'text', required: false },
-      { name: 'dcCreator', type: 'json', required: false },
-      { name: 'dcContributor', type: 'json', required: false },
-      { name: 'dcInstitution', type: 'json', required: false },
-      { name: 'dcAbstract', type: 'editor', required: false },
-      { name: 'dcDescription', type: 'editor', required: false },
-      { name: 'dcSubject', type: 'json', required: false },
-      { name: 'dcCoveragePeriod', type: 'text', required: false },
-      { name: 'dcCoveragePlace', type: 'text', required: false },
-      { name: 'dcLanguage', type: 'json', required: false },
-      { name: 'dcDateCreated', type: 'date', required: false },
-      { name: 'dcDateModified', type: 'date', required: false }
-    ]
-  },
-  editions: {
-    name: 'editions',
-    type: "base",
-    fields: [
-      { name: 'title', type: 'text', required: true },
-      { name: 'collection', type: 'relation', required: true, options: { collectionId: '', cascadeDelete: true, maxSelect: 1 }},
-      { name: 'isPublished', type: 'bool', required: false },
-      { name: 'pubNum', type: 'number', required: false },
-      { name: 'thumbnail', type: 'url', required: false },
-      { name: 'dcTitle', type: 'text', required: false },
-      { name: 'dcSubtitle', type: 'text', required: false },
-      { name: 'dcCreator', type: 'json', required: false },
-      { name: 'dcContributor', type: 'json', required: false },
-      { name: 'dcInstitution', type: 'json', required: false },
-      { name: 'dcAbstract', type: 'editor', required: false },
-      { name: 'dcDescription', type: 'editor', required: false },
-      { name: 'dcContact', type: 'email', required: false },
-      { name: 'dcSubject', type: 'json', required: false },
-      { name: 'dcKeyword', type: 'json', required: false },
-      { name: 'dcAudience', type: 'json', required: false },
-      { name: 'dcFunder', type: 'json', required: false },
-      { name: 'dcSource', type: 'json', required: false },
-      { name: 'dcProvenance', type: 'editor', required: false },
-      { name: 'dcCoveragePeriod', type: 'json', required: false },
-      { name: 'dcCoveragePlace', type: 'text', required: false },
-      { name: 'dcCoverageCountry', type: 'json', required: false },
-      { name: 'dcCoverageTemporal', type: 'text', required: false },
-      { name: 'dcCoverageGeo', type: 'text', required: false },
-      { name: 'dcLanguage', type: 'json', required: false },
-      { name: 'dcRightsHolder', type: 'text', required: false },
-      { name: 'dcRightsLicense', type: 'text', required: false },
-      { name: 'dcDatePublished', type: 'date', required: false },
-      { name: 'dcDateUnPublished', type: 'date', required: false },
-      { name: 'dcDateCreated', type: 'date', required: false },
-      { name: 'dcDateModified', type: 'date', required: false },
-      { name: 'authorToolName', type: 'text', required: false },
-      { name: 'authorToolVersion', type: 'text', required: false },
-      { name: 'sceneFile', type: 'text', required: false }
-    ]
-  },
-  collectionUsers: {
-    name: 'collectionUsers',
-    type: "base",
-    fields: [
-      { name: 'collection', type: 'relation', required: true, options: { collectionId: '', cascadeDelete: true, maxSelect: 1 }},
-      { name: 'userId', type: 'relation', required: true, options: { collectionId: '', cascadeDelete: true, maxSelect: 1 }},
-      { name: 'user', type: 'text', required: true },
-      { name: 'role', type: 'select', required: true, options: { values: ['admin', 'editor', 'viewer'], maxSelect: 1 }}
-    ]
-  },
-  editionUsers: {
-    name: 'editionUsers',
-    type: "base",
-    fields: [
-      { name: 'editionId', type: 'relation', required: true, options: { collectionId: '', cascadeDelete: true, maxSelect: 1 }},
-      { name: 'userId', type: 'relation', required: true, options: { collectionId: '', cascadeDelete: true, maxSelect: 1 }},
-      { name: 'user', type: 'text', required: true },
-      { name: 'role', type: 'select', required: true, options: { values: ['admin', 'editor', 'viewer'], maxSelect: 1 }}
-    ]
-  }
-};
-
 async function main() {
-  console.log('🚀 Complete PocketBase Setup');
+  console.log('📥 Starting Data Import');
   console.log(`   URL: ${PB_URL}`);
   console.log(`   Email: ${ADMIN_EMAIL}\n`);
 
@@ -155,8 +33,6 @@ async function main() {
 
   // Authenticate as admin
   console.log('🔑 Authenticating...');
-
-  // Use direct fetch for authentication (SDK may not match server version)
   const authResponse = await fetch(`${PB_URL}/api/collections/_superusers/auth-with-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -169,87 +45,12 @@ async function main() {
   if (!authResponse.ok) {
     const error = await authResponse.json();
     console.error('\n❌ Authentication failed:', error.message);
-    console.error('   Make sure admin was created with:');
-    console.error('   source .env && docker compose exec pocketbase pocketbase superuser upsert "$POCKETBASE_ADMIN_EMAIL" "$POCKETBASE_ADMIN_PASSWORD"\n');
     process.exit(1);
   }
 
   const authData = await authResponse.json();
-  // Set auth token for future requests
   pb.authStore.save(authData.token, authData.record);
   console.log('✅ Authenticated successfully\n');
-
-  // Create basic collections first (site, users, keywords)
-  console.log('📦 Creating basic collections...\n');
-
-  const collectionIds: Record<string, string> = {};
-
-  for (const [key, schema] of Object.entries(COLLECTIONS)) {
-    try {
-      console.log(`   Creating ${key}...`);
-      const existing = await pb.collections.getList(1, 1, { filter: `name="${key}"` });
-
-      if (existing.items.length > 0) {
-        console.log(`   ⚠️  ${key} already exists, deleting and recreating...`);
-        try {
-          await pb.collections.delete(existing.items[0].id);
-          console.log(`   🗑️  Deleted old ${key} collection`);
-        } catch (deleteError: any) {
-          console.log(`   ⚠️  Could not delete ${key}: ${deleteError.message}`);
-        }
-      }
-
-      const result = await pb.collections.create(schema);
-      collectionIds[key] = result.id;
-      console.log(`   ✅ ${key} created (ID: ${result.id})`);
-    } catch (error: any) {
-      console.error(`   ❌ Failed to create ${key}:`, error.message);
-      if (error.response?.data) {
-        console.error(`      Details:`, JSON.stringify(error.response.data, null, 2));
-      }
-      // Continue anyway - collection might already exist
-      try {
-        const existing = await pb.collections.getList(1, 1, { filter: `name="${key}"` });
-        if (existing.items.length > 0) {
-          collectionIds[key] = existing.items[0].id;
-        }
-      } catch (e) {}
-    }
-  }
-
-  console.log('\n' + '='.repeat(60));
-  console.log('✅ All collections ready!');
-  console.log('='.repeat(60));
-
-  // Update relation fields with correct collection IDs
-  console.log('\n🔗 Updating relation fields...\n');
-
-  const relationUpdates = [
-    { collection: 'collections', field: 'siteId', target: 'site' },
-    { collection: 'editions', field: 'collection', target: 'collections' },
-    { collection: 'collectionUsers', field: 'collection', target: 'collections' },
-    { collection: 'collectionUsers', field: 'userId', target: 'users' },
-    { collection: 'editionUsers', field: 'editionId', target: 'editions' },
-    { collection: 'editionUsers', field: 'userId', target: 'users' }
-  ];
-
-  for (const rel of relationUpdates) {
-    try {
-      const coll = await pb.collections.getOne(rel.collection);
-      const fieldIdx = coll.fields.findIndex((f: any) => f.name === rel.field);
-
-      if (fieldIdx >= 0 && collectionIds[rel.target]) {
-        coll.fields[fieldIdx].options.collectionId = collectionIds[rel.target];
-        await pb.collections.update(coll.id, coll);
-        console.log(`   ✅ ${rel.collection}.${rel.field} → ${rel.target}`);
-      }
-    } catch (error: any) {
-      console.log(`   ⚠️  ${rel.collection}.${rel.field}: ${error.message}`);
-    }
-  }
-
-  // Import data
-  console.log('\n📥 Starting data import...\n');
 
   // Check if data already exists
   try {
@@ -258,11 +59,11 @@ async function main() {
       console.log('⚠️  Data already exists in PocketBase');
       console.log(`   Found ${usersCount.totalItems} users`);
       console.log('   Skipping import to prevent duplicates\n');
-      console.log('✅ Setup complete!');
+      console.log('✅ Import complete (skipped)!');
       return;
     }
   } catch (error) {
-    // Collection might not exist yet, continue with import
+    // Collection might be empty, continue with import
   }
 
   // Import Site
@@ -343,8 +144,23 @@ async function main() {
     const siteRecords = await pb.collection('site').getFullList();
     const siteId = siteRecords[0]?.id;
 
+    // First, try to map existing collections by title
+    const existingCollections = await pb.collection('collections').getFullList();
+    const titleToId = new Map(existingCollections.map((c: any) => [c.title, c.id]));
+
+    for (const doc of projectsData) {
+      const existingId = titleToId.get(doc.title);
+      if (existingId) {
+        collectionIdMap.set(doc._id, existingId);
+      }
+    }
+    console.log(`   Found ${collectionIdMap.size} existing collections by title`);
+
     let imported = 0;
     for (const doc of projectsData) {
+      // Skip if already mapped
+      if (collectionIdMap.has(doc._id)) continue;
+
       try {
         const projectPubNum = doc.pubNum || 0;
         const thumbnailUrl = projectPubNum > 0
@@ -374,12 +190,12 @@ async function main() {
         });
         collectionIdMap.set(doc._id, result.id);
         imported++;
-        process.stdout.write(`\r   Progress: ${imported}/${projectsData.length}`);
+        process.stdout.write(`\r   Progress: ${imported}/${projectsData.length - collectionIdMap.size + imported}`);
       } catch (error: any) {
         // Skip errors
       }
     }
-    console.log(`\n   ✅ Imported ${imported}/${projectsData.length} collections`);
+    console.log(`\n   ✅ Total mapped: ${collectionIdMap.size}/${projectsData.length} collections`);
   } catch (error: any) {
     console.error(`   ❌ Failed:`, error.message);
   }
@@ -390,11 +206,37 @@ async function main() {
     console.log('📦 Importing editions...');
     const editionsData = JSON.parse(readFileSync(join(JSON_DIR, 'edition.json'), 'utf-8'));
 
+    // First, map existing editions by title + collection to prevent duplicates
+    const existingEditions = await pb.collection('editions').getFullList();
+    const existingEditionKeys = new Set(
+      existingEditions.map((e: any) => `${e.title}|${e.collection}`)
+    );
+    // Also map existing editions by their MongoDB _id equivalent (title + projectId)
+    for (const doc of editionsData) {
+      const pbCollectionId = collectionIdMap.get(doc.projectId);
+      if (!pbCollectionId) continue;
+      const existing = existingEditions.find(
+        (e: any) => e.title === doc.title && e.collection === pbCollectionId
+      );
+      if (existing) {
+        editionIdMap.set(doc._id, existing.id);
+      }
+    }
+    console.log(`   Found ${editionIdMap.size} existing editions`);
+
     let imported = 0;
+    let skipped = 0;
     for (const doc of editionsData) {
       try {
         const pbCollectionId = collectionIdMap.get(doc.projectId);
         if (!pbCollectionId) continue;
+
+        // Skip if edition already exists
+        const key = `${doc.title}|${pbCollectionId}`;
+        if (existingEditionKeys.has(key)) {
+          skipped++;
+          continue;
+        }
 
         // Get collection to retrieve its pubNum for thumbnail URL
         const coll = await pb.collection('collections').getOne(pbCollectionId);
@@ -441,13 +283,14 @@ async function main() {
           sceneFile: doc.settings?.authorTool?.sceneFile
         });
         editionIdMap.set(doc._id, result.id);
+        existingEditionKeys.add(key); // Prevent duplicates within same run
         imported++;
-        process.stdout.write(`\r   Progress: ${imported}/${editionsData.length}`);
+        process.stdout.write(`\r   Progress: ${imported + skipped}/${editionsData.length}`);
       } catch (error: any) {
         // Skip errors
       }
     }
-    console.log(`\n   ✅ Imported ${imported}/${editionsData.length} editions`);
+    console.log(`\n   ✅ Imported ${imported} new, skipped ${skipped} existing editions`);
   } catch (error: any) {
     console.error(`   ❌ Failed:`, error.message);
   }
@@ -517,24 +360,14 @@ async function main() {
   }
 
   console.log('\n' + '='.repeat(60));
-  console.log('✅ COMPLETE SETUP FINISHED!');
+  console.log('✅ DATA IMPORT COMPLETE!');
   console.log('='.repeat(60));
-
-  console.log('\n💡 Database Summary:');
-  console.log('   ✅ site (1 record)');
-  console.log('   ✅ users (76 records)');
-  console.log('   ✅ keywords (305 records)');
-  console.log('   ✅ collections (22 records)');
-  console.log('   ✅ editions (110 records)');
-  console.log('   ✅ collectionUsers (48 records)');
-  console.log('   ✅ editionUsers (270 records)');
-  console.log('\n   Total: 832 documents imported!');
   console.log('\n🎉 Your PocketBase is ready to use!');
   console.log(`   Admin UI: ${PUBLIC_PB_URL}/_/`);
   console.log(`   API: ${PUBLIC_PB_URL}/api/\n`);
 }
 
 main().catch((error) => {
-  console.error('\n❌ Setup failed:', error);
+  console.error('\n❌ Import failed:', error);
   process.exit(1);
 });

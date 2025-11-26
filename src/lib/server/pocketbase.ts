@@ -26,15 +26,24 @@ export async function getCollections() {
 		});
 		const records = result.items;
 
-		return records.map(record => ({
-			id: record.id,
-			title: record.title,
-			thumbnail: record.thumbnail,
-			isVisible: record.isVisible,
-			pubNum: record.pubNum,
-			dcTitle: record.dcTitle,
-			dcAbstract: record.dcAbstract
-		}));
+		return records.map(record => {
+			const pubNum = record.pubNum || 0;
+
+			// Generate thumbnail URL dynamically
+			const thumbnail = pubNum > 0
+				? `https://editions.pure3d.eu/project/${pubNum}/icon.png`
+				: record.thumbnail || '';
+
+			return {
+				id: record.id,
+				title: record.title,
+				thumbnail,
+				isVisible: record.isVisible,
+				pubNum: record.pubNum,
+				dcTitle: record.dcTitle,
+				dcAbstract: record.dcAbstract
+			};
+		});
 	} catch (error) {
 		console.error('Error fetching collections:', error);
 		return [];
@@ -49,11 +58,17 @@ export async function getCollection(id: string) {
 
 	try {
 		const record = await pb.collection('collections').getOne(id);
+		const pubNum = record.pubNum || 0;
+
+		// Generate thumbnail URL dynamically
+		const thumbnail = pubNum > 0
+			? `https://editions.pure3d.eu/project/${pubNum}/icon.png`
+			: record.thumbnail || '';
 
 		return {
 			id: record.id,
 			title: record.title,
-			thumbnail: record.thumbnail,
+			thumbnail,
 			isVisible: record.isVisible,
 			pubNum: record.pubNum,
 			dcTitle: record.dcTitle,
@@ -83,10 +98,15 @@ export async function getEditions() {
 			const collectionPubNum = collection?.pubNum || 0;
 			const editionPubNum = record.pubNum || 1;
 
-			// Generate Voyager URL
+			// Generate Voyager URL dynamically
 			const voyagerUrl = collectionPubNum > 0
 				? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/voyager`
 				: '';
+
+			// Generate thumbnail URL dynamically (don't rely on stored value)
+			const thumbnail = collectionPubNum > 0
+				? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/icon.png`
+				: record.thumbnail || '';
 
 			return {
 				id: record.id,
@@ -94,7 +114,7 @@ export async function getEditions() {
 				title: record.dcTitle || record.title,
 				description: record.dcAbstract || '',
 				authors: Array.isArray(record.dcCreator) ? record.dcCreator.join(', ') : '',
-				thumbnail: record.thumbnail,
+				thumbnail,
 				voyagerUrl,
 				usageConditions: '',
 				alternativeVersion: null,
@@ -107,7 +127,13 @@ export async function getEditions() {
 				dcCreator: record.dcCreator,
 				dcKeyword: record.dcKeyword,
 				collectionId: record.collection,
-				collection: record.expand?.collection
+				collection: record.expand?.collection,
+				// Filter fields
+				dcSubject: Array.isArray(record.dcSubject) ? record.dcSubject : [],
+				dcAudience: Array.isArray(record.dcAudience) ? record.dcAudience : [],
+				dcLanguage: Array.isArray(record.dcLanguage) ? record.dcLanguage : [],
+				dcCoverageCountry: Array.isArray(record.dcCoverageCountry) ? record.dcCoverageCountry : [],
+				dcCoveragePeriod: Array.isArray(record.dcCoveragePeriod) ? record.dcCoveragePeriod : []
 			};
 		});
 	} catch (error) {
@@ -135,10 +161,15 @@ export async function getEditionsByCollection(collectionId: string) {
 			const collectionPubNum = collection?.pubNum || 0;
 			const editionPubNum = record.pubNum || 1;
 
-			// Generate Voyager URL
+			// Generate Voyager URL dynamically
 			const voyagerUrl = collectionPubNum > 0
 				? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/voyager`
 				: '';
+
+			// Generate thumbnail URL dynamically
+			const thumbnail = collectionPubNum > 0
+				? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/icon.png`
+				: record.thumbnail || '';
 
 			return {
 				id: record.id,
@@ -146,7 +177,7 @@ export async function getEditionsByCollection(collectionId: string) {
 				title: record.dcTitle || record.title,
 				description: record.dcAbstract || '',
 				authors: Array.isArray(record.dcCreator) ? record.dcCreator.join(', ') : '',
-				thumbnail: record.thumbnail,
+				thumbnail,
 				voyagerUrl,
 				usageConditions: '',
 				alternativeVersion: null,
@@ -182,10 +213,15 @@ export async function getEdition(id: string) {
 		const collectionPubNum = collection?.pubNum || 0;
 		const editionPubNum = record.pubNum || 1;
 
-		// Generate Voyager URL
+		// Generate Voyager URL dynamically
 		const voyagerUrl = collectionPubNum > 0
 			? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/voyager`
 			: '';
+
+		// Generate thumbnail URL dynamically
+		const thumbnail = collectionPubNum > 0
+			? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/icon.png`
+			: record.thumbnail || '';
 
 		return {
 			id: record.id,
@@ -193,7 +229,7 @@ export async function getEdition(id: string) {
 			title: record.dcTitle || record.title,
 			description: record.dcAbstract || '',
 			authors: Array.isArray(record.dcCreator) ? record.dcCreator.join(', ') : '',
-			thumbnail: record.thumbnail,
+			thumbnail,
 			voyagerUrl,
 			usageConditions: '',
 			alternativeVersion: null,

@@ -38,7 +38,7 @@ services:
     depends_on:
       pocketbase:
         condition: service_healthy
-    command: sh -c "bun install && bun scripts/setup-pocketbase-complete.ts"
+    command: sh -c "bun install && bun scripts/create-pocketbase-collections.ts && bun scripts/import-data.ts"
     restart: "no"
     profiles:
       - setup
