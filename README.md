@@ -1,4 +1,10 @@
+![](https://github.com/NLeSC/.github/blob/main/profile/escience.png)
+
 # Pure3D
+
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Research Software Directory](https://img.shields.io/badge/rsd-Pure_3D_Platform-00a3e3.svg)](https://research-software-directory.org/projects/pure3d)
+
 
 A web platform for exploring 3D digital collections and editions in cultural heritage, built with modern web technologies.
 

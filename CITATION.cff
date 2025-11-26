@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Pure3D"
+abstract: "A web platform for exploring 3D digital collections and editions in cultural heritage, built with modern web technologies."
+type: software
+authors:
+  - family-names: "Netherlands eScience Center"
+    email: "info@esciencecenter.nl"
+repository-code: "https://github.com/Dynamic3D-Project/pure3d"
+url: "https://github.com/Dynamic3D-Project/pure3d"
+keywords:
+  - "3D visualization"
+  - "cultural heritage"
+  - "digital collections"
+  - "web platform"
+  - "Svelte"
+  - "SvelteKit"
+  - "Smithsonian Voyager"
+  - "PocketBase"
+license: Apache-2.0
+version: "0.0.1"
+date-released: "2025-11-13"
