@@ -23,12 +23,31 @@
 		{ key: 'dcCoverageCountry', label: 'Country' }
 	];
 
-	// Track collapsed state for each category
-	let collapsedCategories = $state<Record<string, boolean>>({});
+	// Track collapsed state for each category (all collapsed by default)
+	let collapsedCategories = $state<Record<string, boolean>>({
+		dcSubject: true,
+		dcCoveragePeriod: true,
+		dcAudience: true,
+		dcLanguage: true,
+		dcCoverageCountry: true
+	});
 
-	// Extract unique values for each category with counts
+	// Normalize a filter value (capitalize first letter of each word, merge duplicates)
+	function normalizeValue(value: string): string {
+		// Remove language codes like (nld), (eng), (deu) etc.
+		let normalized = value.replace(/\s*\([a-z]{2,3}\)\s*$/i, '').trim();
+		// Capitalize first letter of each word
+		normalized = normalized
+			.toLowerCase()
+			.split(' ')
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+			.join(' ');
+		return normalized;
+	}
+
+	// Extract unique values for each category with counts (normalized)
 	const categoryOptions = $derived.by(() => {
-		const options: Record<keyof FilterState, Map<string, number>> = {
+		const options: Record<keyof FilterState, Map<string, { count: number; originalValues: Set<string> }>> = {
 			dcSubject: new Map(),
 			dcAudience: new Map(),
 			dcLanguage: new Map(),
@@ -42,16 +61,22 @@
 				if (Array.isArray(values)) {
 					values.forEach((value) => {
 						if (value && typeof value === 'string' && value.trim()) {
-							const current = options[key].get(value) || 0;
-							options[key].set(value, current + 1);
+							const normalized = normalizeValue(value);
+							const existing = options[key].get(normalized);
+							if (existing) {
+								existing.count++;
+								existing.originalValues.add(value);
+							} else {
+								options[key].set(normalized, { count: 1, originalValues: new Set([value]) });
+							}
 						}
 					});
 				}
 			}
 		});
 
-		// Sort each category alphabetically
-		const sorted: Record<keyof FilterState, Array<{ value: string; count: number }>> = {
+		// Sort each category by count (descending), then alphabetically
+		const sorted: Record<keyof FilterState, Array<{ value: string; count: number; originalValues: string[] }>> = {
 			dcSubject: [],
 			dcAudience: [],
 			dcLanguage: [],
@@ -61,8 +86,8 @@
 
 		for (const key of Object.keys(options) as (keyof FilterState)[]) {
 			sorted[key] = Array.from(options[key].entries())
-				.map(([value, count]) => ({ value, count }))
-				.sort((a, b) => a.value.localeCompare(b.value));
+				.map(([value, data]) => ({ value, count: data.count, originalValues: Array.from(data.originalValues) }))
+				.sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
 		}
 
 		return sorted;
@@ -78,11 +103,23 @@
 		Object.values(categoryOptions).some((options) => options.length > 0)
 	);
 
-	function toggleFilter(category: keyof FilterState, value: string) {
+	// Check if a normalized value is selected (any of its original values)
+	function isValueSelected(category: keyof FilterState, originalValues: string[]): boolean {
+		return originalValues.some((v) => filters[category].includes(v));
+	}
+
+	function toggleFilter(category: keyof FilterState, originalValues: string[]) {
 		const currentValues = filters[category];
-		const newValues = currentValues.includes(value)
-			? currentValues.filter((v) => v !== value)
-			: [...currentValues, value];
+		const isSelected = originalValues.some((v) => currentValues.includes(v));
+
+		let newValues: string[];
+		if (isSelected) {
+			// Remove all original values
+			newValues = currentValues.filter((v) => !originalValues.includes(v));
+		} else {
+			// Add the first original value (they all map to the same normalized value)
+			newValues = [...currentValues, originalValues[0]];
+		}
 
 		onFilterChange({
 			...filters,
@@ -168,11 +205,11 @@
 							{/if}
 						</div>
 
-						<!-- Options list -->
+						<!-- Options list - no fixed height -->
 						{#if !isCollapsed}
-							<div class="px-3 pb-3 space-y-1 max-h-48 overflow-y-auto">
+							<div class="px-3 pb-3 space-y-1">
 								{#each options as option (option.value)}
-									{@const isSelected = filters[category.key].includes(option.value)}
+									{@const isSelected = isValueSelected(category.key, option.originalValues)}
 									<label
 										class="flex items-center gap-2 cursor-pointer hover:bg-base-200 rounded px-2 py-1.5 transition-colors"
 									>
@@ -180,7 +217,7 @@
 											type="checkbox"
 											class="checkbox checkbox-sm checkbox-primary"
 											checked={isSelected}
-											onchange={() => toggleFilter(category.key, option.value)}
+											onchange={() => toggleFilter(category.key, option.originalValues)}
 										/>
 										<span class="flex-1 text-sm truncate" title={option.value}>
 											{option.value}
