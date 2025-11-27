@@ -43,12 +43,17 @@ async function deleteCollection(name: string) {
 
 	if (checkResponse.ok) {
 		const existing = await checkResponse.json();
-		await fetch(`${PB_URL}/api/collections/${existing.id}`, {
+		const deleteResponse = await fetch(`${PB_URL}/api/collections/${existing.id}`, {
 			method: 'DELETE',
 			headers: { Authorization: authToken }
 		});
-		console.log(`   🗑️  Deleted ${name}`);
-		await new Promise((r) => setTimeout(r, 300));
+		if (deleteResponse.ok) {
+			console.log(`   🗑️  Deleted ${name}`);
+		} else {
+			console.log(`   ⚠️  Could not delete ${name}: ${await deleteResponse.text()}`);
+		}
+		// Wait longer for the deletion to propagate
+		await new Promise((r) => setTimeout(r, 500));
 	}
 }
 
@@ -120,13 +125,19 @@ async function main() {
 	// ============================================================
 	console.log('🗑️  Cleaning up existing collections...\n');
 
+	// Delete in correct dependency order (children first)
 	await deleteCollection('editionUsers');
+	await deleteCollection('collectionUsers'); // Old name
 	await deleteCollection('projectUsers');
 	await deleteCollection('editions');
 	await deleteCollection('collections');
 	await deleteCollection('keywords');
 	await deleteCollection('users');
 	await deleteCollection('site');
+
+	// Wait for deletions to fully propagate
+	console.log('\n   ⏳ Waiting for deletions to complete...');
+	await new Promise((r) => setTimeout(r, 2000));
 
 	// ============================================================
 	// PHASE 2: Create all collections with complete schemas
@@ -165,10 +176,11 @@ async function main() {
 	const collectionsId = await createCollection('collections', [
 		{ name: 'mongoId', type: 'text' },
 		{ name: 'title', type: 'text', required: true },
-		{ name: 'site', type: 'relation', options: { collectionId: siteId, maxSelect: 1 } },
+		{ name: 'site', type: 'relation', collectionId: siteId, maxSelect: 1 },
 		{ name: 'isVisible', type: 'bool' },
 		{ name: 'lastPublished', type: 'text' },
 		{ name: 'pubNum', type: 'number' },
+		{ name: 'publishedEditionCount', type: 'number' },
 		// Dublin Core metadata
 		{ name: 'dcTitle', type: 'text' },
 		{ name: 'dcSubtitle', type: 'text' },
@@ -189,11 +201,7 @@ async function main() {
 	const editionsId = await createCollection('editions', [
 		{ name: 'mongoId', type: 'text' },
 		{ name: 'title', type: 'text', required: true },
-		{
-			name: 'collection',
-			type: 'relation',
-			options: { collectionId: collectionsId, maxSelect: 1, cascadeDelete: true }
-		},
+		{ name: 'collection', type: 'relation', collectionId: collectionsId, maxSelect: 1, cascadeDelete: true },
 		{ name: 'isPublished', type: 'bool' },
 		{ name: 'pubNum', type: 'number' },
 		// Dublin Core - Basic
@@ -230,6 +238,7 @@ async function main() {
 		{ name: 'dcFunder', type: 'json' },
 		{ name: 'dcProvenance', type: 'editor' },
 		{ name: 'dcDoi', type: 'json' },
+		{ name: 'dcInstructionalMethod', type: 'text' },
 		// Peer Review
 		{ name: 'peerReviewKind', type: 'text' },
 		{ name: 'peerReviewContent', type: 'editor' },
@@ -242,12 +251,8 @@ async function main() {
 	// 6. ProjectUsers (collection-user relationships)
 	const projectUsersId = await createCollection('projectUsers', [
 		{ name: 'mongoId', type: 'text' },
-		{
-			name: 'collection',
-			type: 'relation',
-			options: { collectionId: collectionsId, maxSelect: 1, cascadeDelete: true }
-		},
-		{ name: 'user', type: 'relation', options: { collectionId: usersId, maxSelect: 1 } },
+		{ name: 'collection', type: 'relation', collectionId: collectionsId, maxSelect: 1, cascadeDelete: true },
+		{ name: 'user', type: 'relation', collectionId: usersId, maxSelect: 1 },
 		{ name: 'userHash', type: 'text' }, // Fallback if user not found
 		{ name: 'role', type: 'text' }
 	]);
@@ -255,12 +260,8 @@ async function main() {
 	// 7. EditionUsers (edition-user relationships)
 	const editionUsersId = await createCollection('editionUsers', [
 		{ name: 'mongoId', type: 'text' },
-		{
-			name: 'edition',
-			type: 'relation',
-			options: { collectionId: editionsId, maxSelect: 1, cascadeDelete: true }
-		},
-		{ name: 'user', type: 'relation', options: { collectionId: usersId, maxSelect: 1 } },
+		{ name: 'edition', type: 'relation', collectionId: editionsId, maxSelect: 1, cascadeDelete: true },
+		{ name: 'user', type: 'relation', collectionId: usersId, maxSelect: 1 },
 		{ name: 'userHash', type: 'text' }, // Fallback if user not found
 		{ name: 'role', type: 'text' }
 	]);
@@ -342,6 +343,7 @@ async function main() {
 			isVisible: doc.isVisible !== false,
 			lastPublished: doc.lastPublished || null,
 			pubNum: doc.pubNum || 0,
+			publishedEditionCount: doc.publishedEditionCount || 0,
 			dcTitle: doc.dc?.title || null,
 			dcSubtitle: doc.dc?.subtitle || null,
 			dcAbstract: doc.dc?.abstract || null,
@@ -416,9 +418,10 @@ async function main() {
 			dcFunder: doc.dc?.funder || [],
 			dcProvenance: doc.dc?.provenance || null,
 			dcDoi: doc.dc?.doi || [],
-			// Peer Review
-			peerReviewKind: doc.dc?.peerReviewKind || null,
-			peerReviewContent: doc.dc?.peerReviewContent || null,
+			dcInstructionalMethod: doc.dc?.instructionalMethod || null,
+			// Peer Review (in pure3d object, not dc)
+			peerReviewKind: doc.pure3d?.peerReviewKind || null,
+			peerReviewContent: doc.pure3d?.peerReviewContent || null,
 			// Settings
 			settingsAuthorToolName: doc.settings?.authorTool?.name || null,
 			settingsAuthorToolVersion: doc.settings?.authorTool?.version || null,
