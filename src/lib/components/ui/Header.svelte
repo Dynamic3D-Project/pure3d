@@ -56,7 +56,7 @@
 			</a>
 			<div class="flex-1" />
 			{#if showSearch}
-				<div class="mt-4 max-w-2xl px-2 sm:px-0">
+				<div class=" max-w-2xl px-2 sm:px-0">
 					<Search />
 				</div>
 			{/if}

@@ -24,7 +24,7 @@
 
 <div class="container mx-auto max-w-4xl px-4 py-8">
 	<div class="mb-8">
-		<div class="flex items-center justify-between mb-6">
+		<div class="mb-6 flex items-center justify-between">
 			<div>
 				<h1 class="text-4xl font-bold">Blog</h1>
 				<p class="mt-2 text-base-content/70">Read our latest posts</p>
@@ -32,12 +32,12 @@
 			<a
 				href="/"
 				data-sveltekit-preload-data="hover"
-				class="rounded-lg bg-neutral px-4 py-2 text-sm font-medium text-neutral-content hover:bg-neutral-focus"
+				class="hover:bg-neutral-focus rounded-lg bg-neutral px-4 py-2 text-sm font-medium text-neutral-content"
 			>
 				← Home
 			</a>
 		</div>
-		<div class="max-w-2xl">
+		<div class="flex max-w-2xl items-center">
 			<Search />
 		</div>
 	</div>
@@ -58,9 +58,11 @@
 	{:else}
 		<div class="space-y-6">
 			{#each posts as post (post.id)}
-				<article class="rounded-lg border border-base-300 bg-base-100 p-6 shadow-sm transition hover:shadow-md">
+				<article
+					class="rounded-lg border border-base-300 bg-base-100 p-6 shadow-sm transition hover:shadow-md"
+				>
 					<a href="/blog/{post.id}" data-sveltekit-preload-data="hover" class="block">
-						<h2 class="text-2xl font-semibold text-base-content hover:text-primary transition">
+						<h2 class="text-2xl font-semibold text-base-content transition hover:text-primary">
 							{post.title}
 						</h2>
 						<div class="mt-2 text-sm text-base-content/60">
@@ -70,12 +72,10 @@
 								day: 'numeric'
 							})}
 						</div>
-						<div class="prose prose-sm mt-4 max-w-none text-base-content/80 line-clamp-3">
+						<div class="prose prose-sm mt-4 line-clamp-3 max-w-none text-base-content/80">
 							{@html post.content}
 						</div>
-						<div class="mt-4 text-primary font-medium hover:text-primary-focus">
-							Read more →
-						</div>
+						<div class="hover:text-primary-focus mt-4 font-medium text-primary">Read more →</div>
 					</a>
 				</article>
 			{/each}
