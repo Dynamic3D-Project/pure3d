@@ -204,6 +204,11 @@ async function main() {
 		{ name: 'collection', type: 'relation', collectionId: collectionsId, maxSelect: 1, cascadeDelete: true },
 		{ name: 'isPublished', type: 'bool' },
 		{ name: 'pubNum', type: 'number' },
+		// Deletion tracking (for admin panel)
+		{ name: 'dateDeleted', type: 'date' },
+		{ name: 'dateUndeleted', type: 'date' },
+		{ name: 'deletedBy', type: 'text' },
+		{ name: 'undeletedBy', type: 'text' },
 		// Dublin Core - Basic
 		{ name: 'dcTitle', type: 'text' },
 		{ name: 'dcSubtitle', type: 'text' },
@@ -384,6 +389,11 @@ async function main() {
 			collection: pbCollectionId,
 			isPublished: doc.isPublished === true,
 			pubNum: doc.pubNum || 1,
+			// Deletion tracking
+			dateDeleted: doc.dateDeleted || null,
+			dateUndeleted: doc.dateUndeleted || null,
+			deletedBy: doc.deletedBy || null,
+			undeletedBy: doc.undeletedBy || null,
 			// Dublin Core - Basic
 			dcTitle: doc.dc?.title || null,
 			dcSubtitle: doc.dc?.subtitle || null,
