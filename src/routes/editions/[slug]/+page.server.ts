@@ -14,6 +14,7 @@ export const load: PageServerLoad = async ({ params }) => {
 			...edition,
 			usageConditions: 'CC BY-NC 4.0'
 		},
-		viewerHelp: site?.viewerHelp || null
+		viewerHelp: site?.viewerHelp || null,
+		viewerHelpVideoUrl: site?.viewerHelpVideoUrl || null
 	};
 };

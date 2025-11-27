@@ -77,24 +77,36 @@ async function main() {
 	console.log('📦 Fetching current site collection schema...');
 	const siteCollection = await getCollection('site');
 
-	// Check if field already exists
+	// Check existing fields
 	const existingFields = siteCollection.fields || siteCollection.schema || [];
 	const hasViewerHelp = existingFields.some((f: any) => f.name === 'viewerHelp');
+	const hasViewerHelpVideoUrl = existingFields.some((f: any) => f.name === 'viewerHelpVideoUrl');
 
-	if (hasViewerHelp) {
-		console.log('ℹ️  viewerHelp field already exists. Nothing to do.');
+	if (hasViewerHelp && hasViewerHelpVideoUrl) {
+		console.log('ℹ️  All fields already exist. Nothing to do.');
 		return;
 	}
 
-	// Add the new field to existing fields
-	const updatedFields = [
-		...existingFields,
-		{
+	// Add the new fields to existing fields
+	const updatedFields = [...existingFields];
+
+	// Add viewerHelp if not exists
+	if (!existingFields.some((f: any) => f.name === 'viewerHelp')) {
+		updatedFields.push({
 			name: 'viewerHelp',
 			type: 'editor',
 			required: false
-		}
-	];
+		});
+	}
+
+	// Add viewerHelpVideoUrl if not exists
+	if (!existingFields.some((f: any) => f.name === 'viewerHelpVideoUrl')) {
+		updatedFields.push({
+			name: 'viewerHelpVideoUrl',
+			type: 'url',
+			required: false
+		});
+	}
 
 	console.log('📝 Adding viewerHelp field...');
 	const result = await updateCollection('site', { fields: updatedFields });
