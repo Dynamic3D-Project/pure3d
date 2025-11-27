@@ -4,10 +4,12 @@
 	let { data }: { data: PageData } = $props();
 
 	const edition = data.edition;
+	const viewerHelp = data.viewerHelp;
 
 	let activeTab = $state<'description' | 'metadata' | 'peer-review' | 'printables'>('description');
 	let iframeElement: HTMLIFrameElement | undefined = $state();
 	let isSidebarCollapsed = $state(false);
+	let helpModalOpen = $state(false);
 
 	// Watch for URL changes and update iframe src
 	$effect(() => {
@@ -77,6 +79,32 @@
 									loading="eager"
 									allow="xr; xr-spatial-tracking; fullscreen"
 								></iframe>
+
+								<!-- Help info button - top right corner -->
+								{#if viewerHelp}
+									<button
+										type="button"
+										class="absolute top-3 right-3 btn btn-circle btn-sm bg-base-100/80 hover:bg-base-100 border-0 shadow-lg"
+										onclick={() => (helpModalOpen = true)}
+										aria-label="How to use the 3D viewer"
+										title="How to use the 3D viewer"
+									>
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke-width="2"
+											stroke="currentColor"
+											class="w-5 h-5"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"
+											/>
+										</svg>
+									</button>
+								{/if}
 							</div>
 						</div>
 					</div>
@@ -248,3 +276,21 @@
 		</div>
 	</div>
 </div>
+
+<!-- Viewer Help Modal -->
+{#if viewerHelp}
+	<dialog class="modal" class:modal-open={helpModalOpen}>
+		<div class="modal-box max-w-2xl">
+			<h3 class="font-bold text-lg mb-4">How to use the 3D Viewer</h3>
+			<div class="prose prose-sm max-w-none">
+				{@html viewerHelp}
+			</div>
+			<div class="modal-action">
+				<button type="button" class="btn" onclick={() => (helpModalOpen = false)}>Close</button>
+			</div>
+		</div>
+		<form method="dialog" class="modal-backdrop">
+			<button type="button" onclick={() => (helpModalOpen = false)}>close</button>
+		</form>
+	</dialog>
+{/if}

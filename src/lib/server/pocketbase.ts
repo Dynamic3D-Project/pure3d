@@ -35,7 +35,8 @@ export async function getSite() {
 			featured: record.featured || [],
 			sweeperStartTm: record.sweeperStartTm || null,
 			dcDateCreated: record.dcDateCreated || null,
-			dcDateModified: record.dcDateModified || null
+			dcDateModified: record.dcDateModified || null,
+			viewerHelp: record.viewerHelp || null
 		};
 	} catch (error) {
 		console.error('Error fetching site:', error);

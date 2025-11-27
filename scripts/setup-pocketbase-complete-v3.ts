@@ -154,7 +154,8 @@ async function main() {
 		{ name: 'featured', type: 'json' }, // Array of pubNums
 		{ name: 'sweeperStartTm', type: 'date' },
 		{ name: 'dcDateCreated', type: 'date' },
-		{ name: 'dcDateModified', type: 'date' }
+		{ name: 'dcDateModified', type: 'date' },
+		{ name: 'viewerHelp', type: 'editor' } // Rich text help content for 3D viewer
 	]);
 
 	// 2. Users collection
