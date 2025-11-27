@@ -20,6 +20,9 @@ export interface Edition {
 	alternativeVersion: string | null;
 	tags: string[];
 	created: string;
+	peerReviewKind?: string | null;
+	peerReviewContent?: string | null;
+	hasPeerReview?: boolean;
 	// Filter fields (Dublin Core metadata)
 	dcSubject?: string[];
 	dcAudience?: string[];

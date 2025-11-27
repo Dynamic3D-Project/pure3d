@@ -122,7 +122,9 @@ async function main() {
     { name: 'dcTitle', type: 'text' },
     { name: 'dcAbstract', type: 'editor' },
     { name: 'dcCreator', type: 'json' },
-    { name: 'dcKeyword', type: 'json' }
+    { name: 'dcKeyword', type: 'json' },
+    { name: 'peerReviewKind', type: 'text' },
+    { name: 'peerReviewContent', type: 'editor' }
   ], true);
 
   console.log('\n📥 Importing data...\n');
@@ -223,7 +225,9 @@ async function main() {
         dcTitle: doc.dc?.title,
         dcAbstract: doc.dc?.abstract,
         dcCreator: doc.dc?.creator || [],
-        dcKeyword: doc.dc?.keyword || []
+        dcKeyword: doc.dc?.keyword || [],
+        peerReviewKind: doc.dc?.peerReviewKind || null,
+        peerReviewContent: doc.dc?.peerReviewContent || null
       })
     });
 

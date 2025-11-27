@@ -34,6 +34,16 @@
 	class="group card bg-base-100 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden"
 >
 	<figure class="relative overflow-hidden aspect-square bg-base-200">
+		<!-- Peer Review Badge -->
+		{#if edition.hasPeerReview}
+			<div class="absolute top-2 right-2 z-10" title="Peer Reviewed">
+				<img
+					src="/images/peer-reviewed-badge.svg"
+					alt="Peer Reviewed"
+					class="w-10 h-10 drop-shadow-md"
+				/>
+			</div>
+		{/if}
 		<!-- Placeholder: show while loading or on error -->
 		<div
 			class="absolute inset-0 flex items-center justify-center text-base-content/30 transition-opacity duration-300"

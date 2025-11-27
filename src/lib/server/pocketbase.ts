@@ -128,6 +128,9 @@ export async function getEditions() {
 				dcKeyword: record.dcKeyword,
 				collectionId: record.collection,
 				collection: record.expand?.collection,
+				peerReviewKind: record.peerReviewKind || null,
+				peerReviewContent: record.peerReviewContent || null,
+				hasPeerReview: !!record.peerReviewKind && record.peerReviewKind !== 'No peer review',
 				// Filter fields
 				dcSubject: Array.isArray(record.dcSubject) ? record.dcSubject : [],
 				dcAudience: Array.isArray(record.dcAudience) ? record.dcAudience : [],
@@ -189,7 +192,10 @@ export async function getEditionsByCollection(collectionId: string) {
 				dcAbstract: record.dcAbstract,
 				dcCreator: record.dcCreator,
 				dcKeyword: record.dcKeyword,
-				collectionId: record.collection
+				collectionId: record.collection,
+				peerReviewKind: record.peerReviewKind || null,
+				peerReviewContent: record.peerReviewContent || null,
+				hasPeerReview: !!record.peerReviewKind && record.peerReviewKind !== 'No peer review'
 			};
 		});
 	} catch (error) {
@@ -242,7 +248,10 @@ export async function getEdition(id: string) {
 			dcCreator: record.dcCreator,
 			dcKeyword: record.dcKeyword,
 			collectionId: record.collection,
-			collection: record.expand?.collection
+			collection: record.expand?.collection,
+			peerReviewKind: record.peerReviewKind || null,
+			peerReviewContent: record.peerReviewContent || null,
+			hasPeerReview: !!record.peerReviewKind && record.peerReviewKind !== 'No peer review'
 		};
 	} catch (error) {
 		console.error('Error fetching edition:', error);
