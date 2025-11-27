@@ -13,11 +13,11 @@
 	data-sveltekit-preload-data="hover"
 	class="group card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden"
 >
-	<figure class="relative overflow-hidden aspect-[3/4]">
+	<figure class="relative overflow-hidden">
 		<img
 			src={collection.thumbnail}
 			alt={collection.title}
-			class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+			class="w-full h-auto transition-transform duration-500 group-hover:scale-110"
 		/>
 		<div
 			class="absolute inset-0 bg-gradient-to-t from-base-300/90 via-base-300/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
