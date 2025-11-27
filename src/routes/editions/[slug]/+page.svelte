@@ -115,43 +115,37 @@
 				<!-- Right Column - Tabs and Content -->
 				<div
 					class="transition-all duration-300 ease-in-out shrink-0"
-					class:lg:w-80={!isSidebarCollapsed}
-					class:lg:w-12={isSidebarCollapsed}
+					class:lg:w-96={!isSidebarCollapsed}
+					class:lg:w-0={isSidebarCollapsed}
 				>
-					<!-- Collapsed State - Expand button -->
-					<button
-						onclick={toggleSidebar}
-						class="hidden btn btn-circle btn-ghost bg-base-200 shadow-xl sticky top-4"
-						class:lg:flex={isSidebarCollapsed}
-						aria-label="Expand sidebar"
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-						</svg>
-					</button>
-
-					<div
-						class="card bg-base-200 shadow-xl sticky top-4 transition-all duration-300 overflow-hidden"
-						class:lg:scale-x-0={isSidebarCollapsed}
-						class:lg:opacity-0={isSidebarCollapsed}
-						class:lg:origin-right={isSidebarCollapsed}
-						class:lg:w-0={isSidebarCollapsed}
-						class:lg:invisible={isSidebarCollapsed}
-					>
-						<div class="card-body p-0">
-							<!-- Collapse Button -->
-							<button
-								onclick={toggleSidebar}
-								class="hidden lg:flex absolute -left-3 top-6 btn btn-circle btn-sm btn-ghost bg-base-300 shadow z-10"
-								aria-label="Collapse sidebar"
+					<div class="relative lg:sticky lg:top-4">
+						<!-- Toggle Button - Attached to sidebar edge -->
+						<button
+							onclick={toggleSidebar}
+							class="hidden lg:flex absolute -left-4 top-8 z-10 btn btn-sm btn-primary shadow-lg rounded-l-lg rounded-r-none h-16 w-4 p-0 min-h-0"
+							aria-label={isSidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+						>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-4 w-4 transition-transform duration-300"
+								class:rotate-180={isSidebarCollapsed}
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
 							>
-								<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-								</svg>
-							</button>
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+							</svg>
+						</button>
 
-							<!-- Tabs -->
-							<div class="tabs tabs-boxed bg-base-300 rounded-t-2xl">
+						<div
+							class="card bg-base-200 shadow-xl transition-all duration-300 overflow-hidden"
+							class:lg:w-0={isSidebarCollapsed}
+							class:lg:opacity-0={isSidebarCollapsed}
+							class:lg:invisible={isSidebarCollapsed}
+						>
+							<div class="card-body p-0 w-96">
+								<!-- Tabs -->
+								<div class="tabs tabs-boxed bg-base-300 rounded-t-2xl">
 								<button
 									class="tab flex-1"
 									class:tab-active={activeTab === 'description'}
@@ -239,6 +233,7 @@
 										<p>Printable resources will be available here.</p>
 									</div>
 								{/if}
+							</div>
 							</div>
 						</div>
 					</div>
