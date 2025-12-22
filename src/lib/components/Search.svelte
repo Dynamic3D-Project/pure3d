@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { pb } from '$lib/database';
 	import { debounce } from '$lib/utils/debounce';
 	import { goto } from '$app/navigation';
@@ -112,7 +113,7 @@
 				subtitle:
 					(Array.isArray(edition.dcCreator) ? edition.dcCreator.join(', ') : '') ||
 					edition.dcAbstract?.slice(0, 80),
-				url: `/editions/${edition.id}`
+				url: `${base}/editions/${edition.id}`
 			}));
 
 			const collectionResults: SearchResult[] = collections.items.map((collection: any) => ({
@@ -120,7 +121,7 @@
 				id: collection.id,
 				title: collection.dcTitle || collection.title || 'Untitled',
 				subtitle: collection.dcAbstract?.slice(0, 80),
-				url: `/collections/${collection.id}`
+				url: `${base}/collections/${collection.id}`
 			}));
 
 			// Prioritize editions, then collections
