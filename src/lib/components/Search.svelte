@@ -1,23 +1,42 @@
 <script lang="ts">
-	import { pb, type Todo, type Post } from '$lib/database';
+	import { pb } from '$lib/database';
 	import { debounce } from '$lib/utils/debounce';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import {
+		computePosition,
+		flip,
+		shift,
+		offset,
+		size,
+		autoUpdate
+	} from '@floating-ui/dom';
+
+	type SearchResultType = 'edition' | 'collection';
+
+	interface SearchResult {
+		type: SearchResultType;
+		id: string;
+		title: string;
+		subtitle?: string;
+		url: string;
+	}
 
 	let searchQuery = $state('');
 	let searching = $state(false);
-	let todoResults = $state<Todo[]>([]);
-	let postResults = $state<Post[]>([]);
+	let results = $state<SearchResult[]>([]);
 	let showResults = $state(false);
 	let selectedIndex = $state(-1);
-	let allResults = $state<Array<{ type: 'todo' | 'post'; data: Todo | Post; url: string }>>([]);
+
+	let containerElement: HTMLDivElement | undefined = $state();
 	let searchInputElement: HTMLInputElement | undefined = $state();
+	let dropdownElement: HTMLDivElement | undefined = $state();
+	let resultsListElement: HTMLUListElement | undefined = $state();
+	let cleanupAutoUpdate: (() => void) | undefined;
 
 	async function performSearch(query: string) {
 		if (!query.trim()) {
-			todoResults = [];
-			postResults = [];
-			allResults = [];
+			results = [];
 			showResults = false;
 			selectedIndex = -1;
 			return;
@@ -27,53 +46,156 @@
 		showResults = true;
 
 		try {
-			// Search todos - search in name and Description fields
-			const todosPromise = pb.collection('todos').getList<Todo>(1, 5, {
-				filter: `name ~ "${query}" || Description ~ "${query}"`,
-				sort: '-created'
+			// Use fetch API directly to avoid PocketBase client issues
+			const baseUrl = pb.baseUrl;
+
+			const [editionsRes, collectionsRes] = await Promise.all([
+				fetch(
+					`${baseUrl}/api/collections/editions/records?filter=${encodeURIComponent('isPublished=true')}&perPage=100`
+				),
+				fetch(
+					`${baseUrl}/api/collections/collections/records?filter=${encodeURIComponent('isVisible=true')}&perPage=100`
+				)
+			]);
+
+			let editionsResult = { items: [] as any[] };
+			let collectionsResult = { items: [] as any[] };
+
+			if (editionsRes.ok) {
+				const data = await editionsRes.json();
+				editionsResult = { items: data.items || [] };
+			} else {
+				const text = await editionsRes.text();
+				console.error('Editions fetch error:', editionsRes.status, text);
+			}
+
+			if (collectionsRes.ok) {
+				const data = await collectionsRes.json();
+				collectionsResult = { items: data.items || [] };
+			} else {
+				const text = await collectionsRes.text();
+				console.error('Collections fetch error:', collectionsRes.status, text);
+			}
+
+			// Client-side filtering for more reliable search
+			const lowerQuery = query.toLowerCase();
+
+			const filteredEditions = editionsResult.items.filter((edition: any) => {
+				const title = (edition.dcTitle || edition.title || '').toLowerCase();
+				const abstract = (edition.dcAbstract || '').toLowerCase();
+				const description = (edition.dcDescription || '').toLowerCase();
+				const creators = Array.isArray(edition.dcCreator)
+					? edition.dcCreator.join(' ').toLowerCase()
+					: '';
+				return (
+					title.includes(lowerQuery) ||
+					abstract.includes(lowerQuery) ||
+					description.includes(lowerQuery) ||
+					creators.includes(lowerQuery)
+				);
 			});
 
-			// Search posts - search in title and content fields
-			const postsPromise = pb.collection('posts').getList<Post>(1, 5, {
-				filter: `title ~ "${query}" || content ~ "${query}"`,
-				sort: '-created'
+			const filteredCollections = collectionsResult.items.filter((collection: any) => {
+				const title = (collection.dcTitle || collection.title || '').toLowerCase();
+				const abstract = (collection.dcAbstract || '').toLowerCase();
+				return title.includes(lowerQuery) || abstract.includes(lowerQuery);
 			});
 
-			const [todos, posts] = await Promise.all([todosPromise, postsPromise]);
+			const editions = { items: filteredEditions.slice(0, 8) };
+			const collections = { items: filteredCollections.slice(0, 5) };
 
-			todoResults = todos.items;
-			postResults = posts.items;
+			// Build combined results - use actual PocketBase field names
+			const editionResults: SearchResult[] = editions.items.map((edition: any) => ({
+				type: 'edition' as const,
+				id: edition.id,
+				title: edition.dcTitle || edition.title || 'Untitled',
+				subtitle:
+					(Array.isArray(edition.dcCreator) ? edition.dcCreator.join(', ') : '') ||
+					edition.dcAbstract?.slice(0, 80),
+				url: `/editions/${edition.id}`
+			}));
 
-			// Build combined results for keyboard navigation
-			allResults = [
-				...todos.items.map((todo) => ({ type: 'todo' as const, data: todo, url: '/' })),
-				...posts.items.map((post) => ({
-					type: 'post' as const,
-					data: post,
-					url: `/blog/${post.id}`
-				}))
-			];
+			const collectionResults: SearchResult[] = collections.items.map((collection: any) => ({
+				type: 'collection' as const,
+				id: collection.id,
+				title: collection.dcTitle || collection.title || 'Untitled',
+				subtitle: collection.dcAbstract?.slice(0, 80),
+				url: `/collections/${collection.id}`
+			}));
 
-			selectedIndex = -1;
+			// Prioritize editions, then collections
+			results = [...editionResults, ...collectionResults];
+			selectedIndex = results.length > 0 ? 0 : -1;
 		} catch (err) {
 			console.error('Search error:', err);
+			results = [];
 		} finally {
 			searching = false;
 		}
 	}
 
-	// Debounce search to avoid too many API calls
-	const debouncedSearch = debounce((query: string) => performSearch(query), 300);
+	const debouncedSearch = debounce((query: string) => performSearch(query), 250);
 
 	$effect(() => {
 		debouncedSearch(searchQuery);
 	});
 
-	// Window-level keyboard handler to ensure we catch all keyboard events
-	// This is more reliable than input-level handlers with DaisyUI
+	// Position dropdown using floating-ui
+	function updatePosition() {
+		if (containerElement && dropdownElement) {
+			// Set width immediately to prevent jump
+			const containerWidth = containerElement.getBoundingClientRect().width;
+			dropdownElement.style.width = `${Math.max(containerWidth, 400)}px`;
+
+			computePosition(containerElement, dropdownElement, {
+				placement: 'bottom-start',
+				middleware: [
+					offset(8),
+					flip({ fallbackPlacements: ['top-start'] }),
+					shift({ padding: 8 }),
+					size({
+						apply({ availableHeight }) {
+							if (dropdownElement) {
+								dropdownElement.style.maxHeight = `${Math.min(availableHeight - 16, 384)}px`;
+							}
+						},
+						padding: 8
+					})
+				]
+			}).then(({ x, y }) => {
+				if (dropdownElement) {
+					Object.assign(dropdownElement.style, {
+						left: `${x}px`,
+						top: `${y}px`,
+						visibility: 'visible'
+					});
+				}
+			});
+		}
+	}
+
+	$effect(() => {
+		if (showResults && containerElement && dropdownElement) {
+			cleanupAutoUpdate?.();
+			// Position once, don't follow scroll - keeps dropdown fixed in viewport
+			cleanupAutoUpdate = autoUpdate(containerElement, dropdownElement, updatePosition, {
+				ancestorScroll: false,
+				ancestorResize: true,
+				elementResize: true,
+				layoutShift: false
+			});
+		} else {
+			cleanupAutoUpdate?.();
+			cleanupAutoUpdate = undefined;
+		}
+	});
+
 	onMount(() => {
 		window.addEventListener('keydown', handleKeyDown);
-		return () => window.removeEventListener('keydown', handleKeyDown);
+		return () => {
+			window.removeEventListener('keydown', handleKeyDown);
+			cleanupAutoUpdate?.();
+		};
 	});
 
 	function handleClickOutside(event: MouseEvent) {
@@ -85,100 +207,131 @@
 	}
 
 	function handleKeyDown(event: KeyboardEvent) {
-		// Only handle keyboard events if search input is focused or results are showing
 		const isSearchFocused = document.activeElement === searchInputElement;
 
-		console.log('🔍 Key pressed:', event.key);
-		console.log('   isSearchFocused:', isSearchFocused);
-		console.log('   showResults:', showResults);
-		console.log('   allResults.length:', allResults.length);
-		console.log('   selectedIndex (before):', selectedIndex);
-
-		// Only handle navigation keys when search is active
-		if (!isSearchFocused && !showResults) {
-			console.log('   ⏭️  Ignoring - search not active');
-			return;
+		// Debug logging
+		if (['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) {
+			console.log('Key:', event.key, 'focused:', isSearchFocused, 'showResults:', showResults, 'results:', results.length, 'selectedIndex:', selectedIndex);
 		}
 
-		// Prevent arrow keys from moving cursor when dropdown is open
-		if (
-			(event.key === 'ArrowDown' || event.key === 'ArrowUp') &&
-			showResults &&
-			allResults.length > 0
-		) {
-			event.preventDefault();
-			console.log('   ✅ preventDefault() called');
+		if (!isSearchFocused && !showResults) {
+			return;
 		}
 
 		switch (event.key) {
 			case 'ArrowDown':
-				if (!showResults || allResults.length === 0) {
-					console.log(
-						'   ❌ ArrowDown blocked: showResults =',
-						showResults,
-						'length =',
-						allResults.length
-					);
-					return;
-				}
-				selectedIndex = selectedIndex < allResults.length - 1 ? selectedIndex + 1 : 0;
-				console.log('   ✅ ArrowDown: selectedIndex changed to', selectedIndex);
-				scrollToSelected();
-				break;
-			case 'ArrowUp':
-				if (!showResults || allResults.length === 0) {
-					console.log(
-						'   ❌ ArrowUp blocked: showResults =',
-						showResults,
-						'length =',
-						allResults.length
-					);
-					return;
-				}
-				selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : allResults.length - 1;
-				console.log('   ✅ ArrowUp: selectedIndex changed to', selectedIndex);
-				scrollToSelected();
-				break;
-			case 'Enter':
-				if (!showResults || allResults.length === 0 || selectedIndex === -1) return;
+				if (!showResults || results.length === 0) return;
 				event.preventDefault();
-				const selected = allResults[selectedIndex];
-				console.log('   ✅ Enter pressed, navigating to:', selected?.url);
-				if (selected) {
-					showResults = false;
-					selectedIndex = -1;
-					goto(selected.url);
-				}
+				selectedIndex = selectedIndex < results.length - 1 ? selectedIndex + 1 : 0;
+				console.log('ArrowDown -> selectedIndex:', selectedIndex);
+				scrollToSelected();
 				break;
+
+			case 'ArrowUp':
+				if (!showResults || results.length === 0) return;
+				event.preventDefault();
+				selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : results.length - 1;
+				console.log('ArrowUp -> selectedIndex:', selectedIndex);
+				scrollToSelected();
+				break;
+
+			case 'Enter':
+				if (!showResults || results.length === 0 || selectedIndex === -1) return;
+				event.preventDefault();
+				console.log('Enter -> navigating to:', results[selectedIndex]);
+				navigateToResult(results[selectedIndex]);
+				break;
+
 			case 'Escape':
 				if (!showResults) return;
 				event.preventDefault();
-				console.log('   ✅ Escape pressed, closing results');
 				showResults = false;
 				selectedIndex = -1;
+				searchInputElement?.blur();
+				break;
+
+			case 'Tab':
+				if (showResults) {
+					showResults = false;
+					selectedIndex = -1;
+				}
 				break;
 		}
 	}
 
 	function scrollToSelected() {
-		setTimeout(() => {
-			const selectedElement = document.querySelector(`[data-result-index="${selectedIndex}"]`);
-			selectedElement?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-		}, 0);
+		requestAnimationFrame(() => {
+			const selectedElement = resultsListElement?.querySelector(
+				`[data-result-index="${selectedIndex}"]`
+			) as HTMLElement | null;
+
+			if (selectedElement) {
+				selectedElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+			}
+		});
 	}
 
-	function getResultIndex(todoIndex: number, isPost = false): number {
-		if (isPost) {
-			return todoResults.length + todoIndex;
-		}
-		return todoIndex;
+	function navigateToResult(result: SearchResult) {
+		showResults = false;
+		selectedIndex = -1;
+		searchQuery = '';
+		goto(result.url);
 	}
+
+	function handleResultMouseEnter(index: number) {
+		selectedIndex = index;
+	}
+
+	function getTypeLabel(type: SearchResultType): string {
+		switch (type) {
+			case 'edition':
+				return 'Editions';
+			case 'collection':
+				return 'Collections';
+		}
+	}
+
+	function getTypeIcon(type: SearchResultType): string {
+		switch (type) {
+			case 'edition':
+				return 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4';
+			case 'collection':
+				return 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10';
+		}
+	}
+
+	function getTypeColor(type: SearchResultType): string {
+		switch (type) {
+			case 'edition':
+				return 'text-primary';
+			case 'collection':
+				return 'text-secondary';
+		}
+	}
+
+	// Group results by type for display
+	let groupedResults = $derived.by(() => {
+		const groups: { type: SearchResultType; items: Array<SearchResult & { globalIndex: number }> }[] = [];
+		let currentType: SearchResultType | null = null;
+		let globalIndex = 0;
+
+		for (const result of results) {
+			if (result.type !== currentType) {
+				currentType = result.type;
+				groups.push({ type: result.type, items: [] });
+			}
+			groups[groups.length - 1].items.push({ ...result, globalIndex });
+			globalIndex++;
+		}
+
+		return groups;
+	});
 </script>
 
 <svelte:window onclick={handleClickOutside} />
 
-<div class="search-container relative">
-	<label class="input-bordered input flex items-center gap-2">
+<div class="search-container relative" bind:this={containerElement}>
+	<label class="input input-bordered flex items-center gap-2">
 		<svg class="h-5 w-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<path
 				stroke-linecap="round"
@@ -191,112 +344,99 @@
 			type="text"
 			bind:this={searchInputElement}
 			bind:value={searchQuery}
-			placeholder="Search Collections..."
-			class="grow"
+			placeholder="Search editions, collections..."
+			class="grow border-none outline-none focus:outline-none focus:ring-0"
 			onfocus={() => {
-				if (searchQuery.trim()) showResults = true;
+				if (searchQuery.trim() && results.length > 0) showResults = true;
 			}}
+			role="combobox"
+			aria-expanded={showResults}
+			aria-haspopup="listbox"
+			aria-autocomplete="list"
+			aria-controls="search-results"
 		/>
+		<span class="loading loading-spinner loading-xs" class:invisible={!searching}></span>
 	</label>
 
 	{#if showResults && searchQuery.trim()}
 		<div
-			class="card-compact card absolute z-50 mt-2 max-h-96 w-full overflow-y-auto bg-base-100 shadow-xl"
+			bind:this={dropdownElement}
+			id="search-results"
+			class="card card-compact fixed z-50 overflow-hidden bg-base-100 shadow-xl"
+			style="min-width: 400px; visibility: hidden;"
+			role="listbox"
 		>
 			<div class="card-body p-0">
-				{#if searching}
-					<div class="p-4 text-center text-sm opacity-70">
-						<span class="loading loading-sm loading-spinner"></span>
-						<span class="ml-2">Searching...</span>
+				{#if searching && results.length === 0}
+					<div class="flex items-center justify-center gap-2 p-4 text-sm opacity-70">
+						<span class="loading loading-spinner loading-sm"></span>
+						<span>Searching...</span>
 					</div>
-				{:else if todoResults.length === 0 && postResults.length === 0}
-					<div class="p-4 text-center text-sm opacity-70">No results found</div>
+				{:else if results.length === 0}
+					<div class="p-4 text-center text-sm opacity-70">
+						No results found for "{searchQuery}"
+					</div>
 				{:else}
-					<ul class="menu menu-sm">
-						<!-- Todo Results -->
-						{#if todoResults.length > 0}
-							<li class="menu-title">
-								<span>Todos</span>
-							</li>
-							{#each todoResults as todo, i}
-								{@const index = getResultIndex(i)}
-								<li data-result-index={index}>
-									<a
-										href="/"
-										class:active={selectedIndex === index}
-										onclick={(e) => {
-											e.preventDefault();
-											showResults = false;
-											selectedIndex = -1;
-											goto('/');
-										}}
+					<div class="max-h-80 overflow-y-auto" bind:this={resultsListElement}>
+						{#each groupedResults as group}
+							<div class="px-3 py-1.5 text-xs font-semibold text-base-content/60 uppercase tracking-wide flex items-center gap-1.5 sticky top-0 bg-base-100 z-10 border-b border-base-200">
+								<svg
+									class="h-3 w-3 {getTypeColor(group.type)}"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d={getTypeIcon(group.type)}
+									/>
+								</svg>
+								{getTypeLabel(group.type)}
+							</div>
+							{#each group.items as item}
+								{@const isSelected = selectedIndex === item.globalIndex}
+								<button
+									type="button"
+									data-result-index={item.globalIndex}
+									class="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-base-200 transition-colors"
+									class:bg-primary={isSelected}
+									class:text-primary-content={isSelected}
+									onclick={() => navigateToResult(item)}
+									onmouseenter={() => handleResultMouseEnter(item.globalIndex)}
+									role="option"
+									aria-selected={isSelected}
+								>
+									<svg
+										class="mt-0.5 h-4 w-4 shrink-0 {isSelected ? 'text-primary-content' : getTypeColor(item.type)}"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
 									>
-										<svg
-											class="h-4 w-4 text-primary"
-											fill="none"
-											stroke="currentColor"
-											viewBox="0 0 24 24"
-										>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-											/>
-										</svg>
-										<div class="min-w-0 flex-1">
-											<div class="truncate font-medium">{todo.name}</div>
-											{#if todo.Description}
-												<div class="truncate text-xs opacity-70">{todo.Description}</div>
-											{/if}
-										</div>
-									</a>
-								</li>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d={getTypeIcon(item.type)}
+										/>
+									</svg>
+									<div class="min-w-0 flex-1 overflow-hidden">
+										<div class="font-medium leading-tight">{item.title}</div>
+										{#if item.subtitle}
+											<div class="text-xs opacity-60 leading-tight mt-0.5">{item.subtitle}</div>
+										{/if}
+									</div>
+								</button>
 							{/each}
-						{/if}
-
-						<!-- Post Results -->
-						{#if postResults.length > 0}
-							<li class="menu-title">
-								<span>Blog Posts</span>
-							</li>
-							{#each postResults as post, i}
-								{@const index = getResultIndex(i, true)}
-								<li data-result-index={index}>
-									<a
-										href="/blog/{post.id}"
-										class:active={selectedIndex === index}
-										onclick={(e) => {
-											e.preventDefault();
-											showResults = false;
-											selectedIndex = -1;
-											goto(`/blog/${post.id}`);
-										}}
-									>
-										<svg
-											class="h-4 w-4 text-secondary"
-											fill="none"
-											stroke="currentColor"
-											viewBox="0 0 24 24"
-										>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
-											/>
-										</svg>
-										<div class="min-w-0 flex-1">
-											<div class="truncate font-medium">{post.title}</div>
-											<div class="truncate text-xs opacity-70">
-												{new Date(post.created).toLocaleDateString()}
-											</div>
-										</div>
-									</a>
-								</li>
-							{/each}
-						{/if}
-					</ul>
+						{/each}
+					</div>
+					<div class="border-t border-base-200 px-3 py-2 text-xs opacity-50">
+						<kbd class="kbd kbd-xs">↑</kbd>
+						<kbd class="kbd kbd-xs">↓</kbd> navigate
+						<kbd class="kbd kbd-xs ml-2">Enter</kbd> select
+						<kbd class="kbd kbd-xs ml-2">Esc</kbd> close
+					</div>
 				{/if}
 			</div>
 		</div>
