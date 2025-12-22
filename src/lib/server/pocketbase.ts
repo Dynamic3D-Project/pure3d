@@ -1,12 +1,11 @@
 import PocketBase from 'pocketbase';
-import { POCKETBASE_URL } from '$env/static/private';
 import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
 
 /**
- * Create a PocketBase client for server-side use
+ * Create a PocketBase client
  */
 export function createPocketBaseClient() {
-	const pb = new PocketBase(POCKETBASE_URL || 'http://127.0.0.1:7090');
+	const pb = new PocketBase(PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090');
 
 	// Disable auto-cancellation for server-side requests
 	pb.autoCancellation(false);
