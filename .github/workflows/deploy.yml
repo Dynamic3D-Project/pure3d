@@ -35,6 +35,9 @@ jobs:
         env:
           PUBLIC_POCKETBASE_URL: https://pure3d-database.ctwhome.com
 
+      - name: Create 404.html for SPA routing
+        run: cp build/index.html build/404.html
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
