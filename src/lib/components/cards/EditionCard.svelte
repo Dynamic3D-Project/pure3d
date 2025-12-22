@@ -34,7 +34,7 @@
 		{#if edition.hasPeerReview}
 			<div class="absolute top-2 right-2 z-10" title="Peer Reviewed">
 				<img
-					src="/images/peer-reviewed-badge.svg"
+					src="{base}/images/peer-reviewed-badge.svg"
 					alt="Peer Reviewed"
 					class="w-10 h-10 drop-shadow-md"
 				/>

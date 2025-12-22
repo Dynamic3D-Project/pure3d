@@ -91,7 +91,7 @@
 						{#if edition.hasPeerReview}
 							<div class="flex-shrink-0" title="This edition has been peer reviewed">
 								<img
-									src="/images/peer-reviewed-badge.svg"
+									src="{base}/images/peer-reviewed-badge.svg"
 									alt="Peer Reviewed"
 									class="h-16 w-16 md:h-20 md:w-20"
 								/>
@@ -301,7 +301,7 @@
 											<!-- Peer Reviewed Badge -->
 											<div class="flex justify-center">
 												<img
-													src="/images/peer-reviewed-badge.svg"
+													src="{base}/images/peer-reviewed-badge.svg"
 													alt="PURE 3D Peer Reviewed"
 													class="h-24 w-24"
 												/>
