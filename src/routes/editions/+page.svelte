@@ -6,7 +6,8 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const editions = data.editions;
+	// Make reactive so it updates on navigation
+	let editions = $derived(data.editions);
 
 	let searchQuery = $state('');
 	let drawerOpen = $state(false);

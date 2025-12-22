@@ -5,7 +5,9 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const { collection, editions } = data;
+	// Make reactive so they update on navigation
+	let collection = $derived(data.collection);
+	let editions = $derived(data.editions);
 </script>
 
 <svelte:head>

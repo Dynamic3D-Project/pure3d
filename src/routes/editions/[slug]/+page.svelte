@@ -4,9 +4,10 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const edition = data.edition;
-	const viewerHelp = data.viewerHelp;
-	const viewerHelpVideoUrl = data.viewerHelpVideoUrl;
+	// Make these reactive so they update when data changes on navigation
+	let edition = $derived(data.edition);
+	let viewerHelp = $derived(data.viewerHelp);
+	let viewerHelpVideoUrl = $derived(data.viewerHelpVideoUrl);
 
 	// Convert YouTube URL to embed URL
 	function getYouTubeEmbedUrl(url: string): string | null {
