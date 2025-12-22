@@ -2,7 +2,7 @@
 	import { base } from '$app/paths';
 	import { pb } from '$lib/database';
 	import { debounce } from '$lib/utils/debounce';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import {
 		computePosition,
@@ -272,11 +272,11 @@
 		});
 	}
 
-	function navigateToResult(result: SearchResult) {
+	async function navigateToResult(result: SearchResult) {
 		showResults = false;
 		selectedIndex = -1;
 		searchQuery = '';
-		goto(result.url);
+		await goto(result.url, { invalidateAll: true });
 	}
 
 	function handleResultMouseEnter(index: number) {
