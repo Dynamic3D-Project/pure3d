@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
 	import type { PageData } from './$types';
 
@@ -17,8 +18,8 @@
 		<div class="mb-12">
 			<nav class="text-sm breadcrumbs mb-6">
 				<ul>
-					<li><a href="/" data-sveltekit-preload-data="hover" class="link link-hover">Home</a></li>
-					<li><a href="/collections" data-sveltekit-preload-data="hover" class="link link-hover">Collections</a></li>
+					<li><a href="{base}/" data-sveltekit-preload-data="hover" class="link link-hover">Home</a></li>
+					<li><a href="{base}/collections" data-sveltekit-preload-data="hover" class="link link-hover">Collections</a></li>
 					<li class="text-base-content/70">{collection.title}</li>
 				</ul>
 			</nav>
@@ -50,7 +51,7 @@
 
 	<!-- Back Button -->
 	<div class="flex justify-center mt-12">
-		<a href="/collections" data-sveltekit-preload-data="hover" class="btn btn-outline btn-lg">
+		<a href="{base}/collections" data-sveltekit-preload-data="hover" class="btn btn-outline btn-lg">
 			← Back to Collections
 		</a>
 	</div>

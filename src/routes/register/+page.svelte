@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { authStore } from '$lib/database';
 	import { goto } from '$app/navigation';
 
@@ -106,7 +107,7 @@
 
 			<p class="mt-4 text-center text-sm text-base-content/70">
 				Already have an account?
-				<a href="/" class="font-medium text-primary hover:text-primary-focus">
+				<a href="{base}/" class="font-medium text-primary hover:text-primary-focus">
 					Login
 				</a>
 			</p>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import type { Collection } from '$lib/types/collection';
 
 	interface Props {
@@ -9,7 +10,7 @@
 </script>
 
 <a
-	href={`/collections/${collection.slug}`}
+	href={`${base}/collections/${collection.slug}`}
 	data-sveltekit-preload-data="hover"
 	class="group card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden"
 >

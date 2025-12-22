@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import Logo from '$lib/assets/icons/Logo.svelte';
 	import FeedbackButton from '$lib/components/ui/feedback/FeedbackButton.svelte';
 	import Login from '$lib/components/ui/Login/LoginButton.svelte';
@@ -49,7 +50,7 @@
 			</button>
 			<a
 				class="no-drag mr-3 h-auto max-w-[140px] flex-initial shrink-0 select-none sm:max-w-[160px]"
-				href="/"
+				href="{base}/"
 				data-sveltekit-preload-data="hover"
 			>
 				<Logo />
@@ -66,7 +67,7 @@
 					<a
 						class="btn btn-ghost"
 						class:btn-active={isActive(link.path)}
-						href={link.path}
+						href="{base}{link.path}"
 						data-sveltekit-preload-data="hover"
 					>
 						{link.displayTitle}

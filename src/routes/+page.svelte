@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { base } from '$app/paths';
 	import { pb } from '$lib/database';
 	import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
@@ -144,7 +145,7 @@
 			humanities and cultural heritage research.
 		</p>
 		<div class="flex flex-wrap gap-4 justify-center">
-			<a href="/editions" class="btn btn-primary btn-lg">
+			<a href="{base}/editions" class="btn btn-primary btn-lg">
 				Browse Editions
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -161,7 +162,7 @@
 					/>
 				</svg>
 			</a>
-			<a href="/collections" class="btn btn-outline btn-lg">View Collections</a>
+			<a href="{base}/collections" class="btn btn-outline btn-lg">View Collections</a>
 		</div>
 	</section>
 
@@ -263,7 +264,7 @@
 			{/if}
 
 			<div class="text-center mt-8">
-				<a href="/editions" class="btn btn-outline">
+				<a href="{base}/editions" class="btn btn-outline">
 					View All Editions
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -311,7 +312,7 @@
 
 				{#if collections.length > 4}
 					<div class="text-center mt-10">
-						<a href="/collections" class="btn btn-outline">
+						<a href="{base}/collections" class="btn btn-outline">
 							View All Projects
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
@@ -350,7 +351,7 @@
 					to publish your interactive 3D research. Join our growing community of digital humanities
 					scholars.
 				</p>
-				<a href="/about" class="btn btn-primary btn-lg">
+				<a href="{base}/about" class="btn btn-primary btn-lg">
 					Learn More
 					<svg
 						xmlns="http://www.w3.org/2000/svg"

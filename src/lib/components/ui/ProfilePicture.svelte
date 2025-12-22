@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import ctwhomeProfile from '$lib/assets/images/ctwhome-profile.webp';
 	interface Props {
 		subtitle?: string;
@@ -9,7 +10,7 @@
 
 <!-- Profile picture -->
 <a
-	href="/about"
+	href="{base}/about"
 	class="border-base-200 hover:decoration-primary flex items-center gap-3 rounded-lg border p-2 decoration-transparent"
 >
 	<img

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { pb } from '$lib/database/client';
 	import { goto } from '$app/navigation';
@@ -289,7 +290,7 @@
 	<div class="flex min-h-screen items-center justify-center">
 		<div class="text-center">
 			<h1 class="mb-4 text-2xl font-bold">Please log in to view your profile</h1>
-			<a href="/" class="btn btn-primary">Go to Home</a>
+			<a href="{base}/" class="btn btn-primary">Go to Home</a>
 		</div>
 	</div>
 {/if}

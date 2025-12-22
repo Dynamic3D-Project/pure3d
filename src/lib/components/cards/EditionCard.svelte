@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import type { Edition } from '$lib/types/collection';
 
 	interface Props {
@@ -23,7 +24,7 @@
 </script>
 
 <a
-	href={`/editions/${edition.slug}`}
+	href={`${base}/editions/${edition.slug}`}
 	data-sveltekit-preload-data="hover"
 	onmouseenter={prefetchIframe}
 	class="group card bg-base-100 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden"

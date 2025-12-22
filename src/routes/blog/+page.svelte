@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { pb, type Post } from '$lib/database';
 	import { onMount } from 'svelte';
 	import Search from '$lib/components/Search.svelte';
@@ -30,7 +31,7 @@
 				<p class="mt-2 text-base-content/70">Read our latest posts</p>
 			</div>
 			<a
-				href="/"
+				href="{base}/"
 				data-sveltekit-preload-data="hover"
 				class="hover:bg-neutral-focus rounded-lg bg-neutral px-4 py-2 text-sm font-medium text-neutral-content"
 			>
@@ -61,7 +62,7 @@
 				<article
 					class="rounded-lg border border-base-300 bg-base-100 p-6 shadow-sm transition hover:shadow-md"
 				>
-					<a href="/blog/{post.id}" data-sveltekit-preload-data="hover" class="block">
+					<a href="{base}/blog/{post.id}" data-sveltekit-preload-data="hover" class="block">
 						<h2 class="text-2xl font-semibold text-base-content transition hover:text-primary">
 							{post.title}
 						</h2>

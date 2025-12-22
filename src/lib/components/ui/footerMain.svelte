@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import Socialicons from '$components/ui/SocialIcons.svelte';
 
 	interface Props {
@@ -74,7 +75,7 @@
 			<Socialicons />
 			<!-- Version link -->
 			<a
-				href="/changelog"
+				href="{base}/changelog"
 				class="text-xs opacity-50 transition-opacity hover:opacity-70"
 				title="View changelog"
 			>

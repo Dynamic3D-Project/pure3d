@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -68,9 +69,9 @@
 		<!-- Breadcrumbs -->
 		<nav class="breadcrumbs mb-6 text-sm">
 			<ul>
-				<li><a href="/" data-sveltekit-preload-data="hover" class="link link-hover">Home</a></li>
+				<li><a href="{base}/" data-sveltekit-preload-data="hover" class="link link-hover">Home</a></li>
 				<li>
-					<a href="/editions" data-sveltekit-preload-data="hover" class="link link-hover"
+					<a href="{base}/editions" data-sveltekit-preload-data="hover" class="link link-hover"
 						>Editions</a
 					>
 				</li>
@@ -339,7 +340,7 @@
 
 		<!-- Back Button -->
 		<div class="mt-12 flex justify-center">
-			<a href="/editions" data-sveltekit-preload-data="hover" class="btn btn-outline btn-lg">
+			<a href="{base}/editions" data-sveltekit-preload-data="hover" class="btn btn-outline btn-lg">
 				← Back to Editions
 			</a>
 		</div>
