@@ -1,9 +1,16 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { pb } from '$lib/database';
+	import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
 	import CollectionCard from '$lib/components/cards/CollectionCard.svelte';
 	import type { Edition, Collection } from '$lib/types/collection';
+
+	// Helper to get public file URL
+	function getFileUrl(record: any, filename: string): string {
+		const baseUrl = PUBLIC_POCKETBASE_URL || 'http://localhost:7090';
+		return `${baseUrl}/api/files/${record.collectionId}/${record.id}/${filename}`;
+	}
 
 	// Data state
 	let featuredEditions = $state<Edition[]>([]);
@@ -49,13 +56,18 @@
 						? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/voyager`
 						: '';
 
+				// Use thumbnailFile if available, otherwise fall back to thumbnail URL
+				const thumbnail = record.thumbnailFile
+					? getFileUrl(record, record.thumbnailFile)
+					: record.thumbnail || '';
+
 				return {
 					id: record.id,
 					slug: record.id,
 					title: record.dcTitle || record.title,
 					description: record.dcAbstract || '',
 					authors: Array.isArray(record.dcCreator) ? record.dcCreator.join(', ') : '',
-					thumbnail: record.thumbnail,
+					thumbnail,
 					voyagerUrl,
 					usageConditions: '',
 					alternativeVersion: null,
@@ -81,16 +93,23 @@
 			const countMap = Object.fromEntries(editionCounts.map((e) => [e.collectionId, e.count]));
 
 			// Map collections to frontend format
-			const mappedCollections = collectionsResult.items.map((record) => ({
-				id: record.id,
-				slug: record.id,
-				title: record.title,
-				description: record.dcAbstract || '',
-				thumbnail: record.thumbnail,
-				editionIds: [],
-				editionCount: countMap[record.id] || 0,
-				created: new Date().toISOString()
-			}));
+			const mappedCollections = collectionsResult.items.map((record) => {
+				// Use thumbnailFile if available, otherwise fall back to thumbnail URL
+				const thumbnail = record.thumbnailFile
+					? getFileUrl(record, record.thumbnailFile)
+					: record.thumbnail || '';
+
+				return {
+					id: record.id,
+					slug: record.id,
+					title: record.title,
+					description: record.dcAbstract || '',
+					thumbnail,
+					editionIds: [],
+					editionCount: countMap[record.id] || 0,
+					created: new Date().toISOString()
+				};
+			});
 
 			featuredEditions = mappedEditions.slice(0, 8);
 			collections = mappedCollections;

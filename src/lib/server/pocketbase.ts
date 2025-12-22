@@ -1,5 +1,6 @@
 import PocketBase from 'pocketbase';
 import { POCKETBASE_URL } from '$env/static/private';
+import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
 
 /**
  * Create a PocketBase client for server-side use
@@ -11,6 +12,15 @@ export function createPocketBaseClient() {
 	pb.autoCancellation(false);
 
 	return pb;
+}
+
+/**
+ * Get public file URL (for browser access)
+ * Uses PUBLIC_POCKETBASE_URL instead of internal Docker URL
+ */
+export function getPublicFileUrl(record: any, filename: string): string {
+	const baseUrl = PUBLIC_POCKETBASE_URL || 'http://localhost:7090';
+	return `${baseUrl}/api/files/${record.collectionId}/${record.id}/${filename}`;
 }
 
 /**
@@ -119,9 +129,13 @@ export async function getCollections() {
 		return records.map((record) => {
 			const pubNum = record.pubNum || 0;
 
-			// Generate thumbnail URL dynamically
-			const thumbnail =
-				pubNum > 0 ? `https://editions.pure3d.eu/project/${pubNum}/icon.png` : record.thumbnail || '';
+			// Use uploaded thumbnail file if available, otherwise fall back to URL
+			let thumbnail = '';
+			if (record.thumbnailFile) {
+				thumbnail = getPublicFileUrl(record, record.thumbnailFile);
+			} else if (record.thumbnail) {
+				thumbnail = record.thumbnail;
+			}
 
 			return {
 				id: record.id,
@@ -167,8 +181,13 @@ export async function getCollection(id: string) {
 		const record = await pb.collection('collections').getOne(id);
 		const pubNum = record.pubNum || 0;
 
-		const thumbnail =
-			pubNum > 0 ? `https://editions.pure3d.eu/project/${pubNum}/icon.png` : record.thumbnail || '';
+		// Use uploaded thumbnail file if available, otherwise fall back to URL
+		let thumbnail = '';
+		if (record.thumbnailFile) {
+			thumbnail = getPublicFileUrl(record, record.thumbnailFile);
+		} else if (record.thumbnail) {
+			thumbnail = record.thumbnail;
+		}
 
 		return {
 			id: record.id,
@@ -216,11 +235,13 @@ function transformEditionRecord(record: any, collection?: any) {
 			? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/voyager`
 			: '';
 
-	// Generate thumbnail URL dynamically
-	const thumbnail =
-		collectionPubNum > 0
-			? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/icon.png`
-			: record.thumbnail || '';
+	// Use uploaded thumbnail file if available, otherwise fall back to URL
+	let thumbnail = '';
+	if (record.thumbnailFile) {
+		thumbnail = getPublicFileUrl(record, record.thumbnailFile);
+	} else if (record.thumbnail) {
+		thumbnail = record.thumbnail;
+	}
 
 	return {
 		id: record.id,

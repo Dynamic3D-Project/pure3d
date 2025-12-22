@@ -1,116 +1,138 @@
 [
   {
-    "id": "_pb_users_auth_",
     "name": "users",
-    "type": "auth",
-    "system": false,
-    "schema": [
-      {
-        "id": "users_name",
-        "name": "name",
-        "type": "text",
-        "system": false,
-        "required": false,
-        "options": {
-          "min": null,
-          "max": null,
-          "pattern": ""
-        }
-      },
-      {
-        "id": "users_avatar",
-        "name": "avatar",
-        "type": "file",
-        "system": false,
-        "required": false,
-        "options": {
-          "maxSelect": 1,
-          "maxSize": 5242880,
-          "mimeTypes": [
-            "image/jpeg",
-            "image/png",
-            "image/svg+xml",
-            "image/gif",
-            "image/webp"
-          ],
-          "thumbs": null
-        }
-      }
+    "type": "base",
+    "fields": [
+      { "name": "user", "type": "text", "required": true },
+      { "name": "email", "type": "email", "required": true },
+      { "name": "nickname", "type": "text", "required": true },
+      { "name": "role", "type": "select", "required": true, "maxSelect": 1, "values": ["root", "admin", "editor", "viewer"] }
     ],
-    "listRule": "id = @request.auth.id",
-    "viewRule": "id = @request.auth.id",
-    "createRule": "",
-    "updateRule": "id = @request.auth.id",
-    "deleteRule": "id = @request.auth.id",
-    "options": {
-      "allowEmailAuth": true,
-      "allowOAuth2Auth": false,
-      "allowUsernameAuth": false,
-      "exceptEmailDomains": null,
-      "manageRule": null,
-      "minPasswordLength": 8,
-      "onlyEmailDomains": null,
-      "requireEmail": true
-    }
+    "indexes": [
+      "CREATE UNIQUE INDEX idx_users_user ON users (user)",
+      "CREATE INDEX idx_users_email ON users (email)"
+    ]
   },
   {
-    "id": "todos_collection",
-    "name": "todos",
+    "name": "site",
     "type": "base",
-    "system": false,
-    "schema": [
-      {
-        "id": "todo_name",
-        "name": "name",
-        "type": "text",
-        "system": false,
-        "required": true,
-        "options": {
-          "min": 1,
-          "max": 255,
-          "pattern": ""
-        }
-      },
-      {
-        "id": "todo_completed",
-        "name": "completed",
-        "type": "bool",
-        "system": false,
-        "required": false,
-        "options": {}
-      },
-      {
-        "id": "todo_description",
-        "name": "Description",
-        "type": "text",
-        "system": false,
-        "required": false,
-        "options": {
-          "min": null,
-          "max": null,
-          "pattern": ""
-        }
-      },
-      {
-        "id": "todo_user",
-        "name": "user",
-        "type": "relation",
-        "system": false,
-        "required": true,
-        "options": {
-          "collectionId": "_pb_users_auth_",
-          "cascadeDelete": true,
-          "minSelect": null,
-          "maxSelect": 1,
-          "displayFields": ["email"]
-        }
-      }
+    "fields": [
+      { "name": "name", "type": "text", "required": true },
+      { "name": "blog", "type": "url", "required": false },
+      { "name": "lastPublished", "type": "date", "required": false },
+      { "name": "processing", "type": "bool", "required": false },
+      { "name": "featured", "type": "json", "required": false },
+      { "name": "publishedProjectCount", "type": "number", "required": false },
+      { "name": "sweeperStartTm", "type": "date", "required": false },
+      { "name": "dcDateCreated", "type": "date", "required": false },
+      { "name": "dcDateModified", "type": "date", "required": false }
+    ]
+  },
+  {
+    "name": "keywords",
+    "type": "base",
+    "fields": [
+      { "name": "name", "type": "select", "required": true, "maxSelect": 1, "values": ["country", "period", "audience", "subject", "language", "license", "funder"] },
+      { "name": "value", "type": "text", "required": true }
     ],
-    "listRule": "@request.auth.id != \"\" && user.id = @request.auth.id",
-    "viewRule": "@request.auth.id != \"\" && user.id = @request.auth.id",
-    "createRule": "@request.auth.id != \"\" && @request.data.user = @request.auth.id",
-    "updateRule": "@request.auth.id != \"\" && user.id = @request.auth.id",
-    "deleteRule": "@request.auth.id != \"\" && user.id = @request.auth.id",
-    "options": {}
+    "indexes": [
+      "CREATE UNIQUE INDEX idx_keywords_name_value ON keywords (name, value)",
+      "CREATE INDEX idx_keywords_name ON keywords (name)"
+    ]
+  },
+  {
+    "name": "collections",
+    "type": "base",
+    "fields": [
+      { "name": "title", "type": "text", "required": true },
+      { "name": "isVisible", "type": "bool", "required": false },
+      { "name": "lastPublished", "type": "date", "required": false },
+      { "name": "pubNum", "type": "number", "required": false },
+      { "name": "thumbnail", "type": "url", "required": false },
+      { "name": "dcTitle", "type": "text", "required": false },
+      { "name": "dcSubtitle", "type": "text", "required": false },
+      { "name": "dcCreator", "type": "json", "required": false },
+      { "name": "dcContributor", "type": "json", "required": false },
+      { "name": "dcInstitution", "type": "json", "required": false },
+      { "name": "dcAbstract", "type": "editor", "required": false },
+      { "name": "dcDescription", "type": "editor", "required": false },
+      { "name": "dcSubject", "type": "json", "required": false },
+      { "name": "dcCoveragePeriod", "type": "text", "required": false },
+      { "name": "dcCoveragePlace", "type": "text", "required": false },
+      { "name": "dcLanguage", "type": "json", "required": false },
+      { "name": "dcDateCreated", "type": "date", "required": false },
+      { "name": "dcDateModified", "type": "date", "required": false },
+      { "name": "siteId", "type": "relation", "required": false, "maxSelect": 1, "collectionId": "site", "cascadeDelete": false }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_collections_visible ON collections (isVisible)"
+    ],
+    "listRule": "isVisible = true",
+    "viewRule": "isVisible = true"
+  },
+  {
+    "name": "editions",
+    "type": "base",
+    "fields": [
+      { "name": "title", "type": "text", "required": true },
+      { "name": "isPublished", "type": "bool", "required": false },
+      { "name": "pubNum", "type": "number", "required": false },
+      { "name": "thumbnail", "type": "url", "required": false },
+      { "name": "dcTitle", "type": "text", "required": false },
+      { "name": "dcSubtitle", "type": "text", "required": false },
+      { "name": "dcCreator", "type": "json", "required": false },
+      { "name": "dcContributor", "type": "json", "required": false },
+      { "name": "dcInstitution", "type": "json", "required": false },
+      { "name": "dcAbstract", "type": "editor", "required": false },
+      { "name": "dcDescription", "type": "editor", "required": false },
+      { "name": "dcContact", "type": "email", "required": false },
+      { "name": "dcSubject", "type": "json", "required": false },
+      { "name": "dcKeyword", "type": "json", "required": false },
+      { "name": "dcAudience", "type": "json", "required": false },
+      { "name": "dcFunder", "type": "json", "required": false },
+      { "name": "dcSource", "type": "json", "required": false },
+      { "name": "dcProvenance", "type": "editor", "required": false },
+      { "name": "dcCoveragePeriod", "type": "json", "required": false },
+      { "name": "dcCoveragePlace", "type": "text", "required": false },
+      { "name": "dcCoverageCountry", "type": "json", "required": false },
+      { "name": "dcCoverageTemporal", "type": "text", "required": false },
+      { "name": "dcCoverageGeo", "type": "text", "required": false },
+      { "name": "dcLanguage", "type": "json", "required": false },
+      { "name": "dcRightsHolder", "type": "text", "required": false },
+      { "name": "dcRightsLicense", "type": "text", "required": false },
+      { "name": "dcDatePublished", "type": "date", "required": false },
+      { "name": "dcDateUnPublished", "type": "date", "required": false },
+      { "name": "dcDateCreated", "type": "date", "required": false },
+      { "name": "dcDateModified", "type": "date", "required": false },
+      { "name": "authorToolName", "type": "text", "required": false },
+      { "name": "authorToolVersion", "type": "text", "required": false },
+      { "name": "sceneFile", "type": "text", "required": false },
+      { "name": "collection", "type": "relation", "required": false, "maxSelect": 1, "collectionId": "collections", "cascadeDelete": true }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_editions_published ON editions (isPublished)"
+    ],
+    "listRule": "isPublished = true",
+    "viewRule": "isPublished = true"
+  },
+  {
+    "name": "collectionUsers",
+    "type": "base",
+    "fields": [
+      { "name": "user", "type": "text", "required": true },
+      { "name": "role", "type": "select", "required": true, "maxSelect": 1, "values": ["admin", "editor", "viewer"] },
+      { "name": "collection", "type": "relation", "required": false, "maxSelect": 1, "collectionId": "collections", "cascadeDelete": true },
+      { "name": "userId", "type": "relation", "required": false, "maxSelect": 1, "collectionId": "users", "cascadeDelete": true }
+    ]
+  },
+  {
+    "name": "editionUsers",
+    "type": "base",
+    "fields": [
+      { "name": "user", "type": "text", "required": true },
+      { "name": "role", "type": "select", "required": true, "maxSelect": 1, "values": ["admin", "editor", "viewer"] },
+      { "name": "editionId", "type": "relation", "required": false, "maxSelect": 1, "collectionId": "editions", "cascadeDelete": true },
+      { "name": "userId", "type": "relation", "required": false, "maxSelect": 1, "collectionId": "users", "cascadeDelete": true }
+    ]
   }
 ]
