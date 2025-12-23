@@ -1,9 +1,18 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import type { Collection } from '$lib/types/collection';
+
+	interface CollectionCardData {
+		id: string;
+		slug: string;
+		title: string;
+		description: string;
+		thumbnail: string;
+		editionIds?: string[];
+		editionCount?: number;
+	}
 
 	interface Props {
-		collection: Collection;
+		collection: CollectionCardData;
 	}
 
 	let { collection }: Props = $props();

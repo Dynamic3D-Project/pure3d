@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { base } from '$app/paths';
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
 	import FilterSidebar from '$lib/components/filters/FilterSidebar.svelte';
 	import type { PageData } from './$types';
@@ -11,6 +13,12 @@
 
 	let searchQuery = $state('');
 	let drawerOpen = $state(false);
+
+	// Autocomplete state
+	let showSuggestions = $state(false);
+	let selectedIndex = $state(-1);
+	let inputElement: HTMLInputElement | undefined = $state();
+	let suggestionsElement: HTMLUListElement | undefined = $state();
 
 	// Initialize filter state
 	let filters = $state<FilterState>({
@@ -59,6 +67,90 @@
 		return result;
 	});
 
+	// Suggestions for autocomplete (max 6)
+	const suggestions = $derived.by(() => {
+		if (!searchQuery.trim()) return [];
+		return filteredEditions.slice(0, 6);
+	});
+
+	function handleInput() {
+		showSuggestions = searchQuery.trim().length > 0 && suggestions.length > 0;
+		selectedIndex = -1;
+	}
+
+	function handleKeydown(event: KeyboardEvent) {
+		if (!showSuggestions || suggestions.length === 0) {
+			if (event.key === 'Escape') {
+				searchQuery = '';
+				inputElement?.blur();
+			}
+			return;
+		}
+
+		switch (event.key) {
+			case 'ArrowDown':
+				event.preventDefault();
+				selectedIndex = selectedIndex < suggestions.length - 1 ? selectedIndex + 1 : 0;
+				scrollToSelected();
+				break;
+			case 'ArrowUp':
+				event.preventDefault();
+				selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : suggestions.length - 1;
+				scrollToSelected();
+				break;
+			case 'Enter':
+				event.preventDefault();
+				if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
+					navigateToEdition(suggestions[selectedIndex]);
+				}
+				break;
+			case 'Escape':
+				event.preventDefault();
+				showSuggestions = false;
+				selectedIndex = -1;
+				break;
+			case 'Tab':
+				showSuggestions = false;
+				selectedIndex = -1;
+				break;
+		}
+	}
+
+	function scrollToSelected() {
+		requestAnimationFrame(() => {
+			const selected = suggestionsElement?.querySelector(`[data-index="${selectedIndex}"]`) as HTMLElement | null;
+			selected?.scrollIntoView({ block: 'nearest' });
+		});
+	}
+
+	function navigateToEdition(edition: typeof editions[0]) {
+		showSuggestions = false;
+		selectedIndex = -1;
+		searchQuery = '';
+		goto(`${base}/editions/${edition.id}`);
+	}
+
+	function handleFocus() {
+		if (searchQuery.trim() && suggestions.length > 0) {
+			showSuggestions = true;
+		}
+	}
+
+	function handleClickOutside(event: MouseEvent) {
+		const target = event.target as HTMLElement;
+		if (!target.closest('.search-container')) {
+			showSuggestions = false;
+			selectedIndex = -1;
+		}
+	}
+
+	function clearSearch() {
+		searchQuery = '';
+		showSuggestions = false;
+		selectedIndex = -1;
+		inputElement?.focus();
+	}
+
 	function handleFilterChange(newFilters: FilterState) {
 		filters = newFilters;
 	}
@@ -67,6 +159,8 @@
 		drawerOpen = false;
 	}
 </script>
+
+<svelte:window onclick={handleClickOutside} />
 
 <svelte:head>
 	<title>All Editions | Pure 3D</title>
@@ -126,21 +220,14 @@
 					{/if}
 				</label>
 
-				<!-- Search input -->
-				<div class="flex-1">
+				<!-- Search input with autocomplete -->
+				<div class="flex-1 search-container relative">
 					<div class="relative">
-						<input
-							type="text"
-							placeholder="Search editions..."
-							class="input input-bordered w-full pl-10"
-							bind:value={searchQuery}
-						/>
 						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/50"
+							class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-base-content/50"
 							fill="none"
-							viewBox="0 0 24 24"
 							stroke="currentColor"
+							viewBox="0 0 24 24"
 						>
 							<path
 								stroke-linecap="round"
@@ -149,7 +236,87 @@
 								d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
 							/>
 						</svg>
+						<input
+							type="text"
+							bind:this={inputElement}
+							bind:value={searchQuery}
+							oninput={handleInput}
+							onfocus={handleFocus}
+							onkeydown={handleKeydown}
+							placeholder="Search editions..."
+							class="input input-bordered w-full pl-10 pr-10"
+							role="combobox"
+							aria-expanded={showSuggestions}
+							aria-haspopup="listbox"
+							aria-autocomplete="list"
+							aria-controls="edition-suggestions"
+						/>
+						{#if searchQuery}
+							<button
+								type="button"
+								onclick={clearSearch}
+								class="absolute right-3 top-1/2 -translate-y-1/2 btn btn-ghost btn-xs btn-circle"
+								aria-label="Clear search"
+							>
+								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+								</svg>
+							</button>
+						{/if}
 					</div>
+
+					<!-- Autocomplete Suggestions Dropdown -->
+					{#if showSuggestions && suggestions.length > 0}
+						<ul
+							bind:this={suggestionsElement}
+							id="edition-suggestions"
+							class="absolute z-50 w-full mt-1 bg-base-100 rounded-box shadow-xl border border-base-300 max-h-80 overflow-y-auto"
+							role="listbox"
+						>
+							{#each suggestions as suggestion, index (suggestion.id)}
+								{@const isSelected = selectedIndex === index}
+								<li role="option" aria-selected={isSelected}>
+									<button
+										type="button"
+										data-index={index}
+										class="w-full px-4 py-3 cursor-pointer transition-colors flex items-center gap-3 text-left {isSelected ? 'bg-primary text-primary-content' : 'hover:bg-base-200'}"
+										onclick={() => navigateToEdition(suggestion)}
+										onmouseenter={() => (selectedIndex = index)}
+									>
+										{#if suggestion.thumbnail}
+											<img
+												src={suggestion.thumbnail}
+												alt=""
+												class="w-10 h-10 rounded object-cover shrink-0"
+											/>
+										{:else}
+											<div class="w-10 h-10 rounded bg-base-300 flex items-center justify-center shrink-0">
+												<svg class="w-5 h-5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+												</svg>
+											</div>
+										{/if}
+										<div class="min-w-0 flex-1">
+											<div class="font-medium truncate">{suggestion.title}</div>
+											{#if suggestion.authors}
+												<div class="text-sm opacity-60 truncate">{suggestion.authors}</div>
+											{:else if suggestion.description}
+												<div class="text-sm opacity-60 truncate">{suggestion.description.slice(0, 60)}{suggestion.description.length > 60 ? '...' : ''}</div>
+											{/if}
+										</div>
+										{#if suggestion.hasPeerReview}
+											<span class="badge badge-sm {isSelected ? 'badge-primary-content' : 'badge-success'}">Peer reviewed</span>
+										{/if}
+									</button>
+								</li>
+							{/each}
+							<li class="px-3 py-2 text-xs text-base-content/50 border-t border-base-200 flex items-center gap-4">
+								<span><kbd class="kbd kbd-xs">↑</kbd><kbd class="kbd kbd-xs">↓</kbd> navigate</span>
+								<span><kbd class="kbd kbd-xs">Enter</kbd> select</span>
+								<span><kbd class="kbd kbd-xs">Esc</kbd> close</span>
+							</li>
+						</ul>
+					{/if}
 				</div>
 			</div>
 

@@ -8,26 +8,28 @@ function getFileUrl(record: any, filename: string): string {
 }
 
 export const load: PageLoad = async () => {
-	const result = await pb.collection('collections').getList(1, 500, {
-		sort: 'pubNum',
-		filter: 'isVisible = true'
-	});
-
-	// Get edition counts for each collection
-	const editionCounts = await Promise.all(
-		result.items.map(async (collection) => {
-			try {
-				const count = await pb.collection('editions').getList(1, 1, {
-					filter: `collection = "${collection.id}" && isPublished = true`
-				});
-				return { collectionId: collection.id, count: count.totalItems };
-			} catch {
-				return { collectionId: collection.id, count: 0 };
-			}
+	// Fetch collections and all published editions in parallel
+	const [collectionsResult, editionsResult] = await Promise.all([
+		pb.collection('collections').getList(1, 500, {
+			sort: 'pubNum',
+			filter: 'isVisible = true'
+		}),
+		pb.collection('editions').getList(1, 500, {
+			filter: 'isPublished = true',
+			fields: 'id,collection'
 		})
-	);
+	]);
 
-	const countMap = Object.fromEntries(editionCounts.map((e) => [e.collectionId, e.count]));
+	// Count editions per collection
+	const countMap: Record<string, number> = {};
+	for (const edition of editionsResult.items) {
+		const collectionId = edition.collection;
+		if (collectionId) {
+			countMap[collectionId] = (countMap[collectionId] || 0) + 1;
+		}
+	}
+
+	const result = collectionsResult;
 
 	const collections = result.items.map((record) => {
 		const thumbnail = record.thumbnailFile
