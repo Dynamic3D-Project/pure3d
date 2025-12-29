@@ -1,23 +1,23 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
-	import { pb } from '$lib/database';
-	import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
 	import CollectionCard from '$lib/components/cards/CollectionCard.svelte';
-	import type { Edition, Collection } from '$lib/types/collection';
+	import {
+		editionsStore,
+		collectionsStore,
+		fetchAllData,
+		isStale
+	} from '$lib/stores/data.store';
 
-	// Helper to get public file URL
-	function getFileUrl(record: any, filename: string): string {
-		const baseUrl = PUBLIC_POCKETBASE_URL || 'http://localhost:7090';
-		return `${baseUrl}/api/files/${record.collectionId}/${record.id}/${filename}`;
-	}
+	// Reactive data from persisted stores - shows cached data immediately
+	let featuredEditions = $derived($editionsStore.items.slice(0, 8));
+	let collections = $derived($collectionsStore.items);
+	let totalEditions = $derived($editionsStore.total);
+	let totalCollections = $derived($collectionsStore.total);
 
-	// Data state
-	let featuredEditions = $state<Edition[]>([]);
-	let collections = $state<(Collection & { editionCount?: number })[]>([]);
-	let totalEditions = $state(0);
-	let totalCollections = $state(0);
+	// Only show loading if we have no cached data
+	let hasCachedData = $derived($editionsStore.items.length > 0 || $collectionsStore.items.length > 0);
 	let isLoading = $state(true);
 
 	/**
@@ -76,94 +76,29 @@
 	}
 
 	onMount(async () => {
+		// If we have cached data and it's not stale, skip the loading spinner
+		const editionsStale = isStale($editionsStore.lastFetched);
+		const collectionsStale = isStale($collectionsStore.lastFetched);
+
+		if (hasCachedData && !editionsStale && !collectionsStale) {
+			isLoading = false;
+			// Still preload images for other pages
+			const firstFoldThumbnails = [
+				...$editionsStore.items.slice(0, 15).map((e) => e.thumbnail),
+				...$collectionsStore.items.slice(0, 15).map((c) => c.thumbnail)
+			];
+			preloadImages(firstFoldThumbnails);
+			return;
+		}
+
+		// Fetch fresh data (stores will update automatically)
 		try {
-			// Fetch editions
-			const editionsResult = await pb.collection('editions').getList(1, 500, {
-				filter: 'isPublished = true',
-				expand: 'collection'
-			});
-
-			// Fetch collections
-			const collectionsResult = await pb.collection('collections').getList(1, 500, {
-				sort: 'pubNum',
-				filter: 'isVisible = true'
-			});
-
-			// Map editions to frontend format
-			const mappedEditions = editionsResult.items.map((record) => {
-				const collection = record.expand?.collection;
-				const collectionPubNum = collection?.pubNum || 0;
-				const editionPubNum = record.pubNum || 1;
-
-				const voyagerUrl =
-					collectionPubNum > 0
-						? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/voyager`
-						: '';
-
-				// Use thumbnailFile if available, otherwise fall back to thumbnail URL
-				const thumbnail = record.thumbnailFile
-					? getFileUrl(record, record.thumbnailFile)
-					: record.thumbnail || '';
-
-				return {
-					id: record.id,
-					slug: record.id,
-					title: record.dcTitle || record.title,
-					description: record.dcAbstract || '',
-					authors: Array.isArray(record.dcCreator) ? record.dcCreator.join(', ') : '',
-					thumbnail,
-					voyagerUrl,
-					usageConditions: '',
-					alternativeVersion: null,
-					tags: Array.isArray(record.dcKeyword) ? record.dcKeyword : [],
-					created: record.created
-				} as Edition;
-			});
-
-			// Get edition counts for each collection
-			const editionCounts = await Promise.all(
-				collectionsResult.items.map(async (collection) => {
-					try {
-						const count = await pb.collection('editions').getList(1, 1, {
-							filter: `collection = "${collection.id}" && isPublished = true`
-						});
-						return { collectionId: collection.id, count: count.totalItems };
-					} catch {
-						return { collectionId: collection.id, count: 0 };
-					}
-				})
-			);
-
-			const countMap = Object.fromEntries(editionCounts.map((e) => [e.collectionId, e.count]));
-
-			// Map collections to frontend format
-			const mappedCollections = collectionsResult.items.map((record) => {
-				// Use thumbnailFile if available, otherwise fall back to thumbnail URL
-				const thumbnail = record.thumbnailFile
-					? getFileUrl(record, record.thumbnailFile)
-					: record.thumbnail || '';
-
-				return {
-					id: record.id,
-					slug: record.id,
-					title: record.title,
-					description: record.dcAbstract || '',
-					thumbnail,
-					editionIds: [],
-					editionCount: countMap[record.id] || 0,
-					created: new Date().toISOString()
-				};
-			});
-
-			featuredEditions = mappedEditions.slice(0, 8);
-			collections = mappedCollections;
-			totalEditions = editionsResult.totalItems;
-			totalCollections = collectionsResult.totalItems;
+			const { editions, collections: cols } = await fetchAllData();
 
 			// Preload first fold of thumbnails for collections/editions pages (~30 total)
 			const firstFoldThumbnails = [
-				...mappedEditions.slice(0, 15).map((e) => e.thumbnail),
-				...mappedCollections.slice(0, 15).map((c) => c.thumbnail)
+				...editions.slice(0, 15).map((e) => e.thumbnail),
+				...cols.slice(0, 15).map((c) => c.thumbnail)
 			];
 			preloadImages(firstFoldThumbnails);
 		} catch (error) {
@@ -221,7 +156,7 @@
 		<div class="container mx-auto px-4">
 			<div class="flex flex-wrap justify-center gap-8 md:gap-16">
 				<div class="text-center">
-					{#if isLoading}
+					{#if isLoading && !hasCachedData}
 						<div class="loading loading-spinner loading-md text-primary"></div>
 					{:else}
 						<div class="text-4xl font-bold text-primary">{totalEditions}</div>
@@ -229,7 +164,7 @@
 					<div class="text-sm text-base-content/70 uppercase tracking-wide">3D Editions</div>
 				</div>
 				<div class="text-center">
-					{#if isLoading}
+					{#if isLoading && !hasCachedData}
 						<div class="loading loading-spinner loading-md text-primary"></div>
 					{:else}
 						<div class="text-4xl font-bold text-primary">{totalCollections}</div>
@@ -289,7 +224,7 @@
 				</div>
 			</div>
 
-			{#if isLoading}
+			{#if isLoading && !hasCachedData}
 				<div class="flex gap-4 overflow-hidden">
 					{#each Array(4) as _}
 						<div class="flex-none w-64 h-80 skeleton rounded-xl"></div>
@@ -345,7 +280,7 @@
 				</p>
 			</div>
 
-			{#if isLoading}
+			{#if isLoading && !hasCachedData}
 				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-6xl mx-auto">
 					{#each Array(4) as _}
 						<div class="h-96 skeleton rounded-xl"></div>

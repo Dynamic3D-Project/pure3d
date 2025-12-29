@@ -1,15 +1,36 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
 	import FilterSidebar from '$lib/components/filters/FilterSidebar.svelte';
-	import type { PageData } from './$types';
 	import type { FilterState } from '$lib/types/collection';
+	import {
+		editionsStore,
+		fetchEditions,
+		isStale
+	} from '$lib/stores/data.store';
 
-	let { data }: { data: PageData } = $props();
+	// Reactive data from persisted store
+	let editions = $derived($editionsStore.items);
+	let hasCachedData = $derived($editionsStore.items.length > 0);
+	let isLoading = $state(true);
 
-	// Make reactive so it updates on navigation
-	let editions = $derived(data.editions);
+	onMount(async () => {
+		// If we have fresh cached data, skip loading
+		if (hasCachedData && !isStale($editionsStore.lastFetched)) {
+			isLoading = false;
+			return;
+		}
+
+		try {
+			await fetchEditions();
+		} catch (error) {
+			console.error('Error loading editions:', error);
+		} finally {
+			isLoading = false;
+		}
+	});
 
 	let searchQuery = $state('');
 	let drawerOpen = $state(false);
@@ -321,12 +342,22 @@
 			</div>
 
 			<!-- Results count -->
-			<div class="text-sm text-base-content/70 mb-4">
-				Showing {filteredEditions.length} of {editions.length} editions
-			</div>
+			{#if !isLoading || hasCachedData}
+				<div class="text-sm text-base-content/70 mb-4">
+					Showing {filteredEditions.length} of {editions.length} editions
+				</div>
+			{/if}
 
 			<!-- Editions Grid -->
-			{#if filteredEditions.length > 0}
+			{#if isLoading && !hasCachedData}
+				<div
+					class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-4"
+				>
+					{#each Array(15) as _}
+						<div class="h-64 skeleton rounded-xl"></div>
+					{/each}
+				</div>
+			{:else if filteredEditions.length > 0}
 				<div
 					class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-4"
 				>

@@ -53,6 +53,7 @@
 		"bson": "^6.10.4",
 		"daisyui": "^5.3.7",
 		"pocketbase": "^0.26.3",
-		"svelte-french-toast": "^1.2.0"
+		"svelte-french-toast": "^1.2.0",
+		"svelte-persisted-store": "^0.12.0"
 	}
 }

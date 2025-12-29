@@ -1,13 +1,34 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import CollectionCard from '$lib/components/cards/CollectionCard.svelte';
-	import type { PageData } from './$types';
+	import {
+		collectionsStore,
+		fetchCollections,
+		isStale
+	} from '$lib/stores/data.store';
 
-	let { data }: { data: PageData } = $props();
+	// Reactive data from persisted store
+	let collections = $derived($collectionsStore.items);
+	let hasCachedData = $derived($collectionsStore.items.length > 0);
+	let isLoading = $state(true);
 
-	// Make reactive so it updates on navigation
-	let collections = $derived(data.collections);
+	onMount(async () => {
+		// If we have fresh cached data, skip loading
+		if (hasCachedData && !isStale($collectionsStore.lastFetched)) {
+			isLoading = false;
+			return;
+		}
+
+		try {
+			await fetchCollections();
+		} catch (error) {
+			console.error('Error loading collections:', error);
+		} finally {
+			isLoading = false;
+		}
+	});
 
 	// Search state
 	let searchQuery = $state('');
@@ -238,13 +259,23 @@
 	</div>
 
 	<!-- Masonry Grid -->
-	<div class="masonry-grid">
-		{#each filteredCollections as collection (collection.id)}
-			<div class="masonry-item">
-				<CollectionCard {collection} />
-			</div>
-		{/each}
-	</div>
+	{#if isLoading && !hasCachedData}
+		<div class="masonry-grid">
+			{#each Array(8) as _}
+				<div class="masonry-item">
+					<div class="h-64 skeleton rounded-xl"></div>
+				</div>
+			{/each}
+		</div>
+	{:else}
+		<div class="masonry-grid">
+			{#each filteredCollections as collection (collection.id)}
+				<div class="masonry-item">
+					<CollectionCard {collection} />
+				</div>
+			{/each}
+		</div>
+	{/if}
 
 	<!-- Empty state -->
 	{#if filteredCollections.length === 0 && searchQuery.trim()}
