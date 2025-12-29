@@ -13,6 +13,8 @@
 		autoUpdate
 	} from '@floating-ui/dom';
 
+	import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
+
 	type SearchResultType = 'edition' | 'collection';
 
 	interface SearchResult {
@@ -20,7 +22,14 @@
 		id: string;
 		title: string;
 		subtitle?: string;
+		thumbnail?: string;
 		url: string;
+	}
+
+	// Helper to construct file URLs from Pocketbase records
+	function getFileUrl(collectionId: string, recordId: string, filename: string): string {
+		const baseUrl = PUBLIC_POCKETBASE_URL || 'http://localhost:7090';
+		return `${baseUrl}/api/files/${collectionId}/${recordId}/${filename}`;
 	}
 
 	let searchQuery = $state('');
@@ -106,23 +115,37 @@
 			const collections = { items: filteredCollections.slice(0, 5) };
 
 			// Build combined results - use actual PocketBase field names
-			const editionResults: SearchResult[] = editions.items.map((edition: any) => ({
-				type: 'edition' as const,
-				id: edition.id,
-				title: edition.dcTitle || edition.title || 'Untitled',
-				subtitle:
-					(Array.isArray(edition.dcCreator) ? edition.dcCreator.join(', ') : '') ||
-					edition.dcAbstract?.slice(0, 80),
-				url: `${base}/editions/${edition.id}`
-			}));
+			const editionResults: SearchResult[] = editions.items.map((edition: any) => {
+				const thumbnail = edition.thumbnailFile
+					? getFileUrl('editions', edition.id, edition.thumbnailFile)
+					: edition.thumbnail || '';
 
-			const collectionResults: SearchResult[] = collections.items.map((collection: any) => ({
-				type: 'collection' as const,
-				id: collection.id,
-				title: collection.dcTitle || collection.title || 'Untitled',
-				subtitle: collection.dcAbstract?.slice(0, 80),
-				url: `${base}/collections/${collection.id}`
-			}));
+				return {
+					type: 'edition' as const,
+					id: edition.id,
+					title: edition.dcTitle || edition.title || 'Untitled',
+					subtitle:
+						(Array.isArray(edition.dcCreator) ? edition.dcCreator.join(', ') : '') ||
+						edition.dcAbstract?.slice(0, 80),
+					thumbnail,
+					url: `${base}/editions/${edition.id}`
+				};
+			});
+
+			const collectionResults: SearchResult[] = collections.items.map((collection: any) => {
+				const thumbnail = collection.thumbnailFile
+					? getFileUrl('collections', collection.id, collection.thumbnailFile)
+					: collection.thumbnail || '';
+
+				return {
+					type: 'collection' as const,
+					id: collection.id,
+					title: collection.dcTitle || collection.title || 'Untitled',
+					subtitle: collection.dcAbstract?.slice(0, 80),
+					thumbnail,
+					url: `${base}/collections/${collection.id}`
+				};
+			});
 
 			// Prioritize editions, then collections
 			results = [...editionResults, ...collectionResults];
@@ -401,7 +424,7 @@
 								<button
 									type="button"
 									data-result-index={item.globalIndex}
-									class="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-base-200 transition-colors"
+									class="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-base-200 transition-colors"
 									class:bg-primary={isSelected}
 									class:text-primary-content={isSelected}
 									onclick={() => navigateToResult(item)}
@@ -409,23 +432,33 @@
 									role="option"
 									aria-selected={isSelected}
 								>
-									<svg
-										class="mt-0.5 h-4 w-4 shrink-0 {isSelected ? 'text-primary-content' : getTypeColor(item.type)}"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d={getTypeIcon(item.type)}
+									{#if item.thumbnail}
+										<img
+											src={item.thumbnail}
+											alt=""
+											class="w-10 h-10 rounded object-cover shrink-0"
 										/>
-									</svg>
+									{:else}
+										<div class="w-10 h-10 rounded bg-base-300 flex items-center justify-center shrink-0">
+											<svg
+												class="w-5 h-5 opacity-50 {isSelected ? 'text-primary-content' : getTypeColor(item.type)}"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d={getTypeIcon(item.type)}
+												/>
+											</svg>
+										</div>
+									{/if}
 									<div class="min-w-0 flex-1 overflow-hidden">
-										<div class="font-medium leading-tight">{item.title}</div>
+										<div class="font-medium leading-tight truncate">{item.title}</div>
 										{#if item.subtitle}
-											<div class="text-xs opacity-60 leading-tight mt-0.5">{item.subtitle}</div>
+											<div class="text-xs opacity-60 leading-tight mt-0.5 truncate">{item.subtitle}</div>
 										{/if}
 									</div>
 								</button>
