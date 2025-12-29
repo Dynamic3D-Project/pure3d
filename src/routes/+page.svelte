@@ -20,6 +20,49 @@
 	let totalCollections = $state(0);
 	let isLoading = $state(true);
 
+	/**
+	 * Preloads images for the /collections and /editions pages during browser idle time.
+	 *
+	 * WHY: When users navigate from the home page to collections/editions, images would
+	 * normally load on demand, causing a visible "pop-in" effect. By preloading the first
+	 * fold of thumbnails (~30 images) while the user is viewing the home page, we ensure
+	 * instant image display on navigation, creating a smoother browsing experience.
+	 *
+	 * HOW: Uses requestIdleCallback to load images only when the browser is idle, avoiding
+	 * any performance impact on the current page. Images are loaded sequentially (one at a
+	 * time) to avoid competing with user-initiated requests. Once loaded, images are cached
+	 * by the browser and served instantly when the user navigates.
+	 *
+	 * LIMITS: Only preloads ~30 images (first fold) to balance UX improvement vs bandwidth
+	 * cost (~1.5-3MB). Users on slow connections won't notice any slowdown since loading
+	 * happens during idle time with low priority.
+	 */
+	function preloadImages(urls: string[]) {
+		const validUrls = urls.filter(Boolean);
+		if (!validUrls.length) return;
+
+		const loadNext = (index: number) => {
+			if (index >= validUrls.length) return;
+
+			const img = new Image();
+			img.onload = img.onerror = () => {
+				if ('requestIdleCallback' in window) {
+					requestIdleCallback(() => loadNext(index + 1), { timeout: 1000 });
+				} else {
+					setTimeout(() => loadNext(index + 1), 50);
+				}
+			};
+			img.src = validUrls[index];
+		};
+
+		// Start preloading after initial render completes
+		if ('requestIdleCallback' in window) {
+			requestIdleCallback(() => loadNext(0), { timeout: 2000 });
+		} else {
+			setTimeout(() => loadNext(0), 500);
+		}
+	}
+
 	// Carousel state
 	let carouselContainer: HTMLDivElement | undefined = $state();
 
@@ -116,6 +159,13 @@
 			collections = mappedCollections;
 			totalEditions = editionsResult.totalItems;
 			totalCollections = collectionsResult.totalItems;
+
+			// Preload first fold of thumbnails for collections/editions pages (~30 total)
+			const firstFoldThumbnails = [
+				...mappedEditions.slice(0, 15).map((e) => e.thumbnail),
+				...mappedCollections.slice(0, 15).map((c) => c.thumbnail)
+			];
+			preloadImages(firstFoldThumbnails);
 		} catch (error) {
 			console.error('Error loading data:', error);
 		} finally {
