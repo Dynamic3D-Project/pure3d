@@ -69,22 +69,31 @@ export function getCollectionThumbnailUrl(collectionPubNum: number): string {
 /**
  * Default Voyager version to use when not specified
  */
-export const DEFAULT_VOYAGER_VERSION = '0.56.2';
+export const DEFAULT_VOYAGER_VERSION = '0.57.1';
 
 /**
- * List of available Voyager versions in static/voyager/
+ * List of available Voyager versions in static/voyager/ and R2
+ * Note: All scene files use the 'derivatives' schema feature which requires
+ * Voyager 0.46.1+ to load correctly. Older versions will fail with schema validation errors.
  */
 export const VOYAGER_VERSIONS = [
 	'0.29.1',
-	'0.30.0',
-	'0.31.0',
-	'0.46.0',
-	'0.47.0',
-	'0.49.0',
-	'0.50.0',
+	'0.35.1',
+	'0.36.0',
+	'0.38.0',
+	'0.41.0',
+	'0.43.0',
+	'0.46.1',
 	'0.51.0',
-	'0.54.0',
-	'0.56.2'
+	'0.56.1',
+	'0.56.2',
+	'0.57.1'
 ] as const;
+
+/**
+ * Minimum Voyager version that supports the 'derivatives' schema feature
+ * Scene files created with newer Voyager versions include this feature
+ */
+export const MIN_DERIVATIVES_VERSION = '0.46.1';
 
 export type VoyagerVersion = (typeof VOYAGER_VERSIONS)[number];

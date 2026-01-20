@@ -137,6 +137,13 @@
 					</div>
 				</div>
 
+				<!-- Voyager version indicator -->
+				{#if edition.voyagerVersion}
+					<p class="text-center text-xs text-base-content/40 mt-1">
+						Voyager v{edition.voyagerVersion}
+					</p>
+				{/if}
+
 				<!-- Toolbar -->
 				<div class="flex justify-center gap-2">
 					<button class="btn btn-outline btn-sm">Tools</button>

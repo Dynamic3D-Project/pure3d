@@ -6,12 +6,40 @@ import {
 	getEditionRoot,
 	getEditionThumbnailUrl,
 	getVoyagerResourceRoot,
-	DEFAULT_VOYAGER_VERSION
+	DEFAULT_VOYAGER_VERSION,
+	MIN_DERIVATIVES_VERSION
 } from '$lib/utils/asset-urls';
 
 function getFileUrl(record: any, filename: string): string {
 	const baseUrl = PUBLIC_POCKETBASE_URL || 'http://localhost:8090';
 	return `${baseUrl}/api/files/${record.collectionId}/${record.id}/${filename}`;
+}
+
+/**
+ * Compare semver versions (simple comparison for our use case)
+ */
+function compareVersions(a: string, b: string): number {
+	const partsA = a.split('.').map(Number);
+	const partsB = b.split('.').map(Number);
+	for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+		const numA = partsA[i] || 0;
+		const numB = partsB[i] || 0;
+		if (numA !== numB) return numA - numB;
+	}
+	return 0;
+}
+
+/**
+ * Get effective Voyager version, upgrading old versions that don't support
+ * the 'derivatives' schema feature to the minimum compatible version
+ */
+function getEffectiveVoyagerVersion(requestedVersion: string | null): string {
+	if (!requestedVersion) return DEFAULT_VOYAGER_VERSION;
+	// If requested version is older than minimum derivatives support, upgrade it
+	if (compareVersions(requestedVersion, MIN_DERIVATIVES_VERSION) < 0) {
+		return MIN_DERIVATIVES_VERSION;
+	}
+	return requestedVersion;
 }
 
 export const load: PageLoad = async ({ params }) => {
@@ -26,8 +54,8 @@ export const load: PageLoad = async ({ params }) => {
 		const collectionPubNum = collection?.pubNum || 0;
 		const editionPubNum = record.pubNum || 1;
 
-		// Voyager configuration
-		const voyagerVersion = record.settingsAuthorToolVersion || DEFAULT_VOYAGER_VERSION;
+		// Voyager configuration - auto-upgrade old versions that don't support derivatives schema
+		const voyagerVersion = getEffectiveVoyagerVersion(record.settingsAuthorToolVersion);
 		const sceneFile = record.settingsSceneFile || 'scene.svx.json';
 		const voyagerRoot = collectionPubNum > 0 ? getEditionRoot(collectionPubNum, editionPubNum) : '';
 		const voyagerResourceRoot = getVoyagerResourceRoot(voyagerVersion);
