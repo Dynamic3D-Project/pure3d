@@ -688,7 +688,7 @@
 			</div>
 		{:else}
 			<!-- Direct Mode without Controls Panel -->
-			<div class="relative w-full" style="padding-top: 75%; background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);">
+			<div class="voyager-wrapper relative w-full" style="padding-top: 75%; background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);">
 				{#if isScriptLoaded}
 					<voyager-explorer
 						bind:this={voyagerElement}
@@ -730,6 +730,21 @@
 		display: block;
 		width: 100%;
 		height: 100%;
+	}
+
+	/* Contain Voyager's z-index stacking context so it doesn't overlap the header */
+	.voyager-container,
+	.voyager-wrapper {
+		position: relative;
+		z-index: 1;
+		isolation: isolate;
+	}
+
+	/* Force all Voyager overlays to stay within the viewer bounds */
+	:global(voyager-explorer .sv-chrome-view),
+	:global(voyager-explorer .sv-main-view),
+	:global(voyager-explorer .ff-viewport-overlay) {
+		z-index: auto !important;
 	}
 
 	/* Hide Voyager's built-in notification system - we use svelte-french-toast instead */
