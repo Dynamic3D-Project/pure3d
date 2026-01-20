@@ -28,3 +28,4 @@ src/lib/paraglide
 # PocketBase
 pocketbase/pb_data
 data
+static/project
