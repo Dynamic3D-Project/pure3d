@@ -6,14 +6,14 @@
  * - Production: Set PUBLIC_ASSET_BASE_URL to R2/CDN URL (e.g., https://assets.pure3d.eu)
  */
 
-import { PUBLIC_ASSET_BASE_URL } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 
 /**
  * Returns the base URL for assets.
  * Empty string means local (relative paths), otherwise R2/CDN URL.
  */
 export function getAssetBaseUrl(): string {
-	return PUBLIC_ASSET_BASE_URL || '';
+	return env.PUBLIC_ASSET_BASE_URL || '';
 }
 
 /**
