@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import type { PageData } from './$types';
+	import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -27,17 +28,11 @@
 	const embedVideoUrl = $derived(getYouTubeEmbedUrl(viewerHelpVideoUrl || ''));
 
 	let activeTab = $state<'description' | 'metadata' | 'peer-review' | 'printables'>('description');
-	let iframeElement: HTMLIFrameElement | undefined = $state();
 	let isSidebarCollapsed = $state(false);
 	let helpModalOpen = $state(false);
 
-	// Watch for URL changes and update iframe src
-	$effect(() => {
-		const voyagerUrl = edition.voyagerUrl;
-		if (iframeElement && voyagerUrl && iframeElement.src !== voyagerUrl) {
-			iframeElement.src = voyagerUrl;
-		}
-	});
+	// Determine if we have local assets available for direct mode
+	const useDirectMode = $derived(!!edition.voyagerRoot);
 
 	function toggleSidebar() {
 		isSidebarCollapsed = !isSidebarCollapsed;
@@ -103,48 +98,42 @@
 
 				<!-- Voyager 3D Viewer -->
 				<div class="card overflow-hidden bg-base-200 shadow-xl">
-					<div class="card-body p-0">
-						<div
-							class="relative w-full"
-							style="padding-top: 75%; background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);"
-						>
-							<!-- Iframe with eager loading - persists across navigation -->
-							<iframe
-								bind:this={iframeElement}
-								name="Smithsonian Voyager"
-								src={edition.voyagerUrl}
-								title={edition.title}
-								class="absolute top-0 left-0 h-full w-full border-0"
-								loading="eager"
-								allow="xr; xr-spatial-tracking; fullscreen"
-							></iframe>
+					<div class="card-body p-0 relative">
+						<VoyagerViewer
+							url={useDirectMode ? edition.voyagerRoot : edition.voyagerUrl}
+							document={edition.sceneFile}
+							title={edition.title}
+							direct={useDirectMode}
+							voyagerVersion={edition.voyagerVersion}
+							resourceRoot={edition.voyagerResourceRoot}
+							uiMode="all"
+						/>
 
-							<!-- Help info button - top right corner -->
-							{#if viewerHelp || viewerHelpVideoUrl}
-								<button
-									type="button"
-									class="btn absolute top-3 right-3 btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
-									onclick={() => (helpModalOpen = true)}
-									aria-label="How to use the 3D viewer"
-									title="How to use the 3D viewer"
+						<!-- Help info button - top right corner -->
+						{#if viewerHelp || viewerHelpVideoUrl}
+							<button
+								type="button"
+								class="btn absolute top-3 right-3 btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100 z-10"
+								onclick={() => (helpModalOpen = true)}
+								aria-label="How to use the 3D viewer"
+								title="How to use the 3D viewer"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke-width="2"
+									stroke="currentColor"
+									class="h-5 w-5"
 								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke-width="2"
-										stroke="currentColor"
-										class="h-5 w-5"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"
-										/>
-									</svg>
-								</button>
-							{/if}
-						</div>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"
+									/>
+								</svg>
+							</button>
+						{/if}
 					</div>
 				</div>
 

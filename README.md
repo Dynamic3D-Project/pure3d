@@ -51,6 +51,51 @@ This starts:
 Visit `http://localhost:8090/_/` to create your admin account, then import the database schema from
 `pocketbase/pb_schema/collections.json`
 
+## 3D Edition Assets
+
+The platform serves 3D content from static assets. These large files (~9 GB) are git-ignored.
+
+### Directory Structure
+
+```
+static/
+├── project/{pubNum}/                    # Per-project data
+│   ├── icon.png                         # Collection thumbnail
+│   └── edition/{pubNum}/                # Per-edition data
+│       ├── scene.svx.json               # Voyager scene file
+│       ├── *.glb                        # 3D models
+│       ├── icon.png                     # Edition thumbnail
+│       └── articles/                    # HTML content
+└── voyager/{version}/                   # Voyager viewer versions
+    ├── js/voyager-explorer.min.js
+    ├── fonts/, css/, images/
+    └── language/
+```
+
+### Local Development
+
+Copy your 3D edition data to `static/project/` and Voyager builds to `static/voyager/`.
+Assets are served at `/project/...` and `/voyager/...` routes in dev mode.
+
+### Image Optimization (Optional)
+
+For better performance, optimize thumbnails to AVIF/WebP formats:
+
+```sh
+bun add sharp  # Install dependency
+bun scripts/optimize-images.ts  # Convert PNG → AVIF/WebP
+```
+
+### Production Deployment
+
+For production, host assets on Cloudflare R2 or another CDN and set:
+
+```env
+PUBLIC_ASSET_BASE_URL=https://assets.pure3d.eu
+```
+
+When empty, assets are served from local `static/` directory.
+
 # Features
 
 ### Pure3D Frontend

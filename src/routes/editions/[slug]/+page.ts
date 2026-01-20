@@ -2,6 +2,12 @@ import { pb } from '$lib/database/client';
 import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
 import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
+import {
+	getEditionRoot,
+	getEditionThumbnailUrl,
+	getVoyagerResourceRoot,
+	DEFAULT_VOYAGER_VERSION
+} from '$lib/utils/asset-urls';
 
 function getFileUrl(record: any, filename: string): string {
 	const baseUrl = PUBLIC_POCKETBASE_URL || 'http://localhost:8090';
@@ -20,14 +26,22 @@ export const load: PageLoad = async ({ params }) => {
 		const collectionPubNum = collection?.pubNum || 0;
 		const editionPubNum = record.pubNum || 1;
 
+		// Voyager configuration
+		const voyagerVersion = record.settingsAuthorToolVersion || DEFAULT_VOYAGER_VERSION;
+		const sceneFile = record.settingsSceneFile || 'scene.svx.json';
+		const voyagerRoot = collectionPubNum > 0 ? getEditionRoot(collectionPubNum, editionPubNum) : '';
+		const voyagerResourceRoot = getVoyagerResourceRoot(voyagerVersion);
+
+		// Legacy iframe URL (kept for backward compatibility)
 		const voyagerUrl =
 			collectionPubNum > 0
 				? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/voyager`
 				: '';
 
+		// Thumbnail priority: PocketBase file > legacy URL > local static asset
 		const thumbnail = record.thumbnailFile
 			? getFileUrl(record, record.thumbnailFile)
-			: record.thumbnail || '';
+			: record.thumbnail || (collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, editionPubNum) : '');
 
 		const edition = {
 			id: record.id,
@@ -37,6 +51,11 @@ export const load: PageLoad = async ({ params }) => {
 			authors: Array.isArray(record.dcCreator) ? record.dcCreator.join(', ') : '',
 			thumbnail,
 			voyagerUrl,
+			// Voyager direct mode configuration
+			voyagerRoot,
+			voyagerResourceRoot,
+			voyagerVersion,
+			sceneFile,
 			usageConditions: record.dcRightsLicense || 'CC BY-NC 4.0',
 			alternativeVersion: null,
 			tags: Array.isArray(record.dcKeyword) ? record.dcKeyword : [],

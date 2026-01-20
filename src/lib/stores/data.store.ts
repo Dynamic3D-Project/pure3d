@@ -15,6 +15,13 @@ import { persisted } from 'svelte-persisted-store';
 import { pb } from '$lib/database';
 import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
 import type { Edition, Collection } from '$lib/types/collection';
+import {
+	getEditionThumbnailUrl,
+	getCollectionThumbnailUrl,
+	getEditionRoot,
+	getVoyagerResourceRoot,
+	DEFAULT_VOYAGER_VERSION
+} from '$lib/utils/asset-urls';
 
 // Helper to construct file URLs from Pocketbase records
 function getFileUrl(record: { collectionId: string; id: string }, filename: string): string {
@@ -64,14 +71,16 @@ export async function fetchEditions(): Promise<Edition[]> {
 		const collectionPubNum = collection?.pubNum || 0;
 		const editionPubNum = record.pubNum || 1;
 
+		// Build voyager URL - use local assets when pubNum is available
 		const voyagerUrl =
 			collectionPubNum > 0
-				? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/voyager`
+				? getEditionRoot(collectionPubNum, editionPubNum)
 				: '';
 
+		// Thumbnail priority: PocketBase file > legacy URL > local static asset
 		const thumbnail = record.thumbnailFile
 			? getFileUrl(record, record.thumbnailFile)
-			: record.thumbnail || '';
+			: record.thumbnail || (collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, editionPubNum) : '');
 
 		return {
 			id: record.id,
@@ -162,9 +171,10 @@ export async function fetchCollections(): Promise<(Collection & { editionCount?:
 	}
 
 	const mappedCollections = collectionsResult.items.map((record) => {
+		// Thumbnail priority: PocketBase file > legacy URL > local static asset
 		const thumbnail = record.thumbnailFile
 			? getFileUrl(record, record.thumbnailFile)
-			: record.thumbnail || '';
+			: record.thumbnail || (record.pubNum > 0 ? getCollectionThumbnailUrl(record.pubNum) : '');
 
 		return {
 			id: record.id,

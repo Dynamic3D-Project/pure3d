@@ -8,25 +8,84 @@
 
 	let { edition }: Props = $props();
 	let imageError = $state(false);
-
-	// Prefetch iframe URL on hover
-	function prefetchIframe() {
-		const link = document.createElement('link');
-		link.rel = 'prefetch';
-		link.as = 'document';
-		link.href = edition.voyagerUrl;
-		document.head.appendChild(link);
-	}
+	let hasPrefetched = false;
 
 	function handleImageError() {
 		imageError = true;
+	}
+
+	/**
+	 * Prefetch 3D assets on hover for faster loading
+	 * - Prefetches the scene.svx.json file
+	 * - Parses it to find and prefetch GLB model files
+	 */
+	async function prefetch3DAssets() {
+		// Only prefetch once per card, and only if we have a valid voyagerUrl (root path)
+		if (hasPrefetched || !edition.voyagerUrl) return;
+		hasPrefetched = true;
+
+		const root = edition.voyagerUrl;
+		const sceneFile = edition.settingsSceneFile || 'scene.svx.json';
+		const sceneUrl = `${root}${sceneFile}`;
+
+		try {
+			// Prefetch scene file with high priority
+			const sceneLink = document.createElement('link');
+			sceneLink.rel = 'prefetch';
+			sceneLink.href = sceneUrl;
+			sceneLink.as = 'fetch';
+			document.head.appendChild(sceneLink);
+
+			// Fetch and parse scene to find model files
+			const response = await fetch(sceneUrl, { priority: 'low' } as RequestInit);
+			if (!response.ok) return;
+
+			const scene = await response.json();
+
+			// Extract model URLs from scene (GLB/GLTF files)
+			const modelUrls = new Set<string>();
+
+			// Models are typically in scene.models[].uri or scene.nodes[].model.uri
+			if (scene.models) {
+				for (const model of scene.models) {
+					if (model.uri) modelUrls.add(model.uri);
+					// Also check derivatives for different quality levels
+					if (model.derivatives) {
+						for (const derivative of model.derivatives) {
+							if (derivative.assets) {
+								for (const asset of derivative.assets) {
+									if (asset.uri?.endsWith('.glb') || asset.uri?.endsWith('.gltf')) {
+										modelUrls.add(asset.uri);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+
+			// Prefetch each model file (limit to first 3 to avoid over-fetching)
+			let count = 0;
+			for (const modelUri of modelUrls) {
+				if (count >= 3) break;
+				const modelUrl = modelUri.startsWith('http') ? modelUri : `${root}${modelUri}`;
+				const modelLink = document.createElement('link');
+				modelLink.rel = 'prefetch';
+				modelLink.href = modelUrl;
+				modelLink.as = 'fetch';
+				document.head.appendChild(modelLink);
+				count++;
+			}
+		} catch {
+			// Silently fail - prefetching is an optimization, not critical
+		}
 	}
 </script>
 
 <a
 	href={`${base}/editions/${edition.slug}`}
 	data-sveltekit-preload-data="hover"
-	onmouseenter={prefetchIframe}
+	onmouseenter={prefetch3DAssets}
 	class="group card bg-base-100 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden"
 >
 	<figure class="relative overflow-hidden aspect-square bg-base-200">
@@ -49,14 +108,30 @@
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
 			</svg>
 		</div>
-		<!-- Actual image -->
+		<!-- Actual image with format fallback -->
 		{#if edition.thumbnail && !imageError}
-			<img
-				src={edition.thumbnail}
-				alt={edition.title}
-				class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-				onerror={handleImageError}
-			/>
+			{@const isLocalAsset = edition.thumbnail.includes('/project/')}
+			{#if isLocalAsset}
+				<picture>
+					<source srcset={edition.thumbnail.replace('.png', '.avif')} type="image/avif" />
+					<source srcset={edition.thumbnail.replace('.png', '.webp')} type="image/webp" />
+					<img
+						src={edition.thumbnail}
+						alt={edition.title}
+						class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+						loading="lazy"
+						onerror={handleImageError}
+					/>
+				</picture>
+			{:else}
+				<img
+					src={edition.thumbnail}
+					alt={edition.title}
+					class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+					loading="lazy"
+					onerror={handleImageError}
+				/>
+			{/if}
 		{/if}
 		<div
 			class="absolute inset-0 bg-gradient-to-t from-base-300/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"

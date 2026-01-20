@@ -36,6 +36,10 @@
 		showPrompt?: boolean;
 		/** Show/hide reader initially */
 		showReader?: boolean;
+		/** Voyager version (e.g., "0.56.2") - determines which Voyager script to load */
+		voyagerVersion?: string;
+		/** Resource root path for Voyager assets (fonts, css, images, language) */
+		resourceRoot?: string;
 	}
 
 	let {
@@ -47,7 +51,9 @@
 		uiMode = 'none',
 		enableControls = true,
 		showPrompt = false,
-		showReader = false
+		showReader = false,
+		voyagerVersion = '0.56.2',
+		resourceRoot
 	}: Props = $props();
 
 	let voyagerElement: HTMLElement | undefined = $state();
@@ -73,9 +79,14 @@
 
 	onMount(() => {
 		if (direct) {
-			// Load Voyager Explorer script from locally hosted version
+			// Compute script URL based on resourceRoot or voyagerVersion
+			const scriptUrl = resourceRoot
+				? `${resourceRoot}js/voyager-explorer.min.js`
+				: `/voyager/${voyagerVersion}/js/voyager-explorer.min.js`;
+
+			// Load Voyager Explorer script
 			const script = document.createElement('script');
-			script.src = '/voyager/js/voyager-explorer.min.js';
+			script.src = scriptUrl;
 			script.onload = () => {
 				isScriptLoaded = true;
 				// Wait for element to be created and initialized
@@ -309,7 +320,8 @@
 								id="voyager"
 								class="absolute top-0 left-0 w-full h-full"
 								root={url}
-								document={documentPath || 'document.json'}
+								resourceroot={resourceRoot || `/voyager/${voyagerVersion}/`}
+								document={documentPath || 'scene.svx.json'}
 								{title}
 								uimode={showVoyagerUI ? 'all' : uiMode}
 								controls={enableControls}
@@ -644,6 +656,28 @@
 						</div>
 					</div>
 				</div>
+			</div>
+		{:else}
+			<!-- Direct Mode without Controls Panel -->
+			<div class="relative w-full" style="padding-top: 75%; background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);">
+				{#if isScriptLoaded}
+					<voyager-explorer
+						bind:this={voyagerElement}
+						id="voyager"
+						class="absolute top-0 left-0 w-full h-full"
+						root={url}
+						resourceroot={resourceRoot || `/voyager/${voyagerVersion}/`}
+						document={documentPath || 'scene.svx.json'}
+						{title}
+						uimode={uiMode}
+						controls={enableControls}
+						prompt={showPrompt}
+					></voyager-explorer>
+				{:else}
+					<div class="absolute inset-0 flex items-center justify-center">
+						<div class="loading loading-spinner loading-lg"></div>
+					</div>
+				{/if}
 			</div>
 		{/if}
 	</div>
