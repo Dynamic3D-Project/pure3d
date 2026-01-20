@@ -16,6 +16,7 @@
 	 */
 
 	import { onMount } from 'svelte';
+	import toast from 'svelte-french-toast';
 
 	interface Props {
 		/** URL for iframe mode OR root path for direct mode */
@@ -58,6 +59,8 @@
 
 	let voyagerElement: HTMLElement | undefined = $state();
 	let isScriptLoaded = $state(false);
+	let hasError = $state(false);
+	let errorMessage = $state('');
 	let annotations = $state<any[]>([]);
 	let articles = $state<any[]>([]);
 	let tours = $state<any[]>([]);
@@ -107,6 +110,7 @@
 		// Listen for model load event
 		voyagerElement.addEventListener('model-load', (e: any) => {
 			console.log('Model loaded:', e.detail);
+			hasError = false;
 			// Load available content
 			getContent();
 		});
@@ -114,6 +118,31 @@
 		// Listen for annotation changes
 		voyagerElement.addEventListener('annotation-active', (e: any) => {
 			console.log('Active annotation:', e.detail);
+		});
+
+		// Listen for Voyager error events
+		voyagerElement.addEventListener('error', handleVoyagerError);
+		voyagerElement.addEventListener('load-error', handleVoyagerError);
+
+		// Also listen for global errors that might come from Voyager
+		const originalConsoleError = console.error;
+		console.error = (...args) => {
+			const message = args.join(' ');
+			if (message.includes('Failed to load document') || message.includes('schema validation')) {
+				handleVoyagerError({ detail: { message } });
+			}
+			originalConsoleError.apply(console, args);
+		};
+	}
+
+	function handleVoyagerError(e: any) {
+		const message = e?.detail?.message || e?.message || 'Failed to load 3D model';
+		hasError = true;
+		errorMessage = message;
+		toast.error(message, {
+			duration: 5000,
+			position: 'bottom-center',
+			style: 'background: #1f2937; color: #f9fafb; border-radius: 0.5rem;'
 		});
 	}
 
@@ -701,5 +730,13 @@
 		display: block;
 		width: 100%;
 		height: 100%;
+	}
+
+	/* Hide Voyager's built-in notification system - we use svelte-french-toast instead */
+	:global(voyager-explorer .sv-notification),
+	:global(voyager-explorer .ff-notification),
+	:global(voyager-explorer .sv-notification-stack),
+	:global(voyager-explorer .ff-notification-stack) {
+		display: none !important;
 	}
 </style>
