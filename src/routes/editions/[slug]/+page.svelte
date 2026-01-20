@@ -108,7 +108,7 @@
 							direct={useDirectMode}
 							voyagerVersion={edition.voyagerVersion}
 							resourceRoot={edition.voyagerResourceRoot}
-							uiMode="all"
+							uiMode="menu|title|language"
 						/>
 
 						<!-- Help info button - top right corner -->
