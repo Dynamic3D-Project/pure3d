@@ -92,8 +92,9 @@ export const VOYAGER_VERSIONS = [
 
 /**
  * Minimum Voyager version that supports the 'derivatives' schema feature
- * Scene files created with newer Voyager versions include this feature
+ * Scene files created with newer Voyager versions include this feature.
+ * 0.46.1 doesn't support reading derivatives - need 0.51.0+
  */
-export const MIN_DERIVATIVES_VERSION = '0.46.1';
+export const MIN_DERIVATIVES_VERSION = '0.51.0';
 
 export type VoyagerVersion = (typeof VOYAGER_VERSIONS)[number];
