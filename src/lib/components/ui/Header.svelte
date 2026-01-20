@@ -86,7 +86,7 @@
 <style>
 	/* Frosted navigation header */
 	nav {
-		z-index: 10000;
+		z-index: 50;
 		position: sticky;
 		left: 0;
 		right: 0;

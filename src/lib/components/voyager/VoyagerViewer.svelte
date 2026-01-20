@@ -65,6 +65,13 @@
 	let articles = $state<any[]>([]);
 	let tours = $state<any[]>([]);
 
+	// Loading progress state
+	let loadingProgress = $state(0);
+	let loadingPhase = $state<'script' | 'document' | 'model' | 'complete'>('script');
+	let totalBytes = $state(0);
+	let loadedBytes = $state(0);
+	let cleanupFetchInterceptor: (() => void) | null = null;
+
 	// Camera orbit state
 	let cameraYaw = $state(0);
 	let cameraPitch = $state(-25);
@@ -80,8 +87,90 @@
 	// UI visibility toggle
 	let showVoyagerUI = $state(false);
 
+	// Format bytes to human readable string
+	function formatBytes(bytes: number): string {
+		if (bytes < 1024) return `${bytes} B`;
+		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+	}
+
+	// Install fetch interceptor to track download progress
+	function installFetchInterceptor(): () => void {
+		const originalFetch = window.fetch;
+		const trackedExtensions = [
+			'.glb',
+			'.gltf',
+			'.bin',
+			'.jpg',
+			'.jpeg',
+			'.png',
+			'.webp',
+			'.ktx2',
+			'.draco'
+		];
+
+		window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+			const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+			const shouldTrack = trackedExtensions.some((ext) => url.toLowerCase().includes(ext));
+
+			if (!shouldTrack) {
+				return originalFetch(input, init);
+			}
+
+			// First asset request detected - switch to model loading phase
+			if (loadingPhase === 'document') {
+				loadingPhase = 'model';
+			}
+
+			const response = await originalFetch(input, init);
+			const contentLength = response.headers.get('content-length');
+
+			// If no content-length or no body, return original response
+			if (!contentLength || !response.body) {
+				return response;
+			}
+
+			const fileSize = parseInt(contentLength);
+			totalBytes += fileSize;
+
+			const reader = response.body.getReader();
+			const stream = new ReadableStream({
+				async start(controller) {
+					while (true) {
+						const { done, value } = await reader.read();
+						if (done) break;
+						loadedBytes += value.length;
+						loadingProgress = totalBytes > 0 ? Math.round((loadedBytes / totalBytes) * 100) : 0;
+						controller.enqueue(value);
+					}
+					controller.close();
+				}
+			});
+
+			return new Response(stream, {
+				headers: response.headers,
+				status: response.status,
+				statusText: response.statusText
+			});
+		};
+
+		// Return cleanup function
+		return () => {
+			window.fetch = originalFetch;
+		};
+	}
+
 	onMount(() => {
 		if (direct) {
+			// Reset progress state
+			loadingProgress = 0;
+			totalBytes = 0;
+			loadedBytes = 0;
+			loadingPhase = 'script';
+
+			// Install fetch interceptor before loading Voyager
+			cleanupFetchInterceptor = installFetchInterceptor();
+
 			// Compute script URL based on resourceRoot or voyagerVersion
 			const scriptUrl = resourceRoot
 				? `${resourceRoot}js/voyager-explorer.min.js`
@@ -92,12 +181,18 @@
 			script.src = scriptUrl;
 			script.onload = () => {
 				isScriptLoaded = true;
+				loadingPhase = 'document';
 				// Wait for element to be created and initialized
 				setTimeout(loadContent, 500);
 			};
 			document.head.appendChild(script);
 
 			return () => {
+				// Cleanup fetch interceptor
+				if (cleanupFetchInterceptor) {
+					cleanupFetchInterceptor();
+					cleanupFetchInterceptor = null;
+				}
 				// Cleanup script
 				document.head.removeChild(script);
 			};
@@ -107,10 +202,22 @@
 	function loadContent() {
 		if (!voyagerElement) return;
 
+		// Fix Voyager modal z-index to appear above sticky header (Shadow DOM)
+		fixVoyagerModalZIndex();
+
 		// Listen for model load event
 		voyagerElement.addEventListener('model-load', (e: any) => {
 			console.log('Model loaded:', e.detail);
 			hasError = false;
+			loadingPhase = 'complete';
+			loadingProgress = 100;
+
+			// Clean up fetch interceptor after model loads
+			if (cleanupFetchInterceptor) {
+				cleanupFetchInterceptor();
+				cleanupFetchInterceptor = null;
+			}
+
 			// Load available content
 			getContent();
 		});
@@ -133,6 +240,29 @@
 			}
 			originalConsoleError.apply(console, args);
 		};
+	}
+
+	function fixVoyagerModalZIndex() {
+		if (!voyagerElement) return;
+
+		const shadowRoot = (voyagerElement as any).shadowRoot;
+		if (shadowRoot) {
+			// Inject styles into Shadow DOM to contain modal within viewer
+			const style = document.createElement('style');
+			style.textContent = `
+				/* Contain modal within the viewer instead of full viewport */
+				.ff-modal-plane {
+					position: absolute !important;
+				}
+				/* Ensure popup appears above the modal backdrop */
+				.ff-popup,
+				.sv-splash,
+				.ff-popup.sv-splash {
+					z-index: 1001 !important;
+				}
+			`;
+			shadowRoot.appendChild(style);
+		}
 	}
 
 	function handleVoyagerError(e: any) {
@@ -309,14 +439,42 @@
 
 	function toggleVoyagerUI() {
 		showVoyagerUI = !showVoyagerUI;
+
+		// Clean up existing fetch interceptor
+		if (cleanupFetchInterceptor) {
+			cleanupFetchInterceptor();
+			cleanupFetchInterceptor = null;
+		}
+
+		// Reset loading state
+		loadingProgress = 0;
+		totalBytes = 0;
+		loadedBytes = 0;
+		loadingPhase = 'script';
+
 		// Re-mount the voyager element with new uiMode
 		isScriptLoaded = false;
 		setTimeout(() => {
+			// Reinstall fetch interceptor
+			cleanupFetchInterceptor = installFetchInterceptor();
 			isScriptLoaded = true;
+			loadingPhase = 'document';
 			setTimeout(loadContent, 500);
 		}, 100);
 	}
 </script>
+
+{#snippet progressBar()}
+	{#if loadingPhase !== 'complete'}
+		<div class="absolute bottom-0 left-0 right-0 z-10">
+			<progress
+				class="progress progress-primary h-1 w-full rounded-none"
+				value={loadingPhase === 'model' ? loadingProgress : undefined}
+				max="100"
+			></progress>
+		</div>
+	{/if}
+{/snippet}
 
 {#if direct}
 	<!-- Direct Embedding Mode with Full API Control -->
@@ -325,29 +483,30 @@
 			<!-- Global UI Toggle -->
 			<div class="mb-4">
 				<button
-					class="btn btn-lg btn-block {showVoyagerUI ? 'btn-warning' : 'btn-success'}"
+					class="btn btn-block btn-lg {showVoyagerUI ? 'btn-warning' : 'btn-success'}"
 					onclick={toggleVoyagerUI}
 				>
 					{showVoyagerUI ? 'Hide Voyager UI' : 'Show Voyager UI'}
 				</button>
-				<div class="text-xs text-center mt-2 text-base-content/60">
-					{showVoyagerUI
-						? 'Full Voyager interface visible'
-						: 'Clean API-controlled mode'}
+				<div class="mt-2 text-center text-xs text-base-content/60">
+					{showVoyagerUI ? 'Full Voyager interface visible' : 'Clean API-controlled mode'}
 				</div>
 			</div>
 
 			<!-- Two Column Layout: Viewer Left, Controls Right -->
-			<div class="grid lg:grid-cols-[1fr_400px] gap-4">
+			<div class="grid gap-4 lg:grid-cols-[1fr_400px]">
 				<!-- Left Column: Viewer -->
 				<div class="order-2 lg:order-1">
 					<!-- Voyager Explorer Component -->
-					<div class="relative w-full bg-gradient-to-b from-slate-700 to-slate-900" style="padding-top: 75%;">
+					<div
+						class="relative w-full overflow-hidden rounded-lg bg-gradient-to-b from-slate-700 to-slate-900"
+						style="padding-top: 75%;"
+					>
 						{#if isScriptLoaded}
 							<voyager-explorer
 								bind:this={voyagerElement}
 								id="voyager"
-								class="absolute top-0 left-0 w-full h-full"
+								class="absolute top-0 left-0 h-full w-full"
 								root={url}
 								resourceroot={resourceRoot || `/voyager/${voyagerVersion}/`}
 								document={documentPath || 'scene.svx.json'}
@@ -358,342 +517,346 @@
 							></voyager-explorer>
 						{:else}
 							<div class="absolute inset-0 flex items-center justify-center">
-								<div class="loading loading-spinner loading-lg"></div>
+								<div class="loading loading-lg loading-spinner"></div>
 							</div>
 						{/if}
+						{@render progressBar()}
 					</div>
 				</div>
 
 				<!-- Right Column: Controls -->
 				<div class="order-1 lg:order-2">
 					<!-- Control Toolbar -->
-					<div class="voyager-controls card bg-base-300 shadow-lg p-4 max-h-[80vh] overflow-y-auto">
+					<div class="voyager-controls card max-h-[80vh] overflow-y-auto bg-base-300 p-4 shadow-lg">
 						<div class="space-y-4">
-					<!-- Camera Orbit Controls -->
-					<div class="space-y-2">
-						<h3 class="font-semibold text-sm">Camera Orbit</h3>
-						<div class="form-control">
-							<div class="label py-1">
-								<span class="label-text text-xs">Yaw: {cameraYaw}°</span>
-							</div>
-							<input
-								type="range"
-								min="-180"
-								max="180"
-								bind:value={cameraYaw}
-								onchange={setCameraOrbit}
-								class="range range-xs"
-								aria-label="Camera yaw angle"
-							/>
-						</div>
-						<div class="form-control">
-							<div class="label py-1">
-								<span class="label-text text-xs">Pitch: {cameraPitch}°</span>
-							</div>
-							<input
-								type="range"
-								min="-90"
-								max="90"
-								bind:value={cameraPitch}
-								onchange={setCameraOrbit}
-								class="range range-xs"
-								aria-label="Camera pitch angle"
-							/>
-						</div>
-					</div>
-
-					<!-- Camera Actions -->
-					<div class="space-y-2">
-						<h3 class="font-semibold text-sm">Camera Actions</h3>
-						<div class="flex gap-2">
-							<button class="btn btn-sm btn-outline flex-1" onclick={resetCamera}>
-								Reset
-							</button>
-							<button class="btn btn-sm btn-outline flex-1" onclick={getCurrentCameraPosition}>
-								Get Position
-							</button>
-						</div>
-					</div>
-
-					<!-- Camera Offset Controls -->
-					<div class="space-y-2">
-						<h3 class="font-semibold text-sm">Camera Offset</h3>
-						<div class="form-control">
-							<div class="label py-0">
-								<span class="label-text text-xs">X: {cameraOffsetX.toFixed(1)}</span>
-							</div>
-							<input
-								type="range"
-								min="-5"
-								max="5"
-								step="0.1"
-								bind:value={cameraOffsetX}
-								onchange={applyCameraOffset}
-								class="range range-xs"
-								aria-label="Camera X offset"
-							/>
-						</div>
-						<div class="form-control">
-							<div class="label py-0">
-								<span class="label-text text-xs">Y: {cameraOffsetY.toFixed(1)}</span>
-							</div>
-							<input
-								type="range"
-								min="-5"
-								max="5"
-								step="0.1"
-								bind:value={cameraOffsetY}
-								onchange={applyCameraOffset}
-								class="range range-xs"
-								aria-label="Camera Y offset"
-							/>
-						</div>
-						<div class="form-control">
-							<div class="label py-0">
-								<span class="label-text text-xs">Z: {cameraOffsetZ.toFixed(1)}</span>
-							</div>
-							<input
-								type="range"
-								min="-5"
-								max="5"
-								step="0.1"
-								bind:value={cameraOffsetZ}
-								onchange={applyCameraOffset}
-								class="range range-xs"
-								aria-label="Camera Z offset"
-							/>
-						</div>
-					</div>
-
-				<!-- Language & Display Controls -->
-				<div class="space-y-4">
-					<!-- Language Selector -->
-					<div class="space-y-2">
-						<h3 class="font-semibold text-sm">Language</h3>
-						<select
-							class="select select-sm select-bordered w-full"
-							bind:value={selectedLanguage}
-							onchange={() => setLanguage(selectedLanguage)}
-						>
-							{#each languages as lang}
-								<option value={lang.code}>{lang.name}</option>
-							{/each}
-						</select>
-					</div>
-
-					<!-- Display Toggles -->
-					<div class="space-y-2">
-						<h3 class="font-semibold text-sm">Display Toggles</h3>
-						<div class="grid grid-cols-3 gap-2">
-							<button class="btn btn-xs btn-outline" onclick={toggleAnnotations}>
-								Annotations
-							</button>
-							<button class="btn btn-xs btn-outline" onclick={toggleReader}>
-								Reader
-							</button>
-							<button class="btn btn-xs btn-outline" onclick={toggleTours}>
-								Tours
-							</button>
-							<button class="btn btn-xs btn-outline" onclick={toggleTools}>
-								Tools
-							</button>
-							<button class="btn btn-xs btn-outline" onclick={toggleMeasurement}>
-								Measurement
-							</button>
-							<button class="btn btn-xs btn-outline" onclick={enableAR}>
-								AR Mode
-							</button>
-						</div>
-					</div>
-				</div>
-
-				<!-- Background Controls -->
-				<div class="space-y-2">
-					<h3 class="font-semibold text-sm">Background Style</h3>
-					<div class="flex gap-2 mb-3">
-						<button
-							class="btn btn-xs btn-outline flex-1"
-							onclick={() => setBackgroundStyle('Solid')}
-						>
-							Solid
-						</button>
-						<button
-							class="btn btn-xs btn-outline flex-1"
-							onclick={() => setBackgroundStyle('LinearGradient')}
-						>
-							Linear
-						</button>
-						<button
-							class="btn btn-xs btn-outline flex-1"
-							onclick={() => setBackgroundStyle('RadialGradient')}
-						>
-							Radial
-						</button>
-					</div>
-
-					<h3 class="font-semibold text-sm">Quick Colors</h3>
-					<div class="grid grid-cols-3 gap-2">
-						<button
-							class="btn btn-xs btn-outline"
-							onclick={() => setBackgroundColor('#1a1a1a', '#0a0a0a')}
-							title="Dark gray gradient"
-						>
-							Dark
-						</button>
-						<button
-							class="btn btn-xs btn-outline"
-							onclick={() => setBackgroundColor('#ffffff', '#e0e0e0')}
-							title="White to light gray"
-						>
-							Light
-						</button>
-						<button
-							class="btn btn-xs btn-outline"
-							onclick={() => setBackgroundColor('#1e3a8a', '#0c1d3f')}
-							title="Deep blue gradient"
-						>
-							Blue
-						</button>
-						<button
-							class="btn btn-xs btn-outline"
-							onclick={() => setBackgroundColor('#7c3aed', '#4c1d95')}
-							title="Purple gradient"
-						>
-							Purple
-						</button>
-						<button
-							class="btn btn-xs btn-outline"
-							onclick={() => setBackgroundColor('#dc2626', '#7f1d1d')}
-							title="Red gradient"
-						>
-							Red
-						</button>
-						<button
-							class="btn btn-xs btn-outline"
-							onclick={() => setBackgroundColor('#059669', '#064e3b')}
-							title="Green gradient"
-						>
-							Green
-						</button>
-						<button
-							class="btn btn-xs btn-outline"
-							onclick={() => setBackgroundColor('#ea580c', '#7c2d12')}
-							title="Orange gradient"
-						>
-							Orange
-						</button>
-						<button
-							class="btn btn-xs btn-outline"
-							onclick={() => setBackgroundColor('#0891b2', '#164e63')}
-							title="Cyan gradient"
-						>
-							Cyan
-						</button>
-						<button
-							class="btn btn-xs btn-outline"
-							onclick={() => setBackgroundColor('#ec4899', '#831843')}
-							title="Pink gradient"
-						>
-							Pink
-						</button>
-						<button
-							class="btn btn-xs btn-outline"
-							onclick={() => setBackgroundColor('#eab308', '#713f12')}
-							title="Gold gradient"
-						>
-							Gold
-						</button>
-						<button
-							class="btn btn-xs btn-outline"
-							onclick={() => setBackgroundColor('#14b8a6', '#134e4a')}
-							title="Teal gradient"
-						>
-							Teal
-						</button>
-						<button
-							class="btn btn-xs btn-outline"
-							onclick={() => setBackgroundColor('#f97316', '#9a3412')}
-							title="Amber gradient"
-						>
-							Amber
-						</button>
-					</div>
-				</div>
-
-				<!-- Annotations List -->
-				{#if annotations.length > 0}
-					<div class="mt-4">
-						<h3 class="font-semibold text-sm mb-2">Annotations ({annotations.length})</h3>
-						<div class="flex flex-wrap gap-2">
-							{#each annotations as annotation}
-								<button
-									class="badge badge-primary badge-lg cursor-pointer hover:badge-accent"
-									onclick={() => setActiveAnnotation(annotation.id)}
-								>
-									{annotation.titles?.EN || annotation.titles?.en || annotation.title || annotation.name || annotation.id}
-								</button>
-							{/each}
-						</div>
-					</div>
-				{/if}
-
-				<!-- Articles List -->
-				{#if articles.length > 0}
-					<div class="mt-4">
-						<h3 class="font-semibold text-sm mb-2">Articles ({articles.length})</h3>
-						<div class="flex flex-wrap gap-2">
-							{#each articles as article}
-								<button
-									class="badge badge-secondary badge-lg cursor-pointer hover:badge-accent"
-									onclick={() => openArticle(article.id)}
-								>
-									{article.titles?.EN || article.titles?.en || article.title || article.name || article.id}
-								</button>
-							{/each}
-						</div>
-					</div>
-				{/if}
-
-				<!-- Tours List -->
-				{#if tours.length > 0}
-					<div class="mt-4">
-						<h3 class="font-semibold text-sm mb-2">Tours</h3>
-						<div class="space-y-2">
-							{#each tours as tour, tourIdx}
-								<div class="card bg-base-200 p-2">
-									<div class="font-semibold text-xs mb-1">
-										{tour.title || tour.titles?.EN || `Tour ${tourIdx + 1}`}
+							<!-- Camera Orbit Controls -->
+							<div class="space-y-2">
+								<h3 class="text-sm font-semibold">Camera Orbit</h3>
+								<div class="form-control">
+									<div class="label py-1">
+										<span class="label-text text-xs">Yaw: {cameraYaw}°</span>
 									</div>
-									{#if tour.steps && tour.steps.length > 0}
-										<div class="flex flex-wrap gap-1">
-											{#each tour.steps as step, stepIdx}
-												<button
-													class="btn btn-xs btn-outline"
-													onclick={() => setTourStep(tourIdx, stepIdx, true)}
-													title={step.title || step.titles?.EN || `Step ${stepIdx + 1}`}
-												>
-													{stepIdx + 1}
-												</button>
-											{/each}
-										</div>
-									{/if}
+									<input
+										type="range"
+										min="-180"
+										max="180"
+										bind:value={cameraYaw}
+										onchange={setCameraOrbit}
+										class="range range-xs"
+										aria-label="Camera yaw angle"
+									/>
 								</div>
-							{/each}
-						</div>
-					</div>
-				{/if}
+								<div class="form-control">
+									<div class="label py-1">
+										<span class="label-text text-xs">Pitch: {cameraPitch}°</span>
+									</div>
+									<input
+										type="range"
+										min="-90"
+										max="90"
+										bind:value={cameraPitch}
+										onchange={setCameraOrbit}
+										class="range range-xs"
+										aria-label="Camera pitch angle"
+									/>
+								</div>
+							</div>
+
+							<!-- Camera Actions -->
+							<div class="space-y-2">
+								<h3 class="text-sm font-semibold">Camera Actions</h3>
+								<div class="flex gap-2">
+									<button class="btn flex-1 btn-outline btn-sm" onclick={resetCamera}>
+										Reset
+									</button>
+									<button class="btn flex-1 btn-outline btn-sm" onclick={getCurrentCameraPosition}>
+										Get Position
+									</button>
+								</div>
+							</div>
+
+							<!-- Camera Offset Controls -->
+							<div class="space-y-2">
+								<h3 class="text-sm font-semibold">Camera Offset</h3>
+								<div class="form-control">
+									<div class="label py-0">
+										<span class="label-text text-xs">X: {cameraOffsetX.toFixed(1)}</span>
+									</div>
+									<input
+										type="range"
+										min="-5"
+										max="5"
+										step="0.1"
+										bind:value={cameraOffsetX}
+										onchange={applyCameraOffset}
+										class="range range-xs"
+										aria-label="Camera X offset"
+									/>
+								</div>
+								<div class="form-control">
+									<div class="label py-0">
+										<span class="label-text text-xs">Y: {cameraOffsetY.toFixed(1)}</span>
+									</div>
+									<input
+										type="range"
+										min="-5"
+										max="5"
+										step="0.1"
+										bind:value={cameraOffsetY}
+										onchange={applyCameraOffset}
+										class="range range-xs"
+										aria-label="Camera Y offset"
+									/>
+								</div>
+								<div class="form-control">
+									<div class="label py-0">
+										<span class="label-text text-xs">Z: {cameraOffsetZ.toFixed(1)}</span>
+									</div>
+									<input
+										type="range"
+										min="-5"
+										max="5"
+										step="0.1"
+										bind:value={cameraOffsetZ}
+										onchange={applyCameraOffset}
+										class="range range-xs"
+										aria-label="Camera Z offset"
+									/>
+								</div>
+							</div>
+
+							<!-- Language & Display Controls -->
+							<div class="space-y-4">
+								<!-- Language Selector -->
+								<div class="space-y-2">
+									<h3 class="text-sm font-semibold">Language</h3>
+									<select
+										class="select-bordered select w-full select-sm"
+										bind:value={selectedLanguage}
+										onchange={() => setLanguage(selectedLanguage)}
+									>
+										{#each languages as lang}
+											<option value={lang.code}>{lang.name}</option>
+										{/each}
+									</select>
+								</div>
+
+								<!-- Display Toggles -->
+								<div class="space-y-2">
+									<h3 class="text-sm font-semibold">Display Toggles</h3>
+									<div class="grid grid-cols-3 gap-2">
+										<button class="btn btn-outline btn-xs" onclick={toggleAnnotations}>
+											Annotations
+										</button>
+										<button class="btn btn-outline btn-xs" onclick={toggleReader}> Reader </button>
+										<button class="btn btn-outline btn-xs" onclick={toggleTours}> Tours </button>
+										<button class="btn btn-outline btn-xs" onclick={toggleTools}> Tools </button>
+										<button class="btn btn-outline btn-xs" onclick={toggleMeasurement}>
+											Measurement
+										</button>
+										<button class="btn btn-outline btn-xs" onclick={enableAR}> AR Mode </button>
+									</div>
+								</div>
+							</div>
+
+							<!-- Background Controls -->
+							<div class="space-y-2">
+								<h3 class="text-sm font-semibold">Background Style</h3>
+								<div class="mb-3 flex gap-2">
+									<button
+										class="btn flex-1 btn-outline btn-xs"
+										onclick={() => setBackgroundStyle('Solid')}
+									>
+										Solid
+									</button>
+									<button
+										class="btn flex-1 btn-outline btn-xs"
+										onclick={() => setBackgroundStyle('LinearGradient')}
+									>
+										Linear
+									</button>
+									<button
+										class="btn flex-1 btn-outline btn-xs"
+										onclick={() => setBackgroundStyle('RadialGradient')}
+									>
+										Radial
+									</button>
+								</div>
+
+								<h3 class="text-sm font-semibold">Quick Colors</h3>
+								<div class="grid grid-cols-3 gap-2">
+									<button
+										class="btn btn-outline btn-xs"
+										onclick={() => setBackgroundColor('#1a1a1a', '#0a0a0a')}
+										title="Dark gray gradient"
+									>
+										Dark
+									</button>
+									<button
+										class="btn btn-outline btn-xs"
+										onclick={() => setBackgroundColor('#ffffff', '#e0e0e0')}
+										title="White to light gray"
+									>
+										Light
+									</button>
+									<button
+										class="btn btn-outline btn-xs"
+										onclick={() => setBackgroundColor('#1e3a8a', '#0c1d3f')}
+										title="Deep blue gradient"
+									>
+										Blue
+									</button>
+									<button
+										class="btn btn-outline btn-xs"
+										onclick={() => setBackgroundColor('#7c3aed', '#4c1d95')}
+										title="Purple gradient"
+									>
+										Purple
+									</button>
+									<button
+										class="btn btn-outline btn-xs"
+										onclick={() => setBackgroundColor('#dc2626', '#7f1d1d')}
+										title="Red gradient"
+									>
+										Red
+									</button>
+									<button
+										class="btn btn-outline btn-xs"
+										onclick={() => setBackgroundColor('#059669', '#064e3b')}
+										title="Green gradient"
+									>
+										Green
+									</button>
+									<button
+										class="btn btn-outline btn-xs"
+										onclick={() => setBackgroundColor('#ea580c', '#7c2d12')}
+										title="Orange gradient"
+									>
+										Orange
+									</button>
+									<button
+										class="btn btn-outline btn-xs"
+										onclick={() => setBackgroundColor('#0891b2', '#164e63')}
+										title="Cyan gradient"
+									>
+										Cyan
+									</button>
+									<button
+										class="btn btn-outline btn-xs"
+										onclick={() => setBackgroundColor('#ec4899', '#831843')}
+										title="Pink gradient"
+									>
+										Pink
+									</button>
+									<button
+										class="btn btn-outline btn-xs"
+										onclick={() => setBackgroundColor('#eab308', '#713f12')}
+										title="Gold gradient"
+									>
+										Gold
+									</button>
+									<button
+										class="btn btn-outline btn-xs"
+										onclick={() => setBackgroundColor('#14b8a6', '#134e4a')}
+										title="Teal gradient"
+									>
+										Teal
+									</button>
+									<button
+										class="btn btn-outline btn-xs"
+										onclick={() => setBackgroundColor('#f97316', '#9a3412')}
+										title="Amber gradient"
+									>
+										Amber
+									</button>
+								</div>
+							</div>
+
+							<!-- Annotations List -->
+							{#if annotations.length > 0}
+								<div class="mt-4">
+									<h3 class="mb-2 text-sm font-semibold">Annotations ({annotations.length})</h3>
+									<div class="flex flex-wrap gap-2">
+										{#each annotations as annotation}
+											<button
+												class="badge cursor-pointer badge-lg badge-primary hover:badge-accent"
+												onclick={() => setActiveAnnotation(annotation.id)}
+											>
+												{annotation.titles?.EN ||
+													annotation.titles?.en ||
+													annotation.title ||
+													annotation.name ||
+													annotation.id}
+											</button>
+										{/each}
+									</div>
+								</div>
+							{/if}
+
+							<!-- Articles List -->
+							{#if articles.length > 0}
+								<div class="mt-4">
+									<h3 class="mb-2 text-sm font-semibold">Articles ({articles.length})</h3>
+									<div class="flex flex-wrap gap-2">
+										{#each articles as article}
+											<button
+												class="badge cursor-pointer badge-lg badge-secondary hover:badge-accent"
+												onclick={() => openArticle(article.id)}
+											>
+												{article.titles?.EN ||
+													article.titles?.en ||
+													article.title ||
+													article.name ||
+													article.id}
+											</button>
+										{/each}
+									</div>
+								</div>
+							{/if}
+
+							<!-- Tours List -->
+							{#if tours.length > 0}
+								<div class="mt-4">
+									<h3 class="mb-2 text-sm font-semibold">Tours</h3>
+									<div class="space-y-2">
+										{#each tours as tour, tourIdx}
+											<div class="card bg-base-200 p-2">
+												<div class="mb-1 text-xs font-semibold">
+													{tour.title || tour.titles?.EN || `Tour ${tourIdx + 1}`}
+												</div>
+												{#if tour.steps && tour.steps.length > 0}
+													<div class="flex flex-wrap gap-1">
+														{#each tour.steps as step, stepIdx}
+															<button
+																class="btn btn-outline btn-xs"
+																onclick={() => setTourStep(tourIdx, stepIdx, true)}
+																title={step.title || step.titles?.EN || `Step ${stepIdx + 1}`}
+															>
+																{stepIdx + 1}
+															</button>
+														{/each}
+													</div>
+												{/if}
+											</div>
+										{/each}
+									</div>
+								</div>
+							{/if}
 						</div>
 					</div>
 				</div>
 			</div>
 		{:else}
 			<!-- Direct Mode without Controls Panel -->
-			<div class="voyager-wrapper relative w-full" style="padding-top: 75%; background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);">
+			<div
+				class="relative w-full overflow-hidden rounded-lg"
+				style="padding-top: 75%; background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);"
+			>
 				{#if isScriptLoaded}
 					<voyager-explorer
 						bind:this={voyagerElement}
 						id="voyager"
-						class="absolute top-0 left-0 w-full h-full"
+						class="absolute top-0 left-0 h-full w-full"
 						root={url}
 						resourceroot={resourceRoot || `/voyager/${voyagerVersion}/`}
 						document={documentPath || 'scene.svx.json'}
@@ -704,20 +867,24 @@
 					></voyager-explorer>
 				{:else}
 					<div class="absolute inset-0 flex items-center justify-center">
-						<div class="loading loading-spinner loading-lg"></div>
+						<div class="loading loading-lg loading-spinner"></div>
 					</div>
 				{/if}
+				{@render progressBar()}
 			</div>
 		{/if}
 	</div>
 {:else}
 	<!-- Iframe Mode (No API Control) -->
-	<div class="relative w-full" style="padding-top: 75%; background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);">
+	<div
+		class="relative w-full"
+		style="padding-top: 75%; background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);"
+	>
 		<iframe
 			name="Smithsonian Voyager"
 			src={url}
 			{title}
-			class="absolute top-0 left-0 w-full h-full border-0"
+			class="absolute top-0 left-0 h-full w-full border-0"
 			loading="eager"
 			allow="xr; xr-spatial-tracking; fullscreen"
 		></iframe>
@@ -730,21 +897,9 @@
 		display: block;
 		width: 100%;
 		height: 100%;
-	}
-
-	/* Contain Voyager's z-index stacking context so it doesn't overlap the header */
-	.voyager-container,
-	.voyager-wrapper {
-		position: relative;
-		z-index: 1;
+		/* Contain fixed/absolute positioned children within the viewer */
+		contain: layout;
 		isolation: isolate;
-	}
-
-	/* Force all Voyager overlays to stay within the viewer bounds */
-	:global(voyager-explorer .sv-chrome-view),
-	:global(voyager-explorer .sv-main-view),
-	:global(voyager-explorer .ff-viewport-overlay) {
-		z-index: auto !important;
 	}
 
 	/* Hide Voyager's built-in notification system - we use svelte-french-toast instead */

@@ -129,3 +129,4 @@ a[target='_blank'] {
 .form-control-float input:focus-within {
   @apply border-primary outline-none;
 }
+
