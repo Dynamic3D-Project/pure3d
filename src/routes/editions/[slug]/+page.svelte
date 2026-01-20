@@ -65,7 +65,9 @@
 		<!-- Breadcrumbs -->
 		<nav class="breadcrumbs mb-6 text-sm">
 			<ul>
-				<li><a href="{base}/" data-sveltekit-preload-data="hover" class="link link-hover">Home</a></li>
+				<li>
+					<a href="{base}/" data-sveltekit-preload-data="hover" class="link link-hover">Home</a>
+				</li>
 				<li>
 					<a href="{base}/editions" data-sveltekit-preload-data="hover" class="link link-hover"
 						>Editions</a
@@ -98,7 +100,7 @@
 
 				<!-- Voyager 3D Viewer -->
 				<div class="card overflow-hidden bg-base-200 shadow-xl">
-					<div class="card-body p-0 relative">
+					<div class="relative card-body p-0">
 						<VoyagerViewer
 							url={useDirectMode ? edition.voyagerRoot : edition.voyagerUrl}
 							document={edition.sceneFile}
@@ -113,7 +115,7 @@
 						{#if viewerHelp || viewerHelpVideoUrl}
 							<button
 								type="button"
-								class="btn absolute top-3 right-3 btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100 z-10"
+								class="btn absolute top-3 right-3 z-10 btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
 								onclick={() => (helpModalOpen = true)}
 								aria-label="How to use the 3D viewer"
 								title="How to use the 3D viewer"
@@ -139,33 +141,20 @@
 
 				<!-- Voyager version indicator -->
 				{#if edition.voyagerVersion}
-					<p class="text-center text-xs text-base-content/40 mt-1">
+					<p class="mt-1 text-center text-xs text-base-content/40">
 						Voyager v{edition.voyagerVersion}
 					</p>
 				{/if}
 
 				<!-- Toolbar -->
-				<div class="flex justify-center gap-2">
+				<!-- <div class="flex justify-center gap-2">
 					<button class="btn btn-outline btn-sm">Tools</button>
-				</div>
+				</div> -->
 
 				<!-- Usage Conditions -->
-				<div class="alert alert-info">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						fill="none"
-						viewBox="0 0 24 24"
-						class="h-6 w-6 shrink-0 stroke-current"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-						></path>
-					</svg>
+				<div class="alert alert-outline">
 					<div>
-						<div class="font-bold">Usage Conditions: {edition.usageConditions}</div>
+						<div class="">Usage Conditions: {edition.usageConditions}</div>
 						{#if edition.alternativeVersion}
 							<div class="text-sm">
 								<a href={edition.alternativeVersion} class="link">Alternative version</a>
@@ -265,9 +254,9 @@
 									<div class="not-prose mt-6">
 										<h3 class="mb-3 text-sm font-semibold">Links to scene (deeplink)</h3>
 										<div class="space-y-2">
-											<div class="alert alert-warning">
-												<span class="text-sm">
-													(Voyager API id to the step/scene) add it to the url for sharing and cite?
+											<div class="">
+												<span class="text-sm opacity-80">
+													(Voyager API id to the step/scene) add it to the url for sharing and cite.
 												</span>
 											</div>
 										</div>
