@@ -47,6 +47,10 @@
 		isFullWindow?: boolean;
 		/** Callback when viewer is ready, provides API methods */
 		onReady?: (api: VoyagerAPI) => void;
+		/** Height of the viewer (e.g., "500px", "60vh", "100%"). Defaults to aspect-ratio 4/3 with max-height 90dvh */
+		height?: string;
+		/** Show Voyager's built-in menu (sv-main-menu). Defaults to false (hidden) */
+		showVoyagerMenu?: boolean;
 	}
 
 	export interface VoyagerAPI {
@@ -89,8 +93,15 @@
 		resourceRoot,
 		onModelLoaded,
 		isFullWindow = false,
-		onReady
+		onReady,
+		height,
+		showVoyagerMenu = false
 	}: Props = $props();
+
+	// Compute the container style based on height prop
+	const containerStyle = $derived(
+		height ? `height: ${height};` : 'aspect-ratio: 4/3; max-height: 90dvh;'
+	);
 
 	let voyagerElement: HTMLElement | undefined = $state();
 	let isScriptLoaded = $state(false);
@@ -244,7 +255,6 @@
 		function handleModelReady() {
 			if (loadingPhase === 'complete') return; // Already handled
 
-			console.log('Model ready - initializing API');
 			hasError = false;
 			loadingPhase = 'complete';
 			loadingProgress = 100;
@@ -265,7 +275,7 @@
 
 			// Expose API to parent
 			if (onReady) {
-				const api = {
+				onReady({
 					toggleAnnotations,
 					toggleReader,
 					toggleTours,
@@ -280,15 +290,12 @@
 					setCameraOrbit: setCameraOrbitValues,
 					setCameraOffset,
 					setView
-				};
-				console.log('VoyagerViewer: calling onReady with API', api);
-				onReady(api);
+				});
 			}
 		}
 
 		// Listen for model load event
-		voyagerElement.addEventListener('model-load', (e: any) => {
-			console.log('Model loaded event:', e.detail);
+		voyagerElement.addEventListener('model-load', () => {
 			handleModelReady();
 		});
 
@@ -303,13 +310,12 @@
 				const hasAnnotations = (voyagerElement as any).getAnnotations?.()?.length >= 0;
 
 				if (hasModels || hasAnnotations) {
-					console.log('Model already loaded - calling handleModelReady');
 					handleModelReady();
 				} else {
 					// Keep checking for a bit
 					setTimeout(checkIfAlreadyLoaded, 200);
 				}
-			} catch (e) {
+			} catch {
 				// API not ready yet, keep checking
 				setTimeout(checkIfAlreadyLoaded, 200);
 			}
@@ -368,30 +374,35 @@
 		}
 	}
 
-	// Control Voyager UI visibility when fullscreen mode changes
+	// Optionally hide Voyager's built-in UI via CSS injection
 	// Note: Voyager API doesn't support runtime UI toggling for menu/title,
 	// only the uiMode attribute at initial render. We use Shadow DOM CSS injection
-	// as the only viable solution that doesn't require model reload.
+	// to hide the UI after the model loads.
 	$effect(() => {
-		if (fullWindowStyleElement) {
-			if (isFullWindow) {
-				// Hide Voyager's built-in UI in fullscreen mode
+		if (fullWindowStyleElement && loadingPhase === 'complete') {
+			if (showVoyagerMenu) {
+				// Show Voyager's built-in UI
+				fullWindowStyleElement.textContent = '';
+			} else {
+				// Hide Voyager's built-in UI - custom controls are used instead
 				fullWindowStyleElement.textContent = `
-					/* Hide main menu and title bar in fullscreen */
+					/* Hide all Voyager UI elements - using custom controls */
 					.sv-main-menu,
+					.sv-main-menu-wrapper,
 					.sv-chrome-view,
 					.sv-content-view > .ff-title-bar,
 					.sv-title-bar,
 					.ff-title-bar,
-					.sv-tool-bar-container:first-child,
+					.sv-tool-bar-container,
 					.sv-bottom-bar-container,
-					.sv-menu {
+					.sv-menu,
+					.sv-nav-container,
+					.sv-top-bar-container,
+					.ff-dock-view,
+					.sv-panel-container {
 						display: none !important;
 					}
 				`;
-			} else {
-				// Clear the styles when not in fullscreen
-				fullWindowStyleElement.textContent = '';
 			}
 		}
 	});
@@ -446,10 +457,7 @@
 		offsetY?: number;
 		offsetZ?: number;
 	}) {
-		if (!voyagerElement) {
-			console.warn('setView: voyagerElement not ready');
-			return;
-		}
+		if (!voyagerElement) return;
 
 		if (options.yaw !== undefined) cameraYaw = options.yaw;
 		if (options.pitch !== undefined) cameraPitch = options.pitch;
@@ -457,7 +465,6 @@
 		if (options.offsetY !== undefined) cameraOffsetY = options.offsetY;
 		if (options.offsetZ !== undefined) cameraOffsetZ = options.offsetZ;
 
-		console.log('setView: calling setCameraOrbit', cameraYaw, cameraPitch);
 		(voyagerElement as any).setCameraOrbit?.(cameraYaw, cameraPitch);
 		(voyagerElement as any).setCameraOffset?.(cameraOffsetX, cameraOffsetY, cameraOffsetZ);
 	}
@@ -666,7 +673,7 @@
 					<!-- Voyager Explorer Component -->
 					<div
 						class="w-full overflow-hidden rounded-lg bg-gradient-to-b from-slate-700 to-slate-900"
-						style="aspect-ratio: 4/3; max-height: 90dvh;"
+						style={containerStyle}
 					>
 						{#if isScriptLoaded}
 							<voyager-explorer
@@ -1016,7 +1023,7 @@
 			<!-- Direct Mode without Controls Panel -->
 			<div
 				class="w-full overflow-hidden rounded-lg"
-				style="aspect-ratio: 4/3; max-height: 90dvh; background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);"
+				style="{containerStyle} background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);"
 			>
 				{#if isScriptLoaded}
 					<voyager-explorer
@@ -1044,7 +1051,7 @@
 	<!-- Iframe Mode (No API Control) -->
 	<div
 		class="w-full"
-		style="aspect-ratio: 4/3; max-height: 90dvh; background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);"
+		style="{containerStyle} background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);"
 	>
 		<iframe
 			name="Smithsonian Voyager"
