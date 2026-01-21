@@ -77,27 +77,50 @@
 			</ul>
 		</nav>
 
+		<!-- Title and Authors -->
+		<div class="mb-6 flex items-start gap-4">
+			{#if edition.hasPeerReview}
+				<div class="flex-shrink-0" title="This edition has been peer reviewed">
+					<img
+						src="{base}/images/peer-reviewed-badge.svg"
+						alt="Peer Reviewed"
+						class="h-16 w-16 md:h-20 md:w-20"
+					/>
+				</div>
+			{/if}
+			<div class="flex-1">
+				<h1 class="mb-1 text-3xl font-bold md:text-4xl">{edition.title}</h1>
+				<p class="text-base-content/70">{edition.authors}</p>
+			</div>
+			<!-- Sidebar toggle button -->
+			<button
+				onclick={toggleSidebar}
+				class="btn btn-ghost btn-sm hidden lg:flex"
+				aria-label={isSidebarCollapsed ? 'Show details' : 'Hide details'}
+			>
+				{isSidebarCollapsed ? 'Show details' : 'Hide details'}
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-4 w-4 transition-transform duration-300"
+					class:rotate-180={isSidebarCollapsed}
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M9 5l7 7-7 7"
+					/>
+				</svg>
+			</button>
+		</div>
+
 		<!-- Main Content Grid -->
-		<div class="relative flex flex-col gap-8 transition-all duration-300 lg:flex-row">
+		<div class="relative flex flex-col gap-8 transition-all duration-300 lg:flex-row lg:items-start">
 			<!-- Left Column - 3D Viewer -->
 			<div class="min-w-0 flex-1 space-y-6">
-				<!-- Title and Authors -->
-				<div>
-					<div class="flex items-start gap-4">
-						<h1 class="mb-2 flex-1 text-3xl font-bold md:text-4xl">{edition.title}</h1>
-						{#if edition.hasPeerReview}
-							<div class="flex-shrink-0" title="This edition has been peer reviewed">
-								<img
-									src="{base}/images/peer-reviewed-badge.svg"
-									alt="Peer Reviewed"
-									class="h-16 w-16 md:h-20 md:w-20"
-								/>
-							</div>
-						{/if}
-					</div>
-					<p class="text-base-content/70">{edition.authors}</p>
-				</div>
-
 				<!-- Voyager 3D Viewer -->
 				<div class="card overflow-hidden bg-base-200 shadow-xl">
 					<div class="relative card-body p-0">
@@ -139,28 +162,15 @@
 					</div>
 				</div>
 
-				<!-- Voyager version indicator -->
-				{#if edition.voyagerVersion}
-					<p class="mt-1 text-center text-xs text-base-content/40">
-						Voyager v{edition.voyagerVersion}
-					</p>
-				{/if}
-
-				<!-- Toolbar -->
-				<!-- <div class="flex justify-center gap-2">
-					<button class="btn btn-outline btn-sm">Tools</button>
-				</div> -->
-
-				<!-- Usage Conditions -->
-				<div class="alert alert-outline">
-					<div>
-						<div class="">Usage Conditions: {edition.usageConditions}</div>
-						{#if edition.alternativeVersion}
-							<div class="text-sm">
-								<a href={edition.alternativeVersion} class="link">Alternative version</a>
-							</div>
-						{/if}
-					</div>
+				<!-- Viewer info row -->
+				<div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-base-content/50">
+					{#if edition.voyagerVersion}
+						<span>Voyager v{edition.voyagerVersion}</span>
+					{/if}
+					<span>{edition.usageConditions}</span>
+					{#if edition.alternativeVersion}
+						<a href={edition.alternativeVersion} class="link link-hover">Alternative version</a>
+					{/if}
 				</div>
 			</div>
 
@@ -170,30 +180,7 @@
 				class:lg:w-96={!isSidebarCollapsed}
 				class:lg:w-0={isSidebarCollapsed}
 			>
-				<div class="relative lg:sticky lg:top-4">
-					<!-- Toggle Button - Attached to sidebar edge -->
-					<button
-						onclick={toggleSidebar}
-						class="btn absolute top-8 -left-4 z-10 hidden h-16 min-h-0 w-4 rounded-l-lg rounded-r-none p-0 shadow-lg btn-sm btn-primary lg:flex"
-						aria-label={isSidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
-					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="h-4 w-4 transition-transform duration-300"
-							class:rotate-180={isSidebarCollapsed}
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M9 5l7 7-7 7"
-							/>
-						</svg>
-					</button>
-
+				<div class="lg:sticky lg:top-4">
 					<div
 						class="card overflow-hidden bg-base-200 shadow-xl transition-all duration-300"
 						class:lg:w-0={isSidebarCollapsed}
@@ -202,8 +189,9 @@
 					>
 						<div class="card-body w-96 p-0">
 							<!-- Tabs -->
-							<div class="tabs-boxed tabs rounded-t-2xl bg-base-300">
+							<div role="tablist" class="tabs tabs-bordered bg-base-300">
 								<button
+									role="tab"
 									class="tab flex-1"
 									class:tab-active={activeTab === 'description'}
 									onclick={() => (activeTab = 'description')}
@@ -211,6 +199,7 @@
 									Description
 								</button>
 								<button
+									role="tab"
 									class="tab flex-1"
 									class:tab-active={activeTab === 'metadata'}
 									onclick={() => (activeTab = 'metadata')}
@@ -218,6 +207,7 @@
 									Metadata
 								</button>
 								<button
+									role="tab"
 									class="tab flex-1"
 									class:tab-active={activeTab === 'peer-review'}
 									onclick={() => (activeTab = 'peer-review')}
@@ -225,6 +215,7 @@
 									Peer Review
 								</button>
 								<button
+									role="tab"
 									class="tab flex-1"
 									class:tab-active={activeTab === 'printables'}
 									onclick={() => (activeTab = 'printables')}
@@ -245,7 +236,7 @@
 										<h3 class="mb-2 text-sm font-semibold">Tags</h3>
 										<div class="flex flex-wrap gap-2">
 											{#each edition.tags as tag (tag)}
-												<span class="badge badge-primary">{tag}</span>
+												<span class="badge badge-ghost border border-base-300">{tag}</span>
 											{/each}
 										</div>
 									</div>
@@ -324,12 +315,6 @@
 			</div>
 		</div>
 
-		<!-- Back Button -->
-		<div class="mt-12 flex justify-center">
-			<a href="{base}/editions" data-sveltekit-preload-data="hover" class="btn btn-outline btn-lg">
-				← Back to Editions
-			</a>
-		</div>
 	</div>
 </div>
 

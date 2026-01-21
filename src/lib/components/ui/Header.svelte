@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { base } from '$app/paths';
+	import { dev } from '$app/environment';
 	import Logo from '$lib/assets/icons/Logo.svelte';
 	import FeedbackButton from '$lib/components/ui/feedback/FeedbackButton.svelte';
 	import Login from '$lib/components/ui/Login/LoginButton.svelte';
@@ -73,6 +74,17 @@
 						{link.displayTitle}
 					</a>
 				{/each}
+				{#if dev}
+					<a
+						class="btn btn-ghost text-warning"
+						class:btn-active={isActive('/editions/demo')}
+						href="{base}/editions/demo"
+						data-sveltekit-preload-data="hover"
+						title="Development only"
+					>
+						Demo
+					</a>
+				{/if}
 			</div>
 
 			<!-- <FeedbackButton class="hidden sm:block" /> -->

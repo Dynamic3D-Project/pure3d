@@ -41,6 +41,38 @@
 		voyagerVersion?: string;
 		/** Resource root path for Voyager assets (fonts, css, images, language) */
 		resourceRoot?: string;
+		/** Callback when model finishes loading, receives total bytes loaded */
+		onModelLoaded?: (totalBytes: number) => void;
+		/** Whether the viewer is in full window mode */
+		isFullWindow?: boolean;
+		/** Callback when viewer is ready, provides API methods */
+		onReady?: (api: VoyagerAPI) => void;
+	}
+
+	export interface VoyagerAPI {
+		toggleAnnotations: () => void;
+		toggleReader: () => void;
+		toggleTours: () => void;
+		toggleTools: () => void;
+		toggleMeasurement: () => void;
+		enableAR: () => void;
+		setLanguage: (code: string) => void;
+		resetCamera: () => void;
+		getAnnotations: () => any[];
+		getArticles: () => any[];
+		getTours: () => any[];
+		/** Set camera orbit position (yaw in degrees, pitch in degrees) */
+		setCameraOrbit: (yaw: number, pitch: number) => void;
+		/** Set camera offset position */
+		setCameraOffset: (x: number, y: number, z: number) => void;
+		/** Set camera to a preset view with optional animation */
+		setView: (options: {
+			yaw?: number;
+			pitch?: number;
+			offsetX?: number;
+			offsetY?: number;
+			offsetZ?: number;
+		}) => void;
 	}
 
 	let {
@@ -54,7 +86,10 @@
 		showPrompt = false,
 		showReader = false,
 		voyagerVersion = '0.56.2',
-		resourceRoot
+		resourceRoot,
+		onModelLoaded,
+		isFullWindow = false,
+		onReady
 	}: Props = $props();
 
 	let voyagerElement: HTMLElement | undefined = $state();
@@ -205,9 +240,11 @@
 		// Fix Voyager modal z-index to appear above sticky header (Shadow DOM)
 		fixVoyagerModalZIndex();
 
-		// Listen for model load event
-		voyagerElement.addEventListener('model-load', (e: any) => {
-			console.log('Model loaded:', e.detail);
+		// Handler for when model is ready
+		function handleModelReady() {
+			if (loadingPhase === 'complete') return; // Already handled
+
+			console.log('Model ready - initializing API');
 			hasError = false;
 			loadingPhase = 'complete';
 			loadingProgress = 100;
@@ -218,9 +255,68 @@
 				cleanupFetchInterceptor = null;
 			}
 
+			// Notify parent of total bytes loaded
+			if (onModelLoaded && totalBytes > 0) {
+				onModelLoaded(totalBytes);
+			}
+
 			// Load available content
 			getContent();
+
+			// Expose API to parent
+			if (onReady) {
+				const api = {
+					toggleAnnotations,
+					toggleReader,
+					toggleTours,
+					toggleTools,
+					toggleMeasurement,
+					enableAR,
+					setLanguage,
+					resetCamera,
+					getAnnotations: () => annotations,
+					getArticles: () => articles,
+					getTours: () => tours,
+					setCameraOrbit: setCameraOrbitValues,
+					setCameraOffset,
+					setView
+				};
+				console.log('VoyagerViewer: calling onReady with API', api);
+				onReady(api);
+			}
+		}
+
+		// Listen for model load event
+		voyagerElement.addEventListener('model-load', (e: any) => {
+			console.log('Model loaded event:', e.detail);
+			handleModelReady();
 		});
+
+		// Check if model is already loaded (e.g., from cache)
+		// Poll for the presence of models/annotations as indicator
+		const checkIfAlreadyLoaded = () => {
+			if (loadingPhase === 'complete') return;
+
+			try {
+				// Check if Voyager has models loaded
+				const hasModels = (voyagerElement as any).getModels?.()?.length > 0;
+				const hasAnnotations = (voyagerElement as any).getAnnotations?.()?.length >= 0;
+
+				if (hasModels || hasAnnotations) {
+					console.log('Model already loaded - calling handleModelReady');
+					handleModelReady();
+				} else {
+					// Keep checking for a bit
+					setTimeout(checkIfAlreadyLoaded, 200);
+				}
+			} catch (e) {
+				// API not ready yet, keep checking
+				setTimeout(checkIfAlreadyLoaded, 200);
+			}
+		};
+
+		// Start checking after a short delay
+		setTimeout(checkIfAlreadyLoaded, 1000);
 
 		// Listen for annotation changes
 		voyagerElement.addEventListener('annotation-active', (e: any) => {
@@ -242,6 +338,8 @@
 		};
 	}
 
+	let fullWindowStyleElement: HTMLStyleElement | null = null;
+
 	function fixVoyagerModalZIndex() {
 		if (!voyagerElement) return;
 
@@ -262,8 +360,41 @@
 				}
 			`;
 			shadowRoot.appendChild(style);
+
+			// Create a separate style element for fullscreen mode that we can update
+			fullWindowStyleElement = document.createElement('style');
+			fullWindowStyleElement.id = 'full-window-styles';
+			shadowRoot.appendChild(fullWindowStyleElement);
 		}
 	}
+
+	// Control Voyager UI visibility when fullscreen mode changes
+	// Note: Voyager API doesn't support runtime UI toggling for menu/title,
+	// only the uiMode attribute at initial render. We use Shadow DOM CSS injection
+	// as the only viable solution that doesn't require model reload.
+	$effect(() => {
+		if (fullWindowStyleElement) {
+			if (isFullWindow) {
+				// Hide Voyager's built-in UI in fullscreen mode
+				fullWindowStyleElement.textContent = `
+					/* Hide main menu and title bar in fullscreen */
+					.sv-main-menu,
+					.sv-chrome-view,
+					.sv-content-view > .ff-title-bar,
+					.sv-title-bar,
+					.ff-title-bar,
+					.sv-tool-bar-container:first-child,
+					.sv-bottom-bar-container,
+					.sv-menu {
+						display: none !important;
+					}
+				`;
+			} else {
+				// Clear the styles when not in fullscreen
+				fullWindowStyleElement.textContent = '';
+			}
+		}
+	});
 
 	function handleVoyagerError(e: any) {
 		const message = e?.detail?.message || e?.message || 'Failed to load 3D model';
@@ -294,9 +425,41 @@
 	}
 
 	// API Methods - Camera Control
-	function setCameraOrbit() {
+	function setCameraOrbitInternal() {
 		if (!voyagerElement) return;
 		(voyagerElement as any).setCameraOrbit?.(cameraYaw, cameraPitch);
+	}
+
+	/** Set camera orbit with explicit yaw/pitch values (for external API) */
+	function setCameraOrbitValues(yaw: number, pitch: number) {
+		if (!voyagerElement) return;
+		cameraYaw = yaw;
+		cameraPitch = pitch;
+		(voyagerElement as any).setCameraOrbit?.(yaw, pitch);
+	}
+
+	/** Set camera to a view with optional yaw, pitch, and offset (for external API) */
+	function setView(options: {
+		yaw?: number;
+		pitch?: number;
+		offsetX?: number;
+		offsetY?: number;
+		offsetZ?: number;
+	}) {
+		if (!voyagerElement) {
+			console.warn('setView: voyagerElement not ready');
+			return;
+		}
+
+		if (options.yaw !== undefined) cameraYaw = options.yaw;
+		if (options.pitch !== undefined) cameraPitch = options.pitch;
+		if (options.offsetX !== undefined) cameraOffsetX = options.offsetX;
+		if (options.offsetY !== undefined) cameraOffsetY = options.offsetY;
+		if (options.offsetZ !== undefined) cameraOffsetZ = options.offsetZ;
+
+		console.log('setView: calling setCameraOrbit', cameraYaw, cameraPitch);
+		(voyagerElement as any).setCameraOrbit?.(cameraYaw, cameraPitch);
+		(voyagerElement as any).setCameraOffset?.(cameraOffsetX, cameraOffsetY, cameraOffsetZ);
 	}
 
 	function getCameraOrbit(type?: string) {
@@ -306,6 +469,9 @@
 
 	function setCameraOffset(x: number, y: number, z: number) {
 		if (!voyagerElement) return;
+		cameraOffsetX = x;
+		cameraOffsetY = y;
+		cameraOffsetZ = z;
 		(voyagerElement as any).setCameraOffset?.(x, y, z);
 	}
 
@@ -324,7 +490,7 @@
 		cameraOffsetX = 0;
 		cameraOffsetY = 0;
 		cameraOffsetZ = 0;
-		setCameraOrbit();
+		setCameraOrbitInternal();
 		applyCameraOffset();
 	}
 
@@ -466,9 +632,9 @@
 
 {#snippet progressBar()}
 	{#if loadingPhase !== 'complete'}
-		<div class="absolute bottom-0 left-0 right-0 z-10">
+		<div class="pointer-events-none absolute right-0 bottom-0 left-0 z-10">
 			<progress
-				class="progress progress-primary h-1 w-full rounded-none"
+				class="progress h-1 w-full rounded-none progress-primary"
 				value={loadingPhase === 'model' ? loadingProgress : undefined}
 				max="100"
 			></progress>
@@ -499,8 +665,8 @@
 				<div class="order-2 lg:order-1">
 					<!-- Voyager Explorer Component -->
 					<div
-						class="relative w-full overflow-hidden rounded-lg bg-gradient-to-b from-slate-700 to-slate-900"
-						style="padding-top: 75%;"
+						class="w-full overflow-hidden rounded-lg bg-gradient-to-b from-slate-700 to-slate-900"
+						style="aspect-ratio: 4/3; max-height: 90dvh;"
 					>
 						{#if isScriptLoaded}
 							<voyager-explorer
@@ -541,7 +707,7 @@
 										min="-180"
 										max="180"
 										bind:value={cameraYaw}
-										onchange={setCameraOrbit}
+										onchange={setCameraOrbitInternal}
 										class="range range-xs"
 										aria-label="Camera yaw angle"
 									/>
@@ -555,7 +721,7 @@
 										min="-90"
 										max="90"
 										bind:value={cameraPitch}
-										onchange={setCameraOrbit}
+										onchange={setCameraOrbitInternal}
 										class="range range-xs"
 										aria-label="Camera pitch angle"
 									/>
@@ -849,8 +1015,8 @@
 		{:else}
 			<!-- Direct Mode without Controls Panel -->
 			<div
-				class="relative w-full overflow-hidden rounded-lg"
-				style="padding-top: 75%; background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);"
+				class="w-full overflow-hidden rounded-lg"
+				style="aspect-ratio: 4/3; max-height: 90dvh; background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);"
 			>
 				{#if isScriptLoaded}
 					<voyager-explorer
@@ -877,8 +1043,8 @@
 {:else}
 	<!-- Iframe Mode (No API Control) -->
 	<div
-		class="relative w-full"
-		style="padding-top: 75%; background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);"
+		class="w-full"
+		style="aspect-ratio: 4/3; max-height: 90dvh; background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);"
 	>
 		<iframe
 			name="Smithsonian Voyager"
