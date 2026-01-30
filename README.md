@@ -119,6 +119,46 @@ When empty, assets are served from local `static/` directory.
   - [ ] Docker Compose
 
 
+## Versioning & Releases
+
+This project uses tag-triggered releases with automatic changelog generation.
+
+### How It Works
+
+- Version comes from git tags (e.g., `v0.3.0`)
+- Pushing a tag triggers GitHub Actions to generate a changelog and create a GitHub Release
+- Dev server shows your exact git state via `git describe --tags`
+
+### Version Display
+
+| Environment  | Example             | Meaning                                   |
+|-------------|---------------------|-------------------------------------------|
+| On a tag    | `v0.3.0`            | Exactly at release v0.3.0                 |
+| After commits | `v0.3.0-5-ga1b2c3d` | 5 commits after v0.3.0, at commit a1b2c3d |
+
+### Creating a Release
+
+```sh
+# Work with conventional commits
+git commit -m "feat: add new feature"
+git commit -m "fix: resolve bug"
+git push origin main
+
+# When ready to release
+git tag v0.4.0
+git push --tags
+```
+
+### Conventional Commits
+
+| Prefix | Category        |
+|--------|-----------------|
+| feat:  | Features        |
+| fix:   | Bug Fixes       |
+| docs:  | Documentation   |
+| chore: | Maintenance     |
+| feat!: | Breaking Changes|
+
 ## Resources
 
 - [Smithsonian Voyager](https://smithsonian.github.io/dpo-voyager/)
