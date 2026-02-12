@@ -1,12 +1,12 @@
 <script lang="ts">
 	import PhKeyBold from '~icons/ph/key-bold';
-	import { createEventDispatcher } from 'svelte';
 	import { authStore } from '$lib/database';
 	import { validateEmail, validatePassword, getAuthErrorMessage, closeLoginModal } from './utils';
 
-	const dispatch = createEventDispatcher<{
-		registrationSuccess: void;
-	}>();
+	interface Props {
+		onRegistrationSuccess?: () => void;
+	}
+	let { onRegistrationSuccess }: Props = $props();
 
 	let email = $state('');
 	let password = $state('');
@@ -51,7 +51,7 @@
 			password = '';
 			confirmPassword = '';
 
-			dispatch('registrationSuccess');
+			onRegistrationSuccess?.();
 
 			// Close modal after 1.5 seconds
 			setTimeout(() => {
@@ -67,7 +67,6 @@
 </script>
 
 <form
-	class="rounded-box border-base-300 border p-3"
 	onsubmit={(e) => {
 		e.preventDefault();
 		handleRegister();

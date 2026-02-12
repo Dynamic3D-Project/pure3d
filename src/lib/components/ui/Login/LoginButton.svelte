@@ -2,10 +2,10 @@
 	import { base } from '$app/paths';
 	import { authStore } from '$lib/database';
 	import LoginForm from './LoginForm.svelte';
+	import LoginMarketingPanel from './LoginMarketingPanel.svelte';
 </script>
 
-<div>
-	<!-- Logged in -->
+<div id="login-button">
 	{#if authStore.isAuthenticated}
 		<div class="dropdown dropdown-end">
 			<button
@@ -46,21 +46,24 @@
 				</li>
 			</ul>
 		</div>
-		<!-- Not logged in-->
 	{:else}
 		<div>
-			<div>
-				<label for="login-modal" class="modal-button btn btn-primary btn-md">Login</label>
-				<input id="login-modal" type="checkbox" class="modal-toggle" />
-				<div class="modal h-screen">
-					<div class="modal-box">
-						<LoginForm />
+			<label for="login-modal" class="modal-button btn btn-primary btn-md">Login</label>
+			<input id="login-modal" type="checkbox" class="modal-toggle" />
+			<div class="modal h-screen">
+				<div class="modal-box h-[90vh] w-[95vw] max-w-5xl overflow-hidden p-0">
+					<label for="login-modal" class="btn btn-circle btn-ghost absolute right-3 top-3 z-20">✕</label>
 
-						<div class="modal-action">
-							<label for="login-modal" class="btn">Close</label>
+					<div class="grid h-full grid-cols-1 lg:grid-cols-2">
+						<div class="hidden lg:block">
+							<LoginMarketingPanel />
+						</div>
+						<div class="overflow-y-auto">
+							<LoginForm />
 						</div>
 					</div>
 				</div>
+				<label class="modal-backdrop" for="login-modal">Close</label>
 			</div>
 		</div>
 	{/if}

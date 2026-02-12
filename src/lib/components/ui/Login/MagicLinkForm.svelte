@@ -35,7 +35,6 @@
 </script>
 
 <form
-	class="rounded-box border-base-300 border p-3"
 	onsubmit={(e) => {
 		e.preventDefault();
 		handleMagicLinkSignIn();
@@ -44,15 +43,16 @@
 	{#if magicLinkSent}
 		<div class="alert alert-success">Magic link sent! Please check your email.</div>
 	{:else}
-		<div class="form-control">
+		<div class="form-control-float">
 			<input
+				id="magic-link-email"
 				bind:value={email}
 				type="email"
-				placeholder="Enter your email"
-				class="input input-bordered"
+				placeholder=" "
 				required
 				autocomplete="email"
 			/>
+			<label for="magic-link-email">Email</label>
 		</div>
 
 		{#if error}

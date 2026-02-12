@@ -39,7 +39,6 @@
 </script>
 
 <form
-	class="rounded-box border-base-300 border p-3"
 	onsubmit={(e) => {
 		e.preventDefault();
 		handleEmailSignIn();
