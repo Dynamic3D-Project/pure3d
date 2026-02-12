@@ -106,7 +106,7 @@
 - [x] Environment variable configuration
 - [x] Static asset serving from `/static`
 - [x] CDN-ready asset URL configuration
-- [ ] Auto-migration on first run
+- [x] Auto-migration on first run
 - [ ] Production deployment documentation
 
 ## Developer Experience
