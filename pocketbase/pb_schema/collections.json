@@ -6,11 +6,13 @@
       { "name": "user", "type": "text", "required": true },
       { "name": "email", "type": "email", "required": true },
       { "name": "nickname", "type": "text", "required": true },
-      { "name": "role", "type": "select", "required": true, "maxSelect": 1, "values": ["root", "admin", "editor", "viewer"] }
+      { "name": "role", "type": "select", "required": true, "maxSelect": 1, "values": ["superadmin", "admin", "editorial_board", "viewer"] },
+      { "name": "pbAuthId", "type": "text", "required": false }
     ],
     "indexes": [
       "CREATE UNIQUE INDEX idx_users_user ON users (user)",
-      "CREATE INDEX idx_users_email ON users (email)"
+      "CREATE INDEX idx_users_email ON users (email)",
+      "CREATE UNIQUE INDEX idx_users_pbAuthId ON users (pbAuthId)"
     ]
   },
   {
@@ -78,6 +80,7 @@
       { "name": "isPublished", "type": "bool", "required": false },
       { "name": "pubNum", "type": "number", "required": false },
       { "name": "thumbnail", "type": "url", "required": false },
+      { "name": "status", "type": "select", "required": false, "maxSelect": 1, "values": ["draft", "submitted", "in_review", "approved", "rejected", "published"] },
       { "name": "dcTitle", "type": "text", "required": false },
       { "name": "dcSubtitle", "type": "text", "required": false },
       { "name": "dcCreator", "type": "json", "required": false },
@@ -110,7 +113,8 @@
       { "name": "collection", "type": "relation", "required": false, "maxSelect": 1, "collectionId": "collections", "cascadeDelete": true }
     ],
     "indexes": [
-      "CREATE INDEX idx_editions_published ON editions (isPublished)"
+      "CREATE INDEX idx_editions_published ON editions (isPublished)",
+      "CREATE INDEX idx_editions_status ON editions (status)"
     ],
     "listRule": "isPublished = true",
     "viewRule": "isPublished = true"
@@ -120,7 +124,7 @@
     "type": "base",
     "fields": [
       { "name": "user", "type": "text", "required": true },
-      { "name": "role", "type": "select", "required": true, "maxSelect": 1, "values": ["admin", "editor", "viewer"] },
+      { "name": "role", "type": "select", "required": true, "maxSelect": 1, "values": ["owner", "editor", "viewer"] },
       { "name": "collection", "type": "relation", "required": false, "maxSelect": 1, "collectionId": "collections", "cascadeDelete": true },
       { "name": "userId", "type": "relation", "required": false, "maxSelect": 1, "collectionId": "users", "cascadeDelete": true }
     ]
@@ -130,7 +134,7 @@
     "type": "base",
     "fields": [
       { "name": "user", "type": "text", "required": true },
-      { "name": "role", "type": "select", "required": true, "maxSelect": 1, "values": ["admin", "editor", "viewer"] },
+      { "name": "role", "type": "select", "required": true, "maxSelect": 1, "values": ["author", "collaborator", "reviewer"] },
       { "name": "editionId", "type": "relation", "required": false, "maxSelect": 1, "collectionId": "editions", "cascadeDelete": true },
       { "name": "userId", "type": "relation", "required": false, "maxSelect": 1, "collectionId": "users", "cascadeDelete": true }
     ]

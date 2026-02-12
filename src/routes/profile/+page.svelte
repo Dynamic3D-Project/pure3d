@@ -4,6 +4,7 @@
 	import { pb } from '$lib/database/client';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { ROLE_LABELS } from '$lib/types/roles';
 
 	interface ProfileData {
 		displayName: string;
@@ -50,7 +51,7 @@
 				displayName: user.username || user.email || 'User',
 				username: user.username || '',
 				email: user.email,
-				role: 'user',
+				role: authStore.globalRole,
 				verified: user.verified,
 				joinDate: new Date(user.created).toLocaleDateString('en-US', {
 					year: 'numeric',
@@ -119,7 +120,7 @@
 {#if isLoading}
 	<div class="flex min-h-screen items-center justify-center">
 		<div class="text-center">
-			<span class="loading loading-spinner loading-lg"></span>
+			<span class="loading loading-lg loading-spinner"></span>
 			<p class="mt-4 text-base-content/60">Loading profile...</p>
 		</div>
 	</div>
@@ -129,7 +130,7 @@
 		<div class="mb-8 rounded-lg border border-base-300 bg-base-100 p-6 shadow-md">
 			<div class="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
 				<!-- Avatar -->
-				<div class="avatar placeholder">
+				<div class="placeholder avatar">
 					<div class="w-24 rounded-full bg-primary text-primary-content">
 						<span class="text-3xl">{profileData.displayName.charAt(0).toUpperCase()}</span>
 					</div>
@@ -140,7 +141,7 @@
 					<div class="flex items-center gap-2">
 						<h1 class="text-3xl font-bold">{profileData.displayName}</h1>
 						{#if profileData.verified}
-							<span class="badge badge-success badge-sm">Verified</span>
+							<span class="badge badge-sm badge-success">Verified</span>
 						{/if}
 					</div>
 					<p class="text-base-content/70">{profileData.email}</p>
@@ -149,9 +150,7 @@
 
 				<!-- Edit Button -->
 				{#if !isEditing}
-					<button onclick={startEdit} class="btn btn-primary btn-sm">
-						Edit Profile
-					</button>
+					<button onclick={startEdit} class="btn btn-sm btn-primary"> Edit Profile </button>
 				{/if}
 			</div>
 		</div>
@@ -161,7 +160,7 @@
 			<h2 class="mb-4 text-2xl font-semibold">Profile Details</h2>
 
 			{#if saveMessage}
-				<div class="alert alert-success mb-4">
+				<div class="mb-4 alert alert-success">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						class="h-6 w-6 shrink-0 stroke-current"
@@ -180,7 +179,7 @@
 			{/if}
 
 			{#if errorMessage}
-				<div class="alert alert-error mb-4">
+				<div class="mb-4 alert alert-error">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						class="h-6 w-6 shrink-0 stroke-current"
@@ -208,14 +207,12 @@
 					class="space-y-4"
 				>
 					<div>
-						<label for="username" class="mb-1 block text-sm font-medium">
-							Username
-						</label>
+						<label for="username" class="mb-1 block text-sm font-medium"> Username </label>
 						<input
 							id="username"
 							type="text"
 							bind:value={tempData.username}
-							class="input input-bordered w-full"
+							class="input-bordered input w-full"
 							placeholder="Choose a username"
 						/>
 						<p class="mt-1 text-xs text-base-content/60">
@@ -231,7 +228,7 @@
 							id="email-readonly"
 							type="email"
 							value={profileData.email}
-							class="input input-bordered w-full"
+							class="input-bordered input w-full"
 							disabled
 						/>
 						<p class="mt-1 text-xs text-base-content/60">
@@ -242,7 +239,7 @@
 					<div class="flex gap-3">
 						<button type="submit" class="btn btn-primary" disabled={isSaving}>
 							{#if isSaving}
-								<span class="loading loading-spinner loading-sm"></span>
+								<span class="loading loading-sm loading-spinner"></span>
 								Saving...
 							{:else}
 								Save Changes
@@ -267,6 +264,15 @@
 					</div>
 
 					<div>
+						<div class="text-sm font-medium text-base-content/60">Role</div>
+						<p class="mt-1">
+							<span class="badge badge-neutral"
+								>{ROLE_LABELS[profileData.role] || profileData.role}</span
+							>
+						</p>
+					</div>
+
+					<div>
 						<div class="text-sm font-medium text-base-content/60">Account Status</div>
 						<p class="mt-1">
 							{#if profileData.verified}
@@ -284,7 +290,6 @@
 				</div>
 			{/if}
 		</div>
-
 	</div>
 {:else}
 	<div class="flex min-h-screen items-center justify-center">

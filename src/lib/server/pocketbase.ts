@@ -1,5 +1,6 @@
 import PocketBase from 'pocketbase';
 import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
+import { GlobalRole, CollectionRole, EditionRole, EditionStatus } from '$lib/types/roles';
 
 /**
  * Create a PocketBase client
@@ -68,7 +69,7 @@ export async function getUsers() {
 			userHash: record.userHash,
 			email: record.email || null,
 			nickname: record.nickname || null,
-			role: record.role || 'user'
+			role: (record.role as GlobalRole) || GlobalRole.Viewer
 		}));
 	} catch (error) {
 		console.error('Error fetching users:', error);
@@ -258,6 +259,7 @@ function transformEditionRecord(record: any, collection?: any) {
 
 		// Publishing
 		isPublished: record.isPublished,
+		status: (record.status as EditionStatus) || EditionStatus.Published,
 		pubNum: record.pubNum,
 		collectionId: record.collection,
 		collection: record.expand?.collection,
@@ -434,7 +436,7 @@ export async function getProjectUsers(collectionId?: string) {
 			collection: record.collection,
 			user: record.user,
 			userHash: record.userHash,
-			role: record.role
+			role: (record.role as CollectionRole) || CollectionRole.Viewer
 		}));
 	} catch (error) {
 		console.error('Error fetching project users:', error);
@@ -461,10 +463,25 @@ export async function getEditionUsers(editionId?: string) {
 			edition: record.edition,
 			user: record.user,
 			userHash: record.userHash,
-			role: record.role
+			role: (record.role as EditionRole) || EditionRole.Collaborator
 		}));
 	} catch (error) {
 		console.error('Error fetching edition users:', error);
 		return [];
+	}
+}
+
+/**
+ * Update a user's global role
+ */
+export async function updateUserRole(userId: string, newRole: GlobalRole) {
+	const pb = createPocketBaseClient();
+
+	try {
+		await pb.collection('users').update(userId, { role: newRole });
+		return true;
+	} catch (error) {
+		console.error('Error updating user role:', error);
+		return false;
 	}
 }

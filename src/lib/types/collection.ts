@@ -1,3 +1,5 @@
+import { GlobalRole, CollectionRole, EditionRole, EditionStatus } from './roles';
+
 // Site configuration
 export interface Site {
 	id: string;
@@ -19,7 +21,7 @@ export interface User {
 	userHash: string;
 	email: string | null;
 	nickname: string | null;
-	role: string; // root, user, etc.
+	role: GlobalRole;
 }
 
 // Keyword/taxonomy entry
@@ -77,6 +79,7 @@ export interface Edition {
 
 	// Publishing
 	isPublished: boolean;
+	status?: EditionStatus;
 	pubNum: number;
 	collectionId: string;
 	collection?: Collection;
@@ -140,7 +143,7 @@ export interface ProjectUser {
 	collection: string; // Collection ID
 	user: string | null; // User ID
 	userHash: string;
-	role: string; // organiser, editor, etc.
+	role: CollectionRole;
 }
 
 // Edition-User relationship
@@ -150,7 +153,7 @@ export interface EditionUser {
 	edition: string; // Edition ID
 	user: string | null; // User ID
 	userHash: string;
-	role: string; // editor, viewer, etc.
+	role: EditionRole;
 }
 
 // Filter category definition

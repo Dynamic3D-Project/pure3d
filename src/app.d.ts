@@ -6,7 +6,9 @@ declare const __BUILD_DATE__: string;
 declare global {
 	namespace App {
 		// interface Error {}
-		// interface Locals {}
+		interface Locals {
+			pb_auth?: string;
+		}
 		// interface PageData {}
 		// interface PageState {}
 		// interface Platform {}

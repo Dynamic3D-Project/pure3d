@@ -15,6 +15,7 @@ import { persisted } from 'svelte-persisted-store';
 import { pb } from '$lib/database';
 import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
 import type { Edition, Collection } from '$lib/types/collection';
+import { EditionStatus } from '$lib/types/roles';
 import {
 	getEditionThumbnailUrl,
 	getCollectionThumbnailUrl,
@@ -72,15 +73,13 @@ export async function fetchEditions(): Promise<Edition[]> {
 		const editionPubNum = record.pubNum || 1;
 
 		// Build voyager URL - use local assets when pubNum is available
-		const voyagerUrl =
-			collectionPubNum > 0
-				? getEditionRoot(collectionPubNum, editionPubNum)
-				: '';
+		const voyagerUrl = collectionPubNum > 0 ? getEditionRoot(collectionPubNum, editionPubNum) : '';
 
 		// Thumbnail priority: PocketBase file > legacy URL > local static asset
 		const thumbnail = record.thumbnailFile
 			? getFileUrl(record, record.thumbnailFile)
-			: record.thumbnail || (collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, editionPubNum) : '');
+			: record.thumbnail ||
+				(collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, editionPubNum) : '');
 
 		return {
 			id: record.id,
@@ -96,6 +95,7 @@ export async function fetchEditions(): Promise<Edition[]> {
 			created: record.created,
 			// Include Dublin Core fields for filtering
 			isPublished: record.isPublished,
+			status: (record.status as EditionStatus) || EditionStatus.Published,
 			pubNum: record.pubNum,
 			collectionId: record.collection,
 			dcTitle: record.dcTitle,

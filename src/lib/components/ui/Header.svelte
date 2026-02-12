@@ -9,6 +9,8 @@
 	import IconamoonMenuBurgerHorizontalBold from '~icons/iconamoon/menu-burger-horizontal-bold';
 	import menuItems from '$lib/models/menu-itmes';
 	import { page } from '$app/stores';
+	import { authStore } from '$lib/database/stores/auth.svelte';
+	import { GlobalRole } from '$lib/types/roles';
 
 	import ThemeChange from '$lib/components/ui/ThemeChange/ThemeChange.svelte';
 
@@ -76,13 +78,23 @@
 				{/each}
 				{#if dev}
 					<a
-						class="btn btn-ghost text-warning"
+						class="btn text-warning btn-ghost"
 						class:btn-active={isActive('/editions/demo')}
 						href="{base}/editions/demo"
 						data-sveltekit-preload-data="hover"
 						title="Development only"
 					>
 						Demo
+					</a>
+				{/if}
+				{#if authStore.isAuthenticated && (authStore.globalRole === GlobalRole.SuperAdmin || authStore.globalRole === GlobalRole.Admin)}
+					<a
+						class="btn btn-ghost"
+						class:btn-active={isActive('/admin')}
+						href="{base}/admin/users"
+						data-sveltekit-preload-data="hover"
+					>
+						Admin
 					</a>
 				{/if}
 			</div>
