@@ -37,7 +37,7 @@
 	async function loadUsers() {
 		try {
 			isLoading = true;
-			const result = await pb.collection('users').getList(1, 500);
+			const result = await pb.collection('userProfiles').getList(1, 500);
 			users = result.items.map((record) => ({
 				id: record.id,
 				user: record.user || '',
@@ -59,7 +59,7 @@
 			const user = users.find((u) => u.id === userId);
 			const oldRole = user?.role;
 
-			await pb.collection('users').update(userId, { role: newRole });
+			await pb.collection('userProfiles').update(userId, { role: newRole });
 
 			await logAudit('role_change', 'user', userId, authStore.user?.email || '', {
 				from: oldRole,

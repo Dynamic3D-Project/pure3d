@@ -15,7 +15,7 @@ class AuthStore {
 	user = $state<User | null>(null);
 	isAuthenticated = $derived(!!this.user);
 
-	// App-level user data (from `users` collection, not PB auth)
+	// App-level user data (from `userProfiles` collection, not PB auth)
 	appUserId = $state<string | null>(null);
 	globalRole = $state<GlobalRole>(GlobalRole.Viewer);
 
@@ -42,7 +42,7 @@ class AuthStore {
 
 	private async fetchAppUser(email: string) {
 		try {
-			const result = await pb.collection('users').getList(1, 1, {
+			const result = await pb.collection('userProfiles').getList(1, 1, {
 				filter: `email = "${email}"`
 			});
 			if (result.items.length > 0) {
@@ -67,15 +67,34 @@ class AuthStore {
 	}
 
 	async register(email: string, password: string, passwordConfirm: string) {
-		const data = {
+		// 1. Create PB auth account
+		await pb.collection('users').create({
 			email,
 			password,
 			passwordConfirm
-		};
-		const record = await pb.collection('users').create(data);
-		// Auto-login after registration
+		});
+
+		// 2. Login with the new account
 		await this.login(email, password);
-		return record;
+
+		// 3. Create app-level user profile (with default viewer role)
+		try {
+			const existing = await pb.collection('userProfiles').getList(1, 1, {
+				filter: `email = "${email}"`
+			});
+			if (existing.items.length === 0) {
+				await pb.collection('userProfiles').create({
+					user: email,
+					email,
+					nickname: email.split('@')[0],
+					role: GlobalRole.Viewer,
+					pbAuthId: this.user?.id || ''
+				});
+				await this.fetchAppUser(email);
+			}
+		} catch (err) {
+			console.error('Failed to create user profile:', err);
+		}
 	}
 
 	logout() {

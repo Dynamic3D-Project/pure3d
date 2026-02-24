@@ -77,7 +77,7 @@
 
 	<!-- Sidebar -->
 	<aside
-		class="fixed inset-y-0 left-0 z-40 w-64 transform border-r border-base-300 bg-base-200 pt-20 transition-transform duration-200 lg:static lg:translate-x-0 lg:pt-0"
+		class="fixed inset-y-0 left-0 z-40 w-64 transform border-r border-base-300 bg-base-200 pt-20 transition-transform duration-200 lg:sticky lg:top-[60px] lg:h-[calc(100vh-60px)] lg:translate-x-0 lg:pt-0"
 		class:translate-x-0={sidebarOpen}
 		class:-translate-x-full={!sidebarOpen}
 	>

@@ -19,6 +19,7 @@
 		isPublished: boolean;
 		status: EditionStatus;
 		pubNum: number;
+		thumbnailUrl: string;
 		collectionId: string;
 		collectionTitle: string;
 	}
@@ -39,7 +40,17 @@
 
 	let editions = $state<AdminEdition[]>([]);
 	let isLoading = $state(true);
+	let searchQuery = $state('');
 	let expandedId = $state<string | null>(null);
+	let filteredEditions = $derived(
+		searchQuery
+			? editions.filter(
+					(e) =>
+						e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+						e.collectionTitle.toLowerCase().includes(searchQuery.toLowerCase())
+				)
+			: editions
+	);
 	let members = $state<EditionMember[]>([]);
 	let membersLoading = $state(false);
 	let allUsers = $state<AppUser[]>([]);
@@ -79,6 +90,9 @@
 				isPublished: r.isPublished,
 				status: (r.status as EditionStatus) || EditionStatus.Draft,
 				pubNum: r.pubNum,
+				thumbnailUrl: r.thumbnailFile
+					? pb.files.getURL(r, r.thumbnailFile, { thumb: '80x80' })
+					: '',
 				collectionId: r.collection,
 				collectionTitle: r.expand?.collection?.title || ''
 			}));
@@ -92,7 +106,7 @@
 
 	async function loadAllUsers() {
 		try {
-			const result = await pb.collection('users').getList(1, 500);
+			const result = await pb.collection('userProfiles').getList(1, 500);
 			allUsers = result.items.map((r) => ({
 				id: r.id,
 				nickname: r.nickname || '',
@@ -264,13 +278,22 @@
 		</p>
 	</div>
 
+	<div class="mb-6">
+		<input
+			type="text"
+			placeholder="Search editions or collections..."
+			class="input-bordered input w-full max-w-md"
+			bind:value={searchQuery}
+		/>
+	</div>
+
 	{#if isLoading}
 		<div class="flex items-center justify-center py-12">
 			<span class="loading loading-lg loading-spinner"></span>
 		</div>
 	{:else}
 		<div class="space-y-2">
-			{#each editions as edition (edition.id)}
+			{#each filteredEditions as edition (edition.id)}
 				<div class="collapse-arrow collapse border border-base-300 bg-base-100">
 					<input
 						type="radio"
@@ -280,6 +303,32 @@
 					/>
 					<div class="collapse-title font-medium">
 						<div class="flex flex-wrap items-center gap-3">
+							{#if edition.thumbnailUrl}
+								<img
+									src={edition.thumbnailUrl}
+									alt={edition.title}
+									class="size-10 rounded object-cover"
+								/>
+							{:else}
+								<div
+									class="flex size-10 items-center justify-center rounded bg-base-300 text-base-content/40"
+								>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke-width="1.5"
+										stroke="currentColor"
+										class="size-5"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"
+										/>
+									</svg>
+								</div>
+							{/if}
 							<span>{edition.title}</span>
 							<span class="badge badge-sm {statusBadgeClass[edition.status]}">
 								{STATUS_LABELS[edition.status]}
@@ -426,8 +475,14 @@
 			{/each}
 		</div>
 
-		{#if editions.length === 0}
-			<div class="py-8 text-center text-base-content/60">No editions found.</div>
+		{#if filteredEditions.length === 0}
+			<div class="py-8 text-center text-base-content/60">
+				{#if searchQuery}
+					No editions match "{searchQuery}"
+				{:else}
+					No editions found.
+				{/if}
+			</div>
 		{/if}
 	{/if}
 </div>
