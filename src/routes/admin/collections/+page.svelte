@@ -230,14 +230,11 @@
 	{:else}
 		<div class="space-y-2">
 			{#each filteredCollections as collection (collection.id)}
-				<div class="collapse-arrow collapse border border-base-300 bg-base-100">
-					<input
-						type="radio"
-						name="collection-accordion"
-						checked={expandedId === collection.id}
-						onchange={() => toggleExpand(collection.id)}
-					/>
-					<div class="collapse-title font-medium">
+				<div class="rounded-box border border-base-300 bg-base-100">
+					<button
+						class="flex w-full cursor-pointer items-center justify-between p-4 font-medium"
+						onclick={() => toggleExpand(collection.id)}
+					>
 						<div class="flex items-center gap-3">
 							{#if collection.thumbnailUrl}
 								<img
@@ -273,9 +270,24 @@
 								<span class="badge badge-ghost badge-xs">#{collection.pubNum}</span>
 							{/if}
 						</div>
-					</div>
-					<div class="collapse-content">
-						{#if expandedId === collection.id}
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke-width="1.5"
+							stroke="currentColor"
+							class="size-4 transition-transform duration-200"
+							class:rotate-180={expandedId === collection.id}
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="m19.5 8.25-7.5 7.5-7.5-7.5"
+							/>
+						</svg>
+					</button>
+					{#if expandedId === collection.id}
+					<div class="border-t border-base-300 px-4 pb-4 pt-2">
 							{#if membersLoading}
 								<div class="flex justify-center py-4">
 									<span class="loading loading-sm loading-spinner"></span>
@@ -380,8 +392,8 @@
 									</button>
 								</div>
 							{/if}
-						{/if}
 					</div>
+					{/if}
 				</div>
 			{/each}
 		</div>

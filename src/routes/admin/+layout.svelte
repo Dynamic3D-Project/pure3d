@@ -89,7 +89,8 @@
 						<a
 							href={item.href}
 							class="flex items-center gap-3"
-							class:active={isNavActive(item.href)}
+							class:bg-base-300={isNavActive(item.href)}
+							class:font-semibold={isNavActive(item.href)}
 							onclick={() => (sidebarOpen = false)}
 						>
 							<svg
