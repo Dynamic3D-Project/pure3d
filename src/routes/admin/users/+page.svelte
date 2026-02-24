@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { pb } from '$lib/database/client';
 	import { GlobalRole, ROLE_LABELS } from '$lib/types/roles';
+	import { logAudit } from '$lib/utils/audit';
 	import toast from 'svelte-french-toast';
 
 	interface AppUser {
@@ -31,19 +31,6 @@
 	const globalRoleValues = Object.values(GlobalRole);
 
 	onMount(() => {
-		if (!authStore.isAuthenticated) {
-			goto('/');
-			return;
-		}
-
-		if (
-			authStore.globalRole !== GlobalRole.SuperAdmin &&
-			authStore.globalRole !== GlobalRole.Admin
-		) {
-			goto('/');
-			return;
-		}
-
 		loadUsers();
 	});
 
@@ -69,9 +56,17 @@
 	async function updateRole(userId: string, newRole: GlobalRole) {
 		savingUserId = userId;
 		try {
+			const user = users.find((u) => u.id === userId);
+			const oldRole = user?.role;
+
 			await pb.collection('users').update(userId, { role: newRole });
 
-			const user = users.find((u) => u.id === userId);
+			await logAudit('role_change', 'user', userId, authStore.user?.email || '', {
+				from: oldRole,
+				to: newRole,
+				nickname: user?.nickname
+			});
+
 			if (user) {
 				user.role = newRole;
 				users = [...users];
@@ -87,7 +82,7 @@
 	}
 </script>
 
-<div id="admin-users-page" class="container mx-auto max-w-6xl px-4 py-8">
+<div id="admin-users-page" class="mx-auto max-w-6xl">
 	<div class="mb-8">
 		<h1 class="text-3xl font-bold">User Management</h1>
 		<p class="mt-2 text-base-content/60">
@@ -141,7 +136,7 @@
 										}}
 										disabled={savingUserId === user.id}
 									>
-										{#each globalRoleValues as roleValue}
+										{#each globalRoleValues as roleValue (roleValue)}
 											<option value={roleValue} selected={user.role === roleValue}>
 												{ROLE_LABELS[roleValue]}
 											</option>

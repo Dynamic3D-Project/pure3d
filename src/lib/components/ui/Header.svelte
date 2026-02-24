@@ -91,7 +91,7 @@
 					<a
 						class="btn btn-ghost"
 						class:btn-active={isActive('/admin')}
-						href="{base}/admin/users"
+						href="{base}/admin"
 						data-sveltekit-preload-data="hover"
 					>
 						Admin

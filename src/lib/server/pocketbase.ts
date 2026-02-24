@@ -425,7 +425,7 @@ export async function getProjectUsers(collectionId?: string) {
 
 	try {
 		const filter = collectionId ? `collection = "${collectionId}"` : '';
-		const result = await pb.collection('projectUsers').getList(1, 500, {
+		const result = await pb.collection('collectionUsers').getList(1, 500, {
 			filter,
 			expand: 'collection,user'
 		});
@@ -483,5 +483,108 @@ export async function updateUserRole(userId: string, newRole: GlobalRole) {
 	} catch (error) {
 		console.error('Error updating user role:', error);
 		return false;
+	}
+}
+
+// --- Collection User CRUD ---
+
+export async function addCollectionUser(
+	collectionId: string,
+	userId: string,
+	role: CollectionRole
+) {
+	const pb = createPocketBaseClient();
+	return pb.collection('collectionUsers').create({
+		collection: collectionId,
+		userId,
+		user: userId,
+		role
+	});
+}
+
+export async function removeCollectionUser(id: string) {
+	const pb = createPocketBaseClient();
+	return pb.collection('collectionUsers').delete(id);
+}
+
+export async function updateCollectionUserRole(id: string, role: CollectionRole) {
+	const pb = createPocketBaseClient();
+	return pb.collection('collectionUsers').update(id, { role });
+}
+
+// --- Edition User CRUD ---
+
+export async function addEditionUser(editionId: string, userId: string, role: EditionRole) {
+	const pb = createPocketBaseClient();
+	return pb.collection('editionUsers').create({
+		editionId,
+		userId,
+		user: userId,
+		role
+	});
+}
+
+export async function removeEditionUser(id: string) {
+	const pb = createPocketBaseClient();
+	return pb.collection('editionUsers').delete(id);
+}
+
+export async function updateEditionUserRole(id: string, role: EditionRole) {
+	const pb = createPocketBaseClient();
+	return pb.collection('editionUsers').update(id, { role });
+}
+
+// --- Edition Status ---
+
+export async function updateEditionStatus(editionId: string, newStatus: EditionStatus) {
+	const pb = createPocketBaseClient();
+	const isPublished = newStatus === EditionStatus.Published;
+	return pb.collection('editions').update(editionId, { status: newStatus, isPublished });
+}
+
+// --- Admin views (no public filters) ---
+
+export async function getAllCollections() {
+	const pb = createPocketBaseClient();
+
+	try {
+		const result = await pb.collection('collections').getList(1, 500, {
+			sort: 'pubNum'
+		});
+
+		return result.items.map((record) => ({
+			id: record.id,
+			title: record.title,
+			isVisible: record.isVisible,
+			pubNum: record.pubNum,
+			created: record.created
+		}));
+	} catch (error) {
+		console.error('Error fetching all collections:', error);
+		return [];
+	}
+}
+
+export async function getAllEditions() {
+	const pb = createPocketBaseClient();
+
+	try {
+		const result = await pb.collection('editions').getList(1, 500, {
+			expand: 'collection'
+		});
+
+		return result.items.map((record) => ({
+			id: record.id,
+			title: record.dcTitle || record.title,
+			isPublished: record.isPublished,
+			status: (record.status as EditionStatus) || EditionStatus.Draft,
+			pubNum: record.pubNum,
+			collectionId: record.collection,
+			collectionTitle: record.expand?.collection?.title || '',
+			created: record.created
+		}));
+	} catch (error) {
+		console.error('Error fetching all editions:', error);
+		return [];
 	}
 }
