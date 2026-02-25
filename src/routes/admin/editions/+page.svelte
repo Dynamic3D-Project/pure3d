@@ -353,9 +353,9 @@
 						</svg>
 					</button>
 					{#if expandedId === edition.id}
+					{@const transitions = getAvailableTransitions(edition)}
 					<div class="border-t border-base-300 px-4 pb-4 pt-2">
 							<!-- Workflow transitions -->
-							{@const transitions = getAvailableTransitions(edition)}
 							{#if transitions.length > 0}
 								<div class="mb-4 border-b border-base-300 pb-4">
 									<h3 class="mb-2 text-sm font-semibold text-base-content/60 uppercase">
