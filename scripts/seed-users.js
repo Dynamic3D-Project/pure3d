@@ -7,9 +7,9 @@
  * Run with: node scripts/seed-users.js
  */
 
-const fs = require('fs');
+import fs from 'fs';
 
-const POCKETBASE_URL = process.env.PUBLIC_POCKETBASE_URL || 'http://localhost:8090';
+const POCKETBASE_URL = process.env.PUBLIC_POCKETBASE_URL || 'http://localhost:7090';
 const users = JSON.parse(fs.readFileSync('./pocketbase/pb_schema/seed_users.json', 'utf8'));
 
 async function seedUsers() {
@@ -25,8 +25,7 @@ async function seedUsers() {
 					email: user.email,
 					password: user.password,
 					passwordConfirm: user.password,
-					emailVisibility: true,
-					verified: true
+					emailVisibility: true
 				})
 			});
 
@@ -97,7 +96,7 @@ async function seedUsers() {
 
 	console.log('Seeding complete!');
 	console.log('\nTest accounts:');
-	console.log('  All passwords: Test1234!');
+	console.log(`  All passwords: ${users[0].password}`);
 	for (const user of users) {
 		console.log(`  ${user.role.padEnd(16)} ${user.email}`);
 	}
