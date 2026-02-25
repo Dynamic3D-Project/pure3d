@@ -1,6 +1,13 @@
 import { pb } from '$lib/database/client';
 
-export type AuditAction = 'role_change' | 'status_transition' | 'user_assigned' | 'user_removed';
+export type AuditAction =
+	| 'role_change'
+	| 'status_transition'
+	| 'user_assigned'
+	| 'user_removed'
+	| 'user_created'
+	| 'user_updated'
+	| 'user_deleted';
 
 export type AuditTargetType = 'user' | 'collection' | 'edition';
 
