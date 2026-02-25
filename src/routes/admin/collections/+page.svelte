@@ -5,6 +5,7 @@
 	import { CollectionRole, COLLECTION_ROLE_LABELS } from '$lib/types/roles';
 	import { logAudit } from '$lib/utils/audit';
 	import toast from 'svelte-french-toast';
+	import UserSearchSelect from '$lib/components/ui/UserSearchSelect.svelte';
 
 	interface AdminCollection {
 		id: string;
@@ -279,15 +280,11 @@
 							class="size-4 transition-transform duration-200"
 							class:rotate-180={expandedId === collection.id}
 						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								d="m19.5 8.25-7.5 7.5-7.5-7.5"
-							/>
+							<path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
 						</svg>
 					</button>
 					{#if expandedId === collection.id}
-					<div class="border-t border-base-300 px-4 pb-4 pt-2">
+						<div class="border-t border-base-300 px-4 pt-2 pb-4">
 							{#if membersLoading}
 								<div class="flex justify-center py-4">
 									<span class="loading loading-sm loading-spinner"></span>
@@ -351,18 +348,12 @@
 										<label class="label" for="add-user-{collection.id}">
 											<span class="label-text">User</span>
 										</label>
-										<select
-											id="add-user-{collection.id}"
-											class="select-bordered select w-48 select-sm"
+										<UserSearchSelect
+											users={availableUsers()}
 											bind:value={addUserId}
-										>
-											<option value="">Select user...</option>
-											{#each availableUsers() as user (user.id)}
-												<option value={user.id}>
-													{user.nickname || user.email}
-												</option>
-											{/each}
-										</select>
+											id="add-user-{collection.id}"
+											placeholder="Search user..."
+										/>
 									</div>
 									<div class="form-control">
 										<label class="label" for="add-role-{collection.id}">
@@ -392,7 +383,7 @@
 									</button>
 								</div>
 							{/if}
-					</div>
+						</div>
 					{/if}
 				</div>
 			{/each}
