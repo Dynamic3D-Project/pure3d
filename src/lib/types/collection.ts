@@ -129,6 +129,11 @@ export interface Edition {
 	peerReviewKind: string | null;
 	peerReviewContent: string | null;
 	hasPeerReview: boolean;
+	peerReviewRequested: boolean;
+	reviewStage: number | null;
+	peerReviewStamp: boolean;
+	publishedAt: string | null;
+	publishedBy: string | null;
 
 	// Settings
 	settingsAuthorToolName: string | null;

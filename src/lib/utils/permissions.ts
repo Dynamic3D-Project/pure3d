@@ -63,6 +63,16 @@ export function hasPermission(context: UserRoleContext, permission: Permission):
 				editionRole === EditionRole.Reviewer
 			);
 
+		case Permission.EditionAnnotate:
+			return editionRole === EditionRole.Reviewer;
+
+		case Permission.EditionAssignToCollection:
+			return (
+				globalRole === GlobalRole.Admin ||
+				collectionRole === CollectionRole.Owner ||
+				editionRole === EditionRole.Author
+			);
+
 		// --- Workflow actions ---
 		case Permission.WorkflowSubmit:
 			return (
@@ -72,15 +82,36 @@ export function hasPermission(context: UserRoleContext, permission: Permission):
 			);
 
 		case Permission.WorkflowReview:
-			return globalRole === GlobalRole.EditorialBoard || editionRole === EditionRole.Reviewer;
+			return (
+				globalRole === GlobalRole.Admin ||
+				globalRole === GlobalRole.EditorialBoard ||
+				editionRole === EditionRole.Reviewer
+			);
 
 		case Permission.WorkflowApprove:
 		case Permission.WorkflowReject:
-			return globalRole === GlobalRole.EditorialBoard || editionRole === EditionRole.Reviewer;
+			return (
+				globalRole === GlobalRole.Admin ||
+				globalRole === GlobalRole.EditorialBoard ||
+				editionRole === EditionRole.Reviewer
+			);
+
+		case Permission.WorkflowRequestRevisions:
+			return (
+				globalRole === GlobalRole.Admin ||
+				globalRole === GlobalRole.EditorialBoard ||
+				editionRole === EditionRole.Reviewer
+			);
 
 		case Permission.WorkflowPublish:
 		case Permission.WorkflowUnpublish:
 			return globalRole === GlobalRole.Admin || collectionRole === CollectionRole.Owner;
+
+		case Permission.ReviewerAssign:
+			return globalRole === GlobalRole.Admin;
+
+		case Permission.ReviewerSuggest:
+			return globalRole === GlobalRole.EditorialBoard;
 
 		// --- Collection actions ---
 		case Permission.CollectionCreate:
@@ -114,6 +145,7 @@ export function hasPermission(context: UserRoleContext, permission: Permission):
 
 /**
  * Check if a user can trigger a specific status transition.
+ * Implements stage-specific gating for the 12-status pipeline.
  */
 export function canUserTransitionStatus(
 	context: UserRoleContext,
@@ -126,28 +158,83 @@ export function canUserTransitionStatus(
 	if (context.globalRole === GlobalRole.SuperAdmin) return true;
 
 	switch (target) {
-		case EditionStatus.Submitted:
+		// --- Concept stage ---
+		case EditionStatus.ConceptSubmitted:
+			// Author or CollectionOwner submits concept
 			return hasPermission(context, Permission.WorkflowSubmit);
-		case EditionStatus.InReview:
+
+		case EditionStatus.EditorialReview:
+			// Admin/EditorialBoard moves to editorial review
 			return hasPermission(context, Permission.WorkflowReview);
-		case EditionStatus.Approved:
+
+		case EditionStatus.ConceptAccepted:
 			return hasPermission(context, Permission.WorkflowApprove);
-		case EditionStatus.Rejected:
+
+		case EditionStatus.ConceptRejected:
 			return hasPermission(context, Permission.WorkflowReject);
+
+		// --- Alpha stage ---
+		case EditionStatus.AlphaReview:
+			if (current === EditionStatus.ConceptAccepted) {
+				// Admin moves accepted concept to alpha review
+				return hasPermission(context, Permission.WorkflowReview);
+			}
+			if (current === EditionStatus.AlphaRevisions) {
+				// Author resubmits after revisions
+				return hasPermission(context, Permission.WorkflowSubmit);
+			}
+			return false;
+
+		case EditionStatus.AlphaRevisions:
+			return hasPermission(context, Permission.WorkflowRequestRevisions);
+
+		case EditionStatus.AlphaAccepted:
+			return hasPermission(context, Permission.WorkflowApprove);
+
+		case EditionStatus.AlphaRejected:
+			return hasPermission(context, Permission.WorkflowReject);
+
+		// --- Final stage ---
+		case EditionStatus.FinalReview:
+			if (current === EditionStatus.AlphaAccepted) {
+				// Admin moves accepted alpha to final review
+				return hasPermission(context, Permission.WorkflowReview);
+			}
+			if (current === EditionStatus.FinalRevisions) {
+				// Author resubmits after revisions
+				return hasPermission(context, Permission.WorkflowSubmit);
+			}
+			return false;
+
+		case EditionStatus.FinalRevisions:
+			return hasPermission(context, Permission.WorkflowRequestRevisions);
+
+		// --- Publication ---
 		case EditionStatus.Published:
 			return hasPermission(context, Permission.WorkflowPublish);
+
+		// --- Return to draft ---
 		case EditionStatus.Draft:
-			// Returning to draft from rejected or published
-			if (current === EditionStatus.Rejected) {
+			if (current === EditionStatus.ConceptRejected || current === EditionStatus.AlphaRejected) {
+				// Author can revise after rejection
 				return hasPermission(context, Permission.WorkflowSubmit);
 			}
 			if (current === EditionStatus.Published) {
 				return hasPermission(context, Permission.WorkflowUnpublish);
 			}
 			return false;
+
 		default:
 			return false;
 	}
+}
+
+/**
+ * Determine where a submission should be routed based on whether
+ * the edition belongs to a collection.
+ */
+export function getSubmitTarget(hasCollection: boolean): 'collection_owner' | 'admin' {
+	return hasCollection ? 'collection_owner' : 'admin';
 }
 
 // --- Convenience wrappers ---

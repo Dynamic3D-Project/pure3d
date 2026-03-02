@@ -128,6 +128,11 @@ export async function fetchEditions(): Promise<Edition[]> {
 			peerReviewKind: record.peerReviewKind,
 			peerReviewContent: record.peerReviewContent,
 			hasPeerReview: record.hasPeerReview || false,
+			peerReviewRequested: record.peerReviewRequested || false,
+			reviewStage: record.reviewStage ?? null,
+			peerReviewStamp: record.peerReviewStamp || false,
+			publishedAt: record.publishedAt || null,
+			publishedBy: record.publishedBy || null,
 			settingsAuthorToolName: record.settingsAuthorToolName,
 			settingsAuthorToolVersion: record.settingsAuthorToolVersion,
 			settingsSceneFile: record.settingsSceneFile

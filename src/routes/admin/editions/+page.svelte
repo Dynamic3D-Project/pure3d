@@ -67,10 +67,16 @@
 
 	const statusBadgeClass: Record<EditionStatus, string> = {
 		[EditionStatus.Draft]: 'badge-ghost',
-		[EditionStatus.Submitted]: 'badge-info',
-		[EditionStatus.InReview]: 'badge-warning',
-		[EditionStatus.Approved]: 'badge-success',
-		[EditionStatus.Rejected]: 'badge-error',
+		[EditionStatus.ConceptSubmitted]: 'badge-info',
+		[EditionStatus.EditorialReview]: 'badge-warning',
+		[EditionStatus.ConceptAccepted]: 'badge-success',
+		[EditionStatus.ConceptRejected]: 'badge-error',
+		[EditionStatus.AlphaReview]: 'badge-warning',
+		[EditionStatus.AlphaRevisions]: 'badge-info',
+		[EditionStatus.AlphaAccepted]: 'badge-success',
+		[EditionStatus.AlphaRejected]: 'badge-error',
+		[EditionStatus.FinalReview]: 'badge-warning',
+		[EditionStatus.FinalRevisions]: 'badge-info',
 		[EditionStatus.Published]: 'badge-primary'
 	};
 

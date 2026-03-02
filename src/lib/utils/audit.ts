@@ -7,7 +7,10 @@ export type AuditAction =
 	| 'user_removed'
 	| 'user_created'
 	| 'user_updated'
-	| 'user_deleted';
+	| 'user_deleted'
+	| 'review_submitted'
+	| 'reviewer_assigned'
+	| 'reviewer_removed';
 
 export type AuditTargetType = 'user' | 'collection' | 'edition';
 

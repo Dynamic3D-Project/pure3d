@@ -1,6 +1,14 @@
 import PocketBase from 'pocketbase';
 import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
-import { GlobalRole, CollectionRole, EditionRole, EditionStatus } from '$lib/types/roles';
+import {
+	GlobalRole,
+	CollectionRole,
+	EditionRole,
+	EditionStatus,
+	getReviewStage
+} from '$lib/types/roles';
+import type { ReviewDecision } from '$lib/types/reviews';
+import type { ReviewAssignmentStatus } from '$lib/types/reviews';
 
 /**
  * Create a PocketBase client
@@ -309,6 +317,11 @@ function transformEditionRecord(record: any, collection?: any) {
 		peerReviewKind: record.peerReviewKind || null,
 		peerReviewContent: record.peerReviewContent || null,
 		hasPeerReview: !!record.peerReviewKind && record.peerReviewKind !== 'No peer review',
+		peerReviewRequested: record.peerReviewRequested || false,
+		reviewStage: record.reviewStage ?? null,
+		peerReviewStamp: record.peerReviewStamp || false,
+		publishedAt: record.publishedAt || null,
+		publishedBy: record.publishedBy || null,
 
 		// Settings
 		settingsAuthorToolName: record.settingsAuthorToolName || null,
@@ -536,10 +549,27 @@ export async function updateEditionUserRole(id: string, role: EditionRole) {
 
 // --- Edition Status ---
 
-export async function updateEditionStatus(editionId: string, newStatus: EditionStatus) {
+export async function updateEditionStatus(
+	editionId: string,
+	newStatus: EditionStatus,
+	performedByUserId?: string
+) {
 	const pb = createPocketBaseClient();
 	const isPublished = newStatus === EditionStatus.Published;
-	return pb.collection('editions').update(editionId, { status: newStatus, isPublished });
+	const reviewStage = getReviewStage(newStatus);
+
+	const updateData: Record<string, unknown> = {
+		status: newStatus,
+		isPublished,
+		reviewStage: reviewStage ?? null
+	};
+
+	if (isPublished && performedByUserId) {
+		updateData.publishedAt = new Date().toISOString();
+		updateData.publishedBy = performedByUserId;
+	}
+
+	return pb.collection('editions').update(editionId, updateData);
 }
 
 // --- Admin views (no public filters) ---
@@ -581,10 +611,134 @@ export async function getAllEditions() {
 			pubNum: record.pubNum,
 			collectionId: record.collection,
 			collectionTitle: record.expand?.collection?.title || '',
-			created: record.created
+			created: record.created,
+			peerReviewRequested: record.peerReviewRequested || false,
+			reviewStage: record.reviewStage ?? null,
+			peerReviewStamp: record.peerReviewStamp || false,
+			publishedAt: record.publishedAt || null,
+			publishedBy: record.publishedBy || null
 		}));
 	} catch (error) {
 		console.error('Error fetching all editions:', error);
 		return [];
 	}
+}
+
+// --- Edition Reviews CRUD ---
+
+export async function getEditionReviews(editionId: string, stage?: number) {
+	const pb = createPocketBaseClient();
+	let filter = `editionId = "${editionId}"`;
+	if (stage !== undefined) {
+		filter += ` && reviewStage = ${stage}`;
+	}
+	const result = await pb.collection('editionReviews').getList(1, 500, {
+		filter,
+		sort: '-created',
+		expand: 'reviewerId'
+	});
+	return result.items.map((r) => ({
+		id: r.id,
+		editionId: r.editionId,
+		reviewerId: r.reviewerId,
+		reviewStage: r.reviewStage,
+		decision: r.decision as ReviewDecision,
+		comment: r.comment || null,
+		created: r.created,
+		updated: r.updated
+	}));
+}
+
+export async function createEditionReview(
+	editionId: string,
+	reviewerId: string,
+	reviewStage: number,
+	decision: ReviewDecision,
+	comment?: string
+) {
+	const pb = createPocketBaseClient();
+	return pb.collection('editionReviews').create({
+		editionId,
+		reviewerId,
+		reviewStage,
+		decision,
+		comment: comment || ''
+	});
+}
+
+export async function deleteEditionReview(id: string) {
+	const pb = createPocketBaseClient();
+	return pb.collection('editionReviews').delete(id);
+}
+
+// --- Review Assignments CRUD ---
+
+export async function getReviewAssignments(editionId: string, stage?: number) {
+	const pb = createPocketBaseClient();
+	let filter = `editionId = "${editionId}"`;
+	if (stage !== undefined) {
+		filter += ` && reviewStage = ${stage}`;
+	}
+	const result = await pb.collection('reviewAssignments').getList(1, 500, {
+		filter,
+		sort: '-created',
+		expand: 'reviewerId,assignedBy'
+	});
+	return result.items.map((r) => ({
+		id: r.id,
+		editionId: r.editionId,
+		reviewerId: r.reviewerId,
+		reviewStage: r.reviewStage,
+		assignedBy: r.assignedBy,
+		status: r.status as ReviewAssignmentStatus,
+		created: r.created,
+		updated: r.updated
+	}));
+}
+
+export async function assignReviewer(
+	editionId: string,
+	reviewerId: string,
+	reviewStage: number,
+	assignedBy: string
+) {
+	const pb = createPocketBaseClient();
+
+	// Create the assignment record
+	const assignment = await pb.collection('reviewAssignments').create({
+		editionId,
+		reviewerId,
+		reviewStage,
+		assignedBy,
+		status: 'pending'
+	});
+
+	// Also ensure the reviewer has an editionUsers record with Reviewer role
+	try {
+		const existing = await pb.collection('editionUsers').getList(1, 1, {
+			filter: `editionId = "${editionId}" && userId = "${reviewerId}"`
+		});
+		if (existing.items.length === 0) {
+			await pb.collection('editionUsers').create({
+				editionId,
+				userId: reviewerId,
+				user: reviewerId,
+				role: EditionRole.Reviewer
+			});
+		}
+	} catch {
+		// If editionUsers creation fails, the assignment still exists
+	}
+
+	return assignment;
+}
+
+export async function updateReviewAssignmentStatus(id: string, status: ReviewAssignmentStatus) {
+	const pb = createPocketBaseClient();
+	return pb.collection('reviewAssignments').update(id, { status });
+}
+
+export async function removeReviewAssignment(id: string) {
+	const pb = createPocketBaseClient();
+	return pb.collection('reviewAssignments').delete(id);
 }

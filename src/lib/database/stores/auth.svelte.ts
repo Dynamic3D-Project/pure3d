@@ -1,6 +1,7 @@
 import { pb } from '../client';
 import { browser } from '$app/environment';
 import { GlobalRole } from '$lib/types/roles';
+import { notificationStore } from './notifications.svelte';
 
 interface User {
 	id: string;
@@ -49,6 +50,7 @@ class AuthStore {
 				const record = result.items[0];
 				this.appUserId = record.id;
 				this.globalRole = (record.role as GlobalRole) || GlobalRole.Viewer;
+				notificationStore.subscribe(record.id);
 			} else {
 				this.appUserId = null;
 				this.globalRole = GlobalRole.Viewer;
@@ -102,6 +104,7 @@ class AuthStore {
 		this.user = null;
 		this.appUserId = null;
 		this.globalRole = GlobalRole.Viewer;
+		notificationStore.unsubscribeAll();
 	}
 }
 

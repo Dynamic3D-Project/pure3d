@@ -13,7 +13,8 @@
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
 		"seed": "bun scripts/seed-data.ts",
-		"migrate:viewer-help": "bun scripts/add-viewer-help-field.ts"
+		"migrate:viewer-help": "bun scripts/add-viewer-help-field.ts",
+		"migrate:workflow": "bun scripts/migrate-workflow-statuses.ts"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.4.0",

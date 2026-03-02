@@ -107,7 +107,32 @@
 				"type": "select",
 				"required": false,
 				"maxSelect": 1,
-				"values": ["draft", "submitted", "in_review", "approved", "rejected", "published"]
+				"values": [
+					"draft",
+					"concept_submitted",
+					"editorial_review",
+					"concept_accepted",
+					"concept_rejected",
+					"alpha_review",
+					"alpha_revisions",
+					"alpha_accepted",
+					"alpha_rejected",
+					"final_review",
+					"final_revisions",
+					"published"
+				]
+			},
+			{ "name": "peerReviewRequested", "type": "bool", "required": false },
+			{ "name": "reviewStage", "type": "number", "required": false },
+			{ "name": "peerReviewStamp", "type": "bool", "required": false },
+			{ "name": "publishedAt", "type": "date", "required": false },
+			{
+				"name": "publishedBy",
+				"type": "relation",
+				"required": false,
+				"maxSelect": 1,
+				"collectionId": "users",
+				"cascadeDelete": false
 			},
 			{ "name": "dcTitle", "type": "text", "required": false },
 			{ "name": "dcSubtitle", "type": "text", "required": false },
@@ -243,6 +268,154 @@
 		"indexes": [
 			"CREATE INDEX idx_auditlog_action ON auditLog (action)",
 			"CREATE INDEX idx_auditlog_created ON auditLog (created)"
+		],
+		"listRule": "",
+		"viewRule": "",
+		"createRule": "",
+		"updateRule": "",
+		"deleteRule": ""
+	},
+	{
+		"name": "editionReviews",
+		"type": "base",
+		"fields": [
+			{
+				"name": "editionId",
+				"type": "relation",
+				"required": true,
+				"maxSelect": 1,
+				"collectionId": "editions",
+				"cascadeDelete": true
+			},
+			{
+				"name": "reviewerId",
+				"type": "relation",
+				"required": true,
+				"maxSelect": 1,
+				"collectionId": "users",
+				"cascadeDelete": false
+			},
+			{ "name": "reviewStage", "type": "number", "required": true },
+			{
+				"name": "decision",
+				"type": "select",
+				"required": true,
+				"maxSelect": 1,
+				"values": ["approve", "reject", "request_revisions"]
+			},
+			{ "name": "comment", "type": "editor", "required": false }
+		],
+		"indexes": [
+			"CREATE INDEX idx_editionreviews_edition ON editionReviews (editionId)",
+			"CREATE INDEX idx_editionreviews_reviewer ON editionReviews (reviewerId)",
+			"CREATE INDEX idx_editionreviews_stage ON editionReviews (reviewStage)"
+		],
+		"listRule": "",
+		"viewRule": "",
+		"createRule": "",
+		"updateRule": "",
+		"deleteRule": ""
+	},
+	{
+		"name": "reviewAssignments",
+		"type": "base",
+		"fields": [
+			{
+				"name": "editionId",
+				"type": "relation",
+				"required": true,
+				"maxSelect": 1,
+				"collectionId": "editions",
+				"cascadeDelete": true
+			},
+			{
+				"name": "reviewerId",
+				"type": "relation",
+				"required": true,
+				"maxSelect": 1,
+				"collectionId": "users",
+				"cascadeDelete": false
+			},
+			{ "name": "reviewStage", "type": "number", "required": true },
+			{
+				"name": "assignedBy",
+				"type": "relation",
+				"required": true,
+				"maxSelect": 1,
+				"collectionId": "users",
+				"cascadeDelete": false
+			},
+			{
+				"name": "status",
+				"type": "select",
+				"required": true,
+				"maxSelect": 1,
+				"values": ["pending", "accepted", "declined", "completed"]
+			}
+		],
+		"indexes": [
+			"CREATE UNIQUE INDEX idx_reviewassignments_unique ON reviewAssignments (editionId, reviewerId, reviewStage)",
+			"CREATE INDEX idx_reviewassignments_edition ON reviewAssignments (editionId)",
+			"CREATE INDEX idx_reviewassignments_reviewer ON reviewAssignments (reviewerId)"
+		],
+		"listRule": "",
+		"viewRule": "",
+		"createRule": "",
+		"updateRule": "",
+		"deleteRule": ""
+	},
+	{
+		"name": "notifications",
+		"type": "base",
+		"fields": [
+			{
+				"name": "recipientId",
+				"type": "relation",
+				"required": true,
+				"maxSelect": 1,
+				"collectionId": "users",
+				"cascadeDelete": true
+			},
+			{
+				"name": "type",
+				"type": "select",
+				"required": true,
+				"maxSelect": 1,
+				"values": [
+					"status_changed",
+					"concept_submitted",
+					"concept_accepted",
+					"concept_rejected",
+					"alpha_review_started",
+					"alpha_revisions_requested",
+					"alpha_accepted",
+					"alpha_rejected",
+					"final_review_started",
+					"final_revisions_requested",
+					"published",
+					"reviewer_assigned",
+					"reviewer_removed",
+					"review_submitted",
+					"user_added_to_edition"
+				]
+			},
+			{ "name": "title", "type": "text", "required": true },
+			{ "name": "message", "type": "text", "required": false },
+			{
+				"name": "editionId",
+				"type": "relation",
+				"required": false,
+				"maxSelect": 1,
+				"collectionId": "editions",
+				"cascadeDelete": true
+			},
+			{ "name": "actionUrl", "type": "url", "required": false },
+			{ "name": "read", "type": "bool", "required": false }
+		],
+		"indexes": [
+			"CREATE INDEX idx_notifications_recipient ON notifications (recipientId)",
+			"CREATE INDEX idx_notifications_recipient_read ON notifications (recipientId, read)",
+			"CREATE INDEX idx_notifications_created ON notifications (created)"
 		],
 		"listRule": "",
 		"viewRule": "",
