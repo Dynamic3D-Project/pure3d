@@ -3,17 +3,38 @@
 		"name": "users",
 		"type": "base",
 		"fields": [
-			{ "name": "user", "type": "text", "required": true },
-			{ "name": "email", "type": "email", "required": true },
-			{ "name": "nickname", "type": "text", "required": true },
+			{
+				"name": "user",
+				"type": "text",
+				"required": true
+			},
+			{
+				"name": "email",
+				"type": "email",
+				"required": true
+			},
+			{
+				"name": "nickname",
+				"type": "text",
+				"required": true
+			},
 			{
 				"name": "role",
 				"type": "select",
 				"required": true,
 				"maxSelect": 1,
-				"values": ["superadmin", "admin", "editorial_board", "viewer"]
+				"values": [
+					"superadmin",
+					"admin",
+					"editorial_board",
+					"viewer"
+				]
 			},
-			{ "name": "pbAuthId", "type": "text", "required": false }
+			{
+				"name": "pbAuthId",
+				"type": "text",
+				"required": false
+			}
 		],
 		"indexes": [
 			"CREATE UNIQUE INDEX idx_users_user ON users (user)",
@@ -30,15 +51,51 @@
 		"name": "site",
 		"type": "base",
 		"fields": [
-			{ "name": "name", "type": "text", "required": true },
-			{ "name": "blog", "type": "url", "required": false },
-			{ "name": "lastPublished", "type": "date", "required": false },
-			{ "name": "processing", "type": "bool", "required": false },
-			{ "name": "featured", "type": "json", "required": false },
-			{ "name": "publishedProjectCount", "type": "number", "required": false },
-			{ "name": "sweeperStartTm", "type": "date", "required": false },
-			{ "name": "dcDateCreated", "type": "date", "required": false },
-			{ "name": "dcDateModified", "type": "date", "required": false }
+			{
+				"name": "name",
+				"type": "text",
+				"required": true
+			},
+			{
+				"name": "blog",
+				"type": "url",
+				"required": false
+			},
+			{
+				"name": "lastPublished",
+				"type": "date",
+				"required": false
+			},
+			{
+				"name": "processing",
+				"type": "bool",
+				"required": false
+			},
+			{
+				"name": "featured",
+				"type": "json",
+				"required": false
+			},
+			{
+				"name": "publishedProjectCount",
+				"type": "number",
+				"required": false
+			},
+			{
+				"name": "sweeperStartTm",
+				"type": "date",
+				"required": false
+			},
+			{
+				"name": "dcDateCreated",
+				"type": "date",
+				"required": false
+			},
+			{
+				"name": "dcDateModified",
+				"type": "date",
+				"required": false
+			}
 		]
 	},
 	{
@@ -50,9 +107,21 @@
 				"type": "select",
 				"required": true,
 				"maxSelect": 1,
-				"values": ["country", "period", "audience", "subject", "language", "license", "funder"]
+				"values": [
+					"country",
+					"period",
+					"audience",
+					"subject",
+					"language",
+					"license",
+					"funder"
+				]
 			},
-			{ "name": "value", "type": "text", "required": true }
+			{
+				"name": "value",
+				"type": "text",
+				"required": true
+			}
 		],
 		"indexes": [
 			"CREATE UNIQUE INDEX idx_keywords_name_value ON keywords (name, value)",
@@ -63,24 +132,96 @@
 		"name": "collections",
 		"type": "base",
 		"fields": [
-			{ "name": "title", "type": "text", "required": true },
-			{ "name": "isVisible", "type": "bool", "required": false },
-			{ "name": "lastPublished", "type": "date", "required": false },
-			{ "name": "pubNum", "type": "number", "required": false },
-			{ "name": "thumbnail", "type": "url", "required": false },
-			{ "name": "dcTitle", "type": "text", "required": false },
-			{ "name": "dcSubtitle", "type": "text", "required": false },
-			{ "name": "dcCreator", "type": "json", "required": false },
-			{ "name": "dcContributor", "type": "json", "required": false },
-			{ "name": "dcInstitution", "type": "json", "required": false },
-			{ "name": "dcAbstract", "type": "editor", "required": false },
-			{ "name": "dcDescription", "type": "editor", "required": false },
-			{ "name": "dcSubject", "type": "json", "required": false },
-			{ "name": "dcCoveragePeriod", "type": "text", "required": false },
-			{ "name": "dcCoveragePlace", "type": "text", "required": false },
-			{ "name": "dcLanguage", "type": "json", "required": false },
-			{ "name": "dcDateCreated", "type": "date", "required": false },
-			{ "name": "dcDateModified", "type": "date", "required": false },
+			{
+				"name": "title",
+				"type": "text",
+				"required": true
+			},
+			{
+				"name": "isVisible",
+				"type": "bool",
+				"required": false
+			},
+			{
+				"name": "lastPublished",
+				"type": "date",
+				"required": false
+			},
+			{
+				"name": "pubNum",
+				"type": "number",
+				"required": false
+			},
+			{
+				"name": "thumbnail",
+				"type": "url",
+				"required": false
+			},
+			{
+				"name": "dcTitle",
+				"type": "text",
+				"required": false
+			},
+			{
+				"name": "dcSubtitle",
+				"type": "text",
+				"required": false
+			},
+			{
+				"name": "dcCreator",
+				"type": "json",
+				"required": false
+			},
+			{
+				"name": "dcContributor",
+				"type": "json",
+				"required": false
+			},
+			{
+				"name": "dcInstitution",
+				"type": "json",
+				"required": false
+			},
+			{
+				"name": "dcAbstract",
+				"type": "editor",
+				"required": false
+			},
+			{
+				"name": "dcDescription",
+				"type": "editor",
+				"required": false
+			},
+			{
+				"name": "dcSubject",
+				"type": "json",
+				"required": false
+			},
+			{
+				"name": "dcCoveragePeriod",
+				"type": "text",
+				"required": false
+			},
+			{
+				"name": "dcCoveragePlace",
+				"type": "text",
+				"required": false
+			},
+			{
+				"name": "dcLanguage",
+				"type": "json",
+				"required": false
+			},
+			{
+				"name": "dcDateCreated",
+				"type": "date",
+				"required": false
+			},
+			{
+				"name": "dcDateModified",
+				"type": "date",
+				"required": false
+			},
 			{
 				"name": "siteId",
 				"type": "relation",
@@ -90,7 +231,9 @@
 				"cascadeDelete": false
 			}
 		],
-		"indexes": ["CREATE INDEX idx_collections_visible ON collections (isVisible)"],
+		"indexes": [
+			"CREATE INDEX idx_collections_visible ON collections (isVisible)"
+		],
 		"listRule": "isVisible = true",
 		"viewRule": "isVisible = true"
 	},
@@ -98,10 +241,26 @@
 		"name": "editions",
 		"type": "base",
 		"fields": [
-			{ "name": "title", "type": "text", "required": true },
-			{ "name": "isPublished", "type": "bool", "required": false },
-			{ "name": "pubNum", "type": "number", "required": false },
-			{ "name": "thumbnail", "type": "url", "required": false },
+			{
+				"name": "title",
+				"type": "text",
+				"required": true
+			},
+			{
+				"name": "isPublished",
+				"type": "bool",
+				"required": false
+			},
+			{
+				"name": "pubNum",
+				"type": "number",
+				"required": false
+			},
+			{
+				"name": "thumbnail",
+				"type": "url",
+				"required": false
+			},
 			{
 				"name": "status",
 				"type": "select",
@@ -122,10 +281,26 @@
 					"published"
 				]
 			},
-			{ "name": "peerReviewRequested", "type": "bool", "required": false },
-			{ "name": "reviewStage", "type": "number", "required": false },
-			{ "name": "peerReviewStamp", "type": "bool", "required": false },
-			{ "name": "publishedAt", "type": "date", "required": false },
+			{
+				"name": "peerReviewRequested",
+				"type": "bool",
+				"required": false
+			},
+			{
+				"name": "reviewStage",
+				"type": "number",
+				"required": false
+			},
+			{
+				"name": "peerReviewStamp",
+				"type": "bool",
+				"required": false
+			},
+			{
+				"name": "publishedAt",
+				"type": "date",
+				"required": false
+			},
 			{
 				"name": "publishedBy",
 				"type": "relation",
@@ -134,35 +309,151 @@
 				"collectionId": "users",
 				"cascadeDelete": false
 			},
-			{ "name": "dcTitle", "type": "text", "required": false },
-			{ "name": "dcSubtitle", "type": "text", "required": false },
-			{ "name": "dcCreator", "type": "json", "required": false },
-			{ "name": "dcContributor", "type": "json", "required": false },
-			{ "name": "dcInstitution", "type": "json", "required": false },
-			{ "name": "dcAbstract", "type": "editor", "required": false },
-			{ "name": "dcDescription", "type": "editor", "required": false },
-			{ "name": "dcContact", "type": "email", "required": false },
-			{ "name": "dcSubject", "type": "json", "required": false },
-			{ "name": "dcKeyword", "type": "json", "required": false },
-			{ "name": "dcAudience", "type": "json", "required": false },
-			{ "name": "dcFunder", "type": "json", "required": false },
-			{ "name": "dcSource", "type": "json", "required": false },
-			{ "name": "dcProvenance", "type": "editor", "required": false },
-			{ "name": "dcCoveragePeriod", "type": "json", "required": false },
-			{ "name": "dcCoveragePlace", "type": "text", "required": false },
-			{ "name": "dcCoverageCountry", "type": "json", "required": false },
-			{ "name": "dcCoverageTemporal", "type": "text", "required": false },
-			{ "name": "dcCoverageGeo", "type": "text", "required": false },
-			{ "name": "dcLanguage", "type": "json", "required": false },
-			{ "name": "dcRightsHolder", "type": "text", "required": false },
-			{ "name": "dcRightsLicense", "type": "text", "required": false },
-			{ "name": "dcDatePublished", "type": "date", "required": false },
-			{ "name": "dcDateUnPublished", "type": "date", "required": false },
-			{ "name": "dcDateCreated", "type": "date", "required": false },
-			{ "name": "dcDateModified", "type": "date", "required": false },
-			{ "name": "authorToolName", "type": "text", "required": false },
-			{ "name": "authorToolVersion", "type": "text", "required": false },
-			{ "name": "sceneFile", "type": "text", "required": false },
+			{
+				"name": "dcTitle",
+				"type": "text",
+				"required": false
+			},
+			{
+				"name": "dcSubtitle",
+				"type": "text",
+				"required": false
+			},
+			{
+				"name": "dcCreator",
+				"type": "json",
+				"required": false
+			},
+			{
+				"name": "dcContributor",
+				"type": "json",
+				"required": false
+			},
+			{
+				"name": "dcInstitution",
+				"type": "json",
+				"required": false
+			},
+			{
+				"name": "dcAbstract",
+				"type": "editor",
+				"required": false
+			},
+			{
+				"name": "dcDescription",
+				"type": "editor",
+				"required": false
+			},
+			{
+				"name": "dcContact",
+				"type": "email",
+				"required": false
+			},
+			{
+				"name": "dcSubject",
+				"type": "json",
+				"required": false
+			},
+			{
+				"name": "dcKeyword",
+				"type": "json",
+				"required": false
+			},
+			{
+				"name": "dcAudience",
+				"type": "json",
+				"required": false
+			},
+			{
+				"name": "dcFunder",
+				"type": "json",
+				"required": false
+			},
+			{
+				"name": "dcSource",
+				"type": "json",
+				"required": false
+			},
+			{
+				"name": "dcProvenance",
+				"type": "editor",
+				"required": false
+			},
+			{
+				"name": "dcCoveragePeriod",
+				"type": "json",
+				"required": false
+			},
+			{
+				"name": "dcCoveragePlace",
+				"type": "text",
+				"required": false
+			},
+			{
+				"name": "dcCoverageCountry",
+				"type": "json",
+				"required": false
+			},
+			{
+				"name": "dcCoverageTemporal",
+				"type": "text",
+				"required": false
+			},
+			{
+				"name": "dcCoverageGeo",
+				"type": "text",
+				"required": false
+			},
+			{
+				"name": "dcLanguage",
+				"type": "json",
+				"required": false
+			},
+			{
+				"name": "dcRightsHolder",
+				"type": "text",
+				"required": false
+			},
+			{
+				"name": "dcRightsLicense",
+				"type": "text",
+				"required": false
+			},
+			{
+				"name": "dcDatePublished",
+				"type": "date",
+				"required": false
+			},
+			{
+				"name": "dcDateUnPublished",
+				"type": "date",
+				"required": false
+			},
+			{
+				"name": "dcDateCreated",
+				"type": "date",
+				"required": false
+			},
+			{
+				"name": "dcDateModified",
+				"type": "date",
+				"required": false
+			},
+			{
+				"name": "authorToolName",
+				"type": "text",
+				"required": false
+			},
+			{
+				"name": "authorToolVersion",
+				"type": "text",
+				"required": false
+			},
+			{
+				"name": "sceneFile",
+				"type": "text",
+				"required": false
+			},
 			{
 				"name": "collection",
 				"type": "relation",
@@ -183,13 +474,21 @@
 		"name": "collectionUsers",
 		"type": "base",
 		"fields": [
-			{ "name": "user", "type": "text", "required": true },
+			{
+				"name": "user",
+				"type": "text",
+				"required": true
+			},
 			{
 				"name": "role",
 				"type": "select",
 				"required": true,
 				"maxSelect": 1,
-				"values": ["owner", "editor", "viewer"]
+				"values": [
+					"owner",
+					"editor",
+					"viewer"
+				]
 			},
 			{
 				"name": "collection",
@@ -218,13 +517,21 @@
 		"name": "editionUsers",
 		"type": "base",
 		"fields": [
-			{ "name": "user", "type": "text", "required": true },
+			{
+				"name": "user",
+				"type": "text",
+				"required": true
+			},
 			{
 				"name": "role",
 				"type": "select",
 				"required": true,
 				"maxSelect": 1,
-				"values": ["author", "collaborator", "reviewer"]
+				"values": [
+					"author",
+					"collaborator",
+					"reviewer"
+				]
 			},
 			{
 				"name": "editionId",
@@ -253,17 +560,37 @@
 		"name": "auditLog",
 		"type": "base",
 		"fields": [
-			{ "name": "action", "type": "text", "required": true },
+			{
+				"name": "action",
+				"type": "text",
+				"required": true
+			},
 			{
 				"name": "targetType",
 				"type": "select",
 				"required": true,
 				"maxSelect": 1,
-				"values": ["user", "collection", "edition"]
+				"values": [
+					"user",
+					"collection",
+					"edition"
+				]
 			},
-			{ "name": "targetId", "type": "text", "required": true },
-			{ "name": "performedBy", "type": "text", "required": true },
-			{ "name": "details", "type": "json", "required": false }
+			{
+				"name": "targetId",
+				"type": "text",
+				"required": true
+			},
+			{
+				"name": "performedBy",
+				"type": "text",
+				"required": true
+			},
+			{
+				"name": "details",
+				"type": "json",
+				"required": false
+			}
 		],
 		"indexes": [
 			"CREATE INDEX idx_auditlog_action ON auditLog (action)",
@@ -295,15 +622,27 @@
 				"collectionId": "users",
 				"cascadeDelete": false
 			},
-			{ "name": "reviewStage", "type": "number", "required": true },
+			{
+				"name": "reviewStage",
+				"type": "number",
+				"required": true
+			},
 			{
 				"name": "decision",
 				"type": "select",
 				"required": true,
 				"maxSelect": 1,
-				"values": ["approve", "reject", "request_revisions"]
+				"values": [
+					"approve",
+					"reject",
+					"request_revisions"
+				]
 			},
-			{ "name": "comment", "type": "editor", "required": false }
+			{
+				"name": "comment",
+				"type": "editor",
+				"required": false
+			}
 		],
 		"indexes": [
 			"CREATE INDEX idx_editionreviews_edition ON editionReviews (editionId)",
@@ -336,7 +675,11 @@
 				"collectionId": "users",
 				"cascadeDelete": false
 			},
-			{ "name": "reviewStage", "type": "number", "required": true },
+			{
+				"name": "reviewStage",
+				"type": "number",
+				"required": true
+			},
 			{
 				"name": "assignedBy",
 				"type": "relation",
@@ -350,7 +693,12 @@
 				"type": "select",
 				"required": true,
 				"maxSelect": 1,
-				"values": ["pending", "accepted", "declined", "completed"]
+				"values": [
+					"pending",
+					"accepted",
+					"declined",
+					"completed"
+				]
 			}
 		],
 		"indexes": [
@@ -396,11 +744,22 @@
 					"reviewer_assigned",
 					"reviewer_removed",
 					"review_submitted",
-					"user_added_to_edition"
+					"user_added_to_edition",
+					"collaborator_added",
+					"collaborator_removed",
+					"feedback_received"
 				]
 			},
-			{ "name": "title", "type": "text", "required": true },
-			{ "name": "message", "type": "text", "required": false },
+			{
+				"name": "title",
+				"type": "text",
+				"required": true
+			},
+			{
+				"name": "message",
+				"type": "text",
+				"required": false
+			},
 			{
 				"name": "editionId",
 				"type": "relation",
@@ -409,13 +768,85 @@
 				"collectionId": "editions",
 				"cascadeDelete": true
 			},
-			{ "name": "actionUrl", "type": "url", "required": false },
-			{ "name": "read", "type": "bool", "required": false }
+			{
+				"name": "actionUrl",
+				"type": "url",
+				"required": false
+			},
+			{
+				"name": "read",
+				"type": "bool",
+				"required": false
+			}
 		],
 		"indexes": [
 			"CREATE INDEX idx_notifications_recipient ON notifications (recipientId)",
 			"CREATE INDEX idx_notifications_recipient_read ON notifications (recipientId, read)",
 			"CREATE INDEX idx_notifications_created ON notifications (created)"
+		],
+		"listRule": "",
+		"viewRule": "",
+		"createRule": "",
+		"updateRule": "",
+		"deleteRule": ""
+	},
+	{
+		"name": "reviewFeedback",
+		"type": "base",
+		"fields": [
+			{
+				"name": "editionId",
+				"type": "relation",
+				"required": true,
+				"maxSelect": 1,
+				"collectionId": "editions",
+				"cascadeDelete": true
+			},
+			{
+				"name": "reviewerId",
+				"type": "relation",
+				"required": true,
+				"maxSelect": 1,
+				"collectionId": "userProfiles",
+				"cascadeDelete": false
+			},
+			{
+				"name": "reviewStage",
+				"type": "number",
+				"required": true
+			},
+			{
+				"name": "category",
+				"type": "select",
+				"required": true,
+				"maxSelect": 1,
+				"values": [
+					"general",
+					"annotation",
+					"article"
+				]
+			},
+			{
+				"name": "targetLabel",
+				"type": "text",
+				"required": false
+			},
+			{
+				"name": "comment",
+				"type": "text",
+				"required": true
+			},
+			{
+				"name": "resolved",
+				"type": "bool",
+				"required": false
+			}
+		],
+		"indexes": [
+			"CREATE INDEX idx_reviewfeedback_edition ON reviewFeedback (editionId)",
+			"CREATE INDEX idx_reviewfeedback_reviewer ON reviewFeedback (reviewerId)",
+			"CREATE INDEX idx_reviewfeedback_stage ON reviewFeedback (reviewStage)",
+			"CREATE INDEX idx_reviewfeedback_resolved ON reviewFeedback (resolved)"
 		],
 		"listRule": "",
 		"viewRule": "",
