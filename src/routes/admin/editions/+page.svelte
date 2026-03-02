@@ -13,6 +13,7 @@
 	import { logAudit } from '$lib/utils/audit';
 	import toast from 'svelte-french-toast';
 	import UserSearchSelect from '$lib/components/ui/UserSearchSelect.svelte';
+	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
 
 	interface AdminEdition {
 		id: string;
@@ -64,21 +65,6 @@
 	let isAdding = $state(false);
 
 	const editionRoleValues = Object.values(EditionRole);
-
-	const statusBadgeClass: Record<EditionStatus, string> = {
-		[EditionStatus.Draft]: 'badge-ghost',
-		[EditionStatus.ConceptSubmitted]: 'badge-info',
-		[EditionStatus.EditorialReview]: 'badge-warning',
-		[EditionStatus.ConceptAccepted]: 'badge-success',
-		[EditionStatus.ConceptRejected]: 'badge-error',
-		[EditionStatus.AlphaReview]: 'badge-warning',
-		[EditionStatus.AlphaRevisions]: 'badge-info',
-		[EditionStatus.AlphaAccepted]: 'badge-success',
-		[EditionStatus.AlphaRejected]: 'badge-error',
-		[EditionStatus.FinalReview]: 'badge-warning',
-		[EditionStatus.FinalRevisions]: 'badge-info',
-		[EditionStatus.Published]: 'badge-primary'
-	};
 
 	onMount(() => {
 		loadEditions();
@@ -334,9 +320,7 @@
 								</div>
 							{/if}
 							<span>{edition.title}</span>
-							<span class="badge badge-sm {statusBadgeClass[edition.status]}">
-								{STATUS_LABELS[edition.status]}
-							</span>
+							<StatusBadge status={edition.status} />
 							{#if edition.collectionTitle}
 								<span class="text-sm text-base-content/50">
 									in {edition.collectionTitle}
