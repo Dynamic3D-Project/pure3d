@@ -87,6 +87,16 @@
 						Demo
 					</a>
 				{/if}
+				{#if authStore.isAuthenticated}
+					<a
+						class="btn btn-ghost"
+						class:btn-active={isActive('/reviews')}
+						href="{base}/reviews"
+						data-sveltekit-preload-data="hover"
+					>
+						My Work
+					</a>
+				{/if}
 				{#if authStore.isAuthenticated && (authStore.globalRole === GlobalRole.SuperAdmin || authStore.globalRole === GlobalRole.Admin)}
 					<a
 						class="btn btn-ghost"

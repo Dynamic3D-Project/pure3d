@@ -13,7 +13,10 @@ export enum NotificationType {
 	ReviewerAssigned = 'reviewer_assigned',
 	ReviewerRemoved = 'reviewer_removed',
 	ReviewSubmitted = 'review_submitted',
-	UserAddedToEdition = 'user_added_to_edition'
+	UserAddedToEdition = 'user_added_to_edition',
+	CollaboratorAdded = 'collaborator_added',
+	CollaboratorRemoved = 'collaborator_removed',
+	FeedbackReceived = 'feedback_received'
 }
 
 export interface Notification {

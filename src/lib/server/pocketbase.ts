@@ -7,8 +7,8 @@ import {
 	EditionStatus,
 	getReviewStage
 } from '$lib/types/roles';
-import type { ReviewDecision } from '$lib/types/reviews';
-import type { ReviewAssignmentStatus } from '$lib/types/reviews';
+import type { ReviewDecision, ReviewAssignmentStatus } from '$lib/types/reviews';
+import { FeedbackCategory } from '$lib/types/reviews';
 
 /**
  * Create a PocketBase client
@@ -741,4 +741,60 @@ export async function updateReviewAssignmentStatus(id: string, status: ReviewAss
 export async function removeReviewAssignment(id: string) {
 	const pb = createPocketBaseClient();
 	return pb.collection('reviewAssignments').delete(id);
+}
+
+// --- Review Feedback CRUD ---
+
+export async function getReviewFeedback(editionId: string, stage?: number) {
+	const pb = createPocketBaseClient();
+	let filter = `editionId = "${editionId}"`;
+	if (stage !== undefined) {
+		filter += ` && reviewStage = ${stage}`;
+	}
+	const result = await pb.collection('reviewFeedback').getList(1, 500, {
+		filter,
+		sort: '-created'
+	});
+	return result.items.map((r) => ({
+		id: r.id,
+		editionId: r.editionId as string,
+		reviewerId: r.reviewerId as string,
+		reviewStage: r.reviewStage as number,
+		category: r.category as FeedbackCategory,
+		targetLabel: (r.targetLabel as string) || null,
+		comment: r.comment as string,
+		resolved: (r.resolved as boolean) || false,
+		created: r.created as string,
+		updated: r.updated as string
+	}));
+}
+
+export async function createReviewFeedback(
+	editionId: string,
+	reviewerId: string,
+	reviewStage: number,
+	category: FeedbackCategory,
+	comment: string,
+	targetLabel?: string
+) {
+	const pb = createPocketBaseClient();
+	return pb.collection('reviewFeedback').create({
+		editionId,
+		reviewerId,
+		reviewStage,
+		category,
+		comment,
+		targetLabel: targetLabel || '',
+		resolved: false
+	});
+}
+
+export async function updateReviewFeedbackResolved(id: string, resolved: boolean) {
+	const pb = createPocketBaseClient();
+	return pb.collection('reviewFeedback').update(id, { resolved });
+}
+
+export async function deleteReviewFeedback(id: string) {
+	const pb = createPocketBaseClient();
+	return pb.collection('reviewFeedback').delete(id);
 }

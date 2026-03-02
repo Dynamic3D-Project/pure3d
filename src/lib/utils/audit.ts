@@ -10,7 +10,11 @@ export type AuditAction =
 	| 'user_deleted'
 	| 'review_submitted'
 	| 'reviewer_assigned'
-	| 'reviewer_removed';
+	| 'reviewer_removed'
+	| 'feedback_created'
+	| 'feedback_resolved'
+	| 'collaborator_added'
+	| 'collaborator_removed';
 
 export type AuditTargetType = 'user' | 'collection' | 'edition';
 

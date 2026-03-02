@@ -32,3 +32,22 @@ export interface ReviewAssignment {
 	created: string;
 	updated: string;
 }
+
+export enum FeedbackCategory {
+	General = 'general',
+	Annotation = 'annotation',
+	Article = 'article'
+}
+
+export interface ReviewFeedback {
+	id: string;
+	editionId: string;
+	reviewerId: string;
+	reviewStage: number;
+	category: FeedbackCategory;
+	targetLabel: string | null;
+	comment: string;
+	resolved: boolean;
+	created: string;
+	updated: string;
+}

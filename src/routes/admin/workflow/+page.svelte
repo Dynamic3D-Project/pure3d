@@ -487,6 +487,36 @@
 		</p>
 	</div>
 
+	<!-- Stats summary bar -->
+	{#if !isLoading}
+		<div id="workflow-stats" class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+			<div class="rounded-box border border-base-300 bg-base-100 p-3 text-center">
+				<div class="text-2xl font-bold">{tabCounts.submissions}</div>
+				<div class="text-xs text-base-content/60">Submissions</div>
+			</div>
+			<div class="rounded-box border border-base-300 bg-base-100 p-3 text-center">
+				<div class="text-2xl font-bold">{tabCounts.editorial}</div>
+				<div class="text-xs text-base-content/60">Editorial</div>
+			</div>
+			<div class="rounded-box border border-base-300 bg-base-100 p-3 text-center">
+				<div class="text-2xl font-bold">{tabCounts.alpha}</div>
+				<div class="text-xs text-base-content/60">Alpha</div>
+			</div>
+			<div class="rounded-box border border-base-300 bg-base-100 p-3 text-center">
+				<div class="text-2xl font-bold">{tabCounts.final}</div>
+				<div class="text-xs text-base-content/60">Final</div>
+			</div>
+			<div class="rounded-box border border-base-300 bg-base-100 p-3 text-center">
+				<div class="text-2xl font-bold">{tabCounts.publish}</div>
+				<div class="text-xs text-base-content/60">Publish</div>
+			</div>
+			<div class="rounded-box border border-base-300 bg-base-100 p-3 text-center">
+				<div class="text-2xl font-bold">{tabCounts.all}</div>
+				<div class="text-xs text-base-content/60">All Active</div>
+			</div>
+		</div>
+	{/if}
+
 	<!-- Tabs -->
 	<div class="tabs-bordered mb-6 tabs">
 		<button

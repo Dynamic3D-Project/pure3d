@@ -19,9 +19,13 @@
 	import { notifyMany } from '$lib/utils/notifications';
 	import { NotificationType } from '$lib/types/notifications';
 	import { anonymizeReviews, getAdminUserIds } from '$lib/utils/review-helpers';
+	import type { ReviewFeedback } from '$lib/types/reviews';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
 	import WorkflowTimeline from '$lib/components/workflow/WorkflowTimeline.svelte';
 	import ReviewForm from '$lib/components/workflow/ReviewForm.svelte';
+	import CollaboratorManager from '$lib/components/workflow/CollaboratorManager.svelte';
+	import ReviewFeedbackForm from '$lib/components/workflow/ReviewFeedbackForm.svelte';
+	import ReviewFeedbackList from '$lib/components/workflow/ReviewFeedbackList.svelte';
 	import toast from 'svelte-french-toast';
 
 	interface Edition {
@@ -110,6 +114,28 @@
 			(edition.status === EditionStatus.AlphaRevisions ||
 				edition.status === EditionStatus.FinalRevisions)
 	);
+
+	// Can the author manage collaborators?
+	let canManageCollaborators = $derived(
+		isAuthor &&
+			edition !== null &&
+			[
+				EditionStatus.Draft,
+				EditionStatus.ConceptRejected,
+				EditionStatus.AlphaRevisions,
+				EditionStatus.FinalRevisions
+			].includes(edition.status)
+	);
+
+	// Can the author resolve feedback items?
+	let canResolveFeedback = $derived(
+		isAuthor &&
+			edition !== null &&
+			[EditionStatus.AlphaRevisions, EditionStatus.FinalRevisions].includes(edition.status)
+	);
+
+	// Reference to feedback list for reloading
+	let feedbackListRef: ReviewFeedbackList | undefined = $state();
 
 	// Previous rejection/revision feedback for display
 	let previousFeedback = $derived.by(() => {
@@ -348,6 +374,10 @@
 		loadData();
 	}
 
+	function handleFeedbackSubmitted() {
+		feedbackListRef?.loadFeedback();
+	}
+
 	function formatDate(dateStr: string): string {
 		return new Date(dateStr).toLocaleDateString('en-US', {
 			month: 'short',
@@ -468,6 +498,14 @@
 					</div>
 				</form>
 			</div>
+
+			<!-- Collaborator Management (concept form view) -->
+			{#if edition}
+				<div class="mt-6 rounded-box border border-base-300 bg-base-100 p-6">
+					<h2 class="mb-4 text-lg font-semibold">Collaborators</h2>
+					<CollaboratorManager editionId={edition.id} isReadOnly={!canManageCollaborators} />
+				</div>
+			{/if}
 		{/if}
 
 		<!-- Review Form (for assigned reviewers) -->
@@ -505,6 +543,25 @@
 						reviewStage={myAssignment.reviewStage}
 						reviewerId={authStore.appUserId || ''}
 						onsubmit={handleReviewSubmitted}
+					/>
+				</div>
+
+				<!-- Granular feedback (reviewer) -->
+				<div class="rounded-box border border-base-300 bg-base-100 p-6">
+					<h2 class="mb-4 text-lg font-semibold">Granular Feedback</h2>
+					<ReviewFeedbackForm
+						editionId={edition.id}
+						reviewStage={myAssignment.reviewStage}
+						reviewerId={authStore.appUserId || ''}
+						onsubmit={handleFeedbackSubmitted}
+					/>
+					<div class="divider"></div>
+					<ReviewFeedbackList
+						bind:this={feedbackListRef}
+						editionId={edition.id}
+						reviewStage={myAssignment.reviewStage}
+						isAnonymized={myAssignment.reviewStage === 2}
+						{userLookup}
 					/>
 				</div>
 			</div>
@@ -577,6 +634,27 @@
 									? 'Rejected'
 									: 'Revisions Requested'}).
 						</p>
+					</div>
+				{/if}
+
+				<!-- Granular feedback list (author view) -->
+				{#if edition && (isAuthor || isAdmin)}
+					<div class="rounded-box border border-base-300 bg-base-100 p-6">
+						<h2 class="mb-4 text-lg font-semibold">Detailed Feedback</h2>
+						<ReviewFeedbackList
+							editionId={edition.id}
+							canResolve={canResolveFeedback}
+							isAnonymized={currentStage === 2}
+							{userLookup}
+						/>
+					</div>
+				{/if}
+
+				<!-- Collaborator Management (status view) -->
+				{#if edition && isAuthor}
+					<div class="rounded-box border border-base-300 bg-base-100 p-6">
+						<h2 class="mb-4 text-lg font-semibold">Collaborators</h2>
+						<CollaboratorManager editionId={edition.id} isReadOnly={!canManageCollaborators} />
 					</div>
 				{/if}
 
