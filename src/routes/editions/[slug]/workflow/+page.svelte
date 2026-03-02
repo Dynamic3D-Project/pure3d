@@ -14,7 +14,7 @@
 	} from '$lib/types/roles';
 	import { ReviewDecision } from '$lib/types/reviews';
 	import type { EditionReview, ReviewAssignment } from '$lib/types/reviews';
-	import { updateEditionStatus } from '$lib/server/pocketbase';
+	import { updateEditionStatus } from '$lib/database/edition-helpers';
 	import { logAudit } from '$lib/utils/audit';
 	import { notifyMany } from '$lib/utils/notifications';
 	import { NotificationType } from '$lib/types/notifications';

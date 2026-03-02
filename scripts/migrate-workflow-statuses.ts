@@ -75,12 +75,21 @@ async function collectionExists(name: string): Promise<boolean> {
 	}
 }
 
+async function resolveCollectionId(name: string): Promise<string> {
+	const collection = await getCollection(name);
+	console.log(`  Resolved "${name}" → ${collection.id}`);
+	return collection.id;
+}
+
 // --- Step 1: Update editions collection ---
 async function updateEditionsCollection() {
 	console.log('--- Step 1: Update editions collection ---');
 
 	const collection = await getCollection('editions');
 	const fields = collection.fields || [];
+
+	// Resolve users collection ID for publishedBy relation
+	const usersId = await resolveCollectionId('users');
 
 	// Update status field values
 	const statusField = fields.find((f: any) => f.name === 'status');
@@ -112,7 +121,7 @@ async function updateEditionsCollection() {
 			type: 'relation',
 			required: false,
 			maxSelect: 1,
-			collectionId: 'users',
+			collectionId: usersId,
 			cascadeDelete: false
 		}
 	];
@@ -136,6 +145,9 @@ async function createEditionReviewsCollection() {
 		return;
 	}
 
+	const editionsId = await resolveCollectionId('editions');
+	const usersId = await resolveCollectionId('users');
+
 	await apiRequest('/api/collections', 'POST', {
 		name: 'editionReviews',
 		type: 'base',
@@ -145,7 +157,7 @@ async function createEditionReviewsCollection() {
 				type: 'relation',
 				required: true,
 				maxSelect: 1,
-				collectionId: 'editions',
+				collectionId: editionsId,
 				cascadeDelete: true
 			},
 			{
@@ -153,7 +165,7 @@ async function createEditionReviewsCollection() {
 				type: 'relation',
 				required: true,
 				maxSelect: 1,
-				collectionId: 'users',
+				collectionId: usersId,
 				cascadeDelete: false
 			},
 			{ name: 'reviewStage', type: 'number', required: true },
@@ -190,6 +202,9 @@ async function createReviewAssignmentsCollection() {
 		return;
 	}
 
+	const editionsId = await resolveCollectionId('editions');
+	const usersId = await resolveCollectionId('users');
+
 	await apiRequest('/api/collections', 'POST', {
 		name: 'reviewAssignments',
 		type: 'base',
@@ -199,7 +214,7 @@ async function createReviewAssignmentsCollection() {
 				type: 'relation',
 				required: true,
 				maxSelect: 1,
-				collectionId: 'editions',
+				collectionId: editionsId,
 				cascadeDelete: true
 			},
 			{
@@ -207,7 +222,7 @@ async function createReviewAssignmentsCollection() {
 				type: 'relation',
 				required: true,
 				maxSelect: 1,
-				collectionId: 'users',
+				collectionId: usersId,
 				cascadeDelete: false
 			},
 			{ name: 'reviewStage', type: 'number', required: true },
@@ -216,7 +231,7 @@ async function createReviewAssignmentsCollection() {
 				type: 'relation',
 				required: true,
 				maxSelect: 1,
-				collectionId: 'users',
+				collectionId: usersId,
 				cascadeDelete: false
 			},
 			{
@@ -251,6 +266,9 @@ async function createNotificationsCollection() {
 		return;
 	}
 
+	const usersId = await resolveCollectionId('users');
+	const editionsId = await resolveCollectionId('editions');
+
 	await apiRequest('/api/collections', 'POST', {
 		name: 'notifications',
 		type: 'base',
@@ -260,7 +278,7 @@ async function createNotificationsCollection() {
 				type: 'relation',
 				required: true,
 				maxSelect: 1,
-				collectionId: 'users',
+				collectionId: usersId,
 				cascadeDelete: true
 			},
 			{
@@ -293,7 +311,7 @@ async function createNotificationsCollection() {
 				type: 'relation',
 				required: false,
 				maxSelect: 1,
-				collectionId: 'editions',
+				collectionId: editionsId,
 				cascadeDelete: true
 			},
 			{ name: 'actionUrl', type: 'url', required: false },
@@ -301,8 +319,7 @@ async function createNotificationsCollection() {
 		],
 		indexes: [
 			'CREATE INDEX idx_notifications_recipient ON notifications (recipientId)',
-			'CREATE INDEX idx_notifications_recipient_read ON notifications (recipientId, read)',
-			'CREATE INDEX idx_notifications_created ON notifications (created)'
+			'CREATE INDEX idx_notifications_recipient_read ON notifications (recipientId, read)'
 		],
 		listRule: '',
 		viewRule: '',

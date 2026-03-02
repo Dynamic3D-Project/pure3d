@@ -3,7 +3,6 @@
 	import { pb } from '$lib/database/client';
 	import { FeedbackCategory } from '$lib/types/reviews';
 	import type { ReviewFeedback } from '$lib/types/reviews';
-	import { updateReviewFeedbackResolved } from '$lib/server/pocketbase';
 	import { logAudit } from '$lib/utils/audit';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { ReviewStage } from '$lib/types/roles';
@@ -90,7 +89,7 @@
 	async function toggleResolved(item: ReviewFeedback) {
 		try {
 			const newResolved = !item.resolved;
-			await updateReviewFeedbackResolved(item.id, newResolved);
+			await pb.collection('reviewFeedback').update(item.id, { resolved: newResolved });
 			item.resolved = newResolved;
 			feedbackItems = [...feedbackItems];
 

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { FeedbackCategory } from '$lib/types/reviews';
-	import { createReviewFeedback } from '$lib/server/pocketbase';
 	import { logAudit } from '$lib/utils/audit';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { notifyMany } from '$lib/utils/notifications';
@@ -34,14 +33,14 @@
 		}
 		isSubmitting = true;
 		try {
-			await createReviewFeedback(
+			await pb.collection('reviewFeedback').create({
 				editionId,
 				reviewerId,
 				reviewStage,
 				category,
-				comment.trim(),
-				showTargetLabel ? targetLabel.trim() : undefined
-			);
+				comment: comment.trim(),
+				targetLabel: showTargetLabel ? targetLabel.trim() : ''
+			});
 
 			await logAudit('feedback_created', 'edition', editionId, authStore.user?.email || '', {
 				category,

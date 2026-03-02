@@ -3,7 +3,6 @@
 	import { pb } from '$lib/database/client';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { EditionRole } from '$lib/types/roles';
-	import { addEditionUser, removeEditionUser } from '$lib/server/pocketbase';
 	import { logAudit } from '$lib/utils/audit';
 	import { notify } from '$lib/utils/notifications';
 	import { NotificationType } from '$lib/types/notifications';
@@ -88,7 +87,12 @@
 		if (!addUserId) return;
 		actionLoading = true;
 		try {
-			await addEditionUser(editionId, addUserId, addRole);
+			await pb.collection('editionUsers').create({
+				editionId,
+				userId: addUserId,
+				user: addUserId,
+				role: addRole
+			});
 
 			await logAudit('collaborator_added', 'edition', editionId, authStore.user?.email || '', {
 				userId: addUserId,
@@ -119,7 +123,7 @@
 	async function removeMember(member: EditionUser) {
 		actionLoading = true;
 		try {
-			await removeEditionUser(member.id);
+			await pb.collection('editionUsers').delete(member.id);
 
 			await logAudit('collaborator_removed', 'edition', editionId, authStore.user?.email || '', {
 				userId: member.userId,

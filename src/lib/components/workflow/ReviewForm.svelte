@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { ReviewDecision } from '$lib/types/reviews';
 	import { ReviewStage } from '$lib/types/roles';
-	import { createEditionReview } from '$lib/server/pocketbase';
+	import { pb } from '$lib/database/client';
 	import { logAudit } from '$lib/utils/audit';
 	import { notifyMany } from '$lib/utils/notifications';
 	import { NotificationType } from '$lib/types/notifications';
@@ -60,7 +60,13 @@
 
 		isSubmitting = true;
 		try {
-			await createEditionReview(editionId, reviewerId, reviewStage, decision, comment || undefined);
+			await pb.collection('editionReviews').create({
+				editionId,
+				reviewerId,
+				reviewStage,
+				decision,
+				comment: comment || ''
+			});
 
 			await logAudit('review_submitted', 'edition', editionId, authStore.user?.email || '', {
 				reviewStage,

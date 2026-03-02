@@ -6,7 +6,7 @@
 	import { EditionStatus, ReviewStage, STATUS_LABELS } from '$lib/types/roles';
 	import { ReviewDecision } from '$lib/types/reviews';
 	import type { EditionReview, ReviewAssignment } from '$lib/types/reviews';
-	import { updateEditionStatus, assignReviewer } from '$lib/server/pocketbase';
+	import { updateEditionStatus, assignReviewer } from '$lib/database/edition-helpers';
 	import { logAudit } from '$lib/utils/audit';
 	import { notify, notifyMany } from '$lib/utils/notifications';
 	import { NotificationType } from '$lib/types/notifications';
