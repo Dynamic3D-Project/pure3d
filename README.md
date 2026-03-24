@@ -29,53 +29,128 @@ Pure3D provides an interactive way to view and explore 3D digitized artifacts, a
 
 ## Quick Start
 
-1. **Clone and install**
+### 1. Clone the repository
 
 ```sh
 git clone <your-repo-url>
-cd pure3D
+cd pure3D-26
 ```
 
-2. **Start development**
-It will set up the frontend and Backend fully. If not set .env all values will be created by default.
+### 2. Optional: create a local `.env`
+
+If you do nothing, Docker Compose will use built-in defaults.
+
+If you want different ports or admin credentials, copy the example file first:
+
+```sh
+cp .env.example .env
+```
+
+Important defaults:
+
+- Frontend: `http://localhost:8080`
+- PocketBase: `http://localhost:8090`
+- PocketBase superuser: `admin@admin.local` / `1234567890`
+
+### 3. Start everything with one command
+
 ```sh
 docker compose up -d
 ```
 
-This starts:
-- Frontend at `http://localhost:8080`
-- PocketBase at `http://localhost:8090`
+What this does on a fresh clone:
 
-3. **Setup PocketBase** (first run only)
+1. Starts PocketBase
+2. Creates or upgrades the PocketBase schema automatically
+3. Imports the bundled JSON seed data from `data/json-output/` when those files are present
+4. Seeds demo login accounts
+5. Starts the frontend
 
-Visit `http://localhost:8090/_/` to create your admin account, then import the database schema from
-`pocketbase/pb_schema/collections.json`
+First startup can take a little longer because the setup container installs dependencies and imports the database.
 
-## 3D Edition Assets
+### 4. Open the app
 
-The platform serves 3D content from static assets. These large files (~9 GB) are git-ignored.
+- Frontend: `http://localhost:8080`
+- PocketBase admin UI: `http://localhost:8090/_/`
 
-### Directory Structure
+Demo app accounts created automatically for development:
 
+- `superadmin@pure3d.eu` / `1234567890`
+- `admin@pure3d.eu` / `1234567890`
+- `editor@pure3d.eu` / `1234567890`
+- `viewer@pure3d.eu` / `1234567890`
+
+If no project data is available yet, the app still starts with an empty database, working authentication, and working role-based access. You can log in and manage users before any collection or edition data has been imported.
+
+### 5. If you need a clean reset
+
+```sh
+docker compose down
+rm -rf pocketbase/pb_data
+docker compose up -d
 ```
+
+## Data and Assets
+
+There are two different kinds of local data in this repository:
+
+### A. Database seed data
+
+This is already used automatically by Docker Compose.
+
+- Source folder: `data/json-output/`
+- Purpose: initial PocketBase collections and records
+- Result: imported automatically during `docker compose up` if the files exist
+
+You do not need to manually place anything here after cloning unless you want to regenerate the dataset yourself from BSON files.
+
+If you do want to rebuild the JSON seed data, the BSON source files belong in:
+
+- `data/db/`
+
+Then run:
+
+```sh
+bun scripts/read-bson.ts
+```
+
+### B. 3D static asset data
+
+This is what the frontend uses for Voyager scenes, edition thumbnails, articles, and model files.
+
+The app looks for local assets in:
+
+```text
+static/project/{collectionPubNum}/
+static/project/{collectionPubNum}/edition/{editionPubNum}/
+static/voyager/{version}/
+```
+
+Typical structure:
+
+```text
 static/
-├── project/{pubNum}/                    # Per-project data
-│   ├── icon.png                         # Collection thumbnail
-│   └── edition/{pubNum}/                # Per-edition data
-│       ├── scene.svx.json               # Voyager scene file
-│       ├── *.glb                        # 3D models
-│       ├── icon.png                     # Edition thumbnail
-│       └── articles/                    # HTML content
-└── voyager/{version}/                   # Voyager viewer versions
-    ├── js/voyager-explorer.min.js
-    ├── fonts/, css/, images/
+├── project/{collectionPubNum}/
+│   ├── icon.png
+│   └── edition/{editionPubNum}/
+│       ├── scene.svx.json
+│       ├── icon.png
+│       ├── *.glb
+│       └── articles/
+└── voyager/{version}/
+    ├── js/
+    ├── css/
+    ├── fonts/
+    ├── images/
     └── language/
 ```
 
-### Local Development
+Notes:
 
-Copy your 3D edition data to `static/project/` and Voyager builds to `static/voyager/`.
-Assets are served at `/project/...` and `/voyager/...` routes in dev mode.
+- The repository already contains Voyager builds in `static/voyager/`.
+- The repository may contain some sample project assets, but the full local asset set is usually too large to keep in git.
+- If a page loads but a 3D scene or image is missing, check that the corresponding files exist under `static/project/`.
+- If you serve assets from a CDN or R2 instead of the local filesystem, set `PUBLIC_ASSET_BASE_URL` in `.env` and the app will use that instead of `static/`.
 
 ### Image Optimization (Optional)
 

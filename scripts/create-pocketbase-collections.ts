@@ -1,21 +1,13 @@
 #!/usr/bin/env bun
 /**
- * Creates all PocketBase collections via API.
- * Idempotent — safe to re-run on an existing database.
- *
- * Three-phase approach:
- *   1) Create base + auth collections (without relation fields)
- *   2) Add relation fields between collections
- *   3) Set open API rules (app-level RBAC handles authorization)
- *
- * Run by docker-compose pocketbase-setup service, or manually:
- *   bun scripts/create-pocketbase-collections.ts
+ * Creates and upgrades the PocketBase schema required by the app.
+ * Safe to re-run on an existing database.
  */
 import PocketBase from 'pocketbase';
 
 const POCKETBASE_URL = process.env.POCKETBASE_URL || 'http://pocketbase:8090';
-const ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL;
-const ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD;
+const ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL || 'admin@admin.local';
+const ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD || '1234567890';
 
 const pb = new PocketBase(POCKETBASE_URL);
 
@@ -27,72 +19,186 @@ const openRules = {
 	deleteRule: ''
 };
 
-async function collectionExists(name: string): Promise<string | null> {
+const keywordCategories = [
+	'country',
+	'period',
+	'audience',
+	'subject',
+	'language',
+	'license',
+	'funder'
+];
+
+const globalRoleValues = ['superadmin', 'admin', 'editorial_board', 'viewer'];
+const collectionRoleValues = ['owner', 'editor', 'viewer'];
+const editionRoleValues = ['author', 'collaborator', 'reviewer'];
+const editionStatusValues = [
+	'draft',
+	'concept_submitted',
+	'editorial_review',
+	'concept_accepted',
+	'concept_rejected',
+	'alpha_review',
+	'alpha_revisions',
+	'alpha_accepted',
+	'alpha_rejected',
+	'final_review',
+	'final_revisions',
+	'published'
+];
+const notificationTypes = [
+	'status_changed',
+	'concept_submitted',
+	'concept_accepted',
+	'concept_rejected',
+	'alpha_review_started',
+	'alpha_revisions_requested',
+	'alpha_accepted',
+	'alpha_rejected',
+	'final_review_started',
+	'final_revisions_requested',
+	'published',
+	'reviewer_assigned',
+	'reviewer_removed',
+	'review_submitted',
+	'user_added_to_edition',
+	'collaborator_added',
+	'collaborator_removed',
+	'feedback_received'
+];
+
+type FieldDef = Record<string, unknown> & { name: string };
+type CollectionType = 'base' | 'auth';
+type CollectionDef = {
+	name: string;
+	type: CollectionType;
+	fields: FieldDef[];
+};
+
+async function waitForPocketBase() {
+	console.log('Waiting for PocketBase...');
+	for (let attempt = 0; attempt < 30; attempt++) {
+		try {
+			const response = await fetch(`${POCKETBASE_URL}/api/health`);
+			if (response.ok) {
+				console.log('PocketBase is healthy\n');
+				return;
+			}
+		} catch {}
+
+		await new Promise((resolve) => setTimeout(resolve, 2000));
+	}
+
+	throw new Error('PocketBase did not become healthy in time');
+}
+
+async function authenticate() {
+	console.log('Authenticating...');
+	await pb.collection('_superusers').authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
+	console.log('Authenticated successfully\n');
+}
+
+async function getCollection(name: string) {
 	try {
-		const coll = await pb.collections.getOne(name);
-		return coll.id;
+		return await pb.collections.getOne(name);
 	} catch {
 		return null;
 	}
 }
 
-async function ensureCollection(name: string, payload: Record<string, unknown>): Promise<string> {
-	const existingId = await collectionExists(name);
-	if (existingId) {
-		console.log(`   ${name}: already exists`);
-		return existingId;
+function mergeFields(existingFields: Record<string, unknown>[], desiredFields: FieldDef[]) {
+	const mergedFields = [...existingFields];
+
+	for (const desiredField of desiredFields) {
+		const existingIndex = mergedFields.findIndex(
+			(field) => typeof field?.name === 'string' && field.name === desiredField.name
+		);
+
+		if (existingIndex === -1) {
+			mergedFields.push(desiredField);
+			continue;
+		}
+
+		mergedFields[existingIndex] = {
+			...mergedFields[existingIndex],
+			...desiredField
+		};
 	}
-	const result = await pb.collections.create(payload);
-	console.log(`   ${name}: created (${result.id})`);
-	return result.id;
+
+	return mergedFields;
+}
+
+async function ensureCollection(definition: CollectionDef) {
+	const existing = await getCollection(definition.name);
+
+	if (!existing) {
+		const created = await pb.collections.create({
+			name: definition.name,
+			type: definition.type,
+			fields: definition.fields
+		});
+		console.log(`   ${definition.name}: created`);
+		return created.id;
+	}
+
+	const mergedFields = mergeFields(
+		Array.isArray(existing.fields) ? existing.fields : [],
+		definition.fields
+	);
+
+	await pb.collections.update(existing.id, {
+		fields: mergedFields
+	});
+
+	console.log(`   ${definition.name}: ensured`);
+	return existing.id;
+}
+
+function relationField(
+	name: string,
+	targetCollectionId: string,
+	options: { required?: boolean; cascadeDelete?: boolean } = {}
+): FieldDef {
+	return {
+		name,
+		type: 'relation',
+		required: options.required ?? false,
+		maxSelect: 1,
+		collectionId: targetCollectionId,
+		cascadeDelete: options.cascadeDelete ?? false
+	};
+}
+
+async function setOpenRules(name: string) {
+	const collection = await pb.collections.getOne(name);
+	await pb.collections.update(collection.id, openRules);
+	console.log(`   ${name}: API rules set to open`);
 }
 
 async function main() {
-	if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
-		console.error('Missing POCKETBASE_ADMIN_EMAIL or POCKETBASE_ADMIN_PASSWORD');
-		process.exit(1);
-	}
+	console.log('Creating PocketBase schema');
+	console.log(`   URL: ${POCKETBASE_URL}`);
+	console.log(`   Admin: ${ADMIN_EMAIL}\n`);
 
-	console.log('Creating PocketBase Collections');
-	console.log(`   URL: ${POCKETBASE_URL}\n`);
-
-	// Wait for PocketBase to be healthy
-	console.log('Waiting for PocketBase...');
-	for (let i = 0; i < 30; i++) {
-		try {
-			const res = await fetch(`${POCKETBASE_URL}/api/health`);
-			if (res.ok) break;
-		} catch {}
-		await new Promise((r) => setTimeout(r, 2000));
-	}
-
-	// Authenticate as superuser
-	console.log('Authenticating...');
-	try {
-		await pb.collection('_superusers').authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
-		console.log('Authenticated successfully\n');
-	} catch (error: any) {
-		throw new Error(`Authentication failed. Check credentials in .env:\n${error.message}`);
-	}
+	await waitForPocketBase();
+	await authenticate();
 
 	const collectionIds: Record<string, string> = {};
 
-	// ── Phase 1: Create collections ────────────────────────────────────
-	console.log('Phase 1: Creating collections...\n');
+	console.log('Phase 1: Creating base collections...\n');
 
-	// users — PocketBase auth collection (login/register)
-	collectionIds['users'] = await ensureCollection('users', {
+	collectionIds['users'] = await ensureCollection({
 		name: 'users',
 		type: 'auth',
 		fields: []
 	});
 
-	// userProfiles — app-level user data (roles, nicknames)
-	collectionIds['userProfiles'] = await ensureCollection('userProfiles', {
+	collectionIds['userProfiles'] = await ensureCollection({
 		name: 'userProfiles',
 		type: 'base',
 		fields: [
-			{ name: 'user', type: 'text', required: true },
+			{ name: 'user', type: 'text', required: false },
+			{ name: 'userHash', type: 'text', required: false },
 			{ name: 'email', type: 'email', required: true },
 			{ name: 'nickname', type: 'text', required: true },
 			{
@@ -100,61 +206,60 @@ async function main() {
 				type: 'select',
 				required: true,
 				maxSelect: 1,
-				values: ['superadmin', 'admin', 'editor', 'viewer']
+				values: globalRoleValues
 			},
 			{ name: 'pbAuthId', type: 'text', required: false }
-		],
-		indexes: [
-			'CREATE UNIQUE INDEX idx_userprofiles_user ON userProfiles (user)',
-			'CREATE INDEX idx_userprofiles_email ON userProfiles (email)'
 		]
 	});
 
-	// site
-	collectionIds['site'] = await ensureCollection('site', {
+	collectionIds['site'] = await ensureCollection({
 		name: 'site',
 		type: 'base',
 		fields: [
 			{ name: 'name', type: 'text', required: true },
 			{ name: 'blog', type: 'url', required: false },
-			{ name: 'lastPublished', type: 'date', required: false },
+			{ name: 'lastPublished', type: 'text', required: false },
 			{ name: 'processing', type: 'bool', required: false },
 			{ name: 'featured', type: 'json', required: false },
 			{ name: 'publishedProjectCount', type: 'number', required: false },
-			{ name: 'sweeperStartTm', type: 'date', required: false },
-			{ name: 'dcDateCreated', type: 'date', required: false },
-			{ name: 'dcDateModified', type: 'date', required: false }
+			{ name: 'sweeperStartTm', type: 'text', required: false },
+			{ name: 'dcDateCreated', type: 'text', required: false },
+			{ name: 'dcDateModified', type: 'text', required: false },
+			{ name: 'viewerHelp', type: 'editor', required: false },
+			{ name: 'viewerHelpVideoUrl', type: 'url', required: false }
 		]
 	});
 
-	// keywords
-	collectionIds['keywords'] = await ensureCollection('keywords', {
+	collectionIds['keywords'] = await ensureCollection({
 		name: 'keywords',
 		type: 'base',
 		fields: [
 			{
 				name: 'name',
 				type: 'select',
-				required: true,
+				required: false,
 				maxSelect: 1,
-				values: ['country', 'period', 'audience', 'subject', 'language', 'license', 'funder']
+				values: keywordCategories
+			},
+			{
+				name: 'category',
+				type: 'select',
+				required: false,
+				maxSelect: 1,
+				values: keywordCategories
 			},
 			{ name: 'value', type: 'text', required: true }
-		],
-		indexes: [
-			'CREATE UNIQUE INDEX idx_keywords_name_value ON keywords (name, value)',
-			'CREATE INDEX idx_keywords_name ON keywords (name)'
 		]
 	});
 
-	// collections
-	collectionIds['collections'] = await ensureCollection('collections', {
+	collectionIds['collections'] = await ensureCollection({
 		name: 'collections',
 		type: 'base',
 		fields: [
+			{ name: 'mongoId', type: 'text', required: false },
 			{ name: 'title', type: 'text', required: true },
 			{ name: 'isVisible', type: 'bool', required: false },
-			{ name: 'lastPublished', type: 'date', required: false },
+			{ name: 'lastPublished', type: 'text', required: false },
 			{ name: 'pubNum', type: 'number', required: false },
 			{ name: 'thumbnail', type: 'url', required: false },
 			{ name: 'dcTitle', type: 'text', required: false },
@@ -168,17 +273,16 @@ async function main() {
 			{ name: 'dcCoveragePeriod', type: 'text', required: false },
 			{ name: 'dcCoveragePlace', type: 'text', required: false },
 			{ name: 'dcLanguage', type: 'json', required: false },
-			{ name: 'dcDateCreated', type: 'date', required: false },
-			{ name: 'dcDateModified', type: 'date', required: false }
-		],
-		indexes: ['CREATE INDEX idx_collections_visible ON collections (isVisible)']
+			{ name: 'dcDateCreated', type: 'text', required: false },
+			{ name: 'dcDateModified', type: 'text', required: false }
+		]
 	});
 
-	// editions
-	collectionIds['editions'] = await ensureCollection('editions', {
+	collectionIds['editions'] = await ensureCollection({
 		name: 'editions',
 		type: 'base',
 		fields: [
+			{ name: 'mongoId', type: 'text', required: false },
 			{ name: 'title', type: 'text', required: true },
 			{ name: 'isPublished', type: 'bool', required: false },
 			{ name: 'pubNum', type: 'number', required: false },
@@ -188,7 +292,7 @@ async function main() {
 				type: 'select',
 				required: false,
 				maxSelect: 1,
-				values: ['draft', 'in_review', 'published', 'archived']
+				values: editionStatusValues
 			},
 			{ name: 'dcTitle', type: 'text', required: false },
 			{ name: 'dcSubtitle', type: 'text', required: false },
@@ -212,51 +316,59 @@ async function main() {
 			{ name: 'dcLanguage', type: 'json', required: false },
 			{ name: 'dcRightsHolder', type: 'text', required: false },
 			{ name: 'dcRightsLicense', type: 'text', required: false },
-			{ name: 'dcDatePublished', type: 'date', required: false },
-			{ name: 'dcDateUnPublished', type: 'date', required: false },
-			{ name: 'dcDateCreated', type: 'date', required: false },
-			{ name: 'dcDateModified', type: 'date', required: false },
+			{ name: 'dcDatePublished', type: 'text', required: false },
+			{ name: 'dcDateUnPublished', type: 'text', required: false },
+			{ name: 'dcDateCreated', type: 'text', required: false },
+			{ name: 'dcDateModified', type: 'text', required: false },
+			{ name: 'dcDoi', type: 'json', required: false },
+			{ name: 'peerReviewKind', type: 'text', required: false },
+			{ name: 'peerReviewContent', type: 'editor', required: false },
+			{ name: 'peerReviewRequested', type: 'bool', required: false },
+			{ name: 'reviewStage', type: 'number', required: false },
+			{ name: 'peerReviewStamp', type: 'bool', required: false },
+			{ name: 'publishedAt', type: 'text', required: false },
 			{ name: 'authorToolName', type: 'text', required: false },
 			{ name: 'authorToolVersion', type: 'text', required: false },
-			{ name: 'sceneFile', type: 'text', required: false }
-		],
-		indexes: ['CREATE INDEX idx_editions_published ON editions (isPublished)']
+			{ name: 'sceneFile', type: 'text', required: false },
+			{ name: 'settingsAuthorToolName', type: 'text', required: false },
+			{ name: 'settingsAuthorToolVersion', type: 'text', required: false },
+			{ name: 'settingsSceneFile', type: 'text', required: false }
+		]
 	});
 
-	// collectionUsers — collection-level role assignments
-	collectionIds['collectionUsers'] = await ensureCollection('collectionUsers', {
+	collectionIds['collectionUsers'] = await ensureCollection({
 		name: 'collectionUsers',
 		type: 'base',
 		fields: [
-			{ name: 'user', type: 'text', required: true },
+			{ name: 'mongoId', type: 'text', required: false },
+			{ name: 'userHash', type: 'text', required: false },
 			{
 				name: 'role',
 				type: 'select',
 				required: true,
 				maxSelect: 1,
-				values: ['owner', 'editor', 'viewer']
+				values: collectionRoleValues
 			}
 		]
 	});
 
-	// editionUsers — edition-level role assignments
-	collectionIds['editionUsers'] = await ensureCollection('editionUsers', {
+	collectionIds['editionUsers'] = await ensureCollection({
 		name: 'editionUsers',
 		type: 'base',
 		fields: [
-			{ name: 'user', type: 'text', required: true },
+			{ name: 'mongoId', type: 'text', required: false },
+			{ name: 'userHash', type: 'text', required: false },
 			{
 				name: 'role',
 				type: 'select',
 				required: true,
 				maxSelect: 1,
-				values: ['author', 'collaborator', 'reviewer']
+				values: editionRoleValues
 			}
 		]
 	});
 
-	// auditLog — audit trail for admin actions
-	collectionIds['auditLog'] = await ensureCollection('auditLog', {
+	collectionIds['auditLog'] = await ensureCollection({
 		name: 'auditLog',
 		type: 'base',
 		fields: [
@@ -274,77 +386,128 @@ async function main() {
 		]
 	});
 
-	// ── Phase 2: Add relation fields ───────────────────────────────────
 	console.log('\nPhase 2: Adding relation fields...\n');
 
-	const relationFields = [
-		{
-			collection: 'collections',
-			fieldName: 'siteId',
-			targetCollection: 'site',
-			cascadeDelete: false
-		},
-		{
-			collection: 'editions',
-			fieldName: 'collection',
-			targetCollection: 'collections',
-			cascadeDelete: true
-		},
-		{
-			collection: 'collectionUsers',
-			fieldName: 'collection',
-			targetCollection: 'collections',
-			cascadeDelete: true
-		},
-		{
-			collection: 'collectionUsers',
-			fieldName: 'userId',
-			targetCollection: 'userProfiles',
-			cascadeDelete: true
-		},
-		{
-			collection: 'editionUsers',
-			fieldName: 'editionId',
-			targetCollection: 'editions',
-			cascadeDelete: true
-		},
-		{
-			collection: 'editionUsers',
-			fieldName: 'userId',
-			targetCollection: 'userProfiles',
-			cascadeDelete: true
-		}
-	];
+	await ensureCollection({
+		name: 'collections',
+		type: 'base',
+		fields: [
+			relationField('site', collectionIds['site']),
+			relationField('siteId', collectionIds['site'])
+		]
+	});
 
-	for (const rel of relationFields) {
-		try {
-			const coll = await pb.collections.getOne(rel.collection);
-			const fieldExists = coll.fields.some((f: any) => f.name === rel.fieldName);
-			if (fieldExists) {
-				console.log(`   ${rel.collection}.${rel.fieldName}: already exists`);
-				continue;
-			}
+	await ensureCollection({
+		name: 'editions',
+		type: 'base',
+		fields: [
+			relationField('collection', collectionIds['collections'], { cascadeDelete: true }),
+			relationField('publishedBy', collectionIds['userProfiles'])
+		]
+	});
 
-			coll.fields.push({
-				name: rel.fieldName,
-				type: 'relation',
-				required: false,
+	await ensureCollection({
+		name: 'collectionUsers',
+		type: 'base',
+		fields: [
+			relationField('collection', collectionIds['collections'], { cascadeDelete: true }),
+			relationField('user', collectionIds['userProfiles']),
+			relationField('userId', collectionIds['userProfiles'])
+		]
+	});
+
+	await ensureCollection({
+		name: 'editionUsers',
+		type: 'base',
+		fields: [
+			relationField('edition', collectionIds['editions'], { cascadeDelete: true }),
+			relationField('editionId', collectionIds['editions'], { cascadeDelete: true }),
+			relationField('user', collectionIds['userProfiles']),
+			relationField('userId', collectionIds['userProfiles'])
+		]
+	});
+
+	console.log('\nPhase 3: Creating workflow and notification collections...\n');
+
+	collectionIds['editionReviews'] = await ensureCollection({
+		name: 'editionReviews',
+		type: 'base',
+		fields: [
+			relationField('editionId', collectionIds['editions'], { required: true, cascadeDelete: true }),
+			relationField('reviewerId', collectionIds['userProfiles'], { required: true }),
+			{ name: 'reviewStage', type: 'number', required: true },
+			{
+				name: 'decision',
+				type: 'select',
+				required: true,
 				maxSelect: 1,
-				collectionId: collectionIds[rel.targetCollection],
-				cascadeDelete: rel.cascadeDelete
-			});
+				values: ['approve', 'reject', 'request_revisions']
+			},
+			{ name: 'comment', type: 'text', required: false }
+		]
+	});
 
-			await pb.collections.update(coll.id, coll);
-			console.log(`   ${rel.collection}.${rel.fieldName} -> ${rel.targetCollection}: added`);
-		} catch (error: any) {
-			console.error(`   ${rel.collection}.${rel.fieldName}: ${error.message}`);
-		}
-	}
+	collectionIds['reviewAssignments'] = await ensureCollection({
+		name: 'reviewAssignments',
+		type: 'base',
+		fields: [
+			relationField('editionId', collectionIds['editions'], { required: true, cascadeDelete: true }),
+			relationField('reviewerId', collectionIds['userProfiles'], { required: true }),
+			relationField('assignedBy', collectionIds['userProfiles'], { required: true }),
+			{ name: 'reviewStage', type: 'number', required: true },
+			{
+				name: 'status',
+				type: 'select',
+				required: true,
+				maxSelect: 1,
+				values: ['pending', 'accepted', 'declined', 'completed']
+			}
+		]
+	});
 
-	// ── Phase 3: Set open API rules ────────────────────────────────────
-	console.log('\nPhase 3: Setting open API rules...\n');
+	collectionIds['reviewFeedback'] = await ensureCollection({
+		name: 'reviewFeedback',
+		type: 'base',
+		fields: [
+			relationField('editionId', collectionIds['editions'], { required: true, cascadeDelete: true }),
+			relationField('reviewerId', collectionIds['userProfiles'], { required: true }),
+			{ name: 'reviewStage', type: 'number', required: true },
+			{
+				name: 'category',
+				type: 'select',
+				required: true,
+				maxSelect: 1,
+				values: ['general', 'annotation', 'article']
+			},
+			{ name: 'targetLabel', type: 'text', required: false },
+			{ name: 'comment', type: 'text', required: true },
+			{ name: 'resolved', type: 'bool', required: false }
+		]
+	});
 
-	const allAppCollections = [
+	collectionIds['notifications'] = await ensureCollection({
+		name: 'notifications',
+		type: 'base',
+		fields: [
+			relationField('recipientId', collectionIds['userProfiles'], { required: true, cascadeDelete: true }),
+			relationField('editionId', collectionIds['editions'], { cascadeDelete: true }),
+			{
+				name: 'type',
+				type: 'select',
+				required: true,
+				maxSelect: 1,
+				values: notificationTypes
+			},
+			{ name: 'title', type: 'text', required: true },
+			{ name: 'message', type: 'text', required: false },
+			{ name: 'actionUrl', type: 'text', required: false },
+			{ name: 'read', type: 'bool', required: false }
+		]
+	});
+
+	console.log('\nPhase 4: Setting open API rules...\n');
+
+	for (const name of [
 		'users',
 		'userProfiles',
 		'site',
@@ -353,31 +516,19 @@ async function main() {
 		'editions',
 		'collectionUsers',
 		'editionUsers',
-		'auditLog'
-	];
-
-	for (const name of allAppCollections) {
-		try {
-			const coll = await pb.collections.getOne(name);
-			await pb.collections.update(coll.id, openRules);
-			console.log(`   ${name}: API rules set to open`);
-		} catch (error: any) {
-			console.error(`   ${name}: FAILED — ${error.message}`);
-		}
+		'auditLog',
+		'editionReviews',
+		'reviewAssignments',
+		'reviewFeedback',
+		'notifications'
+	]) {
+		await setOpenRules(name);
 	}
 
-	// ── Summary ────────────────────────────────────────────────────────
-	console.log('\n' + '='.repeat(60));
-	console.log('All collections created successfully!');
-	console.log('='.repeat(60));
-	console.log('\nCollection IDs:');
-	for (const [name, id] of Object.entries(collectionIds)) {
-		console.log(`   ${name}: ${id}`);
-	}
-	console.log('\nNext step: Data will be imported automatically.\n');
+	console.log('\nSchema is ready.\n');
 }
 
-main().catch((err) => {
-	console.error('Setup failed:', err.message || err);
+main().catch((error) => {
+	console.error('Setup failed:', error.message || error);
 	process.exit(1);
 });

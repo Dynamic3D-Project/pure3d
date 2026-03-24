@@ -30,18 +30,17 @@ services:
     working_dir: /app
     volumes:
       - ./:/app
+      - /app/node_modules
     environment:
       - POCKETBASE_URL=http://pocketbase:8090
       - PUBLIC_POCKETBASE_URL=${PUBLIC_POCKETBASE_URL:-http://localhost:8090}
-      - POCKETBASE_ADMIN_EMAIL=${POCKETBASE_ADMIN_EMAIL}
-      - POCKETBASE_ADMIN_PASSWORD=${POCKETBASE_ADMIN_PASSWORD}
+      - POCKETBASE_ADMIN_EMAIL=${POCKETBASE_ADMIN_EMAIL:-admin@admin.local}
+      - POCKETBASE_ADMIN_PASSWORD=${POCKETBASE_ADMIN_PASSWORD:-1234567890}
     depends_on:
       pocketbase:
         condition: service_healthy
-    command: sh -c "bun install && bun scripts/create-pocketbase-collections.ts && bun scripts/import-data.ts"
+    command: sh -c "bun install && bun scripts/create-pocketbase-collections.ts && bun scripts/import-data.ts && bun scripts/seed-users.js"
     restart: "no"
-    profiles:
-      - setup
 
   frontend:
     image: oven/bun:1
@@ -59,6 +58,6 @@ services:
     depends_on:
       pocketbase:
         condition: service_healthy
+      pocketbase-setup:
+        condition: service_completed_successfully
     restart: unless-stopped
-    profiles:
-      - dev

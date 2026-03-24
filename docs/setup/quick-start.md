@@ -1,116 +1,109 @@
-# PocketBase Quick Start - 3 Steps
+# Quick Start
 
-## Step 1: Create Admin Account (First Time Only)
+This project is intended to start from a fresh clone with a single command:
 
 ```bash
-# Start PocketBase
-docker compose up -d pocketbase
-
-# Open admin UI in browser
-open http://localhost:7090/_/
+docker compose up -d
 ```
 
-**Create your admin account when prompted:**
-- Email: `admin@pure3d.local` (or use the email in your `.env`)
-- Password: (use the password from your `.env`)
+## What happens automatically
 
-⚠️ **Important**: Use the SAME credentials as in your `.env` file:
+On a new machine, `docker compose up -d` will:
+
+1. Start PocketBase
+2. Create or upgrade the PocketBase schema
+3. Import the bundled seed data from `data/json-output/` if those files exist
+4. Seed demo login accounts
+5. Start the frontend
+
+## Default URLs
+
+- Frontend: `http://localhost:8080`
+- PocketBase admin UI: `http://localhost:8090/_/`
+
+## Demo accounts
+
+These are created automatically for local development:
+
+- `superadmin@pure3d.eu` / `1234567890`
+- `admin@pure3d.eu` / `1234567890`
+- `editor@pure3d.eu` / `1234567890`
+- `viewer@pure3d.eu` / `1234567890`
+
+If no content data is available yet, the application still starts correctly. You will get an empty database plus working login, demo users, and role-based access.
+
+## Optional local `.env`
+
+You can run without creating `.env`.
+
+If you want to change ports or admin credentials:
+
+```bash
+cp .env.example .env
+```
+
+Then edit:
+
+- `POCKETBASE_PORT`
+- `FRONTEND_PORT`
 - `POCKETBASE_ADMIN_EMAIL`
 - `POCKETBASE_ADMIN_PASSWORD`
+- `PUBLIC_ASSET_BASE_URL`
 
-## Step 2: Create Collections & Import Data
+## Data locations
 
-```bash
-# This will:
-# 1. Create all 7 collections automatically
-# 2. Import all 832 documents from your MongoDB backup
+### Database seed data
 
-docker compose --profile setup up pocketbase-setup
-```
+The setup container imports from:
 
-**Expected output:**
-```
-🚀 Creating PocketBase Collections
-✅ Authenticated
+- `data/json-output/`
 
-📦 Creating collection: users
-   ✅ Created successfully
+You do not need to manually populate this folder after cloning if the repository already includes the JSON export.
+If the folder or files are missing, setup still succeeds and the app starts with no imported collections or editions.
 
-📦 Creating collection: site
-   ✅ Created successfully
+If you want to regenerate it from BSON, place the BSON files in:
 
-...
+- `data/db/`
 
-📦 Importing users...
-   Progress: 76/76
-   ✅ Imported 76/76 users
-
-...
-
-✅ All collections created successfully!
-✅ Import completed successfully!
-```
-
-## Step 3: Start Frontend
+Then run:
 
 ```bash
-docker compose up -d frontend
+bun scripts/read-bson.ts
 ```
 
-Access your app at: **http://localhost:7080**
+### 3D static assets
 
----
+The frontend reads local scene and viewer assets from:
+
+- `static/project/{collectionPubNum}/`
+- `static/project/{collectionPubNum}/edition/{editionPubNum}/`
+- `static/voyager/{version}/`
+
+If those files are missing, the app can still start, but editions that rely on local assets will not render correctly.
 
 ## Verification
 
-Check that everything worked:
+After startup, check:
 
 ```bash
-# Check PocketBase
-open http://localhost:7090/_/
-
-# You should see 7 collections with data:
-# - users (76)
-# - site (1)
-# - keywords (305)
-# - projects (22)
-# - editions (110)
-# - projectUsers (48)
-# - editionUsers (270)
+docker compose ps
 ```
 
----
+You should see:
 
-## Troubleshooting
+- `pocketbase` running
+- `frontend` running
+- `pocketbase-setup` exited successfully
 
-### "Authentication failed"
-- Make sure you used the SAME credentials from `.env` when creating the admin account
-- Check `.env` file has `POCKETBASE_ADMIN_EMAIL` and `POCKETBASE_ADMIN_PASSWORD` set
+Then open:
 
-### "Collections already exist"
-- That's OK! The script will skip existing collections
-- Data import will also skip if data already exists
+- `http://localhost:8080`
+- `http://localhost:8090/_/`
 
-### Start Fresh
+## Start from scratch again
+
 ```bash
-# Stop everything
 docker compose down
-
-# Delete PocketBase data
 rm -rf pocketbase/pb_data
-
-# Start over from Step 1
-docker compose up -d pocketbase
+docker compose up -d
 ```
-
----
-
-## What Next?
-
-Your PocketBase database is now ready with all your MongoDB data!
-
-You can:
-1. Browse data in admin UI: http://localhost:7080/_/
-2. Query via API: http://localhost:7090/api/collections/projects/records
-3. Use in your SvelteKit app (see `POCKETBASE_SETUP.md` for examples)
-
