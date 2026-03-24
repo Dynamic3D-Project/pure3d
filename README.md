@@ -64,7 +64,8 @@ What this does on a fresh clone:
 2. Creates or upgrades the PocketBase schema automatically
 3. Imports the bundled JSON seed data from `data/json-output/` when those files are present
 4. Seeds demo login accounts
-5. Starts the frontend
+5. Downloads the Voyager runtime into `static/voyager/0.59.0/` when it is missing
+6. Starts the frontend
 
 First startup can take a little longer because the setup container installs dependencies and imports the database.
 
@@ -125,6 +126,12 @@ static/project/{collectionPubNum}/
 static/project/{collectionPubNum}/edition/{editionPubNum}/
 static/voyager/{version}/
 ```
+
+Voyager note:
+
+- You should not commit Voyager runtime files anymore.
+- `docker compose up -d` now downloads the official Smithsonian Voyager runtime into `static/voyager/0.59.0/` if it is missing.
+- That folder is intentionally git-ignored.
 
 Typical structure:
 

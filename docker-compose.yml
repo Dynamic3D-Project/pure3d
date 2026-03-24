@@ -42,6 +42,16 @@ services:
     command: sh -c "bun install && bun scripts/create-pocketbase-collections.ts && bun scripts/import-data.ts && bun scripts/seed-users.js"
     restart: "no"
 
+  voyager-setup:
+    image: alpine:3.20
+    working_dir: /app
+    volumes:
+      - ./:/app
+    environment:
+      - VOYAGER_VERSION=0.59.0
+    command: sh /app/scripts/install-voyager-runtime.sh
+    restart: "no"
+
   frontend:
     image: oven/bun:1
     working_dir: /app
@@ -59,5 +69,7 @@ services:
       pocketbase:
         condition: service_healthy
       pocketbase-setup:
+        condition: service_completed_successfully
+      voyager-setup:
         condition: service_completed_successfully
     restart: unless-stopped

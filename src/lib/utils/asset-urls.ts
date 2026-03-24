@@ -67,34 +67,22 @@ export function getCollectionThumbnailUrl(collectionPubNum: number): string {
 }
 
 /**
- * Default Voyager version to use when not specified
+ * Default bundled Voyager version to use when not specified.
+ * Updated to the latest upstream release we support locally.
  */
-export const DEFAULT_VOYAGER_VERSION = '0.57.1';
+export const DEFAULT_VOYAGER_VERSION = '0.59.0';
 
 /**
- * List of available Voyager versions in static/voyager/ and R2
- * Note: All scene files use the 'derivatives' schema feature which requires
- * Voyager 0.46.1+ to load correctly. Older versions will fail with schema validation errors.
+ * List of bundled Voyager versions we intentionally support.
+ * Keep this narrow so local clones do not accumulate historical Voyager payloads.
  */
-export const VOYAGER_VERSIONS = [
-	'0.29.1',
-	'0.35.1',
-	'0.36.0',
-	'0.38.0',
-	'0.41.0',
-	'0.43.0',
-	'0.46.1',
-	'0.51.0',
-	'0.56.1',
-	'0.56.2',
-	'0.57.1'
-] as const;
+export const VOYAGER_VERSIONS = ['0.59.0'] as const;
 
 /**
  * Minimum Voyager version that supports the 'derivatives' schema feature
- * Scene files created with newer Voyager versions include this feature.
- * Using newest available version for maximum compatibility.
+ * Scene files created with older Voyager versions are upgraded to the
+ * currently bundled runtime for compatibility.
  */
-export const MIN_DERIVATIVES_VERSION = '0.57.1';
+export const MIN_DERIVATIVES_VERSION = '0.59.0';
 
 export type VoyagerVersion = (typeof VOYAGER_VERSIONS)[number];

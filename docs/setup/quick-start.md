@@ -14,7 +14,8 @@ On a new machine, `docker compose up -d` will:
 2. Create or upgrade the PocketBase schema
 3. Import the bundled seed data from `data/json-output/` if those files exist
 4. Seed demo login accounts
-5. Start the frontend
+5. Download Voyager `0.59.0` into `static/voyager/0.59.0/` if it is missing
+6. Start the frontend
 
 ## Default URLs
 
@@ -80,6 +81,8 @@ The frontend reads local scene and viewer assets from:
 - `static/voyager/{version}/`
 
 If those files are missing, the app can still start, but editions that rely on local assets will not render correctly.
+
+Voyager runtime is now downloaded automatically by Docker Compose and should not be committed to Git.
 
 ## Verification
 
