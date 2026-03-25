@@ -29,4 +29,13 @@ src/lib/paraglide
 pocketbase/pb_data
 data
 static/project
-static/voyager
+# Voyager: only commit production-minified files
+static/voyager/**/*.dev.*
+static/voyager/**/*.map
+static/voyager/**/*.LICENSE.txt
+static/voyager/**/.DS_Store
+static/voyager/**/LICENSE.md
+static/voyager/**/ATTRIBUTIONS.md
+static/voyager/**/README.md
+static/voyager/**/3RD_PARTY_LICENSES.txt
+static/voyager/**/*-license.txt
