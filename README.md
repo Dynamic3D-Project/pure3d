@@ -29,147 +29,127 @@ Pure3D provides an interactive way to view and explore 3D digitized artifacts, a
 
 ## Quick Start
 
-### 1. Clone the repository
+### Option A: Frontend only (recommended for most development)
+
+No Docker, no database setup. The app connects to the production PocketBase and R2 assets by default.
 
 ```sh
 git clone <your-repo-url>
 cd pure3D-26
+bun install
+bun dev
 ```
 
-### 2. Optional: create a local `.env`
+Open `http://localhost:5173` and you're done. All data and 3D assets load from the production services automatically.
 
-If you do nothing, Docker Compose will use built-in defaults.
+### Option B: Full local stack with Docker
 
-If you want different ports or admin credentials, copy the example file first:
+Use this when you need a local PocketBase instance (e.g., to modify data, test schema changes, or work offline).
 
 ```sh
+git clone <your-repo-url>
+cd pure3D-26
 cp .env.example .env
 ```
 
-Important defaults:
-
-- Frontend: `http://localhost:8080`
-- PocketBase: `http://localhost:8090`
-- PocketBase superuser: `admin@admin.local` / `1234567890`
-
-### 3. Start everything with one command
+Before starting Docker, get the database seed data from a project maintainer and place it in `data/json-output/`. This data contains user records and is not included in the repository. Without it, the local database will be empty.
 
 ```sh
 docker compose up
 ```
 
-This runs the frontend in **development mode** (Vite dev server with hot reload). What happens on a fresh clone:
+What happens on startup:
 
-1. Starts PocketBase
+1. Starts a local PocketBase instance
 2. Creates or upgrades the PocketBase schema automatically
-3. Imports the bundled JSON seed data from `data/json-output/` when those files are present
+3. Imports seed data from `data/json-output/` (if present)
 4. Seeds demo login accounts
-5. Downloads the Voyager runtime into `static/voyager/0.59.0/` when it is missing
-6. Starts the Vite dev server (with hot reload)
+5. Starts the Vite dev server (with hot reload)
 
-First startup can take a little longer because the setup container installs dependencies and imports the database.
-
-For **production**, the app builds to static files (`bun run build`) and can be deployed to GitHub Pages or any static host.
-
-### 4. Open the app
+Open the app:
 
 - Frontend: `http://localhost:8080`
 - PocketBase admin UI: `http://localhost:8090/_/`
 
-Demo app accounts created automatically for development:
+Demo accounts (created automatically):
 
 - `superadmin@pure3d.eu` / `1234567890`
 - `admin@pure3d.eu` / `1234567890`
 - `editor@pure3d.eu` / `1234567890`
 - `viewer@pure3d.eu` / `1234567890`
 
-If no project data is available yet, the app still starts with an empty database, working authentication, and working role-based access. You can log in and manage users before any collection or edition data has been imported.
-
-### 5. If you need a clean reset
+To reset the local database:
 
 ```sh
 docker compose down
 rm -rf pocketbase/pb_data
-docker compose up -d
+docker compose up
 ```
 
 ## Data and Assets
 
-There are two different kinds of local data in this repository:
+### Default behavior (no configuration needed)
 
-### A. Database seed data
+Out of the box, the app connects to production services:
 
-This is already used automatically by Docker Compose.
+| Service | URL | Purpose |
+|---------|-----|---------|
+| PocketBase | `https://pure3d-database.ctwhome.com` | Collections, editions, users |
+| R2 CDN | `https://pure3d-assets.ctwhome.com` | 3D models, scenes, thumbnails |
 
-- Source folder: `data/json-output/`
-- Purpose: initial PocketBase collections and records
-- Result: imported automatically during `docker compose up` if the files exist
+No `.env` file, credentials, or local data are required for frontend development.
 
-You do not need to manually place anything here after cloning unless you want to regenerate the dataset yourself from BSON files.
+### Database seed data (Docker only)
 
-If you do want to rebuild the JSON seed data, the BSON source files belong in:
+The `data/` directory is git-ignored because it contains user information. It is only needed when running a local PocketBase with Docker Compose.
 
-- `data/db/`
+- `data/json-output/` - JSON files imported automatically by `docker compose up`
+- `data/db/` - BSON source files for regenerating the JSON seed data
 
-Then run:
+To regenerate JSON from BSON:
 
 ```sh
 bun scripts/read-bson.ts
 ```
 
-### B. 3D static asset data
+Ask a project maintainer for the seed data files if you need a local database.
 
-This is what the frontend uses for Voyager scenes, edition thumbnails, articles, and model files.
+### 3D assets
 
-The 3D project assets (~7.5 GB) are stored on a **Cloudflare R2 bucket** and are not included in the repository. To access them you need the R2 credentials:
+The 3D project assets (~7.5 GB) are served from a Cloudflare R2 bucket and are not included in the repository. The `static/project/` directory is git-ignored.
 
-1. Ask a project maintainer for the `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY`
-2. Add them to your `.env` file
+To override the default asset source, set `PUBLIC_ASSET_BASE_URL` in your `.env`:
 
-The app looks for assets in two places depending on configuration:
+- **Unset or URL** (default): loads from R2 CDN
+- **Empty string** (`PUBLIC_ASSET_BASE_URL=`): serves from local `static/project/`
 
-- **With `PUBLIC_ASSET_BASE_URL` set**: assets are loaded from the R2/CDN URL (recommended for Docker and production)
-- **With `PUBLIC_ASSET_BASE_URL` empty**: assets are served from the local `static/project/` directory
-
-Asset path structure:
+Local asset structure (for offline development):
 
 ```text
-static/
-├── project/{collectionPubNum}/
-│   ├── icon.png
-│   └── edition/{editionPubNum}/
-│       ├── scene.svx.json
-│       ├── icon.png
-│       ├── *.glb
-│       └── articles/
-└── voyager/{version}/
-    ├── js/
-    ├── css/
-    ├── fonts/
-    ├── images/
-    └── language/
+static/project/{collectionPubNum}/
+├── icon.png
+└── edition/{editionPubNum}/
+    ├── scene.svx.json
+    ├── icon.png
+    ├── *.glb
+    └── articles/
 ```
 
-Voyager note:
+### Voyager runtime
 
-- You should not commit Voyager runtime files.
-- `docker compose up` downloads the official Smithsonian Voyager runtime into `static/voyager/0.59.0/` if it is missing.
-- That folder is git-ignored.
+The [Smithsonian Voyager](https://smithsonian.github.io/dpo-voyager/) 3D viewer is committed under `static/voyager/0.59.0/` (production-minified files only). It is served from the app's static folder in both development and on GitHub Pages.
 
-Notes:
+## Deployment
 
-- If a page loads but a 3D scene or image is missing, check that `PUBLIC_ASSET_BASE_URL` is set or that the corresponding files exist under `static/project/`.
-- The `static/project/` directory is git-ignored since the full asset set is too large for git.
+The app deploys to **GitHub Pages** as a static site. Pushing to `main` triggers an automatic deploy via the GitHub Actions workflow (`.github/workflows/deploy.yml`).
 
-### Production Deployment
-
-For production, set `PUBLIC_ASSET_BASE_URL` to the R2 public URL:
+Build environment:
 
 ```env
-PUBLIC_ASSET_BASE_URL=https://assets.pure3d.eu
+APP_BASE_PATH=/pure3d
+PUBLIC_POCKETBASE_URL=https://pure3d-database.ctwhome.com
+PUBLIC_ASSET_BASE_URL=https://pure3d-assets.ctwhome.com
 ```
-
-When empty, assets are served from local `static/` directory.
 
 # Features
 

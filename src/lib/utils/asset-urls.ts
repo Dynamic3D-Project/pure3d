@@ -1,20 +1,21 @@
 /**
  * Asset URL utilities for serving 3D edition data.
  *
- * Supports two modes:
- * - Local development: Empty PUBLIC_ASSET_BASE_URL serves from /static
- * - Production: Set PUBLIC_ASSET_BASE_URL to R2/CDN URL (e.g., https://assets.pure3d.eu)
+ * Defaults to the R2 CDN when PUBLIC_ASSET_BASE_URL is not set.
+ * Set to empty string to serve from local static/project/ instead.
  */
 
 import { PUBLIC_ASSET_BASE_URL } from '$env/static/public';
 import { base } from '$app/paths';
 
+const DEFAULT_ASSET_BASE_URL = 'https://pure3d-assets.ctwhome.com';
+
 /**
  * Returns the base URL for assets.
- * Empty string means local (relative paths), otherwise R2/CDN URL.
+ * Defaults to R2 CDN. Set PUBLIC_ASSET_BASE_URL="" to use local files.
  */
 export function getAssetBaseUrl(): string {
-	return PUBLIC_ASSET_BASE_URL || '';
+	return PUBLIC_ASSET_BASE_URL || DEFAULT_ASSET_BASE_URL;
 }
 
 /**
