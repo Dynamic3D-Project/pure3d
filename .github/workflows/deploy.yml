@@ -33,6 +33,7 @@ jobs:
       - name: Build
         run: bun run build
         env:
+          APP_BASE_PATH: /pure3d
           PUBLIC_POCKETBASE_URL: https://pure3d-database.ctwhome.com
           PUBLIC_ASSET_BASE_URL: https://pub-0dd648cd99a4490ab1e3bcad91b4b880.r2.dev
 
