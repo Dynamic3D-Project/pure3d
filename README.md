@@ -69,11 +69,7 @@ This runs the frontend in **development mode** (Vite dev server with hot reload)
 
 First startup can take a little longer because the setup container installs dependencies and imports the database.
 
-For **production** (static build with nginx):
-
-```sh
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-```
+For **production**, the app builds to static files (`bun run build`) and can be deployed to GitHub Pages or any static host.
 
 ### 4. Open the app
 
