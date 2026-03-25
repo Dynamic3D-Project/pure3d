@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	let currentSlide = $state(0);
 
 	const slides = [
@@ -34,7 +35,7 @@
 
 <div id="login-marketing-panel" class="relative flex h-full flex-col overflow-hidden">
 	<img
-		src="/images/P3D-Slider.jpg"
+		src="{base}/images/P3D-Slider.jpg"
 		alt="Pure3D cultural heritage visualization"
 		class="absolute inset-0 h-full w-full object-cover"
 	/>
