@@ -1,20 +1,18 @@
 import { pb } from '$lib/database/client';
-import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
 import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
-
-function getFileUrl(record: any, filename: string): string {
-	const baseUrl = PUBLIC_POCKETBASE_URL || 'http://localhost:8090';
-	return `${baseUrl}/api/files/${record.collectionId}/${record.id}/${filename}`;
-}
+import {
+	getEditionThumbnailUrl,
+	getCollectionThumbnailUrl,
+	getEditionRoot
+} from '$lib/utils/asset-urls';
 
 export const load: PageLoad = async ({ params }) => {
 	try {
 		const collectionRecord = await pb.collection('collections').getOne(params.slug);
 
-		const thumbnail = collectionRecord.thumbnailFile
-			? getFileUrl(collectionRecord, collectionRecord.thumbnailFile)
-			: collectionRecord.thumbnail || '';
+		const thumbnail =
+			collectionRecord.pubNum > 0 ? getCollectionThumbnailUrl(collectionRecord.pubNum) : '';
 
 		const collection = {
 			id: collectionRecord.id,
@@ -38,13 +36,10 @@ export const load: PageLoad = async ({ params }) => {
 			const editionPubNum = record.pubNum || 1;
 
 			const voyagerUrl =
-				collectionPubNum > 0
-					? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/voyager`
-					: '';
+				collectionPubNum > 0 ? getEditionRoot(collectionPubNum, editionPubNum) : '';
 
-			const editionThumbnail = record.thumbnailFile
-				? getFileUrl(record, record.thumbnailFile)
-				: record.thumbnail || '';
+			const editionThumbnail =
+				collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, editionPubNum) : '';
 
 			return {
 				id: record.id,

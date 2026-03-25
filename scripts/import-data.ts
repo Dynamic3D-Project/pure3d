@@ -1,373 +1,533 @@
 #!/usr/bin/env bun
 /**
- * Imports data from JSON files into PocketBase
- * Run this AFTER create-pocketbase-collections.ts
+ * Imports JSON data into PocketBase.
+ * Safe to re-run: existing records are detected and skipped.
  */
 import PocketBase from 'pocketbase';
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 
 const PB_URL = process.env.POCKETBASE_URL || 'http://pocketbase:8090';
-const ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL!;
-const ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD!;
+const ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL || 'admin@admin.local';
+const ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD || '1234567890';
 const JSON_DIR = 'data/json-output';
 const PUBLIC_PB_URL = process.env.PUBLIC_POCKETBASE_URL || 'http://localhost:8090';
 
 const pb = new PocketBase(PB_URL);
 
+function mapGlobalRole(role?: string) {
+	switch (role) {
+		case 'root':
+			return 'superadmin';
+		case 'admin':
+			return 'admin';
+		case 'editorial_board':
+			return 'editorial_board';
+		case 'viewer':
+			return 'viewer';
+		case 'user':
+		default:
+			return 'viewer';
+	}
+}
+
+function mapCollectionRole(role?: string) {
+	switch (role) {
+		case 'organiser':
+			return 'owner';
+		case 'editor':
+			return 'editor';
+		case 'viewer':
+			return 'viewer';
+		case 'owner':
+		default:
+			return role || 'viewer';
+	}
+}
+
+function mapEditionRole(role?: string) {
+	switch (role) {
+		case 'editor':
+			return 'author';
+		case 'reader':
+			return 'collaborator';
+		case 'reviewer':
+			return 'reviewer';
+		case 'author':
+		case 'collaborator':
+		default:
+			return role || 'collaborator';
+	}
+}
+
+function normalizeEmail(email?: string | null) {
+	return (email || '').trim().toLowerCase();
+}
+
+function normalizeStatus(isPublished?: boolean, explicitStatus?: string | null) {
+	if (explicitStatus) {
+		return explicitStatus;
+	}
+
+	return isPublished ? 'published' : 'draft';
+}
+
+function normalizeNumber(value: unknown, fallback = 0) {
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		return value;
+	}
+
+	if (typeof value === 'string' && value.trim()) {
+		const parsed = Number(value);
+		if (Number.isFinite(parsed)) {
+			return parsed;
+		}
+	}
+
+	if (value && typeof value === 'object') {
+		for (const key of ['$numberInt', '$numberLong', '$numberDouble']) {
+			const wrapped = (value as Record<string, unknown>)[key];
+			if (typeof wrapped === 'string' && wrapped.trim()) {
+				const parsed = Number(wrapped);
+				if (Number.isFinite(parsed)) {
+					return parsed;
+				}
+			}
+		}
+	}
+
+	return fallback;
+}
+
+function readJsonArray<T>(filename: string): T[] {
+	const filepath = join(JSON_DIR, filename);
+	if (!existsSync(filepath)) {
+		console.log(`   Skipped ${filename}, file not found`);
+		return [];
+	}
+
+	return JSON.parse(readFileSync(filepath, 'utf-8')) as T[];
+}
+
+async function waitForPocketBase() {
+	console.log('Waiting for PocketBase...');
+
+	for (let attempt = 0; attempt < 30; attempt++) {
+		try {
+			await pb.health.check();
+			console.log('PocketBase is ready\n');
+			return;
+		} catch {}
+
+		await new Promise((resolve) => setTimeout(resolve, 2000));
+	}
+
+	throw new Error('PocketBase did not become ready in time');
+}
+
+async function authenticate() {
+	console.log('Authenticating...');
+
+	const response = await fetch(`${PB_URL}/api/collections/_superusers/auth-with-password`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			identity: ADMIN_EMAIL,
+			password: ADMIN_PASSWORD
+		})
+	});
+
+	if (!response.ok) {
+		const error = await response.json();
+		throw new Error(error.message || 'PocketBase authentication failed');
+	}
+
+	const authData = await response.json();
+	pb.authStore.save(authData.token, authData.record);
+	console.log('Authenticated successfully\n');
+}
+
 async function main() {
-  console.log('📥 Starting Data Import');
-  console.log(`   URL: ${PB_URL}`);
-  console.log(`   Email: ${ADMIN_EMAIL}\n`);
+	console.log('Importing data into PocketBase');
+	console.log(`   URL: ${PB_URL}`);
+	console.log(`   Admin: ${ADMIN_EMAIL}\n`);
 
-  // Wait for PocketBase
-  console.log('⏳ Waiting for PocketBase...');
-  for (let i = 0; i < 30; i++) {
-    try {
-      await pb.health.check();
-      break;
-    } catch (e) {}
-    await new Promise(r => setTimeout(r, 2000));
-  }
-  console.log('✅ PocketBase is ready\n');
+	await waitForPocketBase();
+	await authenticate();
 
-  // Authenticate as admin
-  console.log('🔑 Authenticating...');
-  const authResponse = await fetch(`${PB_URL}/api/collections/_superusers/auth-with-password`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      identity: ADMIN_EMAIL,
-      password: ADMIN_PASSWORD
-    })
-  });
+	const collectionIdMap = new Map<string, string>();
+	const editionIdMap = new Map<string, string>();
+	const userHashToId = new Map<string, string>();
 
-  if (!authResponse.ok) {
-    const error = await authResponse.json();
-    console.error('\n❌ Authentication failed:', error.message);
-    process.exit(1);
-  }
+	console.log('Importing site...');
+	const siteData = readJsonArray<any>('site.json');
+	const existingSite = await pb.collection('site').getFullList();
+	let siteId = existingSite[0]?.id;
 
-  const authData = await authResponse.json();
-  pb.authStore.save(authData.token, authData.record);
-  console.log('✅ Authenticated successfully\n');
+	if (!siteId) {
+		if (siteData.length === 0) {
+			const result = await pb.collection('site').create({
+				name: 'Pure3D',
+				blog: null,
+				lastPublished: null,
+				processing: false,
+				featured: [],
+				publishedProjectCount: 0,
+				sweeperStartTm: null,
+				dcDateCreated: null,
+				dcDateModified: null
+			});
+			siteId = result.id;
+			console.log('   Created default empty site record');
+		} else {
+			for (const doc of siteData) {
+				const result = await pb.collection('site').create({
+					name: doc.name,
+					blog: doc.blog || null,
+					lastPublished: doc.lastPublished || null,
+					processing: doc.processing || false,
+					featured: doc.featured || [],
+					publishedProjectCount: doc.publishedProjectCount || 0,
+					sweeperStartTm: doc.sweeperStartTm || null,
+					dcDateCreated: doc.dc?.dateCreated || null,
+					dcDateModified: doc.dc?.dateModified || null
+				});
+				siteId = result.id;
+			}
+			console.log(`   Imported ${siteData.length} site record(s)`);
+		}
+	} else {
+		console.log(`   Skipped, site already exists (${siteId})`);
+	}
 
-  // Check if data already exists
-  try {
-    const usersCount = await pb.collection('users').getList(1, 1);
-    if (usersCount.totalItems > 0) {
-      console.log('⚠️  Data already exists in PocketBase');
-      console.log(`   Found ${usersCount.totalItems} users`);
-      console.log('   Skipping import to prevent duplicates\n');
-      console.log('✅ Import complete (skipped)!');
-      return;
-    }
-  } catch (error) {
-    // Collection might be empty, continue with import
-  }
+	console.log('\nImporting user profiles...');
+	const usersData = readJsonArray<any>('user.json');
+	const existingProfiles = await pb.collection('userProfiles').getFullList();
+	const existingProfileEmails = new Set(existingProfiles.map((record: any) => normalizeEmail(record.email)));
 
-  // Import Site
-  try {
-    console.log('📦 Importing site...');
-    const siteData = JSON.parse(readFileSync(join(JSON_DIR, 'site.json'), 'utf-8'));
-    for (const doc of siteData) {
-      await pb.collection('site').create({
-        name: doc.name,
-        blog: doc.blog,
-        lastPublished: doc.lastPublished,
-        processing: doc.processing || false,
-        featured: doc.featured || [],
-        publishedProjectCount: doc.publishedProjectCount || 0,
-        sweeperStartTm: doc.sweeperStartTm,
-        dcDateCreated: doc.dc?.dateCreated,
-        dcDateModified: doc.dc?.dateModified
-      });
-    }
-    console.log(`   ✅ Imported ${siteData.length} site record(s)`);
-  } catch (error: any) {
-    console.error(`   ❌ Failed:`, error.message);
-  }
+	for (const record of existingProfiles) {
+		if (record.userHash) {
+			userHashToId.set(record.userHash, record.id);
+		}
+		if (record.user) {
+			userHashToId.set(record.user, record.id);
+		}
+	}
 
-  // Import Users
-  try {
-    console.log('📦 Importing users...');
-    const usersData = JSON.parse(readFileSync(join(JSON_DIR, 'user.json'), 'utf-8'));
-    let imported = 0;
-    for (const doc of usersData) {
-      try {
-        await pb.collection('users').create({
-          user: doc.user,
-          email: doc.email,
-          nickname: doc.nickname,
-          role: doc.role
-        });
-        imported++;
-        process.stdout.write(`\r   Progress: ${imported}/${usersData.length}`);
-      } catch (error: any) {
-        // Skip duplicates
-      }
-    }
-    console.log(`\n   ✅ Imported ${imported}/${usersData.length} users`);
-  } catch (error: any) {
-    console.error(`   ❌ Failed:`, error.message);
-  }
+	let importedProfiles = 0;
+	let skippedProfiles = 0;
 
-  // Import Keywords
-  try {
-    console.log('📦 Importing keywords...');
-    const keywordsData = JSON.parse(readFileSync(join(JSON_DIR, 'keyword.json'), 'utf-8'));
-    let imported = 0;
-    for (const doc of keywordsData) {
-      try {
-        await pb.collection('keywords').create({
-          name: doc.name,
-          value: doc.value
-        });
-        imported++;
-        if (imported % 50 === 0) {
-          process.stdout.write(`\r   Progress: ${imported}/${keywordsData.length}`);
-        }
-      } catch (error: any) {
-        // Skip duplicates
-      }
-    }
-    console.log(`\n   ✅ Imported ${imported}/${keywordsData.length} keywords`);
-  } catch (error: any) {
-    console.error(`   ❌ Failed:`, error.message);
-  }
+	for (const doc of usersData) {
+		const email = normalizeEmail(doc.email);
+		if (email && existingProfileEmails.has(email)) {
+			skippedProfiles++;
+			continue;
+		}
 
-  // Import Collections (projects)
-  const collectionIdMap = new Map<string, string>();
-  try {
-    console.log('📦 Importing collections...');
-    const projectsData = JSON.parse(readFileSync(join(JSON_DIR, 'project.json'), 'utf-8'));
-    const siteRecords = await pb.collection('site').getFullList();
-    const siteId = siteRecords[0]?.id;
+		const result = await pb.collection('userProfiles').create({
+			user: doc.user,
+			userHash: doc.user,
+			email: doc.email,
+			nickname: doc.nickname,
+			role: mapGlobalRole(doc.role)
+		});
 
-    // First, try to map existing collections by title
-    const existingCollections = await pb.collection('collections').getFullList();
-    const titleToId = new Map(existingCollections.map((c: any) => [c.title, c.id]));
+		if (doc.user) {
+			userHashToId.set(doc.user, result.id);
+		}
+		if (email) {
+			existingProfileEmails.add(email);
+		}
 
-    for (const doc of projectsData) {
-      const existingId = titleToId.get(doc.title);
-      if (existingId) {
-        collectionIdMap.set(doc._id, existingId);
-      }
-    }
-    console.log(`   Found ${collectionIdMap.size} existing collections by title`);
+		importedProfiles++;
+	}
 
-    let imported = 0;
-    for (const doc of projectsData) {
-      // Skip if already mapped
-      if (collectionIdMap.has(doc._id)) continue;
+	console.log(`   Imported ${importedProfiles}, skipped ${skippedProfiles}`);
 
-      try {
-        const projectPubNum = doc.pubNum || 0;
-        const thumbnailUrl = projectPubNum > 0
-          ? `https://editions.pure3d.eu/project/${projectPubNum}/icon.png`
-          : '';
+	console.log('\nImporting keywords...');
+	const keywordsData = readJsonArray<any>('keyword.json');
+	const existingKeywords = await pb.collection('keywords').getFullList();
+	const keywordKeys = new Set(
+		existingKeywords.map((record: any) => `${record.category || record.name}|${record.value}`)
+	);
 
-        const result = await pb.collection('collections').create({
-          title: doc.title,
-          siteId: siteId,
-          isVisible: doc.isVisible !== false,
-          lastPublished: doc.lastPublished,
-          pubNum: projectPubNum,
-          thumbnail: thumbnailUrl,
-          dcTitle: doc.dc?.title,
-          dcSubtitle: doc.dc?.subtitle,
-          dcCreator: doc.dc?.creator || [],
-          dcContributor: doc.dc?.contributor || [],
-          dcInstitution: doc.dc?.institution || [],
-          dcAbstract: doc.dc?.abstract,
-          dcDescription: doc.dc?.description,
-          dcSubject: doc.dc?.subject || [],
-          dcCoveragePeriod: doc.dc?.coverage?.period,
-          dcCoveragePlace: doc.dc?.coverage?.place,
-          dcLanguage: doc.dc?.language || [],
-          dcDateCreated: doc.dc?.dateCreated,
-          dcDateModified: doc.dc?.dateModified
-        });
-        collectionIdMap.set(doc._id, result.id);
-        imported++;
-        process.stdout.write(`\r   Progress: ${imported}/${projectsData.length - collectionIdMap.size + imported}`);
-      } catch (error: any) {
-        // Skip errors
-      }
-    }
-    console.log(`\n   ✅ Total mapped: ${collectionIdMap.size}/${projectsData.length} collections`);
-  } catch (error: any) {
-    console.error(`   ❌ Failed:`, error.message);
-  }
+	let importedKeywords = 0;
+	let skippedKeywords = 0;
 
-  // Import Editions
-  const editionIdMap = new Map<string, string>();
-  try {
-    console.log('📦 Importing editions...');
-    const editionsData = JSON.parse(readFileSync(join(JSON_DIR, 'edition.json'), 'utf-8'));
+	for (const doc of keywordsData) {
+		const key = `${doc.name}|${doc.value}`;
+		if (keywordKeys.has(key)) {
+			skippedKeywords++;
+			continue;
+		}
 
-    // First, map existing editions by title + collection to prevent duplicates
-    const existingEditions = await pb.collection('editions').getFullList();
-    const existingEditionKeys = new Set(
-      existingEditions.map((e: any) => `${e.title}|${e.collection}`)
-    );
-    // Also map existing editions by their MongoDB _id equivalent (title + projectId)
-    for (const doc of editionsData) {
-      const pbCollectionId = collectionIdMap.get(doc.projectId);
-      if (!pbCollectionId) continue;
-      const existing = existingEditions.find(
-        (e: any) => e.title === doc.title && e.collection === pbCollectionId
-      );
-      if (existing) {
-        editionIdMap.set(doc._id, existing.id);
-      }
-    }
-    console.log(`   Found ${editionIdMap.size} existing editions`);
+		await pb.collection('keywords').create({
+			name: doc.name,
+			category: doc.name,
+			value: doc.value
+		});
+		keywordKeys.add(key);
+		importedKeywords++;
+	}
 
-    let imported = 0;
-    let skipped = 0;
-    for (const doc of editionsData) {
-      try {
-        const pbCollectionId = collectionIdMap.get(doc.projectId);
-        if (!pbCollectionId) continue;
+	console.log(`   Imported ${importedKeywords}, skipped ${skippedKeywords}`);
 
-        // Skip if edition already exists
-        const key = `${doc.title}|${pbCollectionId}`;
-        if (existingEditionKeys.has(key)) {
-          skipped++;
-          continue;
-        }
+	console.log('\nImporting collections...');
+	const projectsData = readJsonArray<any>('project.json');
+	const existingCollections = await pb.collection('collections').getFullList();
+	const existingCollectionsByTitle = new Map(
+		existingCollections.map((record: any) => [record.title, record])
+	);
 
-        // Get collection to retrieve its pubNum for thumbnail URL
-        const coll = await pb.collection('collections').getOne(pbCollectionId);
-        const collectionPubNum = coll.pubNum || 0;
-        const editionPubNum = doc.pubNum || 1;
-        const thumbnailUrl = collectionPubNum > 0
-          ? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/icon.png`
-          : '';
+	for (const doc of projectsData) {
+		const existing = existingCollectionsByTitle.get(doc.title);
+		if (existing) {
+			collectionIdMap.set(doc._id, existing.id);
+		}
+	}
 
-        const result = await pb.collection('editions').create({
-          title: doc.title,
-          collection: pbCollectionId,
-          isPublished: doc.isPublished === true,
-          pubNum: editionPubNum,
-          thumbnail: thumbnailUrl,
-          dcTitle: doc.dc?.title,
-          dcSubtitle: doc.dc?.subtitle,
-          dcCreator: doc.dc?.creator || [],
-          dcContributor: doc.dc?.contributor || [],
-          dcInstitution: doc.dc?.institution || [],
-          dcAbstract: doc.dc?.abstract,
-          dcDescription: doc.dc?.description,
-          dcContact: doc.dc?.contact,
-          dcSubject: doc.dc?.subject || [],
-          dcKeyword: doc.dc?.keyword || [],
-          dcAudience: doc.dc?.audience || [],
-          dcFunder: doc.dc?.funder || [],
-          dcSource: doc.dc?.source || [],
-          dcProvenance: doc.dc?.provenance,
-          dcCoveragePeriod: doc.dc?.coverage?.period || [],
-          dcCoveragePlace: doc.dc?.coverage?.place,
-          dcCoverageCountry: doc.dc?.coverage?.country || [],
-          dcCoverageTemporal: doc.dc?.coverage?.temporal,
-          dcCoverageGeo: doc.dc?.coverage?.geo,
-          dcLanguage: doc.dc?.language || [],
-          dcRightsHolder: doc.dc?.rights?.holder,
-          dcRightsLicense: doc.dc?.rights?.license,
-          dcDatePublished: doc.dc?.datePublished,
-          dcDateUnPublished: doc.dc?.dateUnPublished,
-          dcDateCreated: doc.dc?.dateCreated,
-          dcDateModified: doc.dc?.dateModified,
-          authorToolName: doc.settings?.authorTool?.name,
-          authorToolVersion: doc.settings?.authorTool?.version,
-          sceneFile: doc.settings?.authorTool?.sceneFile
-        });
-        editionIdMap.set(doc._id, result.id);
-        existingEditionKeys.add(key); // Prevent duplicates within same run
-        imported++;
-        process.stdout.write(`\r   Progress: ${imported + skipped}/${editionsData.length}`);
-      } catch (error: any) {
-        // Skip errors
-      }
-    }
-    console.log(`\n   ✅ Imported ${imported} new, skipped ${skipped} existing editions`);
-  } catch (error: any) {
-    console.error(`   ❌ Failed:`, error.message);
-  }
+	let importedCollections = 0;
+	let skippedCollections = 0;
 
-  // Import CollectionUsers
-  try {
-    console.log('📦 Importing collectionUsers...');
-    const projectUsersData = JSON.parse(readFileSync(join(JSON_DIR, 'projectUser.json'), 'utf-8'));
-    const allUsers = await pb.collection('users').getFullList();
-    const userHashToId = new Map(allUsers.map((u: any) => [u.user, u.id]));
+	for (const doc of projectsData) {
+		const existing = existingCollectionsByTitle.get(doc.title);
+		if (existing) {
+			collectionIdMap.set(doc._id, existing.id);
+			skippedCollections++;
+			continue;
+		}
 
-    let imported = 0;
-    for (const doc of projectUsersData) {
-      try {
-        const pbCollectionId = collectionIdMap.get(doc.projectId);
-        const pbUserId = userHashToId.get(doc.user);
-        if (!pbCollectionId || !pbUserId) continue;
+		const projectPubNum = normalizeNumber(doc.pubNum, 0);
+		const thumbnailUrl =
+			projectPubNum > 0 ? `https://editions.pure3d.eu/project/${projectPubNum}/icon.png` : '';
 
-        await pb.collection('collectionUsers').create({
-          collection: pbCollectionId,
-          userId: pbUserId,
-          user: doc.user,
-          role: doc.role
-        });
-        imported++;
-        process.stdout.write(`\r   Progress: ${imported}/${projectUsersData.length}`);
-      } catch (error: any) {
-        // Skip errors
-      }
-    }
-    console.log(`\n   ✅ Imported ${imported}/${projectUsersData.length} collection-user relationships`);
-  } catch (error: any) {
-    console.error(`   ❌ Failed:`, error.message);
-  }
+		const result = await pb.collection('collections').create({
+			mongoId: doc._id,
+			title: doc.title,
+			site: siteId || null,
+			siteId: siteId || null,
+			isVisible: doc.isVisible !== false,
+			lastPublished: doc.lastPublished || null,
+			pubNum: projectPubNum,
+			thumbnail: thumbnailUrl,
+			dcTitle: doc.dc?.title,
+			dcSubtitle: doc.dc?.subtitle,
+			dcCreator: doc.dc?.creator || [],
+			dcContributor: doc.dc?.contributor || [],
+			dcInstitution: doc.dc?.institution || [],
+			dcAbstract: doc.dc?.abstract,
+			dcDescription: doc.dc?.description,
+			dcSubject: doc.dc?.subject || [],
+			dcCoveragePeriod: doc.dc?.coverage?.period,
+			dcCoveragePlace: doc.dc?.coverage?.place,
+			dcLanguage: doc.dc?.language || [],
+			dcDateCreated: doc.dc?.dateCreated,
+			dcDateModified: doc.dc?.dateModified
+		});
 
-  // Import EditionUsers
-  try {
-    console.log('📦 Importing editionUsers...');
-    const editionUsersData = JSON.parse(readFileSync(join(JSON_DIR, 'editionUser.json'), 'utf-8'));
-    const allUsers = await pb.collection('users').getFullList();
-    const userHashToId = new Map(allUsers.map((u: any) => [u.user, u.id]));
+		existingCollectionsByTitle.set(doc.title, result);
+		collectionIdMap.set(doc._id, result.id);
+		importedCollections++;
+	}
 
-    let imported = 0;
-    for (const doc of editionUsersData) {
-      try {
-        const pbEditionId = editionIdMap.get(doc.editionId);
-        const pbUserId = userHashToId.get(doc.user);
-        if (!pbEditionId || !pbUserId) continue;
+	console.log(`   Imported ${importedCollections}, skipped ${skippedCollections}`);
 
-        await pb.collection('editionUsers').create({
-          editionId: pbEditionId,
-          userId: pbUserId,
-          user: doc.user,
-          role: doc.role
-        });
-        imported++;
-        if (imported % 20 === 0) {
-          process.stdout.write(`\r   Progress: ${imported}/${editionUsersData.length}`);
-        }
-      } catch (error: any) {
-        // Skip errors
-      }
-    }
-    console.log(`\n   ✅ Imported ${imported}/${editionUsersData.length} edition-user relationships`);
-  } catch (error: any) {
-    console.error(`   ❌ Failed:`, error.message);
-  }
+	console.log('\nImporting editions...');
+	const editionsData = readJsonArray<any>('edition.json');
+	const existingEditions = await pb.collection('editions').getFullList();
+	const existingEditionKeys = new Map(
+		existingEditions.map((record: any) => [`${record.title}|${record.collection}`, record])
+	);
 
-  console.log('\n' + '='.repeat(60));
-  console.log('✅ DATA IMPORT COMPLETE!');
-  console.log('='.repeat(60));
-  console.log('\n🎉 Your PocketBase is ready to use!');
-  console.log(`   Admin UI: ${PUBLIC_PB_URL}/_/`);
-  console.log(`   API: ${PUBLIC_PB_URL}/api/\n`);
+	for (const doc of editionsData) {
+		const pbCollectionId = collectionIdMap.get(doc.projectId);
+		if (!pbCollectionId) {
+			continue;
+		}
+
+		const existing = existingEditionKeys.get(`${doc.title}|${pbCollectionId}`);
+		if (existing) {
+			editionIdMap.set(doc._id, existing.id);
+		}
+	}
+
+	let importedEditions = 0;
+	let skippedEditions = 0;
+
+	for (const doc of editionsData) {
+		const pbCollectionId = collectionIdMap.get(doc.projectId);
+		if (!pbCollectionId) {
+			continue;
+		}
+
+		const existing = existingEditionKeys.get(`${doc.title}|${pbCollectionId}`);
+		if (existing) {
+			editionIdMap.set(doc._id, existing.id);
+			skippedEditions++;
+			continue;
+		}
+
+		const collectionRecord = await pb.collection('collections').getOne(pbCollectionId);
+		const collectionPubNum = collectionRecord.pubNum || 0;
+		const editionPubNum = normalizeNumber(doc.pubNum, 1);
+		const thumbnailUrl =
+			collectionPubNum > 0
+				? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/icon.png`
+				: '';
+
+		let result;
+		try {
+			result = await pb.collection('editions').create({
+				mongoId: doc._id,
+				title: doc.title,
+				collection: pbCollectionId,
+				isPublished: doc.isPublished === true,
+				status: normalizeStatus(doc.isPublished, doc.status || null),
+				pubNum: editionPubNum,
+				thumbnail: thumbnailUrl,
+				dcTitle: doc.dc?.title,
+				dcSubtitle: doc.dc?.subtitle,
+				dcCreator: doc.dc?.creator || [],
+				dcContributor: doc.dc?.contributor || [],
+				dcInstitution: doc.dc?.institution || [],
+				dcAbstract: doc.dc?.abstract,
+				dcDescription: doc.dc?.description,
+				dcContact: doc.dc?.contact || null,
+				dcSubject: doc.dc?.subject || [],
+				dcKeyword: doc.dc?.keyword || [],
+				dcAudience: doc.dc?.audience || [],
+				dcFunder: doc.dc?.funder || [],
+				dcSource: doc.dc?.source || [],
+				dcProvenance: doc.dc?.provenance,
+				dcCoveragePeriod: doc.dc?.coverage?.period || [],
+				dcCoveragePlace: doc.dc?.coverage?.place,
+				dcCoverageCountry: doc.dc?.coverage?.country || [],
+				dcCoverageTemporal: doc.dc?.coverage?.temporal,
+				dcCoverageGeo: doc.dc?.coverage?.geo,
+				dcLanguage: doc.dc?.language || [],
+				dcRightsHolder: doc.dc?.rights?.holder,
+				dcRightsLicense: doc.dc?.rights?.license,
+				dcDatePublished: doc.dc?.datePublished,
+				dcDateUnPublished: doc.dc?.dateUnPublished,
+				dcDateCreated: doc.dc?.dateCreated,
+				dcDateModified: doc.dc?.dateModified,
+				dcDoi: doc.dc?.doi || [],
+				peerReviewKind: doc.pure3d?.peerReviewKind || null,
+				peerReviewContent: doc.pure3d?.peerReviewContent || null,
+				peerReviewRequested: false,
+				reviewStage: null,
+				peerReviewStamp: false,
+				publishedAt: doc.dc?.datePublished || null,
+				authorToolName: doc.settings?.authorTool?.name,
+				authorToolVersion: doc.settings?.authorTool?.version,
+				sceneFile: doc.settings?.authorTool?.sceneFile,
+				settingsAuthorToolName: doc.settings?.authorTool?.name,
+				settingsAuthorToolVersion: doc.settings?.authorTool?.version,
+				settingsSceneFile: doc.settings?.authorTool?.sceneFile
+			});
+		} catch (error: any) {
+			console.error(`   Failed edition: ${doc.title} (${doc._id})`);
+			console.error(JSON.stringify(error?.response || error, null, 2));
+			throw error;
+		}
+
+		existingEditionKeys.set(`${doc.title}|${pbCollectionId}`, result);
+		editionIdMap.set(doc._id, result.id);
+		importedEditions++;
+	}
+
+	console.log(`   Imported ${importedEditions}, skipped ${skippedEditions}`);
+
+	console.log('\nImporting collection users...');
+	const projectUsersData = readJsonArray<any>('projectUser.json');
+	const existingCollectionUsers = await pb.collection('collectionUsers').getFullList();
+	const collectionUserKeys = new Set(
+		existingCollectionUsers.map(
+			(record: any) => `${record.collection}|${record.userId || record.user}|${record.role}`
+		)
+	);
+
+	let importedCollectionUsers = 0;
+	let skippedCollectionUsers = 0;
+
+	for (const doc of projectUsersData) {
+		const pbCollectionId = collectionIdMap.get(doc.projectId);
+		const pbUserId = userHashToId.get(doc.user);
+		if (!pbCollectionId || !pbUserId) {
+			continue;
+		}
+
+		const role = mapCollectionRole(doc.role);
+		const key = `${pbCollectionId}|${pbUserId}|${role}`;
+		if (collectionUserKeys.has(key)) {
+			skippedCollectionUsers++;
+			continue;
+		}
+
+		await pb.collection('collectionUsers').create({
+			mongoId: doc._id,
+			collection: pbCollectionId,
+			user: pbUserId,
+			userId: pbUserId,
+			userHash: doc.user,
+			role
+		});
+
+		collectionUserKeys.add(key);
+		importedCollectionUsers++;
+	}
+
+	console.log(`   Imported ${importedCollectionUsers}, skipped ${skippedCollectionUsers}`);
+
+	console.log('\nImporting edition users...');
+	const editionUsersData = readJsonArray<any>('editionUser.json');
+	const existingEditionUsers = await pb.collection('editionUsers').getFullList();
+	const editionUserKeys = new Set(
+		existingEditionUsers.map(
+			(record: any) =>
+				`${record.editionId || record.edition}|${record.userId || record.user}|${record.role}`
+		)
+	);
+
+	let importedEditionUsers = 0;
+	let skippedEditionUsers = 0;
+
+	for (const doc of editionUsersData) {
+		const pbEditionId = editionIdMap.get(doc.editionId);
+		const pbUserId = userHashToId.get(doc.user);
+		if (!pbEditionId || !pbUserId) {
+			continue;
+		}
+
+		const role = mapEditionRole(doc.role);
+		const key = `${pbEditionId}|${pbUserId}|${role}`;
+		if (editionUserKeys.has(key)) {
+			skippedEditionUsers++;
+			continue;
+		}
+
+		await pb.collection('editionUsers').create({
+			mongoId: doc._id,
+			edition: pbEditionId,
+			editionId: pbEditionId,
+			user: pbUserId,
+			userId: pbUserId,
+			userHash: doc.user,
+			role
+		});
+
+		editionUserKeys.add(key);
+		importedEditionUsers++;
+	}
+
+	console.log(`   Imported ${importedEditionUsers}, skipped ${skippedEditionUsers}`);
+
+	console.log('\nData import complete.');
+	console.log(`   Admin UI: ${PUBLIC_PB_URL}/_/`);
+	console.log(`   API: ${PUBLIC_PB_URL}/api/\n`);
 }
 
 main().catch((error) => {
-  console.error('\n❌ Import failed:', error);
-  process.exit(1);
+	console.error('Import failed:', error.message || error);
+	process.exit(1);
 });

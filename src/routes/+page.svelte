@@ -3,12 +3,7 @@
 	import { base } from '$app/paths';
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
 	import CollectionCard from '$lib/components/cards/CollectionCard.svelte';
-	import {
-		editionsStore,
-		collectionsStore,
-		fetchAllData,
-		isStale
-	} from '$lib/stores/data.store';
+	import { editionsStore, collectionsStore, fetchAllData, isStale } from '$lib/stores/data.store';
 
 	// Reactive data from persisted stores - shows cached data immediately
 	let featuredEditions = $derived($editionsStore.items.slice(0, 8));
@@ -17,7 +12,9 @@
 	let totalCollections = $derived($collectionsStore.total);
 
 	// Only show loading if we have no cached data
-	let hasCachedData = $derived($editionsStore.items.length > 0 || $collectionsStore.items.length > 0);
+	let hasCachedData = $derived(
+		$editionsStore.items.length > 0 || $collectionsStore.items.length > 0
+	);
 	let isLoading = $state(true);
 
 	/**
@@ -120,21 +117,21 @@
 <div class="min-h-screen">
 	<!-- Hero Section -->
 	<section class="container mx-auto px-4 py-16 text-center">
-		<h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
+		<h1 class="mb-6 text-4xl leading-tight font-bold md:text-5xl lg:text-6xl">
 			Explore our <span class="text-primary">3D Scholarly Editions</span>
 			<br />
 			and create your own
 		</h1>
-		<p class="text-lg md:text-xl text-base-content/70 max-w-3xl mx-auto mb-8">
+		<p class="mx-auto mb-8 max-w-3xl text-lg text-base-content/70 md:text-xl">
 			Pure3D is a platform for publishing and exploring interactive 3D experiences for digital
 			humanities and cultural heritage research.
 		</p>
-		<div class="flex flex-wrap gap-4 justify-center">
-			<a href="{base}/editions" class="btn btn-primary btn-lg">
+		<div class="flex flex-wrap justify-center gap-4">
+			<a href="{base}/editions" class="btn btn-lg btn-primary">
 				Browse Editions
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
-					class="h-5 w-5 ml-1"
+					class="ml-1 h-5 w-5"
 					fill="none"
 					viewBox="0 0 24 24"
 					stroke="currentColor"
@@ -157,19 +154,19 @@
 			<div class="flex flex-wrap justify-center gap-8 md:gap-16">
 				<div class="text-center">
 					{#if isLoading && !hasCachedData}
-						<div class="loading loading-spinner loading-md text-primary"></div>
+						<div class="loading loading-md loading-spinner text-primary"></div>
 					{:else}
 						<div class="text-4xl font-bold text-primary">{totalEditions}</div>
 					{/if}
-					<div class="text-sm text-base-content/70 uppercase tracking-wide">3D Editions</div>
+					<div class="text-sm tracking-wide text-base-content/70 uppercase">3D Editions</div>
 				</div>
 				<div class="text-center">
 					{#if isLoading && !hasCachedData}
-						<div class="loading loading-spinner loading-md text-primary"></div>
+						<div class="loading loading-md loading-spinner text-primary"></div>
 					{:else}
 						<div class="text-4xl font-bold text-primary">{totalCollections}</div>
 					{/if}
-					<div class="text-sm text-base-content/70 uppercase tracking-wide">Projects</div>
+					<div class="text-sm tracking-wide text-base-content/70 uppercase">Projects</div>
 				</div>
 			</div>
 		</div>
@@ -178,8 +175,8 @@
 	<!-- Featured Editions Carousel -->
 	<section class="py-16">
 		<div class="container mx-auto px-4">
-			<div class="flex items-center justify-between mb-8">
-				<h2 class="text-2xl md:text-3xl font-bold">Featured 3D Editions</h2>
+			<div class="mb-8 flex items-center justify-between">
+				<h2 class="text-2xl font-bold md:text-3xl">Featured 3D Editions</h2>
 				<div class="flex gap-2">
 					<button
 						onclick={() => scrollCarousel('left')}
@@ -227,33 +224,31 @@
 			{#if isLoading && !hasCachedData}
 				<div class="flex gap-4 overflow-hidden">
 					{#each Array(4) as _}
-						<div class="flex-none w-64 h-80 skeleton rounded-xl"></div>
+						<div class="h-80 w-64 flex-none skeleton rounded-xl"></div>
 					{/each}
 				</div>
 			{:else if featuredEditions.length > 0}
 				<div
 					bind:this={carouselContainer}
-					class="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
+					class="scrollbar-hide flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4"
 					style="scroll-behavior: smooth; -webkit-overflow-scrolling: touch;"
 				>
 					{#each featuredEditions as edition (edition.id)}
-						<div class="flex-none w-64 snap-start">
+						<div class="w-64 flex-none snap-start">
 							<EditionCard {edition} />
 						</div>
 					{/each}
 				</div>
 			{:else}
-				<div class="text-center py-12 text-base-content/50">
-					No editions available yet.
-				</div>
+				<div class="py-12 text-center text-base-content/50">No editions available yet.</div>
 			{/if}
 
-			<div class="text-center mt-8">
+			<div class="mt-8 text-center">
 				<a href="{base}/editions" class="btn btn-outline">
 					View All Editions
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
-						class="h-4 w-4 ml-1"
+						class="ml-1 h-4 w-4"
 						fill="none"
 						viewBox="0 0 24 24"
 						stroke="currentColor"
@@ -273,22 +268,24 @@
 	<!-- Collections/Projects Section -->
 	<section class="bg-base-200/30 py-16">
 		<div class="container mx-auto px-4">
-			<div class="text-center mb-10">
-				<h2 class="text-2xl md:text-3xl font-bold mb-3">3D Projects</h2>
-				<p class="text-base-content/70 max-w-2xl mx-auto">
+			<div class="mb-10 text-center">
+				<h2 class="mb-3 text-2xl font-bold md:text-3xl">3D Projects</h2>
+				<p class="mx-auto max-w-2xl text-base-content/70">
 					Explore curated collections of 3D scholarly editions organized by research projects
 				</p>
 			</div>
 
 			{#if isLoading && !hasCachedData}
-				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-6xl mx-auto">
+				<div
+					class="mx-auto grid max-w-6xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+				>
 					{#each Array(4) as _}
 						<div class="h-96 skeleton rounded-xl"></div>
 					{/each}
 				</div>
 			{:else if collections.length > 0}
 				<div
-					class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-6xl mx-auto"
+					class="mx-auto grid max-w-6xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
 				>
 					{#each collections.slice(0, 4) as collection (collection.id)}
 						<CollectionCard {collection} />
@@ -296,12 +293,12 @@
 				</div>
 
 				{#if collections.length > 4}
-					<div class="text-center mt-10">
+					<div class="mt-10 text-center">
 						<a href="{base}/collections" class="btn btn-outline">
 							View All Projects
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
-								class="h-4 w-4 ml-1"
+								class="ml-1 h-4 w-4"
 								fill="none"
 								viewBox="0 0 24 24"
 								stroke="currentColor"
@@ -317,9 +314,7 @@
 					</div>
 				{/if}
 			{:else}
-				<div class="text-center py-12 text-base-content/50">
-					No projects available yet.
-				</div>
+				<div class="py-12 text-center text-base-content/50">No projects available yet.</div>
 			{/if}
 		</div>
 	</section>
@@ -328,19 +323,19 @@
 	<section class="py-20">
 		<div class="container mx-auto px-4">
 			<div
-				class="bg-gradient-to-br from-primary/20 via-base-200 to-secondary/20 rounded-3xl p-8 md:p-12 text-center max-w-4xl mx-auto"
+				class="mx-auto max-w-4xl rounded-3xl bg-gradient-to-br from-primary/20 via-base-200 to-secondary/20 p-8 text-center md:p-12"
 			>
-				<h2 class="text-2xl md:text-3xl font-bold mb-4">Publish with us</h2>
-				<p class="text-base-content/70 mb-8 max-w-2xl mx-auto">
-					Are you working on a 3D scholarly edition? Pure3D provides the infrastructure and tools
-					to publish your interactive 3D research. Join our growing community of digital humanities
+				<h2 class="mb-4 text-2xl font-bold md:text-3xl">Publish with us</h2>
+				<p class="mx-auto mb-8 max-w-2xl text-base-content/70">
+					Are you working on a 3D scholarly edition? Pure3D provides the infrastructure and tools to
+					publish your interactive 3D research. Join our growing community of digital humanities
 					scholars.
 				</p>
-				<a href="{base}/about" class="btn btn-primary btn-lg">
+				<a href="{base}/about" class="btn btn-lg btn-primary">
 					Learn More
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
-						class="h-5 w-5 ml-1"
+						class="ml-1 h-5 w-5"
 						fill="none"
 						viewBox="0 0 24 24"
 						stroke="currentColor"
@@ -360,13 +355,13 @@
 	<!-- Partners Section -->
 	<section class="border-t border-base-300 py-12">
 		<div class="container mx-auto px-4">
-			<p class="text-center text-sm text-base-content/50 mb-6 uppercase tracking-wide">
+			<p class="mb-6 text-center text-sm tracking-wide text-base-content/50 uppercase">
 				Supported by
 			</p>
-			<div class="flex flex-wrap items-center justify-center gap-8 md:gap-12 opacity-60">
-				<div class="text-base-content/50 text-sm">Maastricht University</div>
-				<div class="text-base-content/50 text-sm">Platform Digital Infrastructure</div>
-				<div class="text-base-content/50 text-sm">KNAW Digital Infrastructure</div>
+			<div class="flex flex-wrap items-center justify-center gap-8 opacity-60 md:gap-12">
+				<div class="text-sm text-base-content/50">Maastricht University</div>
+				<div class="text-sm text-base-content/50">Platform Digital Infrastructure</div>
+				<div class="text-sm text-base-content/50">KNAW Digital Infrastructure</div>
 			</div>
 		</div>
 	</section>

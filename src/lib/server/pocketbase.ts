@@ -1,5 +1,19 @@
 import PocketBase from 'pocketbase';
 import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
+import {
+	GlobalRole,
+	CollectionRole,
+	EditionRole,
+	EditionStatus,
+	getReviewStage
+} from '$lib/types/roles';
+import type { ReviewDecision, ReviewAssignmentStatus } from '$lib/types/reviews';
+import { FeedbackCategory } from '$lib/types/reviews';
+import {
+	getEditionThumbnailUrl,
+	getCollectionThumbnailUrl,
+	getEditionRoot
+} from '$lib/utils/asset-urls';
 
 /**
  * Create a PocketBase client
@@ -55,20 +69,20 @@ export async function getSite() {
 }
 
 /**
- * Get all users
+ * Get all user profiles (app-level user data)
  */
 export async function getUsers() {
 	const pb = createPocketBaseClient();
 
 	try {
-		const result = await pb.collection('users').getList(1, 500);
+		const result = await pb.collection('userProfiles').getList(1, 500);
 		return result.items.map((record) => ({
 			id: record.id,
 			mongoId: record.mongoId,
 			userHash: record.userHash,
 			email: record.email || null,
 			nickname: record.nickname || null,
-			role: record.role || 'user'
+			role: (record.role as GlobalRole) || GlobalRole.Viewer
 		}));
 	} catch (error) {
 		console.error('Error fetching users:', error);
@@ -128,13 +142,8 @@ export async function getCollections() {
 		return records.map((record) => {
 			const pubNum = record.pubNum || 0;
 
-			// Use uploaded thumbnail file if available, otherwise fall back to URL
-			let thumbnail = '';
-			if (record.thumbnailFile) {
-				thumbnail = getPublicFileUrl(record, record.thumbnailFile);
-			} else if (record.thumbnail) {
-				thumbnail = record.thumbnail;
-			}
+			// Thumbnail from asset URL (respects PUBLIC_ASSET_BASE_URL / R2)
+			const thumbnail = record.pubNum > 0 ? getCollectionThumbnailUrl(record.pubNum) : '';
 
 			return {
 				id: record.id,
@@ -228,19 +237,10 @@ function transformEditionRecord(record: any, collection?: any) {
 	const collectionPubNum = collection?.pubNum || 0;
 	const editionPubNum = record.pubNum || 1;
 
-	// Generate Voyager URL dynamically
-	const voyagerUrl =
-		collectionPubNum > 0
-			? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/voyager`
-			: '';
-
-	// Use uploaded thumbnail file if available, otherwise fall back to URL
-	let thumbnail = '';
-	if (record.thumbnailFile) {
-		thumbnail = getPublicFileUrl(record, record.thumbnailFile);
-	} else if (record.thumbnail) {
-		thumbnail = record.thumbnail;
-	}
+	// Voyager and thumbnail URLs from asset-urls (respects PUBLIC_ASSET_BASE_URL / R2)
+	const voyagerUrl = collectionPubNum > 0 ? getEditionRoot(collectionPubNum, editionPubNum) : '';
+	const thumbnail =
+		collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, editionPubNum) : '';
 
 	return {
 		id: record.id,
@@ -258,6 +258,7 @@ function transformEditionRecord(record: any, collection?: any) {
 
 		// Publishing
 		isPublished: record.isPublished,
+		status: (record.status as EditionStatus) || EditionStatus.Published,
 		pubNum: record.pubNum,
 		collectionId: record.collection,
 		collection: record.expand?.collection,
@@ -307,6 +308,11 @@ function transformEditionRecord(record: any, collection?: any) {
 		peerReviewKind: record.peerReviewKind || null,
 		peerReviewContent: record.peerReviewContent || null,
 		hasPeerReview: !!record.peerReviewKind && record.peerReviewKind !== 'No peer review',
+		peerReviewRequested: record.peerReviewRequested || false,
+		reviewStage: record.reviewStage ?? null,
+		peerReviewStamp: record.peerReviewStamp || false,
+		publishedAt: record.publishedAt || null,
+		publishedBy: record.publishedBy || null,
 
 		// Settings
 		settingsAuthorToolName: record.settingsAuthorToolName || null,
@@ -423,7 +429,7 @@ export async function getProjectUsers(collectionId?: string) {
 
 	try {
 		const filter = collectionId ? `collection = "${collectionId}"` : '';
-		const result = await pb.collection('projectUsers').getList(1, 500, {
+		const result = await pb.collection('collectionUsers').getList(1, 500, {
 			filter,
 			expand: 'collection,user'
 		});
@@ -434,7 +440,7 @@ export async function getProjectUsers(collectionId?: string) {
 			collection: record.collection,
 			user: record.user,
 			userHash: record.userHash,
-			role: record.role
+			role: (record.role as CollectionRole) || CollectionRole.Viewer
 		}));
 	} catch (error) {
 		console.error('Error fetching project users:', error);
@@ -461,10 +467,325 @@ export async function getEditionUsers(editionId?: string) {
 			edition: record.edition,
 			user: record.user,
 			userHash: record.userHash,
-			role: record.role
+			role: (record.role as EditionRole) || EditionRole.Collaborator
 		}));
 	} catch (error) {
 		console.error('Error fetching edition users:', error);
 		return [];
 	}
+}
+
+/**
+ * Update a user's global role
+ */
+export async function updateUserRole(userId: string, newRole: GlobalRole) {
+	const pb = createPocketBaseClient();
+
+	try {
+		await pb.collection('userProfiles').update(userId, { role: newRole });
+		return true;
+	} catch (error) {
+		console.error('Error updating user role:', error);
+		return false;
+	}
+}
+
+// --- Collection User CRUD ---
+
+export async function addCollectionUser(
+	collectionId: string,
+	userId: string,
+	role: CollectionRole
+) {
+	const pb = createPocketBaseClient();
+	return pb.collection('collectionUsers').create({
+		collection: collectionId,
+		userId,
+		user: userId,
+		role
+	});
+}
+
+export async function removeCollectionUser(id: string) {
+	const pb = createPocketBaseClient();
+	return pb.collection('collectionUsers').delete(id);
+}
+
+export async function updateCollectionUserRole(id: string, role: CollectionRole) {
+	const pb = createPocketBaseClient();
+	return pb.collection('collectionUsers').update(id, { role });
+}
+
+// --- Edition User CRUD ---
+
+export async function addEditionUser(editionId: string, userId: string, role: EditionRole) {
+	const pb = createPocketBaseClient();
+	return pb.collection('editionUsers').create({
+		editionId,
+		userId,
+		user: userId,
+		role
+	});
+}
+
+export async function removeEditionUser(id: string) {
+	const pb = createPocketBaseClient();
+	return pb.collection('editionUsers').delete(id);
+}
+
+export async function updateEditionUserRole(id: string, role: EditionRole) {
+	const pb = createPocketBaseClient();
+	return pb.collection('editionUsers').update(id, { role });
+}
+
+// --- Edition Status ---
+
+export async function updateEditionStatus(
+	editionId: string,
+	newStatus: EditionStatus,
+	performedByUserId?: string
+) {
+	const pb = createPocketBaseClient();
+	const isPublished = newStatus === EditionStatus.Published;
+	const reviewStage = getReviewStage(newStatus);
+
+	const updateData: Record<string, unknown> = {
+		status: newStatus,
+		isPublished,
+		reviewStage: reviewStage ?? null
+	};
+
+	if (isPublished && performedByUserId) {
+		updateData.publishedAt = new Date().toISOString();
+		updateData.publishedBy = performedByUserId;
+	}
+
+	return pb.collection('editions').update(editionId, updateData);
+}
+
+// --- Admin views (no public filters) ---
+
+export async function getAllCollections() {
+	const pb = createPocketBaseClient();
+
+	try {
+		const result = await pb.collection('collections').getList(1, 500, {
+			sort: 'pubNum'
+		});
+
+		return result.items.map((record) => ({
+			id: record.id,
+			title: record.title,
+			isVisible: record.isVisible,
+			pubNum: record.pubNum,
+			created: record.created
+		}));
+	} catch (error) {
+		console.error('Error fetching all collections:', error);
+		return [];
+	}
+}
+
+export async function getAllEditions() {
+	const pb = createPocketBaseClient();
+
+	try {
+		const result = await pb.collection('editions').getList(1, 500, {
+			expand: 'collection'
+		});
+
+		return result.items.map((record) => ({
+			id: record.id,
+			title: record.dcTitle || record.title,
+			isPublished: record.isPublished,
+			status: (record.status as EditionStatus) || EditionStatus.Draft,
+			pubNum: record.pubNum,
+			collectionId: record.collection,
+			collectionTitle: record.expand?.collection?.title || '',
+			created: record.created,
+			peerReviewRequested: record.peerReviewRequested || false,
+			reviewStage: record.reviewStage ?? null,
+			peerReviewStamp: record.peerReviewStamp || false,
+			publishedAt: record.publishedAt || null,
+			publishedBy: record.publishedBy || null
+		}));
+	} catch (error) {
+		console.error('Error fetching all editions:', error);
+		return [];
+	}
+}
+
+// --- Edition Reviews CRUD ---
+
+export async function getEditionReviews(editionId: string, stage?: number) {
+	const pb = createPocketBaseClient();
+	let filter = `editionId = "${editionId}"`;
+	if (stage !== undefined) {
+		filter += ` && reviewStage = ${stage}`;
+	}
+	const result = await pb.collection('editionReviews').getList(1, 500, {
+		filter,
+		sort: '-created',
+		expand: 'reviewerId'
+	});
+	return result.items.map((r) => ({
+		id: r.id,
+		editionId: r.editionId,
+		reviewerId: r.reviewerId,
+		reviewStage: r.reviewStage,
+		decision: r.decision as ReviewDecision,
+		comment: r.comment || null,
+		created: r.created,
+		updated: r.updated
+	}));
+}
+
+export async function createEditionReview(
+	editionId: string,
+	reviewerId: string,
+	reviewStage: number,
+	decision: ReviewDecision,
+	comment?: string
+) {
+	const pb = createPocketBaseClient();
+	return pb.collection('editionReviews').create({
+		editionId,
+		reviewerId,
+		reviewStage,
+		decision,
+		comment: comment || ''
+	});
+}
+
+export async function deleteEditionReview(id: string) {
+	const pb = createPocketBaseClient();
+	return pb.collection('editionReviews').delete(id);
+}
+
+// --- Review Assignments CRUD ---
+
+export async function getReviewAssignments(editionId: string, stage?: number) {
+	const pb = createPocketBaseClient();
+	let filter = `editionId = "${editionId}"`;
+	if (stage !== undefined) {
+		filter += ` && reviewStage = ${stage}`;
+	}
+	const result = await pb.collection('reviewAssignments').getList(1, 500, {
+		filter,
+		sort: '-created',
+		expand: 'reviewerId,assignedBy'
+	});
+	return result.items.map((r) => ({
+		id: r.id,
+		editionId: r.editionId,
+		reviewerId: r.reviewerId,
+		reviewStage: r.reviewStage,
+		assignedBy: r.assignedBy,
+		status: r.status as ReviewAssignmentStatus,
+		created: r.created,
+		updated: r.updated
+	}));
+}
+
+export async function assignReviewer(
+	editionId: string,
+	reviewerId: string,
+	reviewStage: number,
+	assignedBy: string
+) {
+	const pb = createPocketBaseClient();
+
+	// Create the assignment record
+	const assignment = await pb.collection('reviewAssignments').create({
+		editionId,
+		reviewerId,
+		reviewStage,
+		assignedBy,
+		status: 'pending'
+	});
+
+	// Also ensure the reviewer has an editionUsers record with Reviewer role
+	try {
+		const existing = await pb.collection('editionUsers').getList(1, 1, {
+			filter: `editionId = "${editionId}" && userId = "${reviewerId}"`
+		});
+		if (existing.items.length === 0) {
+			await pb.collection('editionUsers').create({
+				editionId,
+				userId: reviewerId,
+				user: reviewerId,
+				role: EditionRole.Reviewer
+			});
+		}
+	} catch {
+		// If editionUsers creation fails, the assignment still exists
+	}
+
+	return assignment;
+}
+
+export async function updateReviewAssignmentStatus(id: string, status: ReviewAssignmentStatus) {
+	const pb = createPocketBaseClient();
+	return pb.collection('reviewAssignments').update(id, { status });
+}
+
+export async function removeReviewAssignment(id: string) {
+	const pb = createPocketBaseClient();
+	return pb.collection('reviewAssignments').delete(id);
+}
+
+// --- Review Feedback CRUD ---
+
+export async function getReviewFeedback(editionId: string, stage?: number) {
+	const pb = createPocketBaseClient();
+	let filter = `editionId = "${editionId}"`;
+	if (stage !== undefined) {
+		filter += ` && reviewStage = ${stage}`;
+	}
+	const result = await pb.collection('reviewFeedback').getList(1, 500, {
+		filter,
+		sort: '-created'
+	});
+	return result.items.map((r) => ({
+		id: r.id,
+		editionId: r.editionId as string,
+		reviewerId: r.reviewerId as string,
+		reviewStage: r.reviewStage as number,
+		category: r.category as FeedbackCategory,
+		targetLabel: (r.targetLabel as string) || null,
+		comment: r.comment as string,
+		resolved: (r.resolved as boolean) || false,
+		created: r.created as string,
+		updated: r.updated as string
+	}));
+}
+
+export async function createReviewFeedback(
+	editionId: string,
+	reviewerId: string,
+	reviewStage: number,
+	category: FeedbackCategory,
+	comment: string,
+	targetLabel?: string
+) {
+	const pb = createPocketBaseClient();
+	return pb.collection('reviewFeedback').create({
+		editionId,
+		reviewerId,
+		reviewStage,
+		category,
+		comment,
+		targetLabel: targetLabel || '',
+		resolved: false
+	});
+}
+
+export async function updateReviewFeedbackResolved(id: string, resolved: boolean) {
+	const pb = createPocketBaseClient();
+	return pb.collection('reviewFeedback').update(id, { resolved });
+}
+
+export async function deleteReviewFeedback(id: string) {
+	const pb = createPocketBaseClient();
+	return pb.collection('reviewFeedback').delete(id);
 }

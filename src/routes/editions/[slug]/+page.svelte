@@ -4,6 +4,7 @@
 	import type { PageData } from './$types';
 	import VoyagerViewer, { type VoyagerAPI } from '$lib/components/voyager/VoyagerViewer.svelte';
 	import VoyagerAPIDemo from '$lib/components/voyager/VoyagerAPIDemo.svelte';
+	import ReviewFeedbackList from '$lib/components/workflow/ReviewFeedbackList.svelte';
 
 	// View preset type for camera positions
 	interface ViewPreset {
@@ -636,6 +637,14 @@
 												</div>
 											{/if}
 										</div>
+
+										<!-- Detailed feedback items -->
+										{#if edition.id}
+											<div class="mt-4">
+												<h3 class="mb-2 text-sm font-semibold">Detailed Feedback</h3>
+												<ReviewFeedbackList editionId={edition.id} />
+											</div>
+										{/if}
 									{:else}
 										<div class="py-8 text-center text-base-content/60">
 											<p>This edition has not been peer reviewed.</p>

@@ -1,5 +1,15 @@
 # Complete Setup From Scratch
 
+> Preferred local setup is now the one-command flow in `README.md` and `docs/setup/quick-start.md`:
+>
+> ```bash
+> docker compose up -d
+> ```
+>
+> That command now starts PocketBase, applies the schema, imports `data/json-output/`, seeds demo users, and starts the frontend automatically.
+>
+> Use the instructions below only if you specifically need to regenerate the JSON data from BSON or inspect the manual setup flow.
+
 ## Prerequisites
 
 - Docker Desktop installed and running

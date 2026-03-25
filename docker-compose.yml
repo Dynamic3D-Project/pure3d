@@ -2,14 +2,14 @@ services:
   pocketbase:
     image: ghcr.io/muchobien/pocketbase:latest
     ports:
-      - '${POCKETBASE_PORT:-8090}:8090'
+      - '${POCKETBASE_PORT:-7090}:8090'
     volumes:
       - ./pocketbase/pb_data:/pb/pb_data
       - ./pocketbase-entrypoint.sh:/entrypoint.sh:ro
     environment:
       - POCKETBASE_ADMIN_EMAIL=${POCKETBASE_ADMIN_EMAIL:-admin@admin.local}
       - POCKETBASE_ADMIN_PASSWORD=${POCKETBASE_ADMIN_PASSWORD:-1234567890}
-      - PUBLIC_POCKETBASE_URL=${PUBLIC_POCKETBASE_URL:-http://localhost:8090}
+      - PUBLIC_POCKETBASE_URL=${PUBLIC_POCKETBASE_URL:-http://localhost:7090}
       - SMTP_ENABLED=${SMTP_ENABLED:-false}
       - SMTP_HOST=${SMTP_HOST:-}
       - SMTP_PORT=${SMTP_PORT:-587}
@@ -30,18 +30,27 @@ services:
     working_dir: /app
     volumes:
       - ./:/app
+      - /app/node_modules
     environment:
       - POCKETBASE_URL=http://pocketbase:8090
-      - PUBLIC_POCKETBASE_URL=${PUBLIC_POCKETBASE_URL:-http://localhost:8090}
-      - POCKETBASE_ADMIN_EMAIL=${POCKETBASE_ADMIN_EMAIL}
-      - POCKETBASE_ADMIN_PASSWORD=${POCKETBASE_ADMIN_PASSWORD}
+      - PUBLIC_POCKETBASE_URL=${PUBLIC_POCKETBASE_URL:-http://localhost:7090}
+      - POCKETBASE_ADMIN_EMAIL=${POCKETBASE_ADMIN_EMAIL:-admin@admin.local}
+      - POCKETBASE_ADMIN_PASSWORD=${POCKETBASE_ADMIN_PASSWORD:-1234567890}
     depends_on:
       pocketbase:
         condition: service_healthy
-    command: sh -c "bun install && bun scripts/create-pocketbase-collections.ts && bun scripts/import-data.ts"
+    command: sh -c "bun install && bun scripts/create-pocketbase-collections.ts && bun scripts/import-data.ts && bun scripts/seed-users.js"
     restart: "no"
-    profiles:
-      - setup
+
+  voyager-setup:
+    image: alpine:3.20
+    working_dir: /app
+    volumes:
+      - ./:/app
+    environment:
+      - VOYAGER_VERSION=0.59.0
+    command: sh /app/scripts/install-voyager-runtime.sh
+    restart: "no"
 
   frontend:
     image: oven/bun:1
@@ -50,15 +59,16 @@ services:
       - ./:/app
       - /app/node_modules
     ports:
-      - '${FRONTEND_PORT:-8080}:8080'
+      - '${FRONTEND_PORT:-7080}:5173'
     environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - PUBLIC_POCKETBASE_URL=${PUBLIC_POCKETBASE_URL:-http://localhost:8090}
-      - POCKETBASE_URL=${POCKETBASE_URL:-http://pocketbase:8090}
-    command: sh -c "bun install && bun run dev -- --host 0.0.0.0 --port 8080"
+      - PUBLIC_POCKETBASE_URL=${PUBLIC_POCKETBASE_URL:-http://localhost:7090}
+      - PUBLIC_ASSET_BASE_URL=${PUBLIC_ASSET_BASE_URL:-}
     depends_on:
       pocketbase:
         condition: service_healthy
+      pocketbase-setup:
+        condition: service_completed_successfully
+      voyager-setup:
+        condition: service_completed_successfully
+    command: sh -c "bun install && bun run dev --host"
     restart: unless-stopped
-    profiles:
-      - dev
