@@ -35,7 +35,7 @@ jobs:
         env:
           APP_BASE_PATH: /pure3d
           PUBLIC_POCKETBASE_URL: https://pure3d-database.ctwhome.com
-          PUBLIC_ASSET_BASE_URL: https://pub-0dd648cd99a4490ab1e3bcad91b4b880.r2.dev
+          PUBLIC_ASSET_BASE_URL: https://pure3d-assets.ctwhome.com
 
       - name: Create 404.html for SPA routing
         run: cp build/index.html build/404.html
