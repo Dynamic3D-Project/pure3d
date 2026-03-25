@@ -9,6 +9,11 @@ import {
 } from '$lib/types/roles';
 import type { ReviewDecision, ReviewAssignmentStatus } from '$lib/types/reviews';
 import { FeedbackCategory } from '$lib/types/reviews';
+import {
+	getEditionThumbnailUrl,
+	getCollectionThumbnailUrl,
+	getEditionRoot
+} from '$lib/utils/asset-urls';
 
 /**
  * Create a PocketBase client
@@ -137,13 +142,8 @@ export async function getCollections() {
 		return records.map((record) => {
 			const pubNum = record.pubNum || 0;
 
-			// Use uploaded thumbnail file if available, otherwise fall back to URL
-			let thumbnail = '';
-			if (record.thumbnailFile) {
-				thumbnail = getPublicFileUrl(record, record.thumbnailFile);
-			} else if (record.thumbnail) {
-				thumbnail = record.thumbnail;
-			}
+			// Thumbnail from asset URL (respects PUBLIC_ASSET_BASE_URL / R2)
+			const thumbnail = record.pubNum > 0 ? getCollectionThumbnailUrl(record.pubNum) : '';
 
 			return {
 				id: record.id,
@@ -237,19 +237,10 @@ function transformEditionRecord(record: any, collection?: any) {
 	const collectionPubNum = collection?.pubNum || 0;
 	const editionPubNum = record.pubNum || 1;
 
-	// Generate Voyager URL dynamically
-	const voyagerUrl =
-		collectionPubNum > 0
-			? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/voyager`
-			: '';
-
-	// Use uploaded thumbnail file if available, otherwise fall back to URL
-	let thumbnail = '';
-	if (record.thumbnailFile) {
-		thumbnail = getPublicFileUrl(record, record.thumbnailFile);
-	} else if (record.thumbnail) {
-		thumbnail = record.thumbnail;
-	}
+	// Voyager and thumbnail URLs from asset-urls (respects PUBLIC_ASSET_BASE_URL / R2)
+	const voyagerUrl = collectionPubNum > 0 ? getEditionRoot(collectionPubNum, editionPubNum) : '';
+	const thumbnail =
+		collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, editionPubNum) : '';
 
 	return {
 		id: record.id,

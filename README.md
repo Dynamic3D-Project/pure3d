@@ -48,31 +48,37 @@ cp .env.example .env
 
 Important defaults:
 
-- Frontend: `http://localhost:8080`
-- PocketBase: `http://localhost:8090`
+- Frontend: `http://localhost:7080`
+- PocketBase: `http://localhost:7090`
 - PocketBase superuser: `admin@admin.local` / `1234567890`
 
 ### 3. Start everything with one command
 
 ```sh
-docker compose up -d
+docker compose up
 ```
 
-What this does on a fresh clone:
+This runs the frontend in **development mode** (Vite dev server with hot reload). What happens on a fresh clone:
 
 1. Starts PocketBase
 2. Creates or upgrades the PocketBase schema automatically
 3. Imports the bundled JSON seed data from `data/json-output/` when those files are present
 4. Seeds demo login accounts
 5. Downloads the Voyager runtime into `static/voyager/0.59.0/` when it is missing
-6. Starts the frontend
+6. Starts the Vite dev server (with hot reload)
 
 First startup can take a little longer because the setup container installs dependencies and imports the database.
 
+For **production** (static build with nginx):
+
+```sh
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
 ### 4. Open the app
 
-- Frontend: `http://localhost:8080`
-- PocketBase admin UI: `http://localhost:8090/_/`
+- Frontend: `http://localhost:7080`
+- PocketBase admin UI: `http://localhost:7090/_/`
 
 Demo app accounts created automatically for development:
 
@@ -119,21 +125,17 @@ bun scripts/read-bson.ts
 
 This is what the frontend uses for Voyager scenes, edition thumbnails, articles, and model files.
 
-The app looks for local assets in:
+The 3D project assets (~7.5 GB) are stored on a **Cloudflare R2 bucket** and are not included in the repository. To access them you need the R2 credentials:
 
-```text
-static/project/{collectionPubNum}/
-static/project/{collectionPubNum}/edition/{editionPubNum}/
-static/voyager/{version}/
-```
+1. Ask a project maintainer for the `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY`
+2. Add them to your `.env` file
 
-Voyager note:
+The app looks for assets in two places depending on configuration:
 
-- You should not commit Voyager runtime files anymore.
-- `docker compose up -d` now downloads the official Smithsonian Voyager runtime into `static/voyager/0.59.0/` if it is missing.
-- That folder is intentionally git-ignored.
+- **With `PUBLIC_ASSET_BASE_URL` set**: assets are loaded from the R2/CDN URL (recommended for Docker and production)
+- **With `PUBLIC_ASSET_BASE_URL` empty**: assets are served from the local `static/project/` directory
 
-Typical structure:
+Asset path structure:
 
 ```text
 static/
@@ -152,25 +154,20 @@ static/
     └── language/
 ```
 
+Voyager note:
+
+- You should not commit Voyager runtime files.
+- `docker compose up` downloads the official Smithsonian Voyager runtime into `static/voyager/0.59.0/` if it is missing.
+- That folder is git-ignored.
+
 Notes:
 
-- The repository already contains Voyager builds in `static/voyager/`.
-- The repository may contain some sample project assets, but the full local asset set is usually too large to keep in git.
-- If a page loads but a 3D scene or image is missing, check that the corresponding files exist under `static/project/`.
-- If you serve assets from a CDN or R2 instead of the local filesystem, set `PUBLIC_ASSET_BASE_URL` in `.env` and the app will use that instead of `static/`.
-
-### Image Optimization (Optional)
-
-For better performance, optimize thumbnails to AVIF/WebP formats:
-
-```sh
-bun add sharp  # Install dependency
-bun scripts/optimize-images.ts  # Convert PNG → AVIF/WebP
-```
+- If a page loads but a 3D scene or image is missing, check that `PUBLIC_ASSET_BASE_URL` is set or that the corresponding files exist under `static/project/`.
+- The `static/project/` directory is git-ignored since the full asset set is too large for git.
 
 ### Production Deployment
 
-For production, host assets on Cloudflare R2 or another CDN and set:
+For production, set `PUBLIC_ASSET_BASE_URL` to the R2 public URL:
 
 ```env
 PUBLIC_ASSET_BASE_URL=https://assets.pure3d.eu

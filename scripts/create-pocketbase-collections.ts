@@ -19,16 +19,6 @@ const openRules = {
 	deleteRule: ''
 };
 
-const keywordCategories = [
-	'country',
-	'period',
-	'audience',
-	'subject',
-	'language',
-	'license',
-	'funder'
-];
-
 const globalRoleValues = ['superadmin', 'admin', 'editorial_board', 'viewer'];
 const collectionRoleValues = ['owner', 'editor', 'viewer'];
 const editionRoleValues = ['author', 'collaborator', 'reviewer'];
@@ -234,20 +224,8 @@ async function main() {
 		name: 'keywords',
 		type: 'base',
 		fields: [
-			{
-				name: 'name',
-				type: 'select',
-				required: false,
-				maxSelect: 1,
-				values: keywordCategories
-			},
-			{
-				name: 'category',
-				type: 'select',
-				required: false,
-				maxSelect: 1,
-				values: keywordCategories
-			},
+			{ name: 'name', type: 'text', required: true },
+			{ name: 'category', type: 'text', required: true },
 			{ name: 'value', type: 'text', required: true }
 		]
 	});
@@ -301,7 +279,7 @@ async function main() {
 			{ name: 'dcInstitution', type: 'json', required: false },
 			{ name: 'dcAbstract', type: 'editor', required: false },
 			{ name: 'dcDescription', type: 'editor', required: false },
-			{ name: 'dcContact', type: 'email', required: false },
+			{ name: 'dcContact', type: 'text', required: false },
 			{ name: 'dcSubject', type: 'json', required: false },
 			{ name: 'dcKeyword', type: 'json', required: false },
 			{ name: 'dcAudience', type: 'json', required: false },

@@ -13,22 +13,13 @@
 
 import { persisted } from 'svelte-persisted-store';
 import { pb } from '$lib/database';
-import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
 import type { Edition, Collection } from '$lib/types/collection';
 import { EditionStatus } from '$lib/types/roles';
 import {
 	getEditionThumbnailUrl,
 	getCollectionThumbnailUrl,
-	getEditionRoot,
-	getVoyagerResourceRoot,
-	DEFAULT_VOYAGER_VERSION
+	getEditionRoot
 } from '$lib/utils/asset-urls';
-
-// Helper to construct file URLs from Pocketbase records
-function getFileUrl(record: { collectionId: string; id: string }, filename: string): string {
-	const baseUrl = PUBLIC_POCKETBASE_URL || 'http://localhost:7090';
-	return `${baseUrl}/api/files/${record.collectionId}/${record.id}/${filename}`;
-}
 
 // Store types
 interface EditionsData {
@@ -75,11 +66,9 @@ export async function fetchEditions(): Promise<Edition[]> {
 		// Build voyager URL - use local assets when pubNum is available
 		const voyagerUrl = collectionPubNum > 0 ? getEditionRoot(collectionPubNum, editionPubNum) : '';
 
-		// Thumbnail priority: PocketBase file > legacy URL > local static asset
-		const thumbnail = record.thumbnailFile
-			? getFileUrl(record, record.thumbnailFile)
-			: record.thumbnail ||
-				(collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, editionPubNum) : '');
+		// Thumbnail: use asset URL built from pubNums (respects PUBLIC_ASSET_BASE_URL / R2)
+		const thumbnail =
+			collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, editionPubNum) : '';
 
 		return {
 			id: record.id,
@@ -176,10 +165,8 @@ export async function fetchCollections(): Promise<(Collection & { editionCount?:
 	}
 
 	const mappedCollections = collectionsResult.items.map((record) => {
-		// Thumbnail priority: PocketBase file > legacy URL > local static asset
-		const thumbnail = record.thumbnailFile
-			? getFileUrl(record, record.thumbnailFile)
-			: record.thumbnail || (record.pubNum > 0 ? getCollectionThumbnailUrl(record.pubNum) : '');
+		// Thumbnail: use asset URL built from pubNum (respects PUBLIC_ASSET_BASE_URL / R2)
+		const thumbnail = record.pubNum > 0 ? getCollectionThumbnailUrl(record.pubNum) : '';
 
 		return {
 			id: record.id,

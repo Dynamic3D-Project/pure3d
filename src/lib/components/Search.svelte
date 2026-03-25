@@ -13,7 +13,10 @@
 		autoUpdate
 	} from '@floating-ui/dom';
 
-	import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
+	import {
+		getEditionThumbnailUrl,
+		getCollectionThumbnailUrl
+	} from '$lib/utils/asset-urls';
 
 	type SearchResultType = 'edition' | 'collection';
 
@@ -24,12 +27,6 @@
 		subtitle?: string;
 		thumbnail?: string;
 		url: string;
-	}
-
-	// Helper to construct file URLs from Pocketbase records
-	function getFileUrl(collectionId: string, recordId: string, filename: string): string {
-		const baseUrl = PUBLIC_POCKETBASE_URL || 'http://localhost:7090';
-		return `${baseUrl}/api/files/${collectionId}/${recordId}/${filename}`;
 	}
 
 	let searchQuery = $state('');
@@ -61,7 +58,7 @@
 
 			const [editionsRes, collectionsRes] = await Promise.all([
 				fetch(
-					`${baseUrl}/api/collections/editions/records?filter=${encodeURIComponent('isPublished=true')}&perPage=100`
+					`${baseUrl}/api/collections/editions/records?filter=${encodeURIComponent('isPublished=true')}&expand=collection&perPage=100`
 				),
 				fetch(
 					`${baseUrl}/api/collections/collections/records?filter=${encodeURIComponent('isVisible=true')}&perPage=100`
@@ -114,11 +111,14 @@
 			const editions = { items: filteredEditions.slice(0, 8) };
 			const collections = { items: filteredCollections.slice(0, 5) };
 
-			// Build combined results - use actual PocketBase field names
+			// Build combined results using asset-urls helpers (respects R2 / PUBLIC_ASSET_BASE_URL)
 			const editionResults: SearchResult[] = editions.items.map((edition: any) => {
-				const thumbnail = edition.thumbnailFile
-					? getFileUrl('editions', edition.id, edition.thumbnailFile)
-					: edition.thumbnail || '';
+				const collectionPubNum = edition.expand?.collection?.pubNum || 0;
+				const editionPubNum = edition.pubNum || 1;
+				const thumbnail =
+					collectionPubNum > 0
+						? getEditionThumbnailUrl(collectionPubNum, editionPubNum)
+						: '';
 
 				return {
 					type: 'edition' as const,
@@ -133,9 +133,10 @@
 			});
 
 			const collectionResults: SearchResult[] = collections.items.map((collection: any) => {
-				const thumbnail = collection.thumbnailFile
-					? getFileUrl('collections', collection.id, collection.thumbnailFile)
-					: collection.thumbnail || '';
+				const thumbnail =
+					collection.pubNum > 0
+						? getCollectionThumbnailUrl(collection.pubNum)
+						: '';
 
 				return {
 					type: 'collection' as const,

@@ -1,0 +1,14 @@
+.claude
+.DS_Store
+.git
+.github
+.svelte-kit
+.vscode
+data/
+docs/
+node_modules/
+pocketbase/pb_data/
+README.ARCHITECTURE.excalidraw.png
+README.CHANGELOG.excalidraw.png
+static/project/
+static/voyager/

@@ -72,6 +72,33 @@ function normalizeStatus(isPublished?: boolean, explicitStatus?: string | null) 
 	return isPublished ? 'published' : 'draft';
 }
 
+function normalizeNumber(value: unknown, fallback = 0) {
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		return value;
+	}
+
+	if (typeof value === 'string' && value.trim()) {
+		const parsed = Number(value);
+		if (Number.isFinite(parsed)) {
+			return parsed;
+		}
+	}
+
+	if (value && typeof value === 'object') {
+		for (const key of ['$numberInt', '$numberLong', '$numberDouble']) {
+			const wrapped = (value as Record<string, unknown>)[key];
+			if (typeof wrapped === 'string' && wrapped.trim()) {
+				const parsed = Number(wrapped);
+				if (Number.isFinite(parsed)) {
+					return parsed;
+				}
+			}
+		}
+	}
+
+	return fallback;
+}
+
 function readJsonArray<T>(filename: string): T[] {
 	const filepath = join(JSON_DIR, filename);
 	if (!existsSync(filepath)) {
@@ -270,7 +297,7 @@ async function main() {
 			continue;
 		}
 
-		const projectPubNum = doc.pubNum || 0;
+		const projectPubNum = normalizeNumber(doc.pubNum, 0);
 		const thumbnailUrl =
 			projectPubNum > 0 ? `https://editions.pure3d.eu/project/${projectPubNum}/icon.png` : '';
 
@@ -342,60 +369,67 @@ async function main() {
 
 		const collectionRecord = await pb.collection('collections').getOne(pbCollectionId);
 		const collectionPubNum = collectionRecord.pubNum || 0;
-		const editionPubNum = doc.pubNum || 1;
+		const editionPubNum = normalizeNumber(doc.pubNum, 1);
 		const thumbnailUrl =
 			collectionPubNum > 0
 				? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/icon.png`
 				: '';
 
-		const result = await pb.collection('editions').create({
-			mongoId: doc._id,
-			title: doc.title,
-			collection: pbCollectionId,
-			isPublished: doc.isPublished === true,
-			status: normalizeStatus(doc.isPublished, doc.status || null),
-			pubNum: editionPubNum,
-			thumbnail: thumbnailUrl,
-			dcTitle: doc.dc?.title,
-			dcSubtitle: doc.dc?.subtitle,
-			dcCreator: doc.dc?.creator || [],
-			dcContributor: doc.dc?.contributor || [],
-			dcInstitution: doc.dc?.institution || [],
-			dcAbstract: doc.dc?.abstract,
-			dcDescription: doc.dc?.description,
-			dcContact: doc.dc?.contact,
-			dcSubject: doc.dc?.subject || [],
-			dcKeyword: doc.dc?.keyword || [],
-			dcAudience: doc.dc?.audience || [],
-			dcFunder: doc.dc?.funder || [],
-			dcSource: doc.dc?.source || [],
-			dcProvenance: doc.dc?.provenance,
-			dcCoveragePeriod: doc.dc?.coverage?.period || [],
-			dcCoveragePlace: doc.dc?.coverage?.place,
-			dcCoverageCountry: doc.dc?.coverage?.country || [],
-			dcCoverageTemporal: doc.dc?.coverage?.temporal,
-			dcCoverageGeo: doc.dc?.coverage?.geo,
-			dcLanguage: doc.dc?.language || [],
-			dcRightsHolder: doc.dc?.rights?.holder,
-			dcRightsLicense: doc.dc?.rights?.license,
-			dcDatePublished: doc.dc?.datePublished,
-			dcDateUnPublished: doc.dc?.dateUnPublished,
-			dcDateCreated: doc.dc?.dateCreated,
-			dcDateModified: doc.dc?.dateModified,
-			dcDoi: doc.dc?.doi || [],
-			peerReviewKind: doc.pure3d?.peerReviewKind || null,
-			peerReviewContent: doc.pure3d?.peerReviewContent || null,
-			peerReviewRequested: false,
-			reviewStage: null,
-			peerReviewStamp: false,
-			publishedAt: doc.dc?.datePublished || null,
-			authorToolName: doc.settings?.authorTool?.name,
-			authorToolVersion: doc.settings?.authorTool?.version,
-			sceneFile: doc.settings?.authorTool?.sceneFile,
-			settingsAuthorToolName: doc.settings?.authorTool?.name,
-			settingsAuthorToolVersion: doc.settings?.authorTool?.version,
-			settingsSceneFile: doc.settings?.authorTool?.sceneFile
-		});
+		let result;
+		try {
+			result = await pb.collection('editions').create({
+				mongoId: doc._id,
+				title: doc.title,
+				collection: pbCollectionId,
+				isPublished: doc.isPublished === true,
+				status: normalizeStatus(doc.isPublished, doc.status || null),
+				pubNum: editionPubNum,
+				thumbnail: thumbnailUrl,
+				dcTitle: doc.dc?.title,
+				dcSubtitle: doc.dc?.subtitle,
+				dcCreator: doc.dc?.creator || [],
+				dcContributor: doc.dc?.contributor || [],
+				dcInstitution: doc.dc?.institution || [],
+				dcAbstract: doc.dc?.abstract,
+				dcDescription: doc.dc?.description,
+				dcContact: doc.dc?.contact || null,
+				dcSubject: doc.dc?.subject || [],
+				dcKeyword: doc.dc?.keyword || [],
+				dcAudience: doc.dc?.audience || [],
+				dcFunder: doc.dc?.funder || [],
+				dcSource: doc.dc?.source || [],
+				dcProvenance: doc.dc?.provenance,
+				dcCoveragePeriod: doc.dc?.coverage?.period || [],
+				dcCoveragePlace: doc.dc?.coverage?.place,
+				dcCoverageCountry: doc.dc?.coverage?.country || [],
+				dcCoverageTemporal: doc.dc?.coverage?.temporal,
+				dcCoverageGeo: doc.dc?.coverage?.geo,
+				dcLanguage: doc.dc?.language || [],
+				dcRightsHolder: doc.dc?.rights?.holder,
+				dcRightsLicense: doc.dc?.rights?.license,
+				dcDatePublished: doc.dc?.datePublished,
+				dcDateUnPublished: doc.dc?.dateUnPublished,
+				dcDateCreated: doc.dc?.dateCreated,
+				dcDateModified: doc.dc?.dateModified,
+				dcDoi: doc.dc?.doi || [],
+				peerReviewKind: doc.pure3d?.peerReviewKind || null,
+				peerReviewContent: doc.pure3d?.peerReviewContent || null,
+				peerReviewRequested: false,
+				reviewStage: null,
+				peerReviewStamp: false,
+				publishedAt: doc.dc?.datePublished || null,
+				authorToolName: doc.settings?.authorTool?.name,
+				authorToolVersion: doc.settings?.authorTool?.version,
+				sceneFile: doc.settings?.authorTool?.sceneFile,
+				settingsAuthorToolName: doc.settings?.authorTool?.name,
+				settingsAuthorToolVersion: doc.settings?.authorTool?.version,
+				settingsSceneFile: doc.settings?.authorTool?.sceneFile
+			});
+		} catch (error: any) {
+			console.error(`   Failed edition: ${doc.title} (${doc._id})`);
+			console.error(JSON.stringify(error?.response || error, null, 2));
+			throw error;
+		}
 
 		existingEditionKeys.set(`${doc.title}|${pbCollectionId}`, result);
 		editionIdMap.set(doc._id, result.id);
