@@ -7,6 +7,7 @@
  */
 
 import { PUBLIC_ASSET_BASE_URL } from '$env/static/public';
+import { base } from '$app/paths';
 
 /**
  * Returns the base URL for assets.
@@ -40,7 +41,6 @@ export function getEditionRoot(collectionPubNum: number, editionPubNum: number):
  * Get root path for Voyager assets (fonts, css, images, language files)
  */
 export function getVoyagerResourceRoot(version: string): string {
-	const base = getAssetBaseUrl();
 	return `${base}/voyager/${version}/`;
 }
 
@@ -48,7 +48,7 @@ export function getVoyagerResourceRoot(version: string): string {
  * Get URL for Voyager Explorer script
  */
 export function getVoyagerScriptUrl(version: string): string {
-	return `${getVoyagerResourceRoot(version)}js/voyager-explorer.min.js`;
+	return `${base}/voyager/${version}/js/voyager-explorer.min.js`;
 }
 
 /**
