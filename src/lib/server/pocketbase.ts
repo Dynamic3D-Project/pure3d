@@ -32,7 +32,7 @@ export function createPocketBaseClient() {
  * Uses PUBLIC_POCKETBASE_URL instead of internal Docker URL
  */
 export function getPublicFileUrl(record: any, filename: string): string {
-	const baseUrl = PUBLIC_POCKETBASE_URL || 'http://localhost:7090';
+	const baseUrl = PUBLIC_POCKETBASE_URL || 'http://localhost:8090';
 	return `${baseUrl}/api/files/${record.collectionId}/${record.id}/${filename}`;
 }
 

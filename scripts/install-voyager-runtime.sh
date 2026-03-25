@@ -1,8 +1,19 @@
 #!/bin/sh
 set -eu
 
-VOYAGER_VERSION="${VOYAGER_VERSION:-0.59.0}"
-VOYAGER_RELEASE_URL="${VOYAGER_RELEASE_URL:-https://github.com/Smithsonian/dpo-voyager/releases/download/v${VOYAGER_VERSION}/voyager-tools-v${VOYAGER_VERSION}.zip}"
+apk add --no-cache curl unzip >/dev/null
+
+# Resolve version: use VOYAGER_VERSION env var, or fetch latest from GitHub
+if [ -n "${VOYAGER_VERSION:-}" ] && [ "${VOYAGER_VERSION}" != "latest" ]; then
+	echo "Using pinned Voyager version: ${VOYAGER_VERSION}"
+else
+	echo "Fetching latest Voyager release from GitHub..."
+	VOYAGER_VERSION=$(curl -fsSL "https://api.github.com/repos/Smithsonian/dpo-voyager/releases/latest" \
+		| grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/')
+	echo "Latest version: ${VOYAGER_VERSION}"
+fi
+
+VOYAGER_RELEASE_URL="https://github.com/Smithsonian/dpo-voyager/releases/download/v${VOYAGER_VERSION}/voyager-tools-v${VOYAGER_VERSION}.zip"
 TARGET_DIR="${TARGET_DIR:-/app/static/voyager/${VOYAGER_VERSION}}"
 
 if [ -f "${TARGET_DIR}/js/voyager-explorer.min.js" ]; then
@@ -11,8 +22,6 @@ if [ -f "${TARGET_DIR}/js/voyager-explorer.min.js" ]; then
 fi
 
 echo "Installing Voyager runtime ${VOYAGER_VERSION}"
-
-apk add --no-cache curl unzip >/dev/null
 
 TMP_DIR="$(mktemp -d)"
 ZIP_PATH="${TMP_DIR}/voyager-tools.zip"

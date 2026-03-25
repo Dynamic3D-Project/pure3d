@@ -66,7 +66,7 @@ type CollectionDef = {
 };
 
 async function waitForPocketBase() {
-	console.log('Waiting for PocketBase...');
+	console.log(`Waiting for PocketBase at ${POCKETBASE_URL}...`);
 	for (let attempt = 0; attempt < 30; attempt++) {
 		try {
 			const response = await fetch(`${POCKETBASE_URL}/api/health`);
@@ -74,7 +74,11 @@ async function waitForPocketBase() {
 				console.log('PocketBase is healthy\n');
 				return;
 			}
-		} catch {}
+			console.log(`  attempt ${attempt + 1}: HTTP ${response.status}`);
+		} catch (err: unknown) {
+			const msg = err instanceof Error ? err.message : String(err);
+			console.log(`  attempt ${attempt + 1}: ${msg}`);
+		}
 
 		await new Promise((resolve) => setTimeout(resolve, 2000));
 	}

@@ -10,7 +10,7 @@
 import fs from 'fs';
 
 const POCKETBASE_URL =
-	process.env.POCKETBASE_URL || process.env.PUBLIC_POCKETBASE_URL || 'http://localhost:7090';
+	process.env.POCKETBASE_URL || process.env.PUBLIC_POCKETBASE_URL || 'http://localhost:8090';
 const users = JSON.parse(fs.readFileSync('./pocketbase/pb_schema/seed_users.json', 'utf8'));
 
 async function seedUsers() {

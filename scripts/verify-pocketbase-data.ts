@@ -2,7 +2,7 @@
 /**
  * Verify PocketBase data import
  */
-const PB_URL = 'http://127.0.0.1:7090';
+const PB_URL = 'http://127.0.0.1:8090';
 const ADMIN_EMAIL = 'admin@admin.local';
 const ADMIN_PASSWORD = '1234567890';
 

@@ -5,7 +5,7 @@
  */
 import PocketBase from 'pocketbase';
 
-const PB_URL = process.env.POCKETBASE_URL || 'http://localhost:7090';
+const PB_URL = process.env.POCKETBASE_URL || 'http://localhost:8090';
 const ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL!;
 const ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD!;
 

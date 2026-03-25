@@ -36,10 +36,10 @@ async function main() {
   } catch (error: any) {
     console.error('❌ Authentication failed:', error.message);
     console.error('\n📝 Troubleshooting:');
-    console.error('   1. Check admin account exists at http://localhost:7090/_/');
+    console.error('   1. Check admin account exists at http://localhost:8090/_/');
     console.error('   2. Verify credentials match .env file:');
     console.error(`      Email: ${ADMIN_EMAIL}`);
-    console.error('   3. Try logging in manually at http://localhost:7090/_/\n');
+    console.error('   3. Try logging in manually at http://localhost:8090/_/\n');
     process.exit(1);
   }
 
@@ -52,7 +52,7 @@ async function main() {
       console.log('⚠️  Collections already exist. Skipping creation.\n');
     } else {
       console.log('📦 Creating collections via Admin UI export is recommended.\n');
-      console.log('   Alternatively, create them manually at: http://localhost:7090/_/\n');
+      console.log('   Alternatively, create them manually at: http://localhost:8090/_/\n');
     }
   } catch (error: any) {
     console.log('ℹ️  Cannot check collections (expected for first run)\n');
@@ -60,7 +60,7 @@ async function main() {
 
   console.log('✅ Setup complete!\n');
   console.log('Next steps:');
-  console.log('1. Create collections via Admin UI: http://localhost:7090/_/');
+  console.log('1. Create collections via Admin UI: http://localhost:8090/_/');
   console.log('2. Then run: docker compose --profile import up pocketbase-importer\n');
 }
 

@@ -11,7 +11,7 @@
  * Run: bun scripts/migrate-workflow-statuses.ts
  */
 
-const PB_URL = process.env.POCKETBASE_URL || 'http://127.0.0.1:7090';
+const PB_URL = process.env.POCKETBASE_URL || 'http://127.0.0.1:8090';
 const ADMIN_EMAIL = process.env.PB_ADMIN_EMAIL || 'admin@admin.local';
 const ADMIN_PASSWORD = process.env.PB_ADMIN_PASSWORD || '1234567890';
 

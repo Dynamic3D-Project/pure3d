@@ -138,7 +138,7 @@ docker compose --profile setup up
 
 1. **Open Admin UI:**
    ```bash
-   open http://localhost:7090/_/
+   open http://localhost:8090/_/
    ```
 
 2. **Login with your credentials** (from `.env`)
@@ -153,7 +153,7 @@ docker compose --profile setup up
 docker compose up -d frontend
 ```
 
-Access your app at: http://localhost:7080
+Access your app at: http://localhost:8080
 
 ---
 
@@ -190,8 +190,8 @@ docker compose up -d frontend               # Start app (optional)
 - To re-import, delete data via Admin UI or start fresh
 
 ### Port conflicts
-- Change `POCKETBASE_PORT` in `.env` (default: 7090)
-- Change `FRONTEND_PORT` in `.env` (default: 7080)
+- Change `POCKETBASE_PORT` in `.env` (default: 8090)
+- Change `FRONTEND_PORT` in `.env` (default: 8080)
 
 ### Docker network errors
 - Run: `docker network prune -f`
@@ -238,7 +238,7 @@ docker compose up -d frontend               # Start app (optional)
 1. **Explore the data** in Admin UI
 2. **Test API endpoints:**
    ```bash
-   curl http://localhost:7090/api/collections/projects/records
+   curl http://localhost:8090/api/collections/projects/records
    ```
 3. **Integrate with SvelteKit** - see `POCKETBASE_SETUP.md` for examples
 4. **Build your frontend** using the PocketBase SDK
@@ -258,8 +258,8 @@ docker compose up -d frontend               # Start app (optional)
 
 ## Support
 
-- Admin UI: http://localhost:7090/_/
-- Health check: http://localhost:7090/api/health
-- Collections API: http://localhost:7090/api/collections
+- Admin UI: http://localhost:8090/_/
+- Health check: http://localhost:8090/api/health
+- Collections API: http://localhost:8090/api/collections
 
 **Everything automated. Just 4 commands. Done! 🚀**

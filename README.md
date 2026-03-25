@@ -48,8 +48,8 @@ cp .env.example .env
 
 Important defaults:
 
-- Frontend: `http://localhost:7080`
-- PocketBase: `http://localhost:7090`
+- Frontend: `http://localhost:8080`
+- PocketBase: `http://localhost:8090`
 - PocketBase superuser: `admin@admin.local` / `1234567890`
 
 ### 3. Start everything with one command
@@ -77,8 +77,8 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 ### 4. Open the app
 
-- Frontend: `http://localhost:7080`
-- PocketBase admin UI: `http://localhost:7090/_/`
+- Frontend: `http://localhost:8080`
+- PocketBase admin UI: `http://localhost:8090/_/`
 
 Demo app accounts created automatically for development:
 

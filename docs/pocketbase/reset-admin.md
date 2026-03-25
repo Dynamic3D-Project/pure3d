@@ -15,7 +15,7 @@ rm -rf pocketbase/pb_data
 docker compose up -d pocketbase
 
 # Open admin UI and create new account
-open http://localhost:7090/_/
+open http://localhost:8090/_/
 ```
 
 **IMPORTANT**: When creating the admin account, use EXACTLY:
@@ -42,7 +42,7 @@ POCKETBASE_ADMIN_PASSWORD=your-actual-password
 After resetting, test authentication:
 
 ```bash
-POCKETBASE_URL=http://localhost:7090 bun scripts/setup-pocketbase-simple.ts
+POCKETBASE_URL=http://localhost:8090 bun scripts/setup-pocketbase-simple.ts
 ```
 
 You should see:
