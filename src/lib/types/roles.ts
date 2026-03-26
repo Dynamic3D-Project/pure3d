@@ -1,6 +1,5 @@
 // Global roles assigned system-wide in the `users` collection
 export enum GlobalRole {
-	SuperAdmin = 'superadmin',
 	Admin = 'admin',
 	EditorialBoard = 'editorial_board',
 	Viewer = 'viewer'
@@ -95,8 +94,7 @@ export enum Permission {
 
 	// User & platform management
 	AdminViewPanel = 'admin:view_panel',
-	AdminManageUsers = 'admin:manage_users',
-	AdminManagePlatform = 'admin:manage_platform'
+	AdminManageUsers = 'admin:manage_users'
 }
 
 // Valid edition status transitions: from → allowed targets
@@ -123,8 +121,7 @@ export const EDITION_STATUS_TRANSITIONS: Record<EditionStatus, EditionStatus[]> 
 export const GLOBAL_ROLE_HIERARCHY: GlobalRole[] = [
 	GlobalRole.Viewer,
 	GlobalRole.EditorialBoard,
-	GlobalRole.Admin,
-	GlobalRole.SuperAdmin
+	GlobalRole.Admin
 ];
 
 // Context object for permission checks
@@ -137,7 +134,6 @@ export interface UserRoleContext {
 // Display-friendly labels for all roles
 // Display-friendly labels for global roles
 export const GLOBAL_ROLE_LABELS: Record<GlobalRole, string> = {
-	[GlobalRole.SuperAdmin]: 'Super Admin',
 	[GlobalRole.Admin]: 'Admin',
 	[GlobalRole.EditorialBoard]: 'Editorial Board',
 	[GlobalRole.Viewer]: 'Viewer'

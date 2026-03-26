@@ -18,7 +18,6 @@ const pb = new PocketBase(PB_URL);
 function mapGlobalRole(role?: string) {
 	switch (role) {
 		case 'root':
-			return 'superadmin';
 		case 'admin':
 			return 'admin';
 		case 'editorial_board':
@@ -203,7 +202,9 @@ async function main() {
 	console.log('\nImporting user profiles...');
 	const usersData = readJsonArray<any>('user.json');
 	const existingProfiles = await pb.collection('userProfiles').getFullList();
-	const existingProfileEmails = new Set(existingProfiles.map((record: any) => normalizeEmail(record.email)));
+	const existingProfileEmails = new Set(
+		existingProfiles.map((record: any) => normalizeEmail(record.email))
+	);
 
 	for (const record of existingProfiles) {
 		if (record.userHash) {

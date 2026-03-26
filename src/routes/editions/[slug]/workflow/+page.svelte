@@ -48,9 +48,7 @@
 	let isReviewer = $state(false);
 	let myAssignment = $state<ReviewAssignment | null>(null);
 	let myExistingReview = $state<EditionReview | null>(null);
-	let isAdmin = $derived(
-		authStore.globalRole === GlobalRole.SuperAdmin || authStore.globalRole === GlobalRole.Admin
-	);
+	let isAdmin = $derived(authStore.globalRole === GlobalRole.Admin);
 
 	// Concept form state
 	let conceptTitle = $state('');

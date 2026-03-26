@@ -32,9 +32,6 @@ export function canTransitionStatus(current: EditionStatus, target: EditionStatu
 export function hasPermission(context: UserRoleContext, permission: Permission): boolean {
 	const { globalRole, collectionRole, editionRole } = context;
 
-	// Super Admin has all permissions
-	if (globalRole === GlobalRole.SuperAdmin) return true;
-
 	switch (permission) {
 		// --- Edition actions ---
 		case Permission.EditionCreate:
@@ -135,9 +132,6 @@ export function hasPermission(context: UserRoleContext, permission: Permission):
 		case Permission.AdminManageUsers:
 			return globalRole === GlobalRole.Admin;
 
-		case Permission.AdminManagePlatform:
-			return false; // Only SuperAdmin (handled above)
-
 		default:
 			return false;
 	}
@@ -153,9 +147,6 @@ export function canUserTransitionStatus(
 	target: EditionStatus
 ): boolean {
 	if (!canTransitionStatus(current, target)) return false;
-
-	// SuperAdmin can do all valid transitions
-	if (context.globalRole === GlobalRole.SuperAdmin) return true;
 
 	switch (target) {
 		// --- Concept stage ---

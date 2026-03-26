@@ -1,11 +1,5 @@
 [
   {
-    "email": "superadmin@pure3d.eu",
-    "password": "1234567890",
-    "nickname": "SuperAdmin",
-    "role": "superadmin"
-  },
-  {
     "email": "admin@pure3d.eu",
     "password": "1234567890",
     "nickname": "Admin",

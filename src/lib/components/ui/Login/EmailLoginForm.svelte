@@ -10,7 +10,6 @@
 	let isLoading = $state(false);
 
 	const demoAccounts = [
-		{ label: 'Super Admin', email: 'superadmin@pure3d.eu', role: 'superadmin' },
 		{ label: 'Admin', email: 'admin@pure3d.eu', role: 'admin' },
 		{ label: 'Editorial Board', email: 'editor@pure3d.eu', role: 'editorial_board' },
 		{ label: 'Viewer', email: 'viewer@pure3d.eu', role: 'viewer' }
@@ -92,7 +91,7 @@
 
 		<button
 			type="submit"
-			class="btn btn-outline btn-secondary w-full"
+			class="btn w-full btn-outline btn-secondary"
 			disabled={isLoading}
 			aria-busy={isLoading}
 		>
@@ -107,7 +106,7 @@
 					{#each demoAccounts as account (account.email)}
 						<button
 							type="button"
-							class="badge badge-outline badge-sm cursor-pointer gap-1 transition-colors hover:badge-neutral"
+							class="badge cursor-pointer gap-1 badge-outline badge-sm transition-colors hover:badge-neutral"
 							onclick={() => fillDemo(account)}
 						>
 							{account.label}

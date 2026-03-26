@@ -19,7 +19,7 @@ const openRules = {
 	deleteRule: ''
 };
 
-const globalRoleValues = ['superadmin', 'admin', 'editorial_board', 'viewer'];
+const globalRoleValues = ['admin', 'editorial_board', 'viewer'];
 const collectionRoleValues = ['owner', 'editor', 'viewer'];
 const editionRoleValues = ['author', 'collaborator', 'reviewer'];
 const editionStatusValues = [
@@ -415,7 +415,10 @@ async function main() {
 		name: 'editionReviews',
 		type: 'base',
 		fields: [
-			relationField('editionId', collectionIds['editions'], { required: true, cascadeDelete: true }),
+			relationField('editionId', collectionIds['editions'], {
+				required: true,
+				cascadeDelete: true
+			}),
 			relationField('reviewerId', collectionIds['userProfiles'], { required: true }),
 			{ name: 'reviewStage', type: 'number', required: true },
 			{
@@ -433,7 +436,10 @@ async function main() {
 		name: 'reviewAssignments',
 		type: 'base',
 		fields: [
-			relationField('editionId', collectionIds['editions'], { required: true, cascadeDelete: true }),
+			relationField('editionId', collectionIds['editions'], {
+				required: true,
+				cascadeDelete: true
+			}),
 			relationField('reviewerId', collectionIds['userProfiles'], { required: true }),
 			relationField('assignedBy', collectionIds['userProfiles'], { required: true }),
 			{ name: 'reviewStage', type: 'number', required: true },
@@ -451,7 +457,10 @@ async function main() {
 		name: 'reviewFeedback',
 		type: 'base',
 		fields: [
-			relationField('editionId', collectionIds['editions'], { required: true, cascadeDelete: true }),
+			relationField('editionId', collectionIds['editions'], {
+				required: true,
+				cascadeDelete: true
+			}),
 			relationField('reviewerId', collectionIds['userProfiles'], { required: true }),
 			{ name: 'reviewStage', type: 'number', required: true },
 			{
@@ -471,7 +480,10 @@ async function main() {
 		name: 'notifications',
 		type: 'base',
 		fields: [
-			relationField('recipientId', collectionIds['userProfiles'], { required: true, cascadeDelete: true }),
+			relationField('recipientId', collectionIds['userProfiles'], {
+				required: true,
+				cascadeDelete: true
+			}),
 			relationField('editionId', collectionIds['editions'], { cascadeDelete: true }),
 			{
 				name: 'type',
