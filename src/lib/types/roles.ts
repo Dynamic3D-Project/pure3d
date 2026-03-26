@@ -94,8 +94,7 @@ export enum Permission {
 
 	// User & platform management
 	AdminViewPanel = 'admin:view_panel',
-	AdminManageUsers = 'admin:manage_users',
-	AdminManagePlatform = 'admin:manage_platform'
+	AdminManageUsers = 'admin:manage_users'
 }
 
 // Valid edition status transitions: from → allowed targets

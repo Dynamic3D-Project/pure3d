@@ -91,7 +91,7 @@
 
 		<button
 			type="submit"
-			class="btn btn-outline btn-secondary w-full"
+			class="btn w-full btn-outline btn-secondary"
 			disabled={isLoading}
 			aria-busy={isLoading}
 		>
@@ -106,7 +106,7 @@
 					{#each demoAccounts as account (account.email)}
 						<button
 							type="button"
-							class="badge badge-outline badge-sm cursor-pointer gap-1 transition-colors hover:badge-neutral"
+							class="badge cursor-pointer gap-1 badge-outline badge-sm transition-colors hover:badge-neutral"
 							onclick={() => fillDemo(account)}
 						>
 							{account.label}
