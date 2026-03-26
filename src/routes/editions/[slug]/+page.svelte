@@ -5,6 +5,7 @@
 	import VoyagerViewer, { type VoyagerAPI } from '$lib/components/voyager/VoyagerViewer.svelte';
 	import VoyagerAPIDemo from '$lib/components/voyager/VoyagerAPIDemo.svelte';
 	import ReviewFeedbackList from '$lib/components/workflow/ReviewFeedbackList.svelte';
+	import ImagineModal from '$lib/components/ui/ImagineModal.svelte';
 
 	// View preset type for camera positions
 	interface ViewPreset {
@@ -124,6 +125,7 @@
 	let activeTab = $state<'description' | 'metadata' | 'peer-review' | 'printables'>('description');
 	let isSidebarCollapsed = $state(false);
 	let helpModalOpen = $state(false);
+	let imagineModalOpen = $state(false);
 	let loadedModelSize = $state<number | null>(null);
 	let isFullWindow = $state(false);
 
@@ -307,6 +309,30 @@
 										/>
 									</svg>
 								{/if}
+							</button>
+
+							<!-- Imagine AI button -->
+							<button
+								type="button"
+								class="btn btn-circle border-0 bg-primary/80 text-primary-content shadow-lg btn-sm hover:bg-primary"
+								onclick={() => (imagineModalOpen = true)}
+								aria-label="Imagine — AI image generation"
+								title="Imagine — Generate AI image from this view"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke-width="2"
+									stroke="currentColor"
+									class="h-5 w-5"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"
+									/>
+								</svg>
 							</button>
 
 							<!-- Help info button -->
@@ -704,6 +730,9 @@
 		</form>
 	</dialog>
 {/if}
+
+<!-- Imagine AI Modal -->
+<ImagineModal bind:open={imagineModalOpen} {edition} onclose={() => (imagineModalOpen = false)} />
 
 <style>
 	/* Full window mode for the 3D viewer */
