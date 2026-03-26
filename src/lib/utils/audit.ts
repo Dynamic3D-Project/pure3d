@@ -14,7 +14,9 @@ export type AuditAction =
 	| 'feedback_created'
 	| 'feedback_resolved'
 	| 'collaborator_added'
-	| 'collaborator_removed';
+	| 'collaborator_removed'
+	| 'edition_created'
+	| 'collection_created';
 
 export type AuditTargetType = 'user' | 'collection' | 'edition';
 

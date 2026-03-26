@@ -69,3 +69,30 @@ export async function updateReviewAssignmentStatus(id: string, status: ReviewAss
 export async function removeReviewAssignment(id: string) {
 	return pb.collection('reviewAssignments').delete(id);
 }
+
+export async function createEdition(data: {
+	title: string;
+	description: string;
+	peerReviewRequested: boolean;
+	collectionId?: string;
+	creatorUserId: string;
+}): Promise<string> {
+	const record = await pb.collection('editions').create({
+		dcTitle: data.title,
+		dcAbstract: data.description,
+		status: EditionStatus.Draft,
+		isPublished: false,
+		peerReviewRequested: data.peerReviewRequested,
+		collection: data.collectionId || null,
+		reviewStage: null
+	});
+
+	await pb.collection('editionUsers').create({
+		editionId: record.id,
+		userId: data.creatorUserId,
+		user: data.creatorUserId,
+		role: EditionRole.Author
+	});
+
+	return record.id;
+}
