@@ -214,6 +214,16 @@
 			loadedBytes = 0;
 			loadingPhase = 'script';
 
+			// Patch getContext to force preserveDrawingBuffer on WebGL contexts.
+			// This allows canvas screenshot capture (toDataURL/drawImage) to work.
+			const origGetContext = HTMLCanvasElement.prototype.getContext;
+			HTMLCanvasElement.prototype.getContext = function (type: string, attrs?: any) {
+				if (type === 'webgl' || type === 'webgl2') {
+					attrs = { ...attrs, preserveDrawingBuffer: true };
+				}
+				return origGetContext.call(this, type, attrs);
+			} as typeof origGetContext;
+
 			// Install fetch interceptor before loading Voyager
 			cleanupFetchInterceptor = installFetchInterceptor();
 

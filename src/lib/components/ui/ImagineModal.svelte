@@ -10,24 +10,60 @@
 
 	let { open = $bindable(), edition, onclose }: Props = $props();
 
+	// Model options
+	const MODELS = [
+		{ id: 'gemini-3-pro-image-preview', label: 'Gemini 3 Pro Image (higher quality)' },
+		{ id: 'gemini-3.1-flash-image-preview', label: 'Gemini 3.1 Flash Image (faster)' }
+	] as const;
+
 	// State
 	let additionalPrompt = $state('');
 	let generatedImageUrl = $state<string | null>(null);
 	let isGenerating = $state(false);
 	let showSettings = $state(false);
 	let apiKey = $state('');
+	let selectedModel = $state(localStorage.getItem('gemini-model') || MODELS[0].id);
 	let capturedImageDataUrl = $state<string | null>(null);
 	let errorMessage = $state<string | null>(null);
+	let sliderPosition = $state(50);
+	let isDragging = $state(false);
+	let comparisonContainer: HTMLDivElement | undefined = $state();
 
 	// Load API key from localStorage on init
 	$effect(() => {
 		if (open) {
 			apiKey = localStorage.getItem('gemini-api-key') || '';
+			selectedModel = localStorage.getItem('gemini-model') || MODELS[0].id;
 			generatedImageUrl = null;
 			errorMessage = null;
 			captureViewerScreenshot();
 		}
 	});
+
+	function updateSlider(e: MouseEvent | TouchEvent) {
+		if (!comparisonContainer) return;
+		const rect = comparisonContainer.getBoundingClientRect();
+		const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+		sliderPosition = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+	}
+
+	function startDrag(e: MouseEvent | TouchEvent) {
+		isDragging = true;
+		updateSlider(e);
+
+		const onMove = (ev: MouseEvent | TouchEvent) => updateSlider(ev);
+		const onUp = () => {
+			isDragging = false;
+			window.removeEventListener('mousemove', onMove);
+			window.removeEventListener('mouseup', onUp);
+			window.removeEventListener('touchmove', onMove);
+			window.removeEventListener('touchend', onUp);
+		};
+		window.addEventListener('mousemove', onMove);
+		window.addEventListener('mouseup', onUp);
+		window.addEventListener('touchmove', onMove);
+		window.addEventListener('touchend', onUp);
+	}
 
 	function saveApiKey() {
 		localStorage.setItem('gemini-api-key', apiKey.trim());
@@ -42,35 +78,77 @@
 	}
 
 	/**
-	 * Capture a screenshot from the 3D viewer canvas
+	 * Capture a screenshot from the 3D viewer canvas.
+	 * Uses drawImage() to copy the WebGL canvas onto a 2D canvas, which reads from
+	 * the composited output and works regardless of preserveDrawingBuffer setting.
+	 * Falls back to the edition thumbnail if capture fails.
 	 */
 	function captureViewerScreenshot() {
 		capturedImageDataUrl = null;
 
-		// Try to find the canvas inside the Voyager viewer (direct mode)
-		const voyagerEl = document.querySelector('voyager-explorer');
+		// Find the WebGL canvas
 		let canvas: HTMLCanvasElement | null = null;
-
+		const voyagerEl = document.querySelector('voyager-explorer');
 		if (voyagerEl?.shadowRoot) {
 			canvas = voyagerEl.shadowRoot.querySelector('canvas');
 		}
-
-		// Fallback: try to find any canvas in the viewer area
 		if (!canvas) {
-			const viewerCard = document.querySelector('.card.overflow-hidden canvas');
-			if (viewerCard instanceof HTMLCanvasElement) {
-				canvas = viewerCard;
-			}
+			const el = document.querySelector('.card.overflow-hidden canvas');
+			if (el instanceof HTMLCanvasElement) canvas = el;
 		}
 
-		if (canvas) {
-			try {
-				capturedImageDataUrl = canvas.toDataURL('image/png');
-			} catch {
-				// Canvas might be tainted by cross-origin content
-				console.warn('Could not capture viewer canvas (cross-origin)');
-			}
+		if (!canvas) {
+			if (edition.thumbnail) capturedImageDataUrl = edition.thumbnail;
+			return;
 		}
+
+		try {
+			// Copy the WebGL canvas onto a 2D canvas via drawImage
+			const copy = document.createElement('canvas');
+			copy.width = canvas.width;
+			copy.height = canvas.height;
+			const ctx = copy.getContext('2d');
+			if (!ctx) throw new Error('No 2D context');
+			ctx.drawImage(canvas, 0, 0);
+
+			// Check if the result has actual content (not all transparent/white)
+			const sample = ctx.getImageData(0, 0, copy.width, Math.min(copy.height, 10));
+			const hasContent = sample.data.some((v, i) => i % 4 !== 3 ? v !== 0 && v !== 255 : false);
+
+			if (hasContent) {
+				capturedImageDataUrl = copy.toDataURL('image/png');
+			} else if (edition.thumbnail) {
+				capturedImageDataUrl = edition.thumbnail;
+			}
+		} catch {
+			if (edition.thumbnail) capturedImageDataUrl = edition.thumbnail;
+		}
+	}
+
+	/**
+	 * Resize and compress an image data URL to fit within API limits.
+	 * Returns { data: base64string, mimeType: string }
+	 */
+	function resizeImage(dataUrl: string, maxDim = 1024): Promise<{ data: string; mimeType: string }> {
+		return new Promise((resolve) => {
+			const img = new Image();
+			img.onload = () => {
+				let { width, height } = img;
+				if (width > maxDim || height > maxDim) {
+					const scale = maxDim / Math.max(width, height);
+					width = Math.round(width * scale);
+					height = Math.round(height * scale);
+				}
+				const c = document.createElement('canvas');
+				c.width = width;
+				c.height = height;
+				const ctx = c.getContext('2d')!;
+				ctx.drawImage(img, 0, 0, width, height);
+				const jpeg = c.toDataURL('image/jpeg', 0.85);
+				resolve({ data: jpeg.split(',')[1], mimeType: 'image/jpeg' });
+			};
+			img.src = dataUrl;
+		});
 	}
 
 	/**
@@ -79,13 +157,24 @@
 	function buildPrompt(): string {
 		const parts: string[] = [];
 
-		parts.push(
-			'Generate a photorealistic image that brings this historical/cultural object to life.'
-		);
-		parts.push(
-			'Imagine it in its original context — as if you were there witnessing it in real life.'
-		);
-		parts.push('Create a vivid, realistic scene that recreates the moment in history.\n');
+		if (capturedImageDataUrl) {
+			parts.push(
+				'Transform the attached reference image of this 3D model into a photorealistic photograph.'
+			);
+			parts.push(
+				'Keep the same composition, angle, and subject as the reference image, but make it look like a real photograph taken in its original historical setting.'
+			);
+			parts.push(
+				'Replace the 3D rendering look with realistic textures, natural lighting, atmospheric perspective, and environmental context.\n'
+			);
+		} else {
+			parts.push(
+				'Generate a photorealistic photograph of this historical/cultural object in its original context.'
+			);
+			parts.push(
+				'Make it look like a real photograph — natural lighting, realistic textures, atmospheric perspective.\n'
+			);
+		}
 
 		// Core info
 		if (edition.title) parts.push(`Object: ${edition.title}`);
@@ -142,13 +231,21 @@
 		isGenerating = true;
 		errorMessage = null;
 		generatedImageUrl = null;
+		sliderPosition = 50;
 
 		const prompt = buildPrompt();
 
 		try {
-			// Use Gemini 2.0 Flash with image generation capability
+			// Resize reference image to fit API limits
+			let imagePart: { inlineData: { mimeType: string; data: string } } | null = null;
+			if (capturedImageDataUrl) {
+				const resized = await resizeImage(capturedImageDataUrl);
+				imagePart = { inlineData: resized };
+			}
+
+			// Use selected Gemini image generation model
 			const response = await fetch(
-				`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${key}`,
+				`https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${key}`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -157,16 +254,7 @@
 							{
 								parts: [
 									{ text: prompt },
-									...(capturedImageDataUrl
-										? [
-												{
-													inlineData: {
-														mimeType: 'image/png',
-														data: capturedImageDataUrl.split(',')[1]
-													}
-												}
-											]
-										: [])
+									...(imagePart ? [imagePart] : [])
 								]
 							}
 						],
@@ -214,10 +302,23 @@
 
 	function downloadImage() {
 		if (!generatedImageUrl) return;
+		const slug = edition.slug || 'imagine';
+
+		// Download generated image
 		const a = document.createElement('a');
 		a.href = generatedImageUrl;
-		a.download = `${edition.slug || 'imagine'}-generated.png`;
+		a.download = `${slug}-generated.png`;
 		a.click();
+
+		// Download reference capture if available
+		if (capturedImageDataUrl) {
+			setTimeout(() => {
+				const b = document.createElement('a');
+				b.href = capturedImageDataUrl!;
+				b.download = `${slug}-reference.png`;
+				b.click();
+			}, 100);
+		}
 	}
 
 	function handleClose() {
@@ -302,18 +403,104 @@
 						>
 					{/if}
 				</div>
+				<!-- Model selector -->
+				<div class="mt-3">
+					<label for="model-select" class="mb-1 block text-xs font-semibold">Model</label>
+					<select
+						id="model-select"
+						class="select select-bordered w-full select-sm"
+						bind:value={selectedModel}
+						onchange={() => localStorage.setItem('gemini-model', selectedModel)}
+					>
+						{#each MODELS as model (model.id)}
+							<option value={model.id}>{model.label}</option>
+						{/each}
+					</select>
+				</div>
 			</div>
 		{/if}
 
-		<!-- Current view preview -->
-		{#if capturedImageDataUrl}
+		<!-- Comparison slider (when generated) or reference preview -->
+		{#if generatedImageUrl && capturedImageDataUrl}
+			<div class="mb-4">
+				<div class="mb-1 flex items-center justify-between">
+					<span class="text-xs font-semibold text-base-content/60">3D Model</span>
+					<span class="text-xs font-semibold text-base-content/60">Generated</span>
+				</div>
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div
+					id="comparison-container"
+					class="relative cursor-col-resize select-none overflow-hidden rounded-lg border border-base-300 shadow-lg"
+					bind:this={comparisonContainer}
+					onmousedown={startDrag}
+					ontouchstart={startDrag}
+				>
+					<!-- Generated image (background, full width) -->
+					<img
+						src={generatedImageUrl}
+						alt="AI generated visualization of {edition.title}"
+						class="block w-full"
+						draggable="false"
+					/>
+					<!-- Reference image (foreground, clipped by slider) -->
+					<div
+						class="absolute top-0 left-0 h-full overflow-hidden"
+						style="width: {sliderPosition}%"
+					>
+						<img
+							src={capturedImageDataUrl}
+							alt="Current 3D viewer capture"
+							class="block h-full object-cover"
+							style="width: {comparisonContainer?.offsetWidth ?? 600}px; max-width: none;"
+							draggable="false"
+						/>
+					</div>
+					<!-- Slider handle -->
+					<div
+						class="absolute top-0 bottom-0 z-10 w-0.5 bg-white shadow-md"
+						style="left: {sliderPosition}%"
+					>
+						<div
+							class="absolute top-1/2 left-1/2 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-lg"
+						>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								viewBox="0 0 24 24"
+								fill="currentColor"
+								class="h-4 w-4 text-base-content/60"
+							>
+								<path d="M8 5l-5 7 5 7M16 5l5 7-5 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+							</svg>
+						</div>
+					</div>
+				</div>
+			</div>
+		{:else if generatedImageUrl}
+			<div class="mb-4">
+				<p class="mb-2 text-sm font-semibold">Generated Image</p>
+				<img
+					src={generatedImageUrl}
+					alt="AI generated visualization of {edition.title}"
+					class="w-full rounded-lg shadow-lg"
+				/>
+			</div>
+		{:else}
+			<!-- Reference preview (before generation) -->
 			<div class="mb-4">
 				<p class="mb-1 text-xs font-semibold text-base-content/60">Current view (reference)</p>
-				<img
-					src={capturedImageDataUrl}
-					alt="Current 3D viewer capture"
-					class="h-32 w-auto rounded-lg border border-base-300 object-contain"
-				/>
+				{#if capturedImageDataUrl}
+					<img
+						src={capturedImageDataUrl}
+						alt="Current 3D viewer capture"
+						class="h-32 w-auto rounded-lg border border-base-300 object-contain"
+					/>
+				{:else}
+					<div
+						class="flex h-32 w-48 items-center justify-center rounded-lg border border-base-300 bg-base-200 text-xs text-base-content/40"
+					>
+						No preview available
+					</div>
+				{/if}
 			</div>
 		{/if}
 
@@ -383,18 +570,6 @@
 					/>
 				</svg>
 				<span class="text-sm">{errorMessage}</span>
-			</div>
-		{/if}
-
-		<!-- Generated Image -->
-		{#if generatedImageUrl}
-			<div class="mb-4">
-				<p class="mb-2 text-sm font-semibold">Generated Image</p>
-				<img
-					src={generatedImageUrl}
-					alt="AI generated visualization of {edition.title}"
-					class="w-full rounded-lg shadow-lg"
-				/>
 			</div>
 		{/if}
 
