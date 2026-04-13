@@ -5,8 +5,9 @@ import type { Documentation } from '$lib/types/documentation';
 
 export const load: PageLoad = async ({ params }) => {
 	try {
+		const slug = params.slug.replace(/[^a-z0-9-]/gi, '');
 		const result = await pb.collection('documentation').getList(1, 1, {
-			filter: `slug = "${params.slug}" && isPublished = true`
+			filter: `slug = "${slug}" && isPublished = true`
 		});
 
 		if (result.items.length === 0) {
