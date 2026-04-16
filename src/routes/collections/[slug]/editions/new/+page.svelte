@@ -133,204 +133,152 @@
 			</p>
 		</div>
 
-		<form onsubmit={(e) => { e.preventDefault(); save(); }} class="space-y-4">
-			<!-- Title row -->
-			<div class="grid gap-3 md:grid-cols-3">
-				<div class="form-control md:col-span-1">
-					<label class="label py-1" for="title">
-						<span class="label-text text-xs font-medium">Title *</span>
-					</label>
-					<input
-						id="title"
-						type="text"
-						class="input-bordered input input-sm"
-						bind:value={title}
-						required
-						placeholder="Edition title"
-					/>
+		<form onsubmit={(e) => { e.preventDefault(); save(); }}>
+			<!-- Basic Information -->
+			<section class="mb-6">
+				<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">Basic Information</h2>
+				<div class="grid gap-x-4 gap-y-3 md:grid-cols-2">
+					<div class="form-control md:col-span-2">
+						<label class="label py-0.5" for="title">
+							<span class="label-text text-sm font-medium">Title *</span>
+						</label>
+						<input id="title" type="text" class="input-bordered input input-sm" bind:value={title} required placeholder="Edition title" />
+					</div>
+					<div class="form-control">
+						<label class="label py-0.5" for="dcTitle">
+							<span class="label-text text-sm">DC Title</span>
+						</label>
+						<input id="dcTitle" type="text" class="input-bordered input input-sm" bind:value={dcTitle} placeholder="Defaults to title" />
+					</div>
+					<div class="form-control">
+						<label class="label py-0.5" for="dcSubtitle">
+							<span class="label-text text-sm">Subtitle</span>
+						</label>
+						<input id="dcSubtitle" type="text" class="input-bordered input input-sm" bind:value={dcSubtitle} />
+					</div>
 				</div>
-				<div class="form-control">
-					<label class="label py-1" for="dcTitle">
-						<span class="label-text text-xs">DC Title</span>
-					</label>
-					<input
-						id="dcTitle"
-						type="text"
-						class="input-bordered input input-sm"
-						bind:value={dcTitle}
-						placeholder="Defaults to title"
-					/>
-				</div>
-				<div class="form-control">
-					<label class="label py-1" for="dcSubtitle">
-						<span class="label-text text-xs">Subtitle</span>
-					</label>
-					<input
-						id="dcSubtitle"
-						type="text"
-						class="input-bordered input input-sm"
-						bind:value={dcSubtitle}
-					/>
-				</div>
-			</div>
+			</section>
 
-			<!-- People row -->
-			<div class="grid gap-3 md:grid-cols-3">
-				<div class="form-control">
-					<label class="label py-1" for="dcCreator">
-						<span class="label-text text-xs">Creators</span>
-						<span class="label-text-alt text-xs">comma-sep</span>
-					</label>
-					<input
-						id="dcCreator"
-						type="text"
-						class="input-bordered input input-sm"
-						bind:value={dcCreator}
-						placeholder="Author A, Author B"
-					/>
-				</div>
-				<div class="form-control">
-					<label class="label py-1" for="dcContributor">
-						<span class="label-text text-xs">Contributors</span>
-						<span class="label-text-alt text-xs">comma-sep</span>
-					</label>
-					<input
-						id="dcContributor"
-						type="text"
-						class="input-bordered input input-sm"
-						bind:value={dcContributor}
-					/>
-				</div>
-				<div class="form-control">
-					<label class="label py-1" for="dcInstitution">
-						<span class="label-text text-xs">Institutions</span>
-						<span class="label-text-alt text-xs">comma-sep</span>
-					</label>
-					<input
-						id="dcInstitution"
-						type="text"
-						class="input-bordered input input-sm"
-						bind:value={dcInstitution}
-					/>
-				</div>
-			</div>
+			<div class="divider my-2"></div>
 
-			<!-- Subject & coverage row -->
-			<div class="grid gap-3 md:grid-cols-4">
-				<div class="form-control">
-					<label class="label py-1" for="dcSubject">
-						<span class="label-text text-xs">Subjects</span>
-					</label>
-					<input
-						id="dcSubject"
-						type="text"
-						class="input-bordered input input-sm"
-						bind:value={dcSubject}
-						placeholder="archaeology"
-					/>
+			<!-- People -->
+			<section class="mb-6">
+				<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">People</h2>
+				<div class="grid gap-x-4 gap-y-3 md:grid-cols-2">
+					<div class="form-control">
+						<label class="label py-0.5" for="dcCreator">
+							<span class="label-text text-sm">Creators</span>
+							<span class="label-text-alt text-xs">comma-separated</span>
+						</label>
+						<input id="dcCreator" type="text" class="input-bordered input input-sm" bind:value={dcCreator} placeholder="Author A, Author B" />
+					</div>
+					<div class="form-control">
+						<label class="label py-0.5" for="dcContributor">
+							<span class="label-text text-sm">Contributors</span>
+							<span class="label-text-alt text-xs">comma-separated</span>
+						</label>
+						<input id="dcContributor" type="text" class="input-bordered input input-sm" bind:value={dcContributor} />
+					</div>
+					<div class="form-control md:col-span-2">
+						<label class="label py-0.5" for="dcInstitution">
+							<span class="label-text text-sm">Institutions</span>
+							<span class="label-text-alt text-xs">comma-separated</span>
+						</label>
+						<input id="dcInstitution" type="text" class="input-bordered input input-sm" bind:value={dcInstitution} />
+					</div>
 				</div>
-				<div class="form-control">
-					<label class="label py-1" for="dcKeyword">
-						<span class="label-text text-xs">Keywords</span>
-					</label>
-					<input
-						id="dcKeyword"
-						type="text"
-						class="input-bordered input input-sm"
-						bind:value={dcKeyword}
-					/>
-				</div>
-				<div class="form-control">
-					<label class="label py-1" for="dcCoveragePlace">
-						<span class="label-text text-xs">Place</span>
-					</label>
-					<input
-						id="dcCoveragePlace"
-						type="text"
-						class="input-bordered input input-sm"
-						bind:value={dcCoveragePlace}
-						placeholder="Rome, Italy"
-					/>
-				</div>
-				<div class="form-control">
-					<label class="label py-1" for="dcLanguage">
-						<span class="label-text text-xs">Languages</span>
-					</label>
-					<input
-						id="dcLanguage"
-						type="text"
-						class="input-bordered input input-sm"
-						bind:value={dcLanguage}
-						placeholder="en, nl"
-					/>
-				</div>
-			</div>
+			</section>
 
-			<!-- Rights row -->
-			<div class="grid gap-3 md:grid-cols-2">
-				<div class="form-control">
-					<label class="label py-1" for="dcRightsHolder">
-						<span class="label-text text-xs">Rights Holder</span>
-					</label>
-					<input
-						id="dcRightsHolder"
-						type="text"
-						class="input-bordered input input-sm"
-						bind:value={dcRightsHolder}
-					/>
-				</div>
-				<div class="form-control">
-					<label class="label py-1" for="dcRightsLicense">
-						<span class="label-text text-xs">License</span>
-					</label>
-					<input
-						id="dcRightsLicense"
-						type="text"
-						class="input-bordered input input-sm"
-						bind:value={dcRightsLicense}
-						placeholder="CC BY 4.0"
-					/>
-				</div>
-			</div>
+			<div class="divider my-2"></div>
 
-			<!-- File uploads row -->
-			<div class="grid gap-3 opacity-50 md:grid-cols-2">
-				<div class="rounded-box border border-base-300 bg-base-100 p-4">
-					<span class="mb-2 block text-xs font-semibold">Cover Image</span>
-					<input
-						type="file"
-						class="file-input-bordered file-input w-full file-input-sm"
-						accept="image/*"
-						disabled
-					/>
-					<span class="mt-1 block text-xs text-base-content/50">JPG, PNG, WebP — 800x600px</span>
+			<!-- Classification -->
+			<section class="mb-6">
+				<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">Classification</h2>
+				<div class="grid gap-x-4 gap-y-3 md:grid-cols-2">
+					<div class="form-control">
+						<label class="label py-0.5" for="dcSubject">
+							<span class="label-text text-sm">Subjects</span>
+							<span class="label-text-alt text-xs">comma-separated</span>
+						</label>
+						<input id="dcSubject" type="text" class="input-bordered input input-sm" bind:value={dcSubject} placeholder="archaeology, 3D modeling" />
+					</div>
+					<div class="form-control">
+						<label class="label py-0.5" for="dcKeyword">
+							<span class="label-text text-sm">Keywords</span>
+							<span class="label-text-alt text-xs">comma-separated</span>
+						</label>
+						<input id="dcKeyword" type="text" class="input-bordered input input-sm" bind:value={dcKeyword} />
+					</div>
+					<div class="form-control">
+						<label class="label py-0.5" for="dcCoveragePlace">
+							<span class="label-text text-sm">Coverage Place</span>
+						</label>
+						<input id="dcCoveragePlace" type="text" class="input-bordered input input-sm" bind:value={dcCoveragePlace} placeholder="Rome, Italy" />
+					</div>
+					<div class="form-control">
+						<label class="label py-0.5" for="dcLanguage">
+							<span class="label-text text-sm">Languages</span>
+							<span class="label-text-alt text-xs">comma-separated</span>
+						</label>
+						<input id="dcLanguage" type="text" class="input-bordered input input-sm" bind:value={dcLanguage} placeholder="en, nl" />
+					</div>
+					<div class="form-control">
+						<label class="label py-0.5" for="dcRightsHolder">
+							<span class="label-text text-sm">Rights Holder</span>
+						</label>
+						<input id="dcRightsHolder" type="text" class="input-bordered input input-sm" bind:value={dcRightsHolder} />
+					</div>
+					<div class="form-control">
+						<label class="label py-0.5" for="dcRightsLicense">
+							<span class="label-text text-sm">License</span>
+						</label>
+						<input id="dcRightsLicense" type="text" class="input-bordered input input-sm" bind:value={dcRightsLicense} placeholder="CC BY 4.0" />
+					</div>
 				</div>
-				<div class="rounded-box border border-base-300 bg-base-100 p-4">
-					<span class="mb-2 block text-xs font-semibold">3D Model Files</span>
-					<input
-						type="file"
-						class="file-input-bordered file-input mb-2 w-full file-input-sm"
-						accept=".glb,.gltf,.obj,.ply"
-						disabled
-					/>
-					<input
-						type="file"
-						class="file-input-bordered file-input w-full file-input-sm"
-						accept=".json,.svx"
-						disabled
-					/>
-					<span class="mt-1 block text-xs text-base-content/50">GLB, GLTF, OBJ, PLY + scene file</span>
+			</section>
+
+			<div class="divider my-2"></div>
+
+			<!-- Files -->
+			<section class="mb-6">
+				<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">Files</h2>
+				<div class="grid gap-4 opacity-50 md:grid-cols-2">
+					<div class="form-control">
+						<label class="label py-0.5">
+							<span class="label-text text-sm">Cover Image</span>
+							<span class="label-text-alt text-xs">JPG, PNG, WebP</span>
+						</label>
+						<input type="file" class="file-input-bordered file-input w-full file-input-sm" accept="image/*" disabled />
+					</div>
+					<div class="space-y-2">
+						<div class="form-control">
+							<label class="label py-0.5">
+								<span class="label-text text-sm">3D Model</span>
+								<span class="label-text-alt text-xs">GLB, GLTF, OBJ, PLY</span>
+							</label>
+							<input type="file" class="file-input-bordered file-input w-full file-input-sm" accept=".glb,.gltf,.obj,.ply" disabled />
+						</div>
+						<div class="form-control">
+							<label class="label py-0.5">
+								<span class="label-text text-sm">Scene File</span>
+								<span class="label-text-alt text-xs">SVX / JSON</span>
+							</label>
+							<input type="file" class="file-input-bordered file-input w-full file-input-sm" accept=".json,.svx" disabled />
+						</div>
+					</div>
 				</div>
-			</div>
+			</section>
+
+			<div class="divider my-2"></div>
 
 			<!-- Abstract -->
-			<div>
-				<span class="mb-2 block text-xs font-semibold">Abstract</span>
+			<section class="mb-6">
+				<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">Abstract</h2>
 				<RichTextEditor content={dcAbstract} onchange={(html) => (dcAbstract = html)} />
-			</div>
+			</section>
 
 			<!-- Actions -->
-			<div class="flex justify-end gap-3 pt-2">
+			<div class="flex justify-end gap-3 border-t border-base-300 pt-4">
 				<a href="{base}/collections/{collection.id}" class="btn btn-ghost btn-sm">Cancel</a>
 				<button type="submit" class="btn btn-primary btn-sm" disabled={isSaving}>
 					{#if isSaving}
