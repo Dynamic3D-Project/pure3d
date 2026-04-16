@@ -14,10 +14,11 @@
 	interface Props {
 		content?: string;
 		placeholder?: string;
+		minHeight?: string;
 		onchange?: (html: string) => void;
 	}
 
-	let { content = '', placeholder = 'Start writing...', onchange }: Props = $props();
+	let { content = '', placeholder = 'Start writing...', minHeight = '200px', onchange }: Props = $props();
 
 	let element: HTMLDivElement;
 	let editor: Editor | null = $state(null);
@@ -144,5 +145,12 @@
 	</div>
 
 	<!-- Editor content -->
-	<div bind:this={element} class="prose prose-sm max-w-none p-4 focus-within:outline-none [&_.tiptap]:min-h-[200px] [&_.tiptap]:outline-none"></div>
+	<div bind:this={element} class="editor-wrapper prose prose-sm max-w-none p-4 focus-within:outline-none" style:--editor-min-h={minHeight}></div>
 </div>
+
+<style>
+	.editor-wrapper :global(.tiptap) {
+		min-height: var(--editor-min-h, 200px);
+		outline: none;
+	}
+</style>
