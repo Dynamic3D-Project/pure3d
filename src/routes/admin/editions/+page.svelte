@@ -83,9 +83,7 @@
 				isPublished: r.isPublished,
 				status: (r.status as EditionStatus) || EditionStatus.Draft,
 				pubNum: r.pubNum,
-				thumbnailUrl: r.thumbnailFile
-					? pb.files.getURL(r, r.thumbnailFile, { thumb: '80x80' })
-					: '',
+				thumbnailUrl: r.thumbnail || '',
 				collectionId: r.collection,
 				collectionTitle: r.expand?.collection?.title || ''
 			}));
