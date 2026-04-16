@@ -242,29 +242,69 @@
 			<!-- Files -->
 			<section class="mb-6">
 				<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">Files</h2>
-				<div class="grid gap-4 opacity-50 md:grid-cols-2">
-					<div class="form-control">
-						<label class="label py-0.5">
-							<span class="label-text text-sm">Cover Image</span>
-							<span class="label-text-alt text-xs">JPG, PNG, WebP</span>
-						</label>
-						<input type="file" class="file-input-bordered file-input w-full file-input-sm" accept="image/*" disabled />
+				<div class="grid gap-4 md:grid-cols-2">
+					<!-- Cover Image card -->
+					<div class="rounded-xl border border-base-300 bg-base-100 p-5 opacity-50">
+						<div class="mb-3 flex items-center gap-2">
+							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5 text-primary">
+								<path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" />
+							</svg>
+							<span class="text-sm font-semibold">Cover Image</span>
+						</div>
+						<div class="mb-3 flex aspect-video items-center justify-center rounded-lg border-2 border-dashed border-base-300 bg-base-200">
+							<div class="text-center text-base-content/40">
+								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="mx-auto mb-1 size-8">
+									<path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+								</svg>
+								<p class="text-xs">No image selected</p>
+							</div>
+						</div>
+						<button type="button" class="btn btn-outline btn-sm w-full" disabled>
+							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+							</svg>
+							Upload Image
+						</button>
+						<p class="mt-2 text-center text-xs text-base-content/40">JPG, PNG, or WebP — 800x600px</p>
 					</div>
-					<div class="space-y-2">
-						<div class="form-control">
-							<label class="label py-0.5">
-								<span class="label-text text-sm">3D Model</span>
-								<span class="label-text-alt text-xs">GLB, GLTF, OBJ, PLY</span>
-							</label>
-							<input type="file" class="file-input-bordered file-input w-full file-input-sm" accept=".glb,.gltf,.obj,.ply" disabled />
+
+					<!-- 3D Model card -->
+					<div class="rounded-xl border border-base-300 bg-base-100 p-5 opacity-50">
+						<div class="mb-3 flex items-center gap-2">
+							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5 text-primary">
+								<path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+							</svg>
+							<span class="text-sm font-semibold">3D Model</span>
 						</div>
-						<div class="form-control">
-							<label class="label py-0.5">
-								<span class="label-text text-sm">Scene File</span>
-								<span class="label-text-alt text-xs">SVX / JSON</span>
-							</label>
-							<input type="file" class="file-input-bordered file-input w-full file-input-sm" accept=".json,.svx" disabled />
+						<div class="mb-3 space-y-2">
+							<div class="flex items-center gap-2 rounded-lg border border-base-300 bg-base-200 px-3 py-2.5">
+								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 shrink-0 text-base-content/40">
+									<path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+								</svg>
+								<span class="truncate text-xs text-base-content/40">No model file selected</span>
+							</div>
+							<div class="flex items-center gap-2 rounded-lg border border-base-300 bg-base-200 px-3 py-2.5">
+								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 shrink-0 text-base-content/40">
+									<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+								</svg>
+								<span class="truncate text-xs text-base-content/40">No scene file selected</span>
+							</div>
 						</div>
+						<div class="grid grid-cols-2 gap-2">
+							<button type="button" class="btn btn-outline btn-sm" disabled>
+								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+									<path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+								</svg>
+								Upload Model
+							</button>
+							<button type="button" class="btn btn-outline btn-sm" disabled>
+								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+									<path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+								</svg>
+								Upload Scene
+							</button>
+						</div>
+						<p class="mt-2 text-center text-xs text-base-content/40">GLB, GLTF, OBJ, PLY + SVX scene file</p>
 					</div>
 				</div>
 			</section>
