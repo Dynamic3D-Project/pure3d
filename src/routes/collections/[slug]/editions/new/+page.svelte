@@ -26,7 +26,9 @@
 	let dcCoveragePlace = $state('');
 	let dcRightsHolder = $state('');
 	let dcRightsLicense = $state('');
+	let peerReviewRequested = $state(false);
 	let isSaving = $state(false);
+	let isSubmitting = $state(false);
 
 	let collectionRole = $state<CollectionRole | undefined>(undefined);
 	let roleContext = $derived<UserRoleContext>({
@@ -65,19 +67,26 @@
 		}
 	});
 
-	async function save() {
+	async function save(submit = false) {
 		if (!title.trim()) {
 			toast.error('Title is required');
 			return;
 		}
 
-		isSaving = true;
+		if (submit) {
+			isSubmitting = true;
+		} else {
+			isSaving = true;
+		}
+
 		try {
+			const status = submit ? EditionStatus.ConceptSubmitted : EditionStatus.Draft;
 			const record = await pb.collection('editions').create({
 				title: title.trim(),
 				dcTitle: dcTitle.trim() || title.trim(),
 				dcSubtitle: dcSubtitle.trim(),
 				dcAbstract,
+				dcDescription: dcAbstract,
 				dcCreator: stringToJsonArray(dcCreator),
 				dcContributor: stringToJsonArray(dcContributor),
 				dcInstitution: stringToJsonArray(dcInstitution),
@@ -87,8 +96,9 @@
 				dcCoveragePlace: dcCoveragePlace.trim(),
 				dcRightsHolder: dcRightsHolder.trim(),
 				dcRightsLicense: dcRightsLicense.trim(),
+				peerReviewRequested,
 				collection: collection.id,
-				status: EditionStatus.Draft,
+				status,
 				isPublished: false
 			});
 
@@ -103,16 +113,21 @@
 						role: 'author'
 					});
 				} catch {
-					// Non-critical — edition was created, author link is a convenience
+					// Non-critical
 				}
 			}
 
-			toast.success('Edition created — you can find it under My Work');
-			goto(`${base}/reviews`);
+			if (submit) {
+				toast.success('Edition submitted for review');
+			} else {
+				toast.success('Draft saved — find it under My Work');
+			}
+			goto(`${base}/editions/${record.id}/workflow`);
 		} catch (e: any) {
-			toast.error(e?.message || 'Failed to create edition');
+			toast.error(e?.message || 'Failed to save edition');
 		} finally {
 			isSaving = false;
+			isSubmitting = false;
 		}
 	}
 </script>
@@ -149,7 +164,7 @@
 			</p>
 		</div>
 
-		<form onsubmit={(e) => { e.preventDefault(); save(); }}>
+		<form onsubmit={(e) => { e.preventDefault(); save(true); }}>
 			<!-- Basic Information -->
 			<section class="mb-6">
 				<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">Basic Information</h2>
@@ -315,14 +330,42 @@
 				<RichTextEditor content={dcAbstract} onchange={(html) => (dcAbstract = html)} minHeight="120px" />
 			</section>
 
+			<!-- Peer Review -->
+			<section class="mb-6">
+				<label class="flex cursor-pointer items-start gap-3">
+					<input type="checkbox" class="checkbox checkbox-sm mt-0.5" bind:checked={peerReviewRequested} />
+					<div>
+						<span class="text-sm font-semibold">Request peer review</span>
+						<p class="text-xs text-base-content/60">
+							If enabled, the edition will go through alpha and final review stages before publication.
+						</p>
+					</div>
+				</label>
+			</section>
+
 			<!-- Actions -->
-			<div class="flex justify-end gap-3 border-t border-base-300 pt-4">
+			<div class="flex items-center justify-end gap-3 border-t border-base-300 pt-4">
 				<a href="{base}/collections/{collection.id}" class="btn btn-ghost btn-sm">Cancel</a>
-				<button type="submit" class="btn btn-primary btn-sm" disabled={isSaving}>
+				<button
+					type="button"
+					class="btn btn-ghost btn-sm"
+					onclick={() => save(false)}
+					disabled={isSaving || isSubmitting}
+				>
 					{#if isSaving}
 						<span class="loading loading-xs loading-spinner"></span>
 					{/if}
-					Create Edition
+					Save Draft
+				</button>
+				<button
+					type="submit"
+					class="btn btn-primary btn-sm"
+					disabled={isSaving || isSubmitting}
+				>
+					{#if isSubmitting}
+						<span class="loading loading-xs loading-spinner"></span>
+					{/if}
+					Submit for Review
 				</button>
 			</div>
 		</form>
