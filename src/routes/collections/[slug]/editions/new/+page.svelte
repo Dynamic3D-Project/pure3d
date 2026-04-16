@@ -105,8 +105,8 @@
 	<title>New Edition | {collection.title} | Pure 3D</title>
 </svelte:head>
 
-<div class="container mx-auto max-w-4xl px-4 py-12">
-	<nav class="breadcrumbs mb-6 text-sm">
+<div class="container mx-auto max-w-3xl px-4 py-8">
+	<nav class="breadcrumbs mb-4 text-sm">
 		<ul>
 			<li><a href="{base}/" class="link link-hover">Home</a></li>
 			<li><a href="{base}/collections" class="link link-hover">Collections</a></li>
@@ -126,252 +126,213 @@
 			<span>You don't have permission to create editions in this collection.</span>
 		</div>
 	{:else}
-		<h1 class="mb-2 text-3xl font-bold">New Edition</h1>
-		<p class="mb-8 text-base-content/60">
-			Creating a new edition in <strong>{collection.title}</strong>
-		</p>
+		<div class="mb-6">
+			<h1 class="text-2xl font-bold">New Edition</h1>
+			<p class="text-sm text-base-content/60">
+				in <strong>{collection.title}</strong>
+			</p>
+		</div>
 
-		<form onsubmit={(e) => { e.preventDefault(); save(); }} class="space-y-6">
-			<!-- Basic Info -->
-			<div class="rounded-box border border-base-300 bg-base-100 p-6">
-				<h2 class="mb-4 text-lg font-semibold">Basic Information</h2>
-
-				<div class="form-control mb-4">
-					<label class="label" for="title">
-						<span class="label-text font-medium">Title *</span>
+		<form onsubmit={(e) => { e.preventDefault(); save(); }} class="space-y-4">
+			<!-- Title row -->
+			<div class="grid gap-3 md:grid-cols-3">
+				<div class="form-control md:col-span-1">
+					<label class="label py-1" for="title">
+						<span class="label-text text-xs font-medium">Title *</span>
 					</label>
 					<input
 						id="title"
 						type="text"
-						class="input-bordered input"
+						class="input-bordered input input-sm"
 						bind:value={title}
 						required
 						placeholder="Edition title"
 					/>
 				</div>
-
-				<div class="grid gap-4 md:grid-cols-2">
-					<div class="form-control">
-						<label class="label" for="dcTitle">
-							<span class="label-text">DC Title</span>
-						</label>
-						<input
-							id="dcTitle"
-							type="text"
-							class="input-bordered input"
-							bind:value={dcTitle}
-							placeholder="Defaults to title"
-						/>
-					</div>
-
-					<div class="form-control">
-						<label class="label" for="dcSubtitle">
-							<span class="label-text">Subtitle</span>
-						</label>
-						<input
-							id="dcSubtitle"
-							type="text"
-							class="input-bordered input"
-							bind:value={dcSubtitle}
-						/>
-					</div>
-				</div>
-			</div>
-
-			<!-- People -->
-			<div class="rounded-box border border-base-300 bg-base-100 p-6">
-				<h2 class="mb-4 text-lg font-semibold">People</h2>
-
-				<div class="grid gap-4 md:grid-cols-2">
-					<div class="form-control">
-						<label class="label" for="dcCreator">
-							<span class="label-text">Creators</span>
-							<span class="label-text-alt">Comma-separated</span>
-						</label>
-						<input
-							id="dcCreator"
-							type="text"
-							class="input-bordered input"
-							bind:value={dcCreator}
-							placeholder="Author A, Author B"
-						/>
-					</div>
-
-					<div class="form-control">
-						<label class="label" for="dcContributor">
-							<span class="label-text">Contributors</span>
-							<span class="label-text-alt">Comma-separated</span>
-						</label>
-						<input
-							id="dcContributor"
-							type="text"
-							class="input-bordered input"
-							bind:value={dcContributor}
-						/>
-					</div>
-
-					<div class="form-control md:col-span-2">
-						<label class="label" for="dcInstitution">
-							<span class="label-text">Institutions</span>
-							<span class="label-text-alt">Comma-separated</span>
-						</label>
-						<input
-							id="dcInstitution"
-							type="text"
-							class="input-bordered input"
-							bind:value={dcInstitution}
-						/>
-					</div>
-				</div>
-			</div>
-
-			<!-- Subject & Classification -->
-			<div class="rounded-box border border-base-300 bg-base-100 p-6">
-				<h2 class="mb-4 text-lg font-semibold">Subject & Classification</h2>
-
-				<div class="grid gap-4 md:grid-cols-2">
-					<div class="form-control">
-						<label class="label" for="dcSubject">
-							<span class="label-text">Subjects</span>
-							<span class="label-text-alt">Comma-separated</span>
-						</label>
-						<input
-							id="dcSubject"
-							type="text"
-							class="input-bordered input"
-							bind:value={dcSubject}
-							placeholder="archaeology, 3D modeling"
-						/>
-					</div>
-
-					<div class="form-control">
-						<label class="label" for="dcKeyword">
-							<span class="label-text">Keywords</span>
-							<span class="label-text-alt">Comma-separated</span>
-						</label>
-						<input
-							id="dcKeyword"
-							type="text"
-							class="input-bordered input"
-							bind:value={dcKeyword}
-						/>
-					</div>
-
-					<div class="form-control">
-						<label class="label" for="dcCoveragePlace">
-							<span class="label-text">Coverage Place</span>
-						</label>
-						<input
-							id="dcCoveragePlace"
-							type="text"
-							class="input-bordered input"
-							bind:value={dcCoveragePlace}
-							placeholder="e.g. Rome, Italy"
-						/>
-					</div>
-
-					<div class="form-control">
-						<label class="label" for="dcLanguage">
-							<span class="label-text">Languages</span>
-							<span class="label-text-alt">Comma-separated</span>
-						</label>
-						<input
-							id="dcLanguage"
-							type="text"
-							class="input-bordered input"
-							bind:value={dcLanguage}
-							placeholder="en, nl"
-						/>
-					</div>
-				</div>
-			</div>
-
-			<!-- Rights -->
-			<div class="rounded-box border border-base-300 bg-base-100 p-6">
-				<h2 class="mb-4 text-lg font-semibold">Rights</h2>
-
-				<div class="grid gap-4 md:grid-cols-2">
-					<div class="form-control">
-						<label class="label" for="dcRightsHolder">
-							<span class="label-text">Rights Holder</span>
-						</label>
-						<input
-							id="dcRightsHolder"
-							type="text"
-							class="input-bordered input"
-							bind:value={dcRightsHolder}
-						/>
-					</div>
-
-					<div class="form-control">
-						<label class="label" for="dcRightsLicense">
-							<span class="label-text">License</span>
-						</label>
-						<input
-							id="dcRightsLicense"
-							type="text"
-							class="input-bordered input"
-							bind:value={dcRightsLicense}
-							placeholder="e.g. CC BY 4.0"
-						/>
-					</div>
-				</div>
-			</div>
-
-			<!-- Cover Image -->
-			<div class="rounded-box border border-base-300 bg-base-100 p-6 opacity-50">
-				<h2 class="mb-4 text-lg font-semibold">Cover Image</h2>
 				<div class="form-control">
+					<label class="label py-1" for="dcTitle">
+						<span class="label-text text-xs">DC Title</span>
+					</label>
+					<input
+						id="dcTitle"
+						type="text"
+						class="input-bordered input input-sm"
+						bind:value={dcTitle}
+						placeholder="Defaults to title"
+					/>
+				</div>
+				<div class="form-control">
+					<label class="label py-1" for="dcSubtitle">
+						<span class="label-text text-xs">Subtitle</span>
+					</label>
+					<input
+						id="dcSubtitle"
+						type="text"
+						class="input-bordered input input-sm"
+						bind:value={dcSubtitle}
+					/>
+				</div>
+			</div>
+
+			<!-- People row -->
+			<div class="grid gap-3 md:grid-cols-3">
+				<div class="form-control">
+					<label class="label py-1" for="dcCreator">
+						<span class="label-text text-xs">Creators</span>
+						<span class="label-text-alt text-xs">comma-sep</span>
+					</label>
+					<input
+						id="dcCreator"
+						type="text"
+						class="input-bordered input input-sm"
+						bind:value={dcCreator}
+						placeholder="Author A, Author B"
+					/>
+				</div>
+				<div class="form-control">
+					<label class="label py-1" for="dcContributor">
+						<span class="label-text text-xs">Contributors</span>
+						<span class="label-text-alt text-xs">comma-sep</span>
+					</label>
+					<input
+						id="dcContributor"
+						type="text"
+						class="input-bordered input input-sm"
+						bind:value={dcContributor}
+					/>
+				</div>
+				<div class="form-control">
+					<label class="label py-1" for="dcInstitution">
+						<span class="label-text text-xs">Institutions</span>
+						<span class="label-text-alt text-xs">comma-sep</span>
+					</label>
+					<input
+						id="dcInstitution"
+						type="text"
+						class="input-bordered input input-sm"
+						bind:value={dcInstitution}
+					/>
+				</div>
+			</div>
+
+			<!-- Subject & coverage row -->
+			<div class="grid gap-3 md:grid-cols-4">
+				<div class="form-control">
+					<label class="label py-1" for="dcSubject">
+						<span class="label-text text-xs">Subjects</span>
+					</label>
+					<input
+						id="dcSubject"
+						type="text"
+						class="input-bordered input input-sm"
+						bind:value={dcSubject}
+						placeholder="archaeology"
+					/>
+				</div>
+				<div class="form-control">
+					<label class="label py-1" for="dcKeyword">
+						<span class="label-text text-xs">Keywords</span>
+					</label>
+					<input
+						id="dcKeyword"
+						type="text"
+						class="input-bordered input input-sm"
+						bind:value={dcKeyword}
+					/>
+				</div>
+				<div class="form-control">
+					<label class="label py-1" for="dcCoveragePlace">
+						<span class="label-text text-xs">Place</span>
+					</label>
+					<input
+						id="dcCoveragePlace"
+						type="text"
+						class="input-bordered input input-sm"
+						bind:value={dcCoveragePlace}
+						placeholder="Rome, Italy"
+					/>
+				</div>
+				<div class="form-control">
+					<label class="label py-1" for="dcLanguage">
+						<span class="label-text text-xs">Languages</span>
+					</label>
+					<input
+						id="dcLanguage"
+						type="text"
+						class="input-bordered input input-sm"
+						bind:value={dcLanguage}
+						placeholder="en, nl"
+					/>
+				</div>
+			</div>
+
+			<!-- Rights row -->
+			<div class="grid gap-3 md:grid-cols-2">
+				<div class="form-control">
+					<label class="label py-1" for="dcRightsHolder">
+						<span class="label-text text-xs">Rights Holder</span>
+					</label>
+					<input
+						id="dcRightsHolder"
+						type="text"
+						class="input-bordered input input-sm"
+						bind:value={dcRightsHolder}
+					/>
+				</div>
+				<div class="form-control">
+					<label class="label py-1" for="dcRightsLicense">
+						<span class="label-text text-xs">License</span>
+					</label>
+					<input
+						id="dcRightsLicense"
+						type="text"
+						class="input-bordered input input-sm"
+						bind:value={dcRightsLicense}
+						placeholder="CC BY 4.0"
+					/>
+				</div>
+			</div>
+
+			<!-- File uploads row -->
+			<div class="grid gap-3 opacity-50 md:grid-cols-2">
+				<div class="rounded-box border border-base-300 bg-base-100 p-4">
+					<span class="mb-2 block text-xs font-semibold">Cover Image</span>
 					<input
 						type="file"
-						class="file-input-bordered file-input w-full"
+						class="file-input-bordered file-input w-full file-input-sm"
 						accept="image/*"
 						disabled
 					/>
-					<label class="label">
-						<span class="label-text-alt">JPG, PNG, or WebP. Recommended size: 800x600px.</span>
-					</label>
+					<span class="mt-1 block text-xs text-base-content/50">JPG, PNG, WebP — 800x600px</span>
 				</div>
-			</div>
-
-			<!-- 3D Model Files -->
-			<div class="rounded-box border border-base-300 bg-base-100 p-6 opacity-50">
-				<h2 class="mb-4 text-lg font-semibold">3D Model Files</h2>
-				<div class="form-control mb-3">
+				<div class="rounded-box border border-base-300 bg-base-100 p-4">
+					<span class="mb-2 block text-xs font-semibold">3D Model Files</span>
 					<input
 						type="file"
-						class="file-input-bordered file-input w-full"
+						class="file-input-bordered file-input mb-2 w-full file-input-sm"
 						accept=".glb,.gltf,.obj,.ply"
 						disabled
 					/>
-					<label class="label">
-						<span class="label-text-alt">GLB, GLTF, OBJ, or PLY format.</span>
-					</label>
-				</div>
-				<div class="form-control">
-					<label class="label" for="sceneFile">
-						<span class="label-text">Scene File (SVX document)</span>
-					</label>
 					<input
-						id="sceneFile"
 						type="file"
-						class="file-input-bordered file-input w-full"
+						class="file-input-bordered file-input w-full file-input-sm"
 						accept=".json,.svx"
 						disabled
 					/>
+					<span class="mt-1 block text-xs text-base-content/50">GLB, GLTF, OBJ, PLY + scene file</span>
 				</div>
 			</div>
 
 			<!-- Abstract -->
-			<div class="rounded-box border border-base-300 bg-base-100 p-6">
-				<h2 class="mb-4 text-lg font-semibold">Abstract</h2>
+			<div>
+				<span class="mb-2 block text-xs font-semibold">Abstract</span>
 				<RichTextEditor content={dcAbstract} onchange={(html) => (dcAbstract = html)} />
 			</div>
 
 			<!-- Actions -->
-			<div class="flex justify-end gap-3">
-				<a href="{base}/collections/{collection.id}" class="btn btn-ghost">Cancel</a>
-				<button type="submit" class="btn btn-primary" disabled={isSaving}>
+			<div class="flex justify-end gap-3 pt-2">
+				<a href="{base}/collections/{collection.id}" class="btn btn-ghost btn-sm">Cancel</a>
+				<button type="submit" class="btn btn-primary btn-sm" disabled={isSaving}>
 					{#if isSaving}
 						<span class="loading loading-xs loading-spinner"></span>
 					{/if}
