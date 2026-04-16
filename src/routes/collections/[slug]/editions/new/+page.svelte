@@ -137,24 +137,44 @@
 			<!-- Basic Information -->
 			<section class="mb-6">
 				<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">Basic Information</h2>
-				<div class="grid gap-x-4 gap-y-3 md:grid-cols-2">
-					<div class="form-control md:col-span-2">
-						<label class="label py-0.5" for="title">
-							<span class="label-text text-sm font-medium">Title *</span>
-						</label>
-						<input id="title" type="text" class="input-bordered input input-sm" bind:value={title} required placeholder="Edition title" />
+				<div class="grid gap-5 md:grid-cols-[200px_1fr]">
+					<!-- Cover image (left) -->
+					<div class="opacity-50">
+						<div class="flex aspect-[4/3] items-center justify-center rounded-lg border-2 border-dashed border-base-300 bg-base-200">
+							<div class="text-center text-base-content/40">
+								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="mx-auto mb-1 size-8">
+									<path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+								</svg>
+								<p class="text-xs">Cover Image</p>
+							</div>
+						</div>
+						<button type="button" class="btn btn-outline btn-xs mt-2 w-full" disabled>
+							Upload Image
+						</button>
+						<p class="mt-1 text-center text-xs text-base-content/40">JPG, PNG, WebP</p>
 					</div>
-					<div class="form-control">
-						<label class="label py-0.5" for="dcTitle">
-							<span class="label-text text-sm">DC Title</span>
-						</label>
-						<input id="dcTitle" type="text" class="input-bordered input input-sm" bind:value={dcTitle} placeholder="Defaults to title" />
-					</div>
-					<div class="form-control">
-						<label class="label py-0.5" for="dcSubtitle">
-							<span class="label-text text-sm">Subtitle</span>
-						</label>
-						<input id="dcSubtitle" type="text" class="input-bordered input input-sm" bind:value={dcSubtitle} />
+					<!-- Title fields (right) -->
+					<div class="space-y-3">
+						<div class="form-control">
+							<label class="label py-0.5" for="title">
+								<span class="label-text text-sm font-medium">Title *</span>
+							</label>
+							<input id="title" type="text" class="input-bordered input input-sm" bind:value={title} required placeholder="Edition title" />
+						</div>
+						<div class="grid gap-4 md:grid-cols-2">
+							<div class="form-control">
+								<label class="label py-0.5" for="dcTitle">
+									<span class="label-text text-sm">DC Title</span>
+								</label>
+								<input id="dcTitle" type="text" class="input-bordered input input-sm" bind:value={dcTitle} placeholder="Defaults to title" />
+							</div>
+							<div class="form-control">
+								<label class="label py-0.5" for="dcSubtitle">
+									<span class="label-text text-sm">Subtitle</span>
+								</label>
+								<input id="dcSubtitle" type="text" class="input-bordered input input-sm" bind:value={dcSubtitle} />
+							</div>
+						</div>
 					</div>
 				</div>
 			</section>
@@ -239,37 +259,10 @@
 
 			<div class="divider my-2"></div>
 
-			<!-- Files -->
+			<!-- 3D Model Files -->
 			<section class="mb-6">
-				<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">Files</h2>
-				<div class="grid gap-4 md:grid-cols-2">
-					<!-- Cover Image card -->
-					<div class="rounded-xl border border-base-300 bg-base-100 p-5 opacity-50">
-						<div class="mb-3 flex items-center gap-2">
-							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5 text-primary">
-								<path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" />
-							</svg>
-							<span class="text-sm font-semibold">Cover Image</span>
-						</div>
-						<div class="mb-3 flex aspect-video items-center justify-center rounded-lg border-2 border-dashed border-base-300 bg-base-200">
-							<div class="text-center text-base-content/40">
-								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="mx-auto mb-1 size-8">
-									<path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-								</svg>
-								<p class="text-xs">No image selected</p>
-							</div>
-						</div>
-						<button type="button" class="btn btn-outline btn-sm w-full" disabled>
-							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
-								<path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-							</svg>
-							Upload Image
-						</button>
-						<p class="mt-2 text-center text-xs text-base-content/40">JPG, PNG, or WebP — 800x600px</p>
-					</div>
-
-					<!-- 3D Model card -->
-					<div class="rounded-xl border border-base-300 bg-base-100 p-5 opacity-50">
+				<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">3D Model Files</h2>
+				<div class="rounded-xl border border-base-300 bg-base-100 p-5 opacity-50">
 						<div class="mb-3 flex items-center gap-2">
 							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5 text-primary">
 								<path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
@@ -305,7 +298,6 @@
 							</button>
 						</div>
 						<p class="mt-2 text-center text-xs text-base-content/40">GLB, GLTF, OBJ, PLY + SVX scene file</p>
-					</div>
 				</div>
 			</section>
 
