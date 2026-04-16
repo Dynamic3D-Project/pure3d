@@ -10,7 +10,7 @@
  * Run: bun scripts/migrate-documentation.ts
  */
 
-const PB_URL = process.env.POCKETBASE_URL || 'http://127.0.0.1:8090';
+const PB_URL = process.env.POCKETBASE_URL || 'http://pocketbase:8090';
 const ADMIN_EMAIL = process.env.PB_ADMIN_EMAIL || 'admin@admin.local';
 const ADMIN_PASSWORD = process.env.PB_ADMIN_PASSWORD || '1234567890';
 
@@ -58,6 +58,35 @@ async function collectionExists(name: string): Promise<boolean> {
 		return true;
 	} catch {
 		return false;
+	}
+}
+
+// --- Step 0: Add 'documentation' to auditLog targetType values ---
+async function updateAuditLogTargetType() {
+	console.log('--- Step 0: Update auditLog targetType field ---');
+
+	try {
+		const collection = await apiRequest('/api/collections/auditLog');
+		const fields = collection.fields || [];
+		const targetTypeField = fields.find((f: any) => f.name === 'targetType');
+
+		if (!targetTypeField) {
+			console.log('  targetType field not found on auditLog, skipping\n');
+			return;
+		}
+
+		const values: string[] = targetTypeField.values || [];
+		if (values.includes('documentation')) {
+			console.log('  targetType already includes "documentation", skipping\n');
+			return;
+		}
+
+		values.push('documentation');
+		targetTypeField.values = values;
+		await apiRequest(`/api/collections/${collection.id}`, 'PATCH', { fields });
+		console.log('  Added "documentation" to auditLog targetType values\n');
+	} catch (e) {
+		console.log(`  Warning: could not update auditLog: ${e}\n`);
 	}
 }
 
@@ -278,6 +307,7 @@ async function main() {
 	console.log(`PocketBase URL: ${PB_URL}\n`);
 
 	await authenticate();
+	await updateAuditLogTargetType();
 	await createDocumentationCollection();
 	await seedDocumentationPages();
 
