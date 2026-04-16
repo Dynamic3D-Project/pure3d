@@ -24,17 +24,34 @@
 		role_change: 'Role Change',
 		status_transition: 'Status Transition',
 		user_assigned: 'User Assigned',
-		user_removed: 'User Removed'
+		user_removed: 'User Removed',
+		user_deleted: 'User Deleted',
+		doc_created: 'Doc Created',
+		doc_updated: 'Doc Updated',
+		doc_deleted: 'Doc Deleted'
 	};
 
 	const actionBadgeClass: Record<string, string> = {
 		role_change: 'badge-info',
 		status_transition: 'badge-warning',
 		user_assigned: 'badge-success',
-		user_removed: 'badge-error'
+		user_removed: 'badge-error',
+		user_deleted: 'badge-error',
+		doc_created: 'badge-success',
+		doc_updated: 'badge-info',
+		doc_deleted: 'badge-error'
 	};
 
-	const actionOptions = ['role_change', 'status_transition', 'user_assigned', 'user_removed'];
+	const actionOptions = [
+		'role_change',
+		'status_transition',
+		'user_assigned',
+		'user_removed',
+		'user_deleted',
+		'doc_created',
+		'doc_updated',
+		'doc_deleted'
+	];
 
 	onMount(() => {
 		loadEntries();
