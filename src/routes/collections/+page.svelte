@@ -10,8 +10,8 @@
 	} from '$lib/stores/data.store';
 
 	// Reactive data from persisted store
-	let collections = $derived($collectionsStore.items);
-	let hasCachedData = $derived($collectionsStore.items.length > 0);
+	let collections = $derived($collectionsStore.items ?? []);
+	let hasCachedData = $derived(($collectionsStore.items ?? []).length > 0);
 	let isLoading = $state(true);
 
 	onMount(async () => {
