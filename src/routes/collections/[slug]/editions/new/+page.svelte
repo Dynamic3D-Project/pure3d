@@ -5,27 +5,27 @@
 	import { pb } from '$lib/database/client';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { hasPermission } from '$lib/utils/permissions';
-	import { Permission, CollectionRole, type UserRoleContext } from '$lib/types/roles';
+	import { Permission, CollectionRole, EditionStatus, type UserRoleContext } from '$lib/types/roles';
 	import RichTextEditor from '$lib/components/ui/RichTextEditor.svelte';
 	import toast from 'svelte-french-toast';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-	let record = $derived(data.record);
+	let collection = $derived(data.collection);
 
 	let title = $state('');
 	let dcTitle = $state('');
 	let dcSubtitle = $state('');
 	let dcAbstract = $state('');
-	let dcDescription = $state('');
 	let dcCreator = $state('');
 	let dcContributor = $state('');
 	let dcInstitution = $state('');
 	let dcSubject = $state('');
-	let dcCoveragePeriod = $state('');
-	let dcCoveragePlace = $state('');
+	let dcKeyword = $state('');
 	let dcLanguage = $state('');
-	let isVisible = $state(false);
+	let dcCoveragePlace = $state('');
+	let dcRightsHolder = $state('');
+	let dcRightsLicense = $state('');
 	let isSaving = $state(false);
 
 	let collectionRole = $state<CollectionRole | undefined>(undefined);
@@ -33,13 +33,8 @@
 		globalRole: authStore.globalRole,
 		collectionRole
 	});
-	let canEdit = $derived(hasPermission(roleContext, Permission.CollectionEdit));
+	let canCreate = $derived(hasPermission(roleContext, Permission.EditionCreate));
 	let authorized = $state<boolean | null>(null);
-
-	function jsonArrayToString(val: unknown): string {
-		if (Array.isArray(val)) return val.join(', ');
-		return '';
-	}
 
 	function stringToJsonArray(val: string): string[] {
 		return val
@@ -49,26 +44,10 @@
 	}
 
 	onMount(async () => {
-		// Load form values from record
-		title = record.title || '';
-		dcTitle = record.dcTitle || '';
-		dcSubtitle = record.dcSubtitle || '';
-		dcAbstract = record.dcAbstract || '';
-		dcDescription = record.dcDescription || '';
-		dcCreator = jsonArrayToString(record.dcCreator);
-		dcContributor = jsonArrayToString(record.dcContributor);
-		dcInstitution = jsonArrayToString(record.dcInstitution);
-		dcSubject = jsonArrayToString(record.dcSubject);
-		dcCoveragePeriod = record.dcCoveragePeriod || '';
-		dcCoveragePlace = record.dcCoveragePlace || '';
-		dcLanguage = jsonArrayToString(record.dcLanguage);
-		isVisible = record.isVisible || false;
-
-		// Check permission
-		if (authStore.appUserId && record.id) {
+		if (authStore.appUserId && collection.id) {
 			try {
 				const result = await pb.collection('collectionUsers').getList(1, 1, {
-					filter: `collection = "${record.id}" && userId = "${authStore.appUserId}"`
+					filter: `collection = "${collection.id}" && userId = "${authStore.appUserId}"`
 				});
 				if (result.items.length > 0) {
 					collectionRole = result.items[0].role as CollectionRole;
@@ -77,13 +56,12 @@
 				// No collection role
 			}
 		}
-		authorized = canEdit;
+		authorized = canCreate;
 	});
 
-	// Re-check permission when role resolves
 	$effect(() => {
 		if (authorized === null && collectionRole !== undefined) {
-			authorized = canEdit;
+			authorized = canCreate;
 		}
 	});
 
@@ -95,25 +73,28 @@
 
 		isSaving = true;
 		try {
-			await pb.collection('collections').update(record.id, {
+			const record = await pb.collection('editions').create({
 				title: title.trim(),
-				dcTitle: dcTitle.trim(),
+				dcTitle: dcTitle.trim() || title.trim(),
 				dcSubtitle: dcSubtitle.trim(),
 				dcAbstract,
-				dcDescription,
 				dcCreator: stringToJsonArray(dcCreator),
 				dcContributor: stringToJsonArray(dcContributor),
 				dcInstitution: stringToJsonArray(dcInstitution),
 				dcSubject: stringToJsonArray(dcSubject),
-				dcCoveragePeriod: dcCoveragePeriod.trim(),
-				dcCoveragePlace: dcCoveragePlace.trim(),
+				dcKeyword: stringToJsonArray(dcKeyword),
 				dcLanguage: stringToJsonArray(dcLanguage),
-				isVisible
+				dcCoveragePlace: dcCoveragePlace.trim(),
+				dcRightsHolder: dcRightsHolder.trim(),
+				dcRightsLicense: dcRightsLicense.trim(),
+				collection: collection.id,
+				status: EditionStatus.Draft,
+				isPublished: false
 			});
-			toast.success('Collection updated');
-			goto(`${base}/collections/${record.id}`);
+			toast.success('Edition created');
+			goto(`${base}/collections/${collection.id}`);
 		} catch (e: any) {
-			toast.error(e?.message || 'Failed to save collection');
+			toast.error(e?.message || 'Failed to create edition');
 		} finally {
 			isSaving = false;
 		}
@@ -121,7 +102,7 @@
 </script>
 
 <svelte:head>
-	<title>Edit {title || 'Collection'} | Pure 3D</title>
+	<title>New Edition | {collection.title} | Pure 3D</title>
 </svelte:head>
 
 <div class="container mx-auto max-w-4xl px-4 py-12">
@@ -130,9 +111,9 @@
 			<li><a href="{base}/" class="link link-hover">Home</a></li>
 			<li><a href="{base}/collections" class="link link-hover">Collections</a></li>
 			<li>
-				<a href="{base}/collections/{record.id}" class="link link-hover">{record.title}</a>
+				<a href="{base}/collections/{collection.id}" class="link link-hover">{collection.title}</a>
 			</li>
-			<li class="text-base-content/70">Edit</li>
+			<li class="text-base-content/70">New Edition</li>
 		</ul>
 	</nav>
 
@@ -142,10 +123,13 @@
 		</div>
 	{:else if !authorized}
 		<div class="alert alert-error">
-			<span>You don't have permission to edit this collection.</span>
+			<span>You don't have permission to create editions in this collection.</span>
 		</div>
 	{:else}
-		<h1 class="mb-8 text-3xl font-bold">Edit Collection</h1>
+		<h1 class="mb-2 text-3xl font-bold">New Edition</h1>
+		<p class="mb-8 text-base-content/60">
+			Creating a new edition in <strong>{collection.title}</strong>
+		</p>
 
 		<form onsubmit={(e) => { e.preventDefault(); save(); }} class="space-y-6">
 			<!-- Basic Info -->
@@ -162,40 +146,27 @@
 						class="input-bordered input"
 						bind:value={title}
 						required
+						placeholder="Edition title"
 					/>
 				</div>
-
-				<div class="form-control mb-4">
-					<label class="label" for="visible">
-						<span class="label-text font-medium">Visibility</span>
-					</label>
-					<label class="label cursor-pointer justify-start gap-3">
-						<input
-							id="visible"
-							type="checkbox"
-							class="toggle toggle-primary"
-							bind:checked={isVisible}
-						/>
-						<span class="label-text">{isVisible ? 'Visible to public' : 'Hidden'}</span>
-					</label>
-				</div>
-			</div>
-
-			<!-- Dublin Core Metadata -->
-			<div class="rounded-box border border-base-300 bg-base-100 p-6">
-				<h2 class="mb-4 text-lg font-semibold">Dublin Core Metadata</h2>
 
 				<div class="grid gap-4 md:grid-cols-2">
 					<div class="form-control">
 						<label class="label" for="dcTitle">
 							<span class="label-text">DC Title</span>
 						</label>
-						<input id="dcTitle" type="text" class="input-bordered input" bind:value={dcTitle} />
+						<input
+							id="dcTitle"
+							type="text"
+							class="input-bordered input"
+							bind:value={dcTitle}
+							placeholder="Defaults to title"
+						/>
 					</div>
 
 					<div class="form-control">
 						<label class="label" for="dcSubtitle">
-							<span class="label-text">DC Subtitle</span>
+							<span class="label-text">Subtitle</span>
 						</label>
 						<input
 							id="dcSubtitle"
@@ -204,7 +175,14 @@
 							bind:value={dcSubtitle}
 						/>
 					</div>
+				</div>
+			</div>
 
+			<!-- People -->
+			<div class="rounded-box border border-base-300 bg-base-100 p-6">
+				<h2 class="mb-4 text-lg font-semibold">People</h2>
+
+				<div class="grid gap-4 md:grid-cols-2">
 					<div class="form-control">
 						<label class="label" for="dcCreator">
 							<span class="label-text">Creators</span>
@@ -229,11 +207,10 @@
 							type="text"
 							class="input-bordered input"
 							bind:value={dcContributor}
-							placeholder="Contributor A, Contributor B"
 						/>
 					</div>
 
-					<div class="form-control">
+					<div class="form-control md:col-span-2">
 						<label class="label" for="dcInstitution">
 							<span class="label-text">Institutions</span>
 							<span class="label-text-alt">Comma-separated</span>
@@ -243,10 +220,16 @@
 							type="text"
 							class="input-bordered input"
 							bind:value={dcInstitution}
-							placeholder="University A, Museum B"
 						/>
 					</div>
+				</div>
+			</div>
 
+			<!-- Subject & Classification -->
+			<div class="rounded-box border border-base-300 bg-base-100 p-6">
+				<h2 class="mb-4 text-lg font-semibold">Subject & Classification</h2>
+
+				<div class="grid gap-4 md:grid-cols-2">
 					<div class="form-control">
 						<label class="label" for="dcSubject">
 							<span class="label-text">Subjects</span>
@@ -262,15 +245,15 @@
 					</div>
 
 					<div class="form-control">
-						<label class="label" for="dcCoveragePeriod">
-							<span class="label-text">Coverage Period</span>
+						<label class="label" for="dcKeyword">
+							<span class="label-text">Keywords</span>
+							<span class="label-text-alt">Comma-separated</span>
 						</label>
 						<input
-							id="dcCoveragePeriod"
+							id="dcKeyword"
 							type="text"
 							class="input-bordered input"
-							bind:value={dcCoveragePeriod}
-							placeholder="e.g. 1500-1600 CE"
+							bind:value={dcKeyword}
 						/>
 					</div>
 
@@ -287,7 +270,7 @@
 						/>
 					</div>
 
-					<div class="form-control md:col-span-2">
+					<div class="form-control">
 						<label class="label" for="dcLanguage">
 							<span class="label-text">Languages</span>
 							<span class="label-text-alt">Comma-separated</span>
@@ -297,38 +280,58 @@
 							type="text"
 							class="input-bordered input"
 							bind:value={dcLanguage}
-							placeholder="en, nl, de"
+							placeholder="en, nl"
 						/>
 					</div>
 				</div>
 			</div>
 
-			<!-- Rich Text Fields -->
+			<!-- Rights -->
 			<div class="rounded-box border border-base-300 bg-base-100 p-6">
-				<h2 class="mb-4 text-lg font-semibold">Description</h2>
+				<h2 class="mb-4 text-lg font-semibold">Rights</h2>
 
-				<div class="form-control mb-4">
-					<span class="label-text font-medium mb-2">Abstract</span>
-					<RichTextEditor content={dcAbstract} onchange={(html) => (dcAbstract = html)} />
-				</div>
+				<div class="grid gap-4 md:grid-cols-2">
+					<div class="form-control">
+						<label class="label" for="dcRightsHolder">
+							<span class="label-text">Rights Holder</span>
+						</label>
+						<input
+							id="dcRightsHolder"
+							type="text"
+							class="input-bordered input"
+							bind:value={dcRightsHolder}
+						/>
+					</div>
 
-				<div class="form-control">
-					<span class="label-text font-medium mb-2">Description</span>
-					<RichTextEditor
-						content={dcDescription}
-						onchange={(html) => (dcDescription = html)}
-					/>
+					<div class="form-control">
+						<label class="label" for="dcRightsLicense">
+							<span class="label-text">License</span>
+						</label>
+						<input
+							id="dcRightsLicense"
+							type="text"
+							class="input-bordered input"
+							bind:value={dcRightsLicense}
+							placeholder="e.g. CC BY 4.0"
+						/>
+					</div>
 				</div>
+			</div>
+
+			<!-- Abstract -->
+			<div class="rounded-box border border-base-300 bg-base-100 p-6">
+				<h2 class="mb-4 text-lg font-semibold">Abstract</h2>
+				<RichTextEditor content={dcAbstract} onchange={(html) => (dcAbstract = html)} />
 			</div>
 
 			<!-- Actions -->
 			<div class="flex justify-end gap-3">
-				<a href="{base}/collections/{record.id}" class="btn btn-ghost">Cancel</a>
+				<a href="{base}/collections/{collection.id}" class="btn btn-ghost">Cancel</a>
 				<button type="submit" class="btn btn-primary" disabled={isSaving}>
 					{#if isSaving}
 						<span class="loading loading-xs loading-spinner"></span>
 					{/if}
-					Save Changes
+					Create Edition
 				</button>
 			</div>
 		</form>
