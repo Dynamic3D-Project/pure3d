@@ -9,12 +9,14 @@
 	import { ReviewDecision } from '$lib/types/reviews';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
 	import WorkflowTimeline from '$lib/components/workflow/WorkflowTimeline.svelte';
+	import { getEditionThumbnailUrl } from '$lib/utils/asset-urls';
 
 	interface DashEdition {
 		id: string;
 		title: string;
 		status: EditionStatus;
 		collectionTitle: string;
+		thumbnail: string;
 		created: string;
 	}
 
@@ -95,11 +97,20 @@
 					expand: 'collection'
 				});
 				for (const r of edResult.items) {
+					const col = r.expand?.collection;
+					const collectionPubNum = col?.pubNum || 0;
+					const editionPubNum = r.pubNum || 0;
+					const thumbnail =
+						r.thumbnail ||
+						(collectionPubNum > 0 && editionPubNum > 0
+							? getEditionThumbnailUrl(collectionPubNum, editionPubNum)
+							: '');
 					editionMap.set(r.id, {
 						id: r.id,
 						title: r.dcTitle || r.title,
 						status: (r.status as EditionStatus) || EditionStatus.Draft,
-						collectionTitle: r.expand?.collection?.title || '',
+						collectionTitle: col?.title || '',
+						thumbnail,
 						created: r.created
 					});
 				}
@@ -277,18 +288,35 @@
 				<div class="space-y-3">
 					{#each myEditions as edition (edition.id)}
 						<div class="rounded-box border border-base-300 bg-base-100 p-4">
-							<div class="flex flex-wrap items-center justify-between gap-3">
-								<div class="flex flex-wrap items-center gap-3">
-									<span class="font-medium">{edition.title}</span>
-									<StatusBadge status={edition.status} />
+							<div class="flex gap-4">
+								{#if edition.thumbnail}
+									<img
+										src={edition.thumbnail}
+										alt={edition.title}
+										class="size-16 shrink-0 rounded-lg object-cover"
+									/>
+								{:else}
+									<div class="flex size-16 shrink-0 items-center justify-center rounded-lg bg-base-200 text-base-content/30">
+										<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+											<path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" />
+										</svg>
+									</div>
+								{/if}
+								<div class="min-w-0 flex-1">
+									<div class="flex flex-wrap items-center justify-between gap-3">
+										<div class="flex flex-wrap items-center gap-3">
+											<span class="font-medium">{edition.title}</span>
+											<StatusBadge status={edition.status} />
+										</div>
+										<a href="{base}/editions/{edition.id}/workflow" class="btn btn-ghost btn-sm">
+											View Workflow
+										</a>
+									</div>
+									{#if edition.collectionTitle}
+										<p class="mt-1 text-sm text-base-content/50">in {edition.collectionTitle}</p>
+									{/if}
 								</div>
-								<a href="{base}/editions/{edition.id}/workflow" class="btn btn-ghost btn-sm">
-									View Workflow
-								</a>
 							</div>
-							{#if edition.collectionTitle}
-								<p class="mt-1 text-sm text-base-content/50">in {edition.collectionTitle}</p>
-							{/if}
 							<div class="mt-3">
 								<WorkflowTimeline currentStatus={edition.status} />
 							</div>
