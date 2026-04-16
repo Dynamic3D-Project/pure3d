@@ -23,6 +23,13 @@
 		imageError = true;
 	}
 
+	// Strip HTML tags for plain-text preview
+	function stripHtml(html: string): string {
+		return html.replace(/<[^>]*>/g, '').trim();
+	}
+
+	let plainDescription = $derived(stripHtml(collection.description || ''));
+
 	// Check if thumbnail is from local static assets
 	const isLocalAsset = $derived(collection.thumbnail?.includes('/project/'));
 </script>
@@ -74,7 +81,7 @@
 		<h3 class="card-title text-base line-clamp-2 group-hover:text-primary transition-colors">
 			{collection.title}
 		</h3>
-		<p class="text-sm text-base-content/70 line-clamp-2">{collection.description}</p>
+		<p class="text-sm text-base-content/70 line-clamp-2">{plainDescription}</p>
 		<div class="card-actions justify-end mt-2">
 			<div class="badge badge-outline text-xs">{collection.editionCount || collection.editionIds?.length || 0} editions</div>
 		</div>

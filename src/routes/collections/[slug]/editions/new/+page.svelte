@@ -259,12 +259,6 @@
 			<section class="mb-6">
 				<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">3D Model Files</h2>
 				<div class="rounded-xl border border-base-300 bg-base-100 p-5 opacity-50">
-						<div class="mb-3 flex items-center gap-2">
-							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5 text-primary">
-								<path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
-							</svg>
-							<span class="text-sm font-semibold">3D Model</span>
-						</div>
 						<div class="mb-3 space-y-2">
 							<div class="flex items-center gap-2 rounded-lg border border-base-300 bg-base-200 px-3 py-2.5">
 								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 shrink-0 text-base-content/40">
@@ -302,7 +296,7 @@
 			<!-- Abstract -->
 			<section class="mb-6">
 				<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">Abstract</h2>
-				<RichTextEditor content={dcAbstract} onchange={(html) => (dcAbstract = html)} />
+				<RichTextEditor content={dcAbstract} onchange={(html) => (dcAbstract = html)} minHeight="120px" />
 			</section>
 
 			<!-- Actions -->
