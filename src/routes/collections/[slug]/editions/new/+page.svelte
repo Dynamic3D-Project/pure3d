@@ -318,6 +318,50 @@
 				</div>
 			</div>
 
+			<!-- Cover Image -->
+			<div class="rounded-box border border-base-300 bg-base-100 p-6 opacity-50">
+				<h2 class="mb-4 text-lg font-semibold">Cover Image</h2>
+				<div class="form-control">
+					<input
+						type="file"
+						class="file-input-bordered file-input w-full"
+						accept="image/*"
+						disabled
+					/>
+					<label class="label">
+						<span class="label-text-alt">JPG, PNG, or WebP. Recommended size: 800x600px.</span>
+					</label>
+				</div>
+			</div>
+
+			<!-- 3D Model Files -->
+			<div class="rounded-box border border-base-300 bg-base-100 p-6 opacity-50">
+				<h2 class="mb-4 text-lg font-semibold">3D Model Files</h2>
+				<div class="form-control mb-3">
+					<input
+						type="file"
+						class="file-input-bordered file-input w-full"
+						accept=".glb,.gltf,.obj,.ply"
+						disabled
+					/>
+					<label class="label">
+						<span class="label-text-alt">GLB, GLTF, OBJ, or PLY format.</span>
+					</label>
+				</div>
+				<div class="form-control">
+					<label class="label" for="sceneFile">
+						<span class="label-text">Scene File (SVX document)</span>
+					</label>
+					<input
+						id="sceneFile"
+						type="file"
+						class="file-input-bordered file-input w-full"
+						accept=".json,.svx"
+						disabled
+					/>
+				</div>
+			</div>
+
 			<!-- Abstract -->
 			<div class="rounded-box border border-base-300 bg-base-100 p-6">
 				<h2 class="mb-4 text-lg font-semibold">Abstract</h2>
