@@ -479,10 +479,10 @@
 					submitConcept();
 				}}
 			>
-				<!-- Basic Information -->
-				<section class="mb-6">
-					<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">Basic Information</h2>
-					<div class="grid gap-5 md:grid-cols-2">
+				<!-- Edition Identity: cover + title + people -->
+				<section class="mb-6 rounded-box border border-base-300 bg-base-100 p-5">
+					<div class="grid gap-5 md:grid-cols-[1fr_1.5fr]">
+						<!-- Cover image (left) -->
 						<div class="opacity-50">
 							<div class="flex aspect-[4/3] items-center justify-center rounded-lg border-2 border-dashed border-base-300 bg-base-200">
 								<div class="text-center text-base-content/40">
@@ -493,8 +493,8 @@
 								</div>
 							</div>
 							<button type="button" class="btn btn-outline btn-xs mt-2 w-full" disabled>Upload Image</button>
-							<p class="mt-1 text-center text-xs text-base-content/40">JPG, PNG, WebP</p>
 						</div>
+						<!-- Title + people (right) -->
 						<div class="space-y-3">
 							<div class="form-control">
 								<label class="label py-0.5" for="concept-title">
@@ -508,70 +508,56 @@
 								</label>
 								<input id="concept-subtitle" type="text" class="input-bordered input input-sm" bind:value={conceptDcSubtitle} />
 							</div>
+							<div class="form-control">
+								<label class="label py-0.5" for="concept-creator">
+									<span class="label-text text-sm">Creators</span>
+									<span class="label-text-alt text-xs">comma-separated</span>
+								</label>
+								<input id="concept-creator" type="text" class="input-bordered input input-sm" bind:value={conceptDcCreator} placeholder="Author A, Author B" />
+							</div>
+							<div class="grid gap-3 md:grid-cols-2">
+								<div class="form-control">
+									<label class="label py-0.5" for="concept-contributor">
+										<span class="label-text text-sm">Contributors</span>
+									</label>
+									<input id="concept-contributor" type="text" class="input-bordered input input-sm" bind:value={conceptDcContributor} />
+								</div>
+								<div class="form-control">
+									<label class="label py-0.5" for="concept-institution">
+										<span class="label-text text-sm">Institutions</span>
+									</label>
+									<input id="concept-institution" type="text" class="input-bordered input input-sm" bind:value={conceptDcInstitution} />
+								</div>
+							</div>
 						</div>
 					</div>
 				</section>
 
-				<div class="divider my-2"></div>
-
-				<!-- People -->
+				<!-- Details: classification + rights -->
 				<section class="mb-6">
-					<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">People</h2>
-					<div class="grid gap-x-4 gap-y-3 md:grid-cols-2">
-						<div class="form-control">
-							<label class="label py-0.5" for="concept-creator">
-								<span class="label-text text-sm">Creators</span>
-								<span class="label-text-alt text-xs">comma-separated</span>
-							</label>
-							<input id="concept-creator" type="text" class="input-bordered input input-sm" bind:value={conceptDcCreator} placeholder="Author A, Author B" />
-						</div>
-						<div class="form-control">
-							<label class="label py-0.5" for="concept-contributor">
-								<span class="label-text text-sm">Contributors</span>
-								<span class="label-text-alt text-xs">comma-separated</span>
-							</label>
-							<input id="concept-contributor" type="text" class="input-bordered input input-sm" bind:value={conceptDcContributor} />
-						</div>
-						<div class="form-control">
-							<label class="label py-0.5" for="concept-institution">
-								<span class="label-text text-sm">Institutions</span>
-								<span class="label-text-alt text-xs">comma-separated</span>
-							</label>
-							<input id="concept-institution" type="text" class="input-bordered input input-sm" bind:value={conceptDcInstitution} />
-						</div>
-					</div>
-				</section>
-
-				<div class="divider my-2"></div>
-
-				<!-- Classification -->
-				<section class="mb-6">
-					<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">Classification</h2>
-					<div class="grid gap-x-4 gap-y-3 md:grid-cols-2">
+					<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">Details</h2>
+					<div class="grid gap-x-4 gap-y-3 md:grid-cols-3">
 						<div class="form-control">
 							<label class="label py-0.5" for="concept-subject">
 								<span class="label-text text-sm">Subjects</span>
-								<span class="label-text-alt text-xs">comma-separated</span>
 							</label>
-							<input id="concept-subject" type="text" class="input-bordered input input-sm" bind:value={conceptDcSubject} placeholder="archaeology, 3D modeling" />
+							<input id="concept-subject" type="text" class="input-bordered input input-sm" bind:value={conceptDcSubject} placeholder="archaeology, 3D" />
 						</div>
 						<div class="form-control">
 							<label class="label py-0.5" for="concept-keyword">
 								<span class="label-text text-sm">Keywords</span>
-								<span class="label-text-alt text-xs">comma-separated</span>
 							</label>
 							<input id="concept-keyword" type="text" class="input-bordered input input-sm" bind:value={conceptDcKeyword} />
 						</div>
 						<div class="form-control">
 							<label class="label py-0.5" for="concept-place">
-								<span class="label-text text-sm">Coverage Place</span>
+								<span class="label-text text-sm">Place</span>
 							</label>
 							<input id="concept-place" type="text" class="input-bordered input input-sm" bind:value={conceptDcCoveragePlace} placeholder="Rome, Italy" />
 						</div>
 						<div class="form-control">
 							<label class="label py-0.5" for="concept-language">
 								<span class="label-text text-sm">Languages</span>
-								<span class="label-text-alt text-xs">comma-separated</span>
 							</label>
 							<input id="concept-language" type="text" class="input-bordered input input-sm" bind:value={conceptDcLanguage} placeholder="en, nl" />
 						</div>
@@ -590,74 +576,64 @@
 					</div>
 				</section>
 
-				<div class="divider my-2"></div>
-
-				<!-- 3D Model Files -->
-				<section class="mb-6">
-					<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">3D Model Files</h2>
-					<div class="rounded-xl border border-base-300 bg-base-100 p-5 opacity-50">
-						<div class="mb-3 space-y-2">
-							<div class="flex items-center gap-2 rounded-lg border border-base-300 bg-base-200 px-3 py-2.5">
-								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 shrink-0 text-base-content/40">
-									<path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
-								</svg>
-								<span class="truncate text-xs text-base-content/40">No model file selected</span>
+				<!-- Files + Abstract side by side -->
+				<section class="mb-6 grid gap-5 md:grid-cols-2">
+					<!-- 3D Model Files -->
+					<div>
+						<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">3D Model Files</h2>
+						<div class="rounded-xl border border-base-300 bg-base-100 p-4 opacity-50">
+							<div class="mb-3 space-y-2">
+								<div class="flex items-center gap-2 rounded-lg border border-base-300 bg-base-200 px-3 py-2">
+									<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 shrink-0 text-base-content/40">
+										<path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+									</svg>
+									<span class="truncate text-xs text-base-content/40">No model file</span>
+								</div>
+								<div class="flex items-center gap-2 rounded-lg border border-base-300 bg-base-200 px-3 py-2">
+									<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 shrink-0 text-base-content/40">
+										<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+									</svg>
+									<span class="truncate text-xs text-base-content/40">No scene file</span>
+								</div>
 							</div>
-							<div class="flex items-center gap-2 rounded-lg border border-base-300 bg-base-200 px-3 py-2.5">
-								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 shrink-0 text-base-content/40">
-									<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-								</svg>
-								<span class="truncate text-xs text-base-content/40">No scene file selected</span>
+							<div class="grid grid-cols-2 gap-2">
+								<button type="button" class="btn btn-outline btn-xs" disabled>Upload Model</button>
+								<button type="button" class="btn btn-outline btn-xs" disabled>Upload Scene</button>
 							</div>
 						</div>
-						<div class="grid grid-cols-2 gap-2">
-							<button type="button" class="btn btn-outline btn-sm" disabled>Upload Model</button>
-							<button type="button" class="btn btn-outline btn-sm" disabled>Upload Scene</button>
-						</div>
-						<p class="mt-2 text-center text-xs text-base-content/40">GLB, GLTF, OBJ, PLY + SVX scene file</p>
+					</div>
+					<!-- Abstract -->
+					<div>
+						<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">Abstract</h2>
+						<RichTextEditor content={conceptDescription} onchange={(html) => (conceptDescription = html)} minHeight="120px" />
 					</div>
 				</section>
 
-				<div class="divider my-2"></div>
-
-				<!-- Abstract -->
-				<section class="mb-6">
-					<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">Abstract</h2>
-					<RichTextEditor content={conceptDescription} onchange={(html) => (conceptDescription = html)} minHeight="120px" />
-				</section>
-
-				<!-- Peer Review -->
-				<section class="mb-6">
-					<label class="flex cursor-pointer items-start gap-3">
-						<input type="checkbox" class="checkbox checkbox-sm mt-0.5" bind:checked={conceptPeerReview} />
-						<div>
-							<span class="text-sm font-semibold">Request peer review</span>
-							<p class="text-xs text-base-content/60">
-								If enabled, the edition will go through alpha and final review stages before publication.
-							</p>
-						</div>
+				<!-- Peer review + Actions -->
+				<div class="flex flex-wrap items-center justify-between gap-4 border-t border-base-300 pt-4">
+					<label class="flex cursor-pointer items-center gap-2">
+						<input type="checkbox" class="checkbox checkbox-sm" bind:checked={conceptPeerReview} />
+						<span class="text-sm">Request peer review</span>
 					</label>
-				</section>
-
-				<!-- Actions -->
-				<div class="flex items-center gap-3 border-t border-base-300 pt-4">
-					<button
-						type="button"
-						class="btn btn-ghost btn-sm"
-						onclick={saveDraft}
-						disabled={isSaving || isSubmitting}
-					>
-						{#if isSaving}
-							<span class="loading loading-xs loading-spinner"></span>
-						{/if}
-						Save Draft
-					</button>
-					<button type="submit" class="btn btn-primary btn-sm" disabled={isSaving || isSubmitting}>
-						{#if isSubmitting}
-							<span class="loading loading-xs loading-spinner"></span>
-						{/if}
-						Submit for Review
-					</button>
+					<div class="flex items-center gap-3">
+						<button
+							type="button"
+							class="btn btn-ghost btn-sm"
+							onclick={saveDraft}
+							disabled={isSaving || isSubmitting}
+						>
+							{#if isSaving}
+								<span class="loading loading-xs loading-spinner"></span>
+							{/if}
+							Save Draft
+						</button>
+						<button type="submit" class="btn btn-primary btn-sm" disabled={isSaving || isSubmitting}>
+							{#if isSubmitting}
+								<span class="loading loading-xs loading-spinner"></span>
+							{/if}
+							Submit for Review
+						</button>
+					</div>
 				</div>
 			</form>
 
