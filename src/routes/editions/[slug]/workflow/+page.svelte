@@ -26,6 +26,7 @@
 	import CollaboratorManager from '$lib/components/workflow/CollaboratorManager.svelte';
 	import ReviewFeedbackForm from '$lib/components/workflow/ReviewFeedbackForm.svelte';
 	import ReviewFeedbackList from '$lib/components/workflow/ReviewFeedbackList.svelte';
+	import RichTextEditor from '$lib/components/ui/RichTextEditor.svelte';
 	import toast from 'svelte-french-toast';
 
 	interface Edition {
@@ -56,8 +57,27 @@
 	let conceptTitle = $state('');
 	let conceptDescription = $state('');
 	let conceptPeerReview = $state(false);
+	let conceptDcSubtitle = $state('');
+	let conceptDcCreator = $state('');
+	let conceptDcContributor = $state('');
+	let conceptDcInstitution = $state('');
+	let conceptDcSubject = $state('');
+	let conceptDcKeyword = $state('');
+	let conceptDcCoveragePlace = $state('');
+	let conceptDcLanguage = $state('');
+	let conceptDcRightsHolder = $state('');
+	let conceptDcRightsLicense = $state('');
 	let isSaving = $state(false);
 	let isSubmitting = $state(false);
+
+	function jsonArrayToString(val: unknown): string {
+		if (Array.isArray(val)) return val.join(', ');
+		return '';
+	}
+
+	function stringToJsonArray(val: string): string[] {
+		return val.split(',').map((s) => s.trim()).filter(Boolean);
+	}
 
 	// Collections for concept form
 	let collections = $state<{ id: string; title: string }[]>([]);
@@ -184,6 +204,16 @@
 			conceptTitle = edition.title;
 			conceptDescription = edition.description;
 			conceptPeerReview = edition.peerReviewRequested;
+			conceptDcSubtitle = edRecord.dcSubtitle || '';
+			conceptDcCreator = jsonArrayToString(edRecord.dcCreator);
+			conceptDcContributor = jsonArrayToString(edRecord.dcContributor);
+			conceptDcInstitution = jsonArrayToString(edRecord.dcInstitution);
+			conceptDcSubject = jsonArrayToString(edRecord.dcSubject);
+			conceptDcKeyword = jsonArrayToString(edRecord.dcKeyword);
+			conceptDcCoveragePlace = edRecord.dcCoveragePlace || '';
+			conceptDcLanguage = jsonArrayToString(edRecord.dcLanguage);
+			conceptDcRightsHolder = edRecord.dcRightsHolder || '';
+			conceptDcRightsLicense = edRecord.dcRightsLicense || '';
 
 			// Load user's relationship to this edition
 			if (authStore.appUserId) {
@@ -267,15 +297,31 @@
 	}
 
 	// --- Concept Form Actions ---
+	function buildEditionData() {
+		return {
+			title: conceptTitle.trim(),
+			dcTitle: conceptTitle.trim(),
+			dcSubtitle: conceptDcSubtitle.trim(),
+			dcAbstract: conceptDescription,
+			dcDescription: conceptDescription,
+			dcCreator: stringToJsonArray(conceptDcCreator),
+			dcContributor: stringToJsonArray(conceptDcContributor),
+			dcInstitution: stringToJsonArray(conceptDcInstitution),
+			dcSubject: stringToJsonArray(conceptDcSubject),
+			dcKeyword: stringToJsonArray(conceptDcKeyword),
+			dcCoveragePlace: conceptDcCoveragePlace.trim(),
+			dcLanguage: stringToJsonArray(conceptDcLanguage),
+			dcRightsHolder: conceptDcRightsHolder.trim(),
+			dcRightsLicense: conceptDcRightsLicense.trim(),
+			peerReviewRequested: conceptPeerReview
+		};
+	}
+
 	async function saveDraft() {
 		if (!edition) return;
 		isSaving = true;
 		try {
-			await pb.collection('editions').update(edition.id, {
-				dcTitle: conceptTitle,
-				dcAbstract: conceptDescription,
-				peerReviewRequested: conceptPeerReview
-			});
+			await pb.collection('editions').update(edition.id, buildEditionData());
 			edition.title = conceptTitle;
 			edition.description = conceptDescription;
 			edition.peerReviewRequested = conceptPeerReview;
@@ -296,11 +342,7 @@
 		}
 		isSubmitting = true;
 		try {
-			await pb.collection('editions').update(edition.id, {
-				dcTitle: conceptTitle,
-				dcAbstract: conceptDescription,
-				peerReviewRequested: conceptPeerReview
-			});
+			await pb.collection('editions').update(edition.id, buildEditionData());
 
 			await updateEditionStatus(edition.id, EditionStatus.ConceptSubmitted);
 
@@ -410,99 +452,216 @@
 			</a>
 		</div>
 
+		<!-- Workflow Timeline (always visible) -->
+		<div class="mb-6">
+			<WorkflowTimeline currentStatus={edition.status} />
+		</div>
+
 		<!-- Concept Proposal Form -->
 		{#if viewMode === 'concept-form'}
-			<div class="rounded-box border border-base-300 bg-base-100 p-6">
-				<h2 class="mb-4 text-xl font-semibold">
-					{edition.status === EditionStatus.ConceptRejected
-						? 'Revise & Resubmit Concept'
-						: 'Concept Proposal'}
-				</h2>
+			<!-- Show rejection feedback if resubmitting -->
+			{#if edition.status === EditionStatus.ConceptRejected && previousFeedback.length > 0}
+				<div class="mb-4 alert alert-warning">
+					<div>
+						<p class="font-semibold">Previous Review Feedback</p>
+						{#each previousFeedback as fb (fb.created)}
+							{#if fb.comment}
+								<p class="mt-1 text-sm">{fb.comment}</p>
+							{/if}
+						{/each}
+					</div>
+				</div>
+			{/if}
 
-				<!-- Show rejection feedback if resubmitting -->
-				{#if edition.status === EditionStatus.ConceptRejected && previousFeedback.length > 0}
-					<div class="mb-4 alert alert-warning">
-						<div>
-							<p class="font-semibold">Previous Review Feedback</p>
-							{#each previousFeedback as fb (fb.created)}
-								{#if fb.comment}
-									<p class="mt-1 text-sm">{fb.comment}</p>
-								{/if}
-							{/each}
+			<form
+				onsubmit={(e) => {
+					e.preventDefault();
+					submitConcept();
+				}}
+			>
+				<!-- Basic Information -->
+				<section class="mb-6">
+					<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">Basic Information</h2>
+					<div class="grid gap-5 md:grid-cols-2">
+						<div class="opacity-50">
+							<div class="flex aspect-[4/3] items-center justify-center rounded-lg border-2 border-dashed border-base-300 bg-base-200">
+								<div class="text-center text-base-content/40">
+									<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="mx-auto mb-1 size-8">
+										<path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+									</svg>
+									<p class="text-xs">Cover Image</p>
+								</div>
+							</div>
+							<button type="button" class="btn btn-outline btn-xs mt-2 w-full" disabled>Upload Image</button>
+							<p class="mt-1 text-center text-xs text-base-content/40">JPG, PNG, WebP</p>
+						</div>
+						<div class="space-y-3">
+							<div class="form-control">
+								<label class="label py-0.5" for="concept-title">
+									<span class="label-text text-sm font-medium">Title *</span>
+								</label>
+								<input id="concept-title" type="text" class="input-bordered input input-sm" bind:value={conceptTitle} required placeholder="Edition title" />
+							</div>
+							<div class="form-control">
+								<label class="label py-0.5" for="concept-subtitle">
+									<span class="label-text text-sm">Subtitle</span>
+								</label>
+								<input id="concept-subtitle" type="text" class="input-bordered input input-sm" bind:value={conceptDcSubtitle} />
+							</div>
 						</div>
 					</div>
-				{/if}
+				</section>
 
-				<form
-					onsubmit={(e) => {
-						e.preventDefault();
-						submitConcept();
-					}}
-					class="space-y-4"
-				>
-					<div class="form-control">
-						<label class="label" for="concept-title">
-							<span class="label-text font-semibold">Title</span>
-						</label>
-						<input
-							id="concept-title"
-							type="text"
-							class="input-bordered input w-full"
-							bind:value={conceptTitle}
-							placeholder="Edition title"
-							required
-						/>
+				<div class="divider my-2"></div>
+
+				<!-- People -->
+				<section class="mb-6">
+					<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">People</h2>
+					<div class="grid gap-x-4 gap-y-3 md:grid-cols-2">
+						<div class="form-control">
+							<label class="label py-0.5" for="concept-creator">
+								<span class="label-text text-sm">Creators</span>
+								<span class="label-text-alt text-xs">comma-separated</span>
+							</label>
+							<input id="concept-creator" type="text" class="input-bordered input input-sm" bind:value={conceptDcCreator} placeholder="Author A, Author B" />
+						</div>
+						<div class="form-control">
+							<label class="label py-0.5" for="concept-contributor">
+								<span class="label-text text-sm">Contributors</span>
+								<span class="label-text-alt text-xs">comma-separated</span>
+							</label>
+							<input id="concept-contributor" type="text" class="input-bordered input input-sm" bind:value={conceptDcContributor} />
+						</div>
+						<div class="form-control">
+							<label class="label py-0.5" for="concept-institution">
+								<span class="label-text text-sm">Institutions</span>
+								<span class="label-text-alt text-xs">comma-separated</span>
+							</label>
+							<input id="concept-institution" type="text" class="input-bordered input input-sm" bind:value={conceptDcInstitution} />
+						</div>
 					</div>
+				</section>
 
-					<div class="form-control">
-						<label class="label" for="concept-description">
-							<span class="label-text font-semibold">Description</span>
-						</label>
-						<textarea
-							id="concept-description"
-							class="textarea-bordered textarea w-full"
-							rows="6"
-							bind:value={conceptDescription}
-							placeholder="Describe your edition concept..."
-						></textarea>
+				<div class="divider my-2"></div>
+
+				<!-- Classification -->
+				<section class="mb-6">
+					<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">Classification</h2>
+					<div class="grid gap-x-4 gap-y-3 md:grid-cols-2">
+						<div class="form-control">
+							<label class="label py-0.5" for="concept-subject">
+								<span class="label-text text-sm">Subjects</span>
+								<span class="label-text-alt text-xs">comma-separated</span>
+							</label>
+							<input id="concept-subject" type="text" class="input-bordered input input-sm" bind:value={conceptDcSubject} placeholder="archaeology, 3D modeling" />
+						</div>
+						<div class="form-control">
+							<label class="label py-0.5" for="concept-keyword">
+								<span class="label-text text-sm">Keywords</span>
+								<span class="label-text-alt text-xs">comma-separated</span>
+							</label>
+							<input id="concept-keyword" type="text" class="input-bordered input input-sm" bind:value={conceptDcKeyword} />
+						</div>
+						<div class="form-control">
+							<label class="label py-0.5" for="concept-place">
+								<span class="label-text text-sm">Coverage Place</span>
+							</label>
+							<input id="concept-place" type="text" class="input-bordered input input-sm" bind:value={conceptDcCoveragePlace} placeholder="Rome, Italy" />
+						</div>
+						<div class="form-control">
+							<label class="label py-0.5" for="concept-language">
+								<span class="label-text text-sm">Languages</span>
+								<span class="label-text-alt text-xs">comma-separated</span>
+							</label>
+							<input id="concept-language" type="text" class="input-bordered input input-sm" bind:value={conceptDcLanguage} placeholder="en, nl" />
+						</div>
+						<div class="form-control">
+							<label class="label py-0.5" for="concept-rights-holder">
+								<span class="label-text text-sm">Rights Holder</span>
+							</label>
+							<input id="concept-rights-holder" type="text" class="input-bordered input input-sm" bind:value={conceptDcRightsHolder} />
+						</div>
+						<div class="form-control">
+							<label class="label py-0.5" for="concept-license">
+								<span class="label-text text-sm">License</span>
+							</label>
+							<input id="concept-license" type="text" class="input-bordered input input-sm" bind:value={conceptDcRightsLicense} placeholder="CC BY 4.0" />
+						</div>
 					</div>
+				</section>
 
-					<div class="form-control">
-						<label class="label cursor-pointer justify-start gap-3">
-							<input type="checkbox" class="checkbox" bind:checked={conceptPeerReview} />
-							<div>
-								<span class="label-text font-semibold">Request peer review</span>
-								<p class="text-xs text-base-content/60">
-									If enabled, the edition will go through alpha and final review stages before
-									publication.
-								</p>
+				<div class="divider my-2"></div>
+
+				<!-- 3D Model Files -->
+				<section class="mb-6">
+					<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">3D Model Files</h2>
+					<div class="rounded-xl border border-base-300 bg-base-100 p-5 opacity-50">
+						<div class="mb-3 space-y-2">
+							<div class="flex items-center gap-2 rounded-lg border border-base-300 bg-base-200 px-3 py-2.5">
+								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 shrink-0 text-base-content/40">
+									<path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+								</svg>
+								<span class="truncate text-xs text-base-content/40">No model file selected</span>
 							</div>
-						</label>
+							<div class="flex items-center gap-2 rounded-lg border border-base-300 bg-base-200 px-3 py-2.5">
+								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 shrink-0 text-base-content/40">
+									<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+								</svg>
+								<span class="truncate text-xs text-base-content/40">No scene file selected</span>
+							</div>
+						</div>
+						<div class="grid grid-cols-2 gap-2">
+							<button type="button" class="btn btn-outline btn-sm" disabled>Upload Model</button>
+							<button type="button" class="btn btn-outline btn-sm" disabled>Upload Scene</button>
+						</div>
+						<p class="mt-2 text-center text-xs text-base-content/40">GLB, GLTF, OBJ, PLY + SVX scene file</p>
 					</div>
+				</section>
 
-					<div class="flex gap-2">
-						<button
-							type="button"
-							class="btn btn-ghost"
-							onclick={saveDraft}
-							disabled={isSaving || isSubmitting}
-						>
-							{#if isSaving}
-								<span class="loading loading-sm loading-spinner"></span>
-							{/if}
-							Save Draft
-						</button>
-						<button type="submit" class="btn btn-primary" disabled={isSaving || isSubmitting}>
-							{#if isSubmitting}
-								<span class="loading loading-sm loading-spinner"></span>
-							{/if}
-							Submit for Review
-						</button>
-					</div>
-				</form>
-			</div>
+				<div class="divider my-2"></div>
 
-			<!-- Collaborator Management (concept form view) -->
+				<!-- Abstract -->
+				<section class="mb-6">
+					<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">Abstract</h2>
+					<RichTextEditor content={conceptDescription} onchange={(html) => (conceptDescription = html)} minHeight="120px" />
+				</section>
+
+				<!-- Peer Review -->
+				<section class="mb-6">
+					<label class="flex cursor-pointer items-start gap-3">
+						<input type="checkbox" class="checkbox checkbox-sm mt-0.5" bind:checked={conceptPeerReview} />
+						<div>
+							<span class="text-sm font-semibold">Request peer review</span>
+							<p class="text-xs text-base-content/60">
+								If enabled, the edition will go through alpha and final review stages before publication.
+							</p>
+						</div>
+					</label>
+				</section>
+
+				<!-- Actions -->
+				<div class="flex items-center gap-3 border-t border-base-300 pt-4">
+					<button
+						type="button"
+						class="btn btn-ghost btn-sm"
+						onclick={saveDraft}
+						disabled={isSaving || isSubmitting}
+					>
+						{#if isSaving}
+							<span class="loading loading-xs loading-spinner"></span>
+						{/if}
+						Save Draft
+					</button>
+					<button type="submit" class="btn btn-primary btn-sm" disabled={isSaving || isSubmitting}>
+						{#if isSubmitting}
+							<span class="loading loading-xs loading-spinner"></span>
+						{/if}
+						Submit for Review
+					</button>
+				</div>
+			</form>
+
+			<!-- Collaborator Management -->
 			{#if edition}
 				<div class="mt-6 rounded-box border border-base-300 bg-base-100 p-6">
 					<h2 class="mb-4 text-lg font-semibold">Collaborators</h2>
