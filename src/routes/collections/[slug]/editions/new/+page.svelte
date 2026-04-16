@@ -91,8 +91,22 @@
 				status: EditionStatus.Draft,
 				isPublished: false
 			});
-			toast.success('Edition created');
-			goto(`${base}/collections/${collection.id}`);
+
+			// Add the creator as author on this edition
+			if (authStore.appUserId) {
+				try {
+					await pb.collection('editionUsers').create({
+						editionId: record.id,
+						userId: authStore.appUserId,
+						role: 'author'
+					});
+				} catch {
+					// Non-critical — edition was created, author link is a convenience
+				}
+			}
+
+			toast.success('Edition created — you can find it under My Work');
+			goto(`${base}/reviews`);
 		} catch (e: any) {
 			toast.error(e?.message || 'Failed to create edition');
 		} finally {
