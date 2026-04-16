@@ -137,8 +137,8 @@
 			<!-- Basic Information -->
 			<section class="mb-6">
 				<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">Basic Information</h2>
-				<div class="grid gap-5 md:grid-cols-[200px_1fr]">
-					<!-- Cover image (left) -->
+				<div class="grid gap-5 md:grid-cols-2">
+					<!-- Cover image (left column) -->
 					<div class="opacity-50">
 						<div class="flex aspect-[4/3] items-center justify-center rounded-lg border-2 border-dashed border-base-300 bg-base-200">
 							<div class="text-center text-base-content/40">
@@ -148,12 +148,10 @@
 								<p class="text-xs">Cover Image</p>
 							</div>
 						</div>
-						<button type="button" class="btn btn-outline btn-xs mt-2 w-full" disabled>
-							Upload Image
-						</button>
+						<button type="button" class="btn btn-outline btn-xs mt-2 w-full" disabled>Upload Image</button>
 						<p class="mt-1 text-center text-xs text-base-content/40">JPG, PNG, WebP</p>
 					</div>
-					<!-- Title fields (right) -->
+					<!-- Title fields (right column) -->
 					<div class="space-y-3">
 						<div class="form-control">
 							<label class="label py-0.5" for="title">
@@ -161,19 +159,17 @@
 							</label>
 							<input id="title" type="text" class="input-bordered input input-sm" bind:value={title} required placeholder="Edition title" />
 						</div>
-						<div class="grid gap-4 md:grid-cols-2">
-							<div class="form-control">
-								<label class="label py-0.5" for="dcTitle">
-									<span class="label-text text-sm">DC Title</span>
-								</label>
-								<input id="dcTitle" type="text" class="input-bordered input input-sm" bind:value={dcTitle} placeholder="Defaults to title" />
-							</div>
-							<div class="form-control">
-								<label class="label py-0.5" for="dcSubtitle">
-									<span class="label-text text-sm">Subtitle</span>
-								</label>
-								<input id="dcSubtitle" type="text" class="input-bordered input input-sm" bind:value={dcSubtitle} />
-							</div>
+						<div class="form-control">
+							<label class="label py-0.5" for="dcTitle">
+								<span class="label-text text-sm">DC Title</span>
+							</label>
+							<input id="dcTitle" type="text" class="input-bordered input input-sm" bind:value={dcTitle} placeholder="Defaults to title" />
+						</div>
+						<div class="form-control">
+							<label class="label py-0.5" for="dcSubtitle">
+								<span class="label-text text-sm">Subtitle</span>
+							</label>
+							<input id="dcSubtitle" type="text" class="input-bordered input input-sm" bind:value={dcSubtitle} />
 						</div>
 					</div>
 				</div>
