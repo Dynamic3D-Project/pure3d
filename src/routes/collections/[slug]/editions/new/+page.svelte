@@ -195,7 +195,7 @@
 						</label>
 						<input id="dcContributor" type="text" class="input-bordered input input-sm" bind:value={dcContributor} />
 					</div>
-					<div class="form-control md:col-span-2">
+					<div class="form-control">
 						<label class="label py-0.5" for="dcInstitution">
 							<span class="label-text text-sm">Institutions</span>
 							<span class="label-text-alt text-xs">comma-separated</span>
