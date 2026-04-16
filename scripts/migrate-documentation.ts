@@ -94,7 +94,7 @@ async function updateAuditLogTargetType() {
 async function ensureAutodateFields() {
 	console.log('--- Step 0b: Ensure autodate fields on collections ---');
 
-	for (const name of ['auditLog', 'notifications', 'reviewAssignments', 'editionReviews', 'editionUsers']) {
+	for (const name of ['auditLog', 'notifications', 'reviewAssignments', 'editionReviews', 'editionUsers', 'editions', 'collections']) {
 		try {
 			const collection = await apiRequest(`/api/collections/${name}`);
 			const fields = collection.fields || [];

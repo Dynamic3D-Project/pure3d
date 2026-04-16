@@ -96,7 +96,9 @@
 			if (authStore.appUserId) {
 				try {
 					await pb.collection('editionUsers').create({
+						edition: record.id,
 						editionId: record.id,
+						user: authStore.appUserId,
 						userId: authStore.appUserId,
 						role: 'author'
 					});
