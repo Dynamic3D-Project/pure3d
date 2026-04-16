@@ -117,9 +117,9 @@ async function createDocumentationCollection() {
 		],
 		listRule: '',
 		viewRule: '',
-		createRule: '@request.auth.id != ""',
-		updateRule: '@request.auth.id != ""',
-		deleteRule: '@request.auth.id != ""'
+		createRule: '',
+		updateRule: '',
+		deleteRule: ''
 	});
 
 	console.log('  Created documentation collection\n');
