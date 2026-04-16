@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { base } from '$app/paths';
+	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
 	import { pb } from '$lib/database/client';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { hasPermission } from '$lib/utils/permissions';
-	import { Permission, CollectionRole, type UserRoleContext } from '$lib/types/roles';
+	import { Permission, CollectionRole, EditionStatus, type UserRoleContext } from '$lib/types/roles';
+	import toast from 'svelte-french-toast';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -41,6 +43,41 @@
 			// User has no collection role — that's fine
 		}
 	}
+
+	let isCreating = $state(false);
+
+	async function createEdition() {
+		isCreating = true;
+		try {
+			const record = await pb.collection('editions').create({
+				title: 'Untitled Edition',
+				dcTitle: 'Untitled Edition',
+				collection: collection.id,
+				status: EditionStatus.Draft,
+				isPublished: false
+			});
+
+			if (authStore.appUserId) {
+				try {
+					await pb.collection('editionUsers').create({
+						edition: record.id,
+						editionId: record.id,
+						user: authStore.appUserId,
+						userId: authStore.appUserId,
+						role: 'author'
+					});
+				} catch {
+					// Non-critical
+				}
+			}
+
+			goto(`${base}/editions/${record.id}/workflow`);
+		} catch (e: any) {
+			toast.error(e?.message || 'Failed to create edition');
+		} finally {
+			isCreating = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -74,9 +111,12 @@
 						</a>
 					{/if}
 					{#if canCreateEdition}
-						<a href="{base}/collections/{collection.slug}/editions/new" class="btn btn-primary btn-sm">
+						<button class="btn btn-primary btn-sm" onclick={createEdition} disabled={isCreating}>
+							{#if isCreating}
+								<span class="loading loading-xs loading-spinner"></span>
+							{/if}
 							+ New Edition
-						</a>
+						</button>
 					{/if}
 				</div>
 			{/if}
