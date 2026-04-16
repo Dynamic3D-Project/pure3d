@@ -90,6 +90,38 @@ async function updateAuditLogTargetType() {
 	}
 }
 
+// --- Step 0b: Ensure autodate fields on auditLog and notifications ---
+async function ensureAutodateFields() {
+	console.log('--- Step 0b: Ensure autodate fields on collections ---');
+
+	for (const name of ['auditLog', 'notifications']) {
+		try {
+			const collection = await apiRequest(`/api/collections/${name}`);
+			const fields = collection.fields || [];
+			let changed = false;
+
+			if (!fields.find((f: any) => f.name === 'created')) {
+				fields.push({ name: 'created', type: 'autodate', onCreate: true, onUpdate: false });
+				changed = true;
+			}
+			if (!fields.find((f: any) => f.name === 'updated')) {
+				fields.push({ name: 'updated', type: 'autodate', onCreate: true, onUpdate: true });
+				changed = true;
+			}
+
+			if (changed) {
+				await apiRequest(`/api/collections/${collection.id}`, 'PATCH', { fields });
+				console.log(`  Added autodate fields to ${name}`);
+			} else {
+				console.log(`  ${name} already has autodate fields, skipping`);
+			}
+		} catch (e) {
+			console.log(`  Warning: could not update ${name}: ${e}`);
+		}
+	}
+	console.log('');
+}
+
 // --- Step 1: Create documentation collection ---
 async function createDocumentationCollection() {
 	console.log('--- Step 1: Create documentation collection ---');
@@ -308,6 +340,7 @@ async function main() {
 
 	await authenticate();
 	await updateAuditLogTargetType();
+	await ensureAutodateFields();
 	await createDocumentationCollection();
 	await seedDocumentationPages();
 
