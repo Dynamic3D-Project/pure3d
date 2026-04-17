@@ -52,10 +52,7 @@
 			goto(resolveRoute('/', {}));
 			return;
 		}
-		if (
-			authStore.globalRole !== GlobalRole.SuperAdmin &&
-			authStore.globalRole !== GlobalRole.Admin
-		) {
+		if (authStore.globalRole !== GlobalRole.Admin) {
 			goto(resolveRoute('/', {}));
 			return;
 		}

@@ -101,12 +101,12 @@ export function getTargetStatusFromVerdict(
 }
 
 /**
- * Get userProfile IDs of all admin and superadmin users.
+ * Get userProfile IDs of all admin users.
  */
 export async function getAdminUserIds(): Promise<string[]> {
 	try {
 		const result = await pb.collection('userProfiles').getList(1, 500, {
-			filter: `role = "${GlobalRole.Admin}" || role = "${GlobalRole.SuperAdmin}"`
+			filter: `role = "${GlobalRole.Admin}"`
 		});
 		return result.items.map((r) => r.id);
 	} catch {
