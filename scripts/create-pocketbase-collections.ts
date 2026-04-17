@@ -314,7 +314,32 @@ async function main() {
 			{ name: 'sceneFile', type: 'text', required: false },
 			{ name: 'settingsAuthorToolName', type: 'text', required: false },
 			{ name: 'settingsAuthorToolVersion', type: 'text', required: false },
-			{ name: 'settingsSceneFile', type: 'text', required: false }
+			{ name: 'settingsSceneFile', type: 'text', required: false },
+			{
+				name: 'coverImage',
+				type: 'file',
+				required: false,
+				maxSelect: 1,
+				maxSize: 20 * 1024 * 1024,
+				mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/avif'],
+				thumbs: ['400x300', '100x100']
+			},
+			{
+				name: 'modelFile',
+				type: 'file',
+				required: false,
+				maxSelect: 1,
+				maxSize: 500 * 1024 * 1024,
+				mimeTypes: ['application/octet-stream', 'model/gltf-binary', 'model/gltf+json']
+			},
+			{
+				name: 'sceneDocument',
+				type: 'file',
+				required: false,
+				maxSelect: 1,
+				maxSize: 0,
+				mimeTypes: ['application/json']
+			}
 		]
 	});
 
