@@ -24,7 +24,6 @@
 				"required": true,
 				"maxSelect": 1,
 				"values": [
-					"superadmin",
 					"admin",
 					"editorial_board",
 					"viewer"

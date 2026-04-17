@@ -10,7 +10,6 @@
 	let isLoading = $state(false);
 
 	const demoAccounts = [
-		{ label: 'Super Admin', email: 'superadmin@pure3d.eu', role: 'superadmin' },
 		{ label: 'Admin', email: 'admin@pure3d.eu', role: 'admin' },
 		{ label: 'Editorial Board', email: 'editor@pure3d.eu', role: 'editorial_board' },
 		{ label: 'Viewer', email: 'viewer@pure3d.eu', role: 'viewer' }

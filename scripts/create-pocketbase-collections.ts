@@ -19,7 +19,7 @@ const openRules = {
 	deleteRule: ''
 };
 
-const globalRoleValues = ['superadmin', 'admin', 'editorial_board', 'viewer'];
+const globalRoleValues = ['admin', 'editorial_board', 'viewer'];
 const collectionRoleValues = ['owner', 'editor', 'viewer'];
 const editionRoleValues = ['author', 'collaborator', 'reviewer'];
 const editionStatusValues = [

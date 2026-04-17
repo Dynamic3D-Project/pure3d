@@ -97,7 +97,7 @@
 						My Work
 					</a>
 				{/if}
-				{#if authStore.isAuthenticated && (authStore.globalRole === GlobalRole.SuperAdmin || authStore.globalRole === GlobalRole.Admin)}
+				{#if authStore.isAuthenticated && authStore.globalRole === GlobalRole.Admin}
 					<a
 						class="btn btn-ghost"
 						class:btn-active={isActive('/admin')}

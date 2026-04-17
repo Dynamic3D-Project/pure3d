@@ -27,6 +27,8 @@
 	import ReviewFeedbackForm from '$lib/components/workflow/ReviewFeedbackForm.svelte';
 	import ReviewFeedbackList from '$lib/components/workflow/ReviewFeedbackList.svelte';
 	import RichTextEditor from '$lib/components/ui/RichTextEditor.svelte';
+	import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
+	import { getEditionRoot, DEFAULT_VOYAGER_VERSION } from '$lib/utils/asset-urls';
 	import toast from 'svelte-french-toast';
 
 	interface Edition {
@@ -50,7 +52,7 @@
 	let myAssignment = $state<ReviewAssignment | null>(null);
 	let myExistingReview = $state<EditionReview | null>(null);
 	let isAdmin = $derived(
-		authStore.globalRole === GlobalRole.SuperAdmin || authStore.globalRole === GlobalRole.Admin
+		authStore.globalRole === GlobalRole.Admin
 	);
 
 	// Concept form state
@@ -69,6 +71,20 @@
 	let conceptDcRightsLicense = $state('');
 	let isSaving = $state(false);
 	let isSubmitting = $state(false);
+
+	// Viewer-mirror layout state
+	let activeFormTab = $state<'description' | 'metadata' | 'peer-review' | 'team'>('description');
+	let isSidebarCollapsed = $state(false);
+
+	// Scene/viewer state
+	let editionPubNum = $state(0);
+	let collectionPubNum = $state(0);
+	let sceneFile = $state('');
+	let voyagerVersion = $state(DEFAULT_VOYAGER_VERSION);
+	let hasScene = $derived(!!(sceneFile && collectionPubNum > 0 && editionPubNum > 0));
+	let voyagerRoot = $derived(
+		hasScene ? getEditionRoot(collectionPubNum, editionPubNum) : ''
+	);
 
 	function jsonArrayToString(val: unknown): string {
 		if (Array.isArray(val)) return val.join(', ');
@@ -214,6 +230,12 @@
 			conceptDcLanguage = jsonArrayToString(edRecord.dcLanguage);
 			conceptDcRightsHolder = edRecord.dcRightsHolder || '';
 			conceptDcRightsLicense = edRecord.dcRightsLicense || '';
+
+			// Initialize viewer/scene data
+			editionPubNum = edRecord.pubNum || 0;
+			collectionPubNum = edRecord.expand?.collection?.pubNum || 0;
+			sceneFile = edRecord.settingsSceneFile || edRecord.sceneFile || '';
+			voyagerVersion = edRecord.settingsAuthorToolVersion || DEFAULT_VOYAGER_VERSION;
 
 			// Load user's relationship to this edition
 			if (authStore.appUserId) {
@@ -432,32 +454,34 @@
 	}
 </script>
 
-<div id="edition-workflow-page" class="mx-auto max-w-4xl p-4 lg:p-8">
+<div id="edition-workflow-page" class="mx-auto p-4 lg:p-8" class:max-w-7xl={edition && viewMode === 'concept-form'} class:max-w-4xl={!edition || viewMode !== 'concept-form'}>
 	{#if isLoading}
 		<div class="flex items-center justify-center py-12">
 			<span class="loading loading-lg loading-spinner"></span>
 		</div>
 	{:else if edition}
 		<!-- Header -->
-		<div class="mb-6">
-			<div class="flex flex-wrap items-center gap-3">
-				<h1 class="text-2xl font-bold">{edition.title || 'Untitled Edition'}</h1>
-				<StatusBadge status={edition.status} />
+		{#if viewMode !== 'concept-form'}
+			<div class="mb-6">
+				<div class="flex flex-wrap items-center gap-3">
+					<h1 class="text-2xl font-bold">{edition.title || 'Untitled Edition'}</h1>
+					<StatusBadge status={edition.status} />
+				</div>
+				{#if edition.collectionTitle}
+					<p class="mt-1 text-base-content/60">in {edition.collectionTitle}</p>
+				{/if}
+				<a href="{base}/editions/{edition.id}" class="mt-2 inline-block link text-sm link-primary">
+					View Edition
+				</a>
 			</div>
-			{#if edition.collectionTitle}
-				<p class="mt-1 text-base-content/60">in {edition.collectionTitle}</p>
-			{/if}
-			<a href="{base}/editions/{edition.id}" class="mt-2 inline-block link text-sm link-primary">
-				View Edition
-			</a>
-		</div>
+		{/if}
 
 		<!-- Workflow Timeline (always visible) -->
 		<div class="mb-6">
 			<WorkflowTimeline currentStatus={edition.status} />
 		</div>
 
-		<!-- Concept Proposal Form -->
+		<!-- Concept Proposal Form — mirrors viewer layout -->
 		{#if viewMode === 'concept-form'}
 			<!-- Show rejection feedback if resubmitting -->
 			{#if edition.status === EditionStatus.ConceptRejected && previousFeedback.length > 0}
@@ -473,177 +497,252 @@
 				</div>
 			{/if}
 
-			<form
-				onsubmit={(e) => {
-					e.preventDefault();
-					submitConcept();
-				}}
-			>
-				<!-- Edition Identity: cover + title + people -->
-				<section class="mb-6 rounded-box border border-base-300 bg-base-100 p-5">
-					<div class="grid gap-5 md:grid-cols-[1fr_1.5fr]">
-						<!-- Cover image (left) -->
-						<div class="opacity-50">
-							<div class="flex aspect-[4/3] items-center justify-center rounded-lg border-2 border-dashed border-base-300 bg-base-200">
-								<div class="text-center text-base-content/40">
-									<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="mx-auto mb-1 size-8">
-										<path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-									</svg>
-									<p class="text-xs">Cover Image</p>
-								</div>
-							</div>
-							<button type="button" class="btn btn-outline btn-xs mt-2 w-full" disabled>Upload Image</button>
+			<form onsubmit={(e) => { e.preventDefault(); submitConcept(); }}>
+				<!-- Header: editable title + authors (mirrors viewer header) -->
+				<div class="mb-6 flex items-start gap-4">
+					<div class="min-w-0 flex-1">
+						<div class="flex items-center gap-3">
+							<input
+								type="text"
+								class="input w-full border-0 bg-transparent text-3xl font-bold placeholder:text-base-content/30 focus:outline-none md:text-4xl"
+								bind:value={conceptTitle}
+								required
+								placeholder="Edition title"
+							/>
+							<StatusBadge status={edition.status} />
 						</div>
-						<!-- Title + people (right) -->
-						<div class="space-y-3">
-							<div class="form-control">
-								<label class="label py-0.5" for="concept-title">
-									<span class="label-text text-sm font-medium">Title *</span>
-								</label>
-								<input id="concept-title" type="text" class="input-bordered input input-sm" bind:value={conceptTitle} required placeholder="Edition title" />
-							</div>
-							<div class="form-control">
-								<label class="label py-0.5" for="concept-subtitle">
-									<span class="label-text text-sm">Subtitle</span>
-								</label>
-								<input id="concept-subtitle" type="text" class="input-bordered input input-sm" bind:value={conceptDcSubtitle} />
-							</div>
-							<div class="form-control">
-								<label class="label py-0.5" for="concept-creator">
-									<span class="label-text text-sm">Creators</span>
-									<span class="label-text-alt text-xs">comma-separated</span>
-								</label>
-								<input id="concept-creator" type="text" class="input-bordered input input-sm" bind:value={conceptDcCreator} placeholder="Author A, Author B" />
-							</div>
-							<div class="grid gap-3 md:grid-cols-2">
-								<div class="form-control">
-									<label class="label py-0.5" for="concept-contributor">
-										<span class="label-text text-sm">Contributors</span>
-									</label>
-									<input id="concept-contributor" type="text" class="input-bordered input input-sm" bind:value={conceptDcContributor} />
-								</div>
-								<div class="form-control">
-									<label class="label py-0.5" for="concept-institution">
-										<span class="label-text text-sm">Institutions</span>
-									</label>
-									<input id="concept-institution" type="text" class="input-bordered input input-sm" bind:value={conceptDcInstitution} />
-								</div>
-							</div>
-						</div>
+						<input
+							type="text"
+							class="input mt-1 w-full border-0 bg-transparent text-base-content/70 placeholder:text-base-content/30 focus:outline-none"
+							bind:value={conceptDcCreator}
+							placeholder="Authors (comma-separated)"
+						/>
+						{#if edition.collectionTitle}
+							<p class="mt-1 text-sm text-base-content/50">in {edition.collectionTitle}</p>
+						{/if}
 					</div>
-				</section>
+					<!-- Sidebar toggle -->
+					<button
+						type="button"
+						onclick={() => (isSidebarCollapsed = !isSidebarCollapsed)}
+						class="btn hidden btn-ghost btn-sm lg:flex"
+					>
+						{isSidebarCollapsed ? 'Show details' : 'Hide details'}
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform duration-300" class:rotate-180={isSidebarCollapsed} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+						</svg>
+					</button>
+				</div>
 
-				<!-- Details: classification + rights -->
-				<section class="mb-6">
-					<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">Details</h2>
-					<div class="grid gap-x-4 gap-y-3 md:grid-cols-3">
-						<div class="form-control">
-							<label class="label py-0.5" for="concept-subject">
-								<span class="label-text text-sm">Subjects</span>
-							</label>
-							<input id="concept-subject" type="text" class="input-bordered input input-sm" bind:value={conceptDcSubject} placeholder="archaeology, 3D" />
-						</div>
-						<div class="form-control">
-							<label class="label py-0.5" for="concept-keyword">
-								<span class="label-text text-sm">Keywords</span>
-							</label>
-							<input id="concept-keyword" type="text" class="input-bordered input input-sm" bind:value={conceptDcKeyword} />
-						</div>
-						<div class="form-control">
-							<label class="label py-0.5" for="concept-place">
-								<span class="label-text text-sm">Place</span>
-							</label>
-							<input id="concept-place" type="text" class="input-bordered input input-sm" bind:value={conceptDcCoveragePlace} placeholder="Rome, Italy" />
-						</div>
-						<div class="form-control">
-							<label class="label py-0.5" for="concept-language">
-								<span class="label-text text-sm">Languages</span>
-							</label>
-							<input id="concept-language" type="text" class="input-bordered input input-sm" bind:value={conceptDcLanguage} placeholder="en, nl" />
-						</div>
-						<div class="form-control">
-							<label class="label py-0.5" for="concept-rights-holder">
-								<span class="label-text text-sm">Rights Holder</span>
-							</label>
-							<input id="concept-rights-holder" type="text" class="input-bordered input input-sm" bind:value={conceptDcRightsHolder} />
-						</div>
-						<div class="form-control">
-							<label class="label py-0.5" for="concept-license">
-								<span class="label-text text-sm">License</span>
-							</label>
-							<input id="concept-license" type="text" class="input-bordered input input-sm" bind:value={conceptDcRightsLicense} placeholder="CC BY 4.0" />
-						</div>
-					</div>
-				</section>
-
-				<!-- Files + Abstract side by side -->
-				<section class="mb-6 grid gap-5 md:grid-cols-2">
-					<!-- 3D Model Files -->
-					<div>
-						<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">3D Model Files</h2>
-						<div class="rounded-xl border border-base-300 bg-base-100 p-4 opacity-50">
-							<div class="mb-3 space-y-2">
-								<div class="flex items-center gap-2 rounded-lg border border-base-300 bg-base-200 px-3 py-2">
-									<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 shrink-0 text-base-content/40">
-										<path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
-									</svg>
-									<span class="truncate text-xs text-base-content/40">No model file</span>
-								</div>
-								<div class="flex items-center gap-2 rounded-lg border border-base-300 bg-base-200 px-3 py-2">
-									<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 shrink-0 text-base-content/40">
-										<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-									</svg>
-									<span class="truncate text-xs text-base-content/40">No scene file</span>
+				<!-- Two-column layout (mirrors viewer) -->
+				<div class="relative flex flex-col gap-8 transition-all duration-300 lg:flex-row lg:items-start">
+					<!-- Left Column: 3D Viewer or Upload -->
+					<div class="min-w-0 flex-1 space-y-4">
+						{#if hasScene}
+							<div class="card overflow-hidden bg-base-200 shadow-xl">
+								<div class="card-body p-0">
+									<VoyagerViewer
+										url={voyagerRoot}
+										document={sceneFile}
+										title={conceptTitle}
+										direct={true}
+										voyagerVersion={voyagerVersion}
+									/>
 								</div>
 							</div>
-							<div class="grid grid-cols-2 gap-2">
-								<button type="button" class="btn btn-outline btn-xs" disabled>Upload Model</button>
-								<button type="button" class="btn btn-outline btn-xs" disabled>Upload Scene</button>
+						{:else}
+							<!-- Upload placeholder -->
+							<div class="card overflow-hidden bg-base-200 shadow-xl opacity-50">
+								<div class="flex aspect-video items-center justify-center">
+									<div class="text-center text-base-content/40">
+										<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="mx-auto mb-2 size-12">
+											<path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+										</svg>
+										<p class="text-sm font-medium">3D Model Preview</p>
+										<p class="mt-1 text-xs">Upload a model to see it here</p>
+									</div>
+								</div>
+								<div class="border-t border-base-300 p-3">
+									<div class="grid grid-cols-2 gap-2">
+										<button type="button" class="btn btn-outline btn-sm" disabled>Upload Model</button>
+										<button type="button" class="btn btn-outline btn-sm" disabled>Upload Scene</button>
+									</div>
+								</div>
+							</div>
+						{/if}
+
+						<!-- Cover image upload (below viewer) -->
+						<div class="flex items-center gap-3 opacity-50">
+							<div class="flex size-12 shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-base-300 bg-base-200">
+								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="size-5 text-base-content/40">
+									<path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" />
+								</svg>
+							</div>
+							<div>
+								<button type="button" class="btn btn-outline btn-xs" disabled>Upload Cover Image</button>
+								<p class="mt-0.5 text-xs text-base-content/40">JPG, PNG, WebP</p>
 							</div>
 						</div>
 					</div>
-					<!-- Abstract -->
-					<div>
-						<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">Abstract</h2>
-						<RichTextEditor content={conceptDescription} onchange={(html) => (conceptDescription = html)} minHeight="120px" />
-					</div>
-				</section>
 
-				<!-- Peer review + Actions -->
-				<div class="flex flex-wrap items-center justify-between gap-4 border-t border-base-300 pt-4">
-					<label class="flex cursor-pointer items-center gap-2">
-						<input type="checkbox" class="checkbox checkbox-sm" bind:checked={conceptPeerReview} />
-						<span class="text-sm">Request peer review</span>
-					</label>
-					<div class="flex items-center gap-3">
-						<button
-							type="button"
-							class="btn btn-ghost btn-sm"
-							onclick={saveDraft}
-							disabled={isSaving || isSubmitting}
-						>
-							{#if isSaving}
-								<span class="loading loading-xs loading-spinner"></span>
-							{/if}
-							Save Draft
-						</button>
-						<button type="submit" class="btn btn-primary btn-sm" disabled={isSaving || isSubmitting}>
-							{#if isSubmitting}
-								<span class="loading loading-xs loading-spinner"></span>
-							{/if}
-							Submit for Review
-						</button>
+					<!-- Right Column: Tabbed Sidebar -->
+					<div
+						class="shrink-0 transition-all duration-300 ease-in-out"
+						class:lg:w-96={!isSidebarCollapsed}
+						class:lg:w-0={isSidebarCollapsed}
+					>
+						<div class="lg:sticky lg:top-4">
+							<div
+								class="card overflow-hidden bg-base-200 shadow-xl transition-all duration-300"
+								class:lg:w-0={isSidebarCollapsed}
+								class:lg:opacity-0={isSidebarCollapsed}
+								class:lg:invisible={isSidebarCollapsed}
+							>
+								<div class="w-96 max-w-full p-0">
+									<!-- Tabs -->
+									<div role="tablist" class="tabs-bordered tabs bg-base-300">
+										<button type="button" role="tab" class="tab flex-1" class:tab-active={activeFormTab === 'description'} onclick={() => (activeFormTab = 'description')}>
+											Description
+										</button>
+										<button type="button" role="tab" class="tab flex-1" class:tab-active={activeFormTab === 'metadata'} onclick={() => (activeFormTab = 'metadata')}>
+											Metadata
+										</button>
+										<button type="button" role="tab" class="tab flex-1" class:tab-active={activeFormTab === 'peer-review'} onclick={() => (activeFormTab = 'peer-review')}>
+											Review
+										</button>
+										<button type="button" role="tab" class="tab flex-1" class:tab-active={activeFormTab === 'team'} onclick={() => (activeFormTab = 'team')}>
+											Team
+										</button>
+									</div>
+
+									<!-- Tab Content -->
+									<div class="p-5">
+										{#if activeFormTab === 'description'}
+											<div class="space-y-4">
+												<div>
+													<span class="mb-2 block text-sm font-semibold">Abstract</span>
+													<RichTextEditor content={conceptDescription} onchange={(html) => (conceptDescription = html)} minHeight="150px" />
+												</div>
+												<div class="form-control">
+													<label class="label py-0.5" for="concept-keyword">
+														<span class="label-text text-sm font-semibold">Tags / Keywords</span>
+														<span class="label-text-alt text-xs">comma-separated</span>
+													</label>
+													<input id="concept-keyword" type="text" class="input-bordered input input-sm" bind:value={conceptDcKeyword} placeholder="ceramic, sculpture, museum" />
+												</div>
+											</div>
+
+										{:else if activeFormTab === 'metadata'}
+											<div class="space-y-3">
+												<div class="form-control">
+													<label class="label py-0.5" for="concept-subtitle">
+														<span class="label-text text-sm">Subtitle</span>
+													</label>
+													<input id="concept-subtitle" type="text" class="input-bordered input input-sm" bind:value={conceptDcSubtitle} />
+												</div>
+												<div class="form-control">
+													<label class="label py-0.5" for="concept-contributor">
+														<span class="label-text text-sm">Contributors</span>
+													</label>
+													<input id="concept-contributor" type="text" class="input-bordered input input-sm" bind:value={conceptDcContributor} placeholder="comma-separated" />
+												</div>
+												<div class="form-control">
+													<label class="label py-0.5" for="concept-institution">
+														<span class="label-text text-sm">Institutions</span>
+													</label>
+													<input id="concept-institution" type="text" class="input-bordered input input-sm" bind:value={conceptDcInstitution} placeholder="comma-separated" />
+												</div>
+												<div class="form-control">
+													<label class="label py-0.5" for="concept-subject">
+														<span class="label-text text-sm">Subjects</span>
+													</label>
+													<input id="concept-subject" type="text" class="input-bordered input input-sm" bind:value={conceptDcSubject} placeholder="comma-separated" />
+												</div>
+												<div class="grid grid-cols-2 gap-3">
+													<div class="form-control">
+														<label class="label py-0.5" for="concept-place">
+															<span class="label-text text-sm">Place</span>
+														</label>
+														<input id="concept-place" type="text" class="input-bordered input input-sm" bind:value={conceptDcCoveragePlace} placeholder="Rome, Italy" />
+													</div>
+													<div class="form-control">
+														<label class="label py-0.5" for="concept-language">
+															<span class="label-text text-sm">Languages</span>
+														</label>
+														<input id="concept-language" type="text" class="input-bordered input input-sm" bind:value={conceptDcLanguage} placeholder="en, nl" />
+													</div>
+												</div>
+												<div class="grid grid-cols-2 gap-3">
+													<div class="form-control">
+														<label class="label py-0.5" for="concept-rights-holder">
+															<span class="label-text text-sm">Rights Holder</span>
+														</label>
+														<input id="concept-rights-holder" type="text" class="input-bordered input input-sm" bind:value={conceptDcRightsHolder} />
+													</div>
+													<div class="form-control">
+														<label class="label py-0.5" for="concept-license">
+															<span class="label-text text-sm">License</span>
+														</label>
+														<input id="concept-license" type="text" class="input-bordered input input-sm" bind:value={conceptDcRightsLicense} placeholder="CC BY 4.0" />
+													</div>
+												</div>
+											</div>
+
+										{:else if activeFormTab === 'peer-review'}
+											<div class="space-y-4">
+												<label class="flex cursor-pointer items-start gap-3">
+													<input type="checkbox" class="checkbox checkbox-sm mt-0.5" bind:checked={conceptPeerReview} />
+													<div>
+														<span class="text-sm font-semibold">Request peer review</span>
+														<p class="text-xs text-base-content/60">
+															If enabled, the edition will go through alpha and final review stages before publication.
+														</p>
+													</div>
+												</label>
+												{#if edition.status === EditionStatus.ConceptRejected && previousFeedback.length > 0}
+													<div class="mt-4">
+														<h3 class="mb-2 text-sm font-semibold">Previous Feedback</h3>
+														{#each previousFeedback as fb (fb.created)}
+															{#if fb.comment}
+																<p class="mt-1 rounded bg-base-300 p-2 text-sm">{fb.comment}</p>
+															{/if}
+														{/each}
+													</div>
+												{/if}
+											</div>
+
+										{:else if activeFormTab === 'team'}
+											<CollaboratorManager editionId={edition.id} isReadOnly={!canManageCollaborators} />
+										{/if}
+									</div>
+								</div>
+							</div>
+						</div>
 					</div>
+				</div>
+
+				<!-- Action bar -->
+				<div class="mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-base-300 pt-4">
+					<a href="{base}/editions/{edition.id}" class="link text-sm link-primary mr-auto">View Edition</a>
+					<button
+						type="button"
+						class="btn btn-ghost btn-sm"
+						onclick={saveDraft}
+						disabled={isSaving || isSubmitting}
+					>
+						{#if isSaving}
+							<span class="loading loading-xs loading-spinner"></span>
+						{/if}
+						Save Draft
+					</button>
+					<button type="submit" class="btn btn-primary btn-sm" disabled={isSaving || isSubmitting}>
+						{#if isSubmitting}
+							<span class="loading loading-xs loading-spinner"></span>
+						{/if}
+						Submit for Review
+					</button>
 				</div>
 			</form>
-
-			<!-- Collaborator Management -->
-			{#if edition}
-				<div class="mt-6 rounded-box border border-base-300 bg-base-100 p-6">
-					<h2 class="mb-4 text-lg font-semibold">Collaborators</h2>
-					<CollaboratorManager editionId={edition.id} isReadOnly={!canManageCollaborators} />
-				</div>
-			{/if}
 		{/if}
 
 		<!-- Review Form (for assigned reviewers) -->
