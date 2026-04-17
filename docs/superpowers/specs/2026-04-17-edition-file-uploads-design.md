@@ -33,7 +33,7 @@ Three new file fields added to `scripts/create-pocketbase-collections.ts` and `p
 |--------------|------|-----------------------|--------------------------------------------------------------|-------------------------------------------------------|
 | `coverImage` | file | `20971520` (20 MB)    | `image/jpeg`, `image/png`, `image/webp`, `image/avif`        | Single file.                                          |
 | `modelFile`  | file | `524288000` (500 MB)  | `application/octet-stream` + client-side extension check     | Accepted: `.glb`, `.gltf`, `.obj`, `.ply`.            |
-| `sceneFile`  | file | `0` (unlimited)       | `application/json`                                           | SVX scene JSON.                                       |
+| `sceneDocument` | file | `0` (unlimited)    | `application/json`                                           | SVX scene JSON. Named `sceneDocument` (not `sceneFile`) because `editions.sceneFile:text` already exists as a legacy path string and is still consulted by the workflow page fallback. |
 
 `thumbnail:url` stays as-is for legacy fallback. Access rules match existing edition fields (author/editor writes own, authenticated reads).
 
@@ -53,7 +53,7 @@ Deferring draft creation to first-interaction avoids orphan drafts from accident
 - **`FileUploadField.svelte`** — generic, reusable. Props: `record`, `fieldName`, `accept` (MIME list), `maxSize`, `disabled`, plus a `preview` snippet so callers render the thumbnail/filename/viewer themselves. Uses `XMLHttpRequest` for progress tracking. Emits `uploaded`, `removed`, `error`.
 - **`CoverImageUpload.svelte`** — wraps `FileUploadField` with image MIME types, 20 MB cap, thumbnail preview via `pb.files.getUrl(record, filename, { thumb: '400x300' })`.
 - **`ModelFileUpload.svelte`** — wraps with 500 MB cap, client-side extension check, preview of filename + human-readable size + remove button.
-- **`SceneFileUpload.svelte`** — wraps with JSON-only, preview of filename + "SVX scene" label.
+- **`SceneDocumentUpload.svelte`** — wraps with JSON-only, preview of filename + "SVX scene" label.
 - **`EditionAssetsPanel.svelte`** — composes the three uploaders + a `VoyagerPreview`. Single component mounted in both the redirected workflow page and any future place edition assets are edited. Props: `edition` record; emits `updated` so parent can refresh.
 - **`VoyagerPreview.svelte`** — wraps the existing `VoyagerViewer` with the resolution-order logic from the Preview section below. Owns the rewriter plumbing and blob URL lifecycle.
 
@@ -73,7 +73,7 @@ Deferring draft creation to first-interaction avoids orphan drafts from accident
 
 **`VoyagerPreview.svelte` resolution order:**
 
-1. If `sceneFile` is set → fetch scene JSON, build `fileMap` from `modelFile` + any other record files, rewrite, wrap as `new Blob([JSON.stringify(rewritten)], { type: 'application/json' })`, `URL.createObjectURL(blob)`, pass `root=""` and `document=<blob-url>` to `<voyager-explorer>`. Revoke the blob URL on unmount / scene change.
+1. If `sceneDocument` is set → fetch scene JSON, build `fileMap` from `modelFile` + any other record files, rewrite, wrap as `new Blob([JSON.stringify(rewritten)], { type: 'application/json' })`, `URL.createObjectURL(blob)`, pass `root=""` and `document=<blob-url>` to `<voyager-explorer>`. Revoke the blob URL on unmount / scene change.
 2. Else if `modelFile` is set → synthesize a minimal SVX scene JSON pointing at the model URL, blob it, hand to Voyager.
 3. Else if the edition has legacy `pubNum` values and no uploaded files → current behavior: `root = getEditionRoot(collectionPubNum, editionPubNum)`, `document = 'scene.svx.json'`.
 4. Else → "upload a model to see it here" placeholder.
@@ -116,7 +116,7 @@ R2_SECRET_ACCESS_KEY=
 - **Draft creation failure on first interaction**: error toast; inputs stay disabled; user can retry by re-interacting.
 - **Concurrent re-upload**: cancel the in-flight XHR before starting the new one.
 - **Tab close during upload**: PocketBase receives partial body and rejects it; no orphan file.
-- **`modelFile` removed while `sceneFile` still references it**: `fileMap` lookup misses → Voyager shows broken model. UI shows a warning badge ("Scene references a missing model"). No automatic scene deletion.
+- **`modelFile` removed while `sceneDocument` still references it**: `fileMap` lookup misses → Voyager shows broken model. UI shows a warning badge ("Scene references a missing model"). No automatic scene deletion.
 - **Legacy editions** (no uploaded files): render via existing CDN path (resolution step 3) — no regression.
 
 ### Testing
@@ -134,7 +134,7 @@ Manual verification checklist lives in the PR description.
   - `src/lib/components/uploads/FileUploadField.svelte`
   - `src/lib/components/uploads/CoverImageUpload.svelte`
   - `src/lib/components/uploads/ModelFileUpload.svelte`
-  - `src/lib/components/uploads/SceneFileUpload.svelte`
+  - `src/lib/components/uploads/SceneDocumentUpload.svelte`
   - `src/lib/components/uploads/EditionAssetsPanel.svelte`
   - `src/lib/components/uploads/VoyagerPreview.svelte`
   - `src/lib/utils/svx-uri-rewriter.ts`
