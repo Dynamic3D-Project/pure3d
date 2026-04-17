@@ -17,7 +17,8 @@ export type AuditAction =
 	| 'collaborator_removed'
 	| 'doc_created'
 	| 'doc_updated'
-	| 'doc_deleted';
+	| 'doc_deleted'
+	| 'edition_deleted';
 
 export type AuditTargetType = 'user' | 'collection' | 'edition' | 'documentation';
 

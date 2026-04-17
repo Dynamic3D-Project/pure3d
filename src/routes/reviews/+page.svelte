@@ -20,7 +20,7 @@
 		created: string;
 	}
 
-	let activeTab = $state<'reviews' | 'editions'>('reviews');
+	let activeTab = $state<'reviews' | 'editions'>('editions');
 	let isLoading = $state(true);
 
 	// My Reviews data
@@ -166,21 +166,11 @@
 <div id="reviews-dashboard" class="mx-auto max-w-4xl p-4 lg:p-8">
 	<div class="mb-6">
 		<h1 class="text-2xl font-bold">My Work</h1>
-		<p class="mt-1 text-base-content/60">Your review assignments and authored editions.</p>
+		<p class="mt-1 text-base-content/60">Your authored editions and review assignments.</p>
 	</div>
 
 	<!-- Tabs -->
 	<div class="tabs-bordered mb-6 tabs">
-		<button
-			class="tab"
-			class:tab-active={activeTab === 'reviews'}
-			onclick={() => (activeTab = 'reviews')}
-		>
-			My Reviews
-			{#if pendingAssignments.length > 0}
-				<span class="ml-1 badge badge-sm badge-primary">{pendingAssignments.length}</span>
-			{/if}
-		</button>
 		<button
 			class="tab"
 			class:tab-active={activeTab === 'editions'}
@@ -189,6 +179,16 @@
 			My Editions
 			{#if myEditions.length > 0}
 				<span class="ml-1 badge badge-sm">{myEditions.length}</span>
+			{/if}
+		</button>
+		<button
+			class="tab"
+			class:tab-active={activeTab === 'reviews'}
+			onclick={() => (activeTab = 'reviews')}
+		>
+			My Reviews
+			{#if pendingAssignments.length > 0}
+				<span class="ml-1 badge badge-sm badge-primary">{pendingAssignments.length}</span>
 			{/if}
 		</button>
 	</div>
