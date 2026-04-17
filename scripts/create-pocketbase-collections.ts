@@ -532,6 +532,48 @@ async function main() {
 		await setOpenRules(name);
 	}
 
+	// Configure storage + batch body limit. Missing R2_* env vars → local disk (dev).
+	// Note: PocketBase v0.22+ removed the global request body-size setting. Per-field
+	// `maxSize` on file fields (see editions.modelFile above) is what gates upload size
+	// for regular collection uploads. We still lift the `batch.maxBodySize` here so
+	// large batched payloads aren't artificially capped.
+	const maxUploadBytes = 500 * 1024 * 1024;
+	const settingsPayload: Record<string, unknown> = {
+		batch: {
+			enabled: true,
+			maxRequests: 50,
+			timeout: 3,
+			maxBodySize: maxUploadBytes
+		}
+	};
+
+	const r2Endpoint = process.env.R2_ENDPOINT;
+	const r2Bucket = process.env.R2_BUCKET;
+	const r2AccessKey = process.env.R2_ACCESS_KEY_ID;
+	const r2Secret = process.env.R2_SECRET_ACCESS_KEY;
+
+	if (r2Endpoint && r2Bucket && r2AccessKey && r2Secret) {
+		console.log('📦 Configuring S3 storage (R2)');
+		settingsPayload.s3 = {
+			enabled: true,
+			bucket: r2Bucket,
+			region: 'auto',
+			endpoint: r2Endpoint,
+			accessKey: r2AccessKey,
+			secret: r2Secret,
+			forcePathStyle: true
+		};
+	} else {
+		console.log('📁 Using local-disk storage (R2 env vars not set)');
+	}
+
+	try {
+		// @ts-expect-error — pb.settings.update exists at runtime on the SDK
+		await pb.settings.update(settingsPayload);
+	} catch (err) {
+		console.warn('⚠️  Could not apply storage settings:', (err as Error).message);
+	}
+
 	console.log('\nSchema is ready.\n');
 }
 
