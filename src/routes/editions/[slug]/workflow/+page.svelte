@@ -6,12 +6,15 @@
 	import { pb } from '$lib/database/client';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import {
+		CollectionRole,
 		EditionStatus,
 		GlobalRole,
 		ReviewStage,
 		STATUS_LABELS,
-		EDITION_STATUS_TRANSITIONS
+		EDITION_STATUS_TRANSITIONS,
+		type UserRoleContext
 	} from '$lib/types/roles';
+	import { canDeleteEdition } from '$lib/utils/permissions';
 	import { ReviewDecision } from '$lib/types/reviews';
 	import type { EditionReview, ReviewAssignment } from '$lib/types/reviews';
 	import { updateEditionStatus } from '$lib/database/edition-helpers';
@@ -54,6 +57,14 @@
 	let isAdmin = $derived(
 		authStore.globalRole === GlobalRole.Admin
 	);
+	let collectionRole = $state<CollectionRole | undefined>(undefined);
+	let roleContext = $derived<UserRoleContext>({
+		globalRole: authStore.globalRole,
+		collectionRole
+	});
+	let canDelete = $derived(!!edition && canDeleteEdition(roleContext));
+	let showDeleteModal = $state(false);
+	let isDeleting = $state(false);
 
 	// Concept form state
 	let conceptTitle = $state('');
@@ -244,6 +255,13 @@
 				});
 				isAuthor = edUsers.items.some((r) => r.role === 'author');
 				isReviewer = edUsers.items.some((r) => r.role === 'reviewer');
+
+				if (edition.collectionId) {
+					const collRoles = await pb.collection('collectionUsers').getList(1, 1, {
+						filter: `collection = "${edition.collectionId}" && userId = "${authStore.appUserId}"`
+					});
+					collectionRole = (collRoles.items[0]?.role as CollectionRole) || undefined;
+				}
 			}
 
 			// Load assignments and reviews
@@ -353,6 +371,28 @@
 			toast.error('Failed to save draft');
 		} finally {
 			isSaving = false;
+		}
+	}
+
+	async function deleteEdition() {
+		if (!edition || isDeleting) return;
+		isDeleting = true;
+		try {
+			const deletedId = edition.id;
+			const deletedTitle = edition.title;
+			const deletedStatus = edition.status;
+			await pb.collection('editions').delete(deletedId);
+			await logAudit('edition_deleted', 'edition', deletedId, authStore.user?.email || '', {
+				title: deletedTitle,
+				status: deletedStatus
+			});
+			toast.success('Edition deleted');
+			showDeleteModal = false;
+			goto(`${base}/editions`);
+		} catch (error) {
+			console.error('Error deleting edition:', error);
+			toast.error('Failed to delete edition');
+			isDeleting = false;
 		}
 	}
 
@@ -466,6 +506,15 @@
 				<div class="flex flex-wrap items-center gap-3">
 					<h1 class="text-2xl font-bold">{edition.title || 'Untitled Edition'}</h1>
 					<StatusBadge status={edition.status} />
+					{#if canDelete}
+						<button
+							type="button"
+							class="btn btn-sm btn-error btn-outline ms-auto"
+							onclick={() => (showDeleteModal = true)}
+						>
+							Delete Edition
+						</button>
+					{/if}
 				</div>
 				{#if edition.collectionTitle}
 					<p class="mt-1 text-base-content/60">in {edition.collectionTitle}</p>
@@ -807,12 +856,6 @@
 		<!-- Status View (default for authors viewing progress) -->
 		{#if viewMode === 'status-view'}
 			<div class="space-y-6">
-				<!-- Timeline -->
-				<div class="rounded-box border border-base-300 bg-base-100 p-6">
-					<h2 class="mb-4 text-lg font-semibold">Progress</h2>
-					<WorkflowTimeline currentStatus={edition.status} />
-				</div>
-
 				<!-- Review feedback (if any) -->
 				{#if displayReviews.length > 0}
 					<div class="rounded-box border border-base-300 bg-base-100 p-6">
@@ -917,3 +960,42 @@
 		{/if}
 	{/if}
 </div>
+
+{#if showDeleteModal && edition}
+	<div class="modal modal-open">
+		<div class="modal-box">
+			<h3 class="text-lg font-bold">Delete edition?</h3>
+			<p class="py-4">
+				This will permanently delete <strong>{edition.title || 'this edition'}</strong>. This
+				action cannot be undone.
+			</p>
+			<div class="modal-action">
+				<button
+					type="button"
+					class="btn"
+					onclick={() => (showDeleteModal = false)}
+					disabled={isDeleting}
+				>
+					Cancel
+				</button>
+				<button
+					type="button"
+					class="btn btn-error"
+					onclick={deleteEdition}
+					disabled={isDeleting}
+				>
+					{#if isDeleting}
+						<span class="loading loading-sm loading-spinner"></span>
+					{/if}
+					Delete
+				</button>
+			</div>
+		</div>
+		<button
+			type="button"
+			class="modal-backdrop"
+			onclick={() => !isDeleting && (showDeleteModal = false)}
+			aria-label="Close"
+		></button>
+	</div>
+{/if}
