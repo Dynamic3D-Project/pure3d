@@ -19,7 +19,7 @@
 	};
 
 	let {
-		record,
+		record = $bindable(),
 		collectionName,
 		fieldName,
 		accept,
@@ -32,13 +32,22 @@
 		emptyPreview
 	}: Props = $props();
 
-	let currentFilename = $derived((record as any)[fieldName] as string | '');
+	let currentFilename = $derived((record[fieldName] as string | undefined) ?? '');
 	let progress = $state(0);
 	let uploading = $state(false);
 	let errorMsg = $state('');
 	let pendingFile = $state<File | null>(null);
 	let currentXhr: XMLHttpRequest | null = null;
 	let inputEl: HTMLInputElement | undefined = $state();
+
+	$effect(() => {
+		return () => {
+			if (currentXhr) {
+				currentXhr.abort();
+				currentXhr = null;
+			}
+		};
+	});
 
 	function humanSize(n: number): string {
 		if (n < 1024) return `${n} B`;
@@ -135,7 +144,9 @@
 	}
 
 	function onFilePicked(e: Event) {
-		const file = (e.target as HTMLInputElement).files?.[0];
+		const target = e.target as HTMLInputElement;
+		const file = target.files?.[0];
+		target.value = '';
 		if (file) upload(file);
 	}
 
