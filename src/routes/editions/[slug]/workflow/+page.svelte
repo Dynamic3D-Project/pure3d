@@ -30,9 +30,10 @@
 	import ReviewFeedbackForm from '$lib/components/workflow/ReviewFeedbackForm.svelte';
 	import ReviewFeedbackList from '$lib/components/workflow/ReviewFeedbackList.svelte';
 	import RichTextEditor from '$lib/components/ui/RichTextEditor.svelte';
-	import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
-	import { getEditionRoot, DEFAULT_VOYAGER_VERSION } from '$lib/utils/asset-urls';
+	import EditionAssetsPanel from '$lib/components/uploads/EditionAssetsPanel.svelte';
+	import { DEFAULT_VOYAGER_VERSION } from '$lib/utils/asset-urls';
 	import toast from 'svelte-french-toast';
+	import type { RecordModel } from 'pocketbase';
 
 	interface Edition {
 		id: string;
@@ -46,6 +47,7 @@
 	}
 
 	let edition = $state<Edition | null>(null);
+	let editionRecord = $state<RecordModel | null>(null);
 	let isLoading = $state(true);
 	let assignments = $state<ReviewAssignment[]>([]);
 	let reviews = $state<EditionReview[]>([]);
@@ -92,10 +94,6 @@
 	let collectionPubNum = $state(0);
 	let sceneFile = $state('');
 	let voyagerVersion = $state(DEFAULT_VOYAGER_VERSION);
-	let hasScene = $derived(!!(sceneFile && collectionPubNum > 0 && editionPubNum > 0));
-	let voyagerRoot = $derived(
-		hasScene ? getEditionRoot(collectionPubNum, editionPubNum) : ''
-	);
 
 	function jsonArrayToString(val: unknown): string {
 		if (Array.isArray(val)) return val.join(', ');
@@ -216,6 +214,7 @@
 			const edRecord = await pb.collection('editions').getOne(slug, {
 				expand: 'collection'
 			});
+			editionRecord = edRecord;
 			edition = {
 				id: edRecord.id,
 				title: edRecord.dcTitle || edRecord.title || '',
@@ -585,53 +584,16 @@
 
 				<!-- Two-column layout (mirrors viewer) -->
 				<div class="relative flex flex-col gap-8 transition-all duration-300 lg:flex-row lg:items-start">
-					<!-- Left Column: 3D Viewer or Upload -->
+					<!-- Left Column: 3D Viewer + Asset Uploads -->
 					<div class="min-w-0 flex-1 space-y-4">
-						{#if hasScene}
-							<div class="card overflow-hidden bg-base-200 shadow-xl">
-								<div class="card-body p-0">
-									<VoyagerViewer
-										url={voyagerRoot}
-										document={sceneFile}
-										title={conceptTitle}
-										direct={true}
-										voyagerVersion={voyagerVersion}
-									/>
-								</div>
-							</div>
-						{:else}
-							<!-- Upload placeholder -->
-							<div class="card overflow-hidden bg-base-200 shadow-xl opacity-50">
-								<div class="flex aspect-video items-center justify-center">
-									<div class="text-center text-base-content/40">
-										<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="mx-auto mb-2 size-12">
-											<path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
-										</svg>
-										<p class="text-sm font-medium">3D Model Preview</p>
-										<p class="mt-1 text-xs">Upload a model to see it here</p>
-									</div>
-								</div>
-								<div class="border-t border-base-300 p-3">
-									<div class="grid grid-cols-2 gap-2">
-										<button type="button" class="btn btn-outline btn-sm" disabled>Upload Model</button>
-										<button type="button" class="btn btn-outline btn-sm" disabled>Upload Scene</button>
-									</div>
-								</div>
-							</div>
+						{#if editionRecord}
+							<EditionAssetsPanel
+								bind:edition={editionRecord}
+								{collectionPubNum}
+								{editionPubNum}
+								onupdated={(r) => (editionRecord = r)}
+							/>
 						{/if}
-
-						<!-- Cover image upload (below viewer) -->
-						<div class="flex items-center gap-3 opacity-50">
-							<div class="flex size-12 shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-base-300 bg-base-200">
-								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="size-5 text-base-content/40">
-									<path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" />
-								</svg>
-							</div>
-							<div>
-								<button type="button" class="btn btn-outline btn-xs" disabled>Upload Cover Image</button>
-								<p class="mt-0.5 text-xs text-base-content/40">JPG, PNG, WebP</p>
-							</div>
-						</div>
 					</div>
 
 					<!-- Right Column: Tabbed Sidebar -->
