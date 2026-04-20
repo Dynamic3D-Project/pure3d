@@ -20,6 +20,8 @@ export const load: PageLoad = async ({ params }) => {
 			title: collectionRecord.title,
 			description: collectionRecord.dcAbstract || '',
 			thumbnail,
+			isVisible: collectionRecord.isVisible !== false,
+			pubNum: collectionRecord.pubNum || 0,
 			editionIds: []
 		};
 
