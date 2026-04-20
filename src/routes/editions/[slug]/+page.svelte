@@ -17,11 +17,12 @@
 		EditionRole,
 		EditionStatus,
 		EDITION_ROLE_LABELS,
+		EDITION_STATUS_TRANSITIONS,
 		GlobalRole,
 		Permission,
 		type UserRoleContext
 	} from '$lib/types/roles';
-	import { hasPermission } from '$lib/utils/permissions';
+	import { hasPermission, canUserTransitionStatus } from '$lib/utils/permissions';
 	import { resolvePageContext } from '$lib/utils/page-permissions';
 	import { logAudit } from '$lib/utils/audit';
 	import toast from 'svelte-french-toast';
@@ -203,20 +204,23 @@
 
 	const editionRoleValues = Object.values(EditionRole) as string[];
 
-	let canManagePage = $derived(
-		hasPermission(permissionContext, Permission.EditionEdit) ||
-			hasPermission(permissionContext, Permission.EditionDelete) ||
-			hasPermission(permissionContext, Permission.WorkflowSubmit) ||
-			hasPermission(permissionContext, Permission.WorkflowReview) ||
-			hasPermission(permissionContext, Permission.WorkflowApprove) ||
-			hasPermission(permissionContext, Permission.WorkflowPublish)
-	);
-
 	let canManageMembers = $derived(
 		hasPermission(permissionContext, Permission.EditionEdit) &&
 			(permissionContext.globalRole === GlobalRole.Admin ||
 				permissionContext.collectionRole === 'owner' ||
 				permissionContext.editionRole === EditionRole.Author)
+	);
+
+	let hasActionableTransition = $derived(
+		(EDITION_STATUS_TRANSITIONS[currentStatus] ?? []).some((target) =>
+			canUserTransitionStatus(permissionContext, currentStatus, target)
+		)
+	);
+
+	let canManagePage = $derived(
+		hasPermission(permissionContext, Permission.EditionDelete) ||
+			canManageMembers ||
+			hasActionableTransition
 	);
 
 	let canDelete = $derived(hasPermission(permissionContext, Permission.EditionDelete));
