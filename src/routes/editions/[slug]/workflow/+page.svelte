@@ -552,7 +552,7 @@
 						<div class="flex items-center gap-3">
 							<input
 								type="text"
-								class="input w-full border-0 bg-transparent text-3xl font-bold placeholder:text-base-content/30 focus:outline-none md:text-4xl"
+								class="input input-bordered w-full text-3xl font-bold placeholder:text-base-content/30 md:text-4xl h-auto py-3"
 								bind:value={conceptTitle}
 								required
 								placeholder="Edition title"
@@ -561,7 +561,7 @@
 						</div>
 						<input
 							type="text"
-							class="input mt-1 w-full border-0 bg-transparent text-base-content/70 placeholder:text-base-content/30 focus:outline-none"
+							class="input input-bordered mt-2 w-full text-base-content/70 placeholder:text-base-content/30"
 							bind:value={conceptDcCreator}
 							placeholder="Authors (comma-separated)"
 						/>
@@ -737,16 +737,16 @@
 					<a href="{base}/editions/{edition.id}" class="link text-sm link-primary mr-auto">View Edition</a>
 					<button
 						type="button"
-						class="btn btn-ghost btn-sm"
+						class="btn btn-primary btn-sm"
 						onclick={saveDraft}
 						disabled={isSaving || isSubmitting}
 					>
 						{#if isSaving}
 							<span class="loading loading-xs loading-spinner"></span>
 						{/if}
-						Save Draft
+						Draft Proposal
 					</button>
-					<button type="submit" class="btn btn-primary btn-sm" disabled={isSaving || isSubmitting}>
+					<button type="submit" class="btn btn-outline btn-primary btn-sm" disabled={isSaving || isSubmitting}>
 						{#if isSubmitting}
 							<span class="loading loading-xs loading-spinner"></span>
 						{/if}

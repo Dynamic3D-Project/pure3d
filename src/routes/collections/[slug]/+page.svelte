@@ -44,7 +44,7 @@
 	let canManageUsers = $derived(hasPermission(permissionContext, Permission.CollectionManageUsers));
 	let canDelete = $derived(hasPermission(permissionContext, Permission.CollectionDelete));
 	let canCreateEdition = $derived(hasPermission(permissionContext, Permission.EditionCreate));
-	let canManagePage = $derived(canEdit || canManageUsers || canDelete);
+	let canManagePage = $derived(canManageUsers || canDelete);
 
 	onMount(async () => {
 		editTitle = collection.title;
