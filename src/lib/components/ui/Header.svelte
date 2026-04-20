@@ -10,8 +10,6 @@
 	import menuItems from '$lib/models/menu-itmes';
 	import { page } from '$app/stores';
 
-	import ThemeChange from '$lib/components/ui/ThemeChange/ThemeChange.svelte';
-
 	interface Props {
 		showSearch?: boolean;
 	}
@@ -88,7 +86,6 @@
 			</div>
 
 			<!-- <FeedbackButton class="hidden sm:block" /> -->
-			<ThemeChange class="z-50 ml-auto sm:ml-14 " />
 
 			<Login />
 		</header>
