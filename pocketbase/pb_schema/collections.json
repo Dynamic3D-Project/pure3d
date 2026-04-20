@@ -24,7 +24,6 @@
 				"required": true,
 				"maxSelect": 1,
 				"values": [
-					"superadmin",
 					"admin",
 					"editorial_board",
 					"viewer"
@@ -461,6 +460,45 @@
 				"maxSelect": 1,
 				"collectionId": "collections",
 				"cascadeDelete": true
+			},
+			{
+				"name": "coverImage",
+				"type": "file",
+				"required": false,
+				"maxSelect": 1,
+				"maxSize": 20971520,
+				"mimeTypes": [
+					"image/jpeg",
+					"image/png",
+					"image/webp",
+					"image/avif"
+				],
+				"thumbs": [
+					"400x300",
+					"100x100"
+				]
+			},
+			{
+				"name": "modelFile",
+				"type": "file",
+				"required": false,
+				"maxSelect": 1,
+				"maxSize": 524288000,
+				"mimeTypes": [
+					"application/octet-stream",
+					"model/gltf-binary",
+					"model/gltf+json"
+				]
+			},
+			{
+				"name": "sceneDocument",
+				"type": "file",
+				"required": false,
+				"maxSelect": 1,
+				"maxSize": 0,
+				"mimeTypes": [
+					"application/json"
+				]
 			}
 		],
 		"indexes": [

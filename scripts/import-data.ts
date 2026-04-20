@@ -18,7 +18,6 @@ const pb = new PocketBase(PB_URL);
 function mapGlobalRole(role?: string) {
 	switch (role) {
 		case 'root':
-			return 'superadmin';
 		case 'admin':
 			return 'admin';
 		case 'editorial_board':

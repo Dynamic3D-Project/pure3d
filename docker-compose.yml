@@ -36,6 +36,10 @@ services:
       - PUBLIC_POCKETBASE_URL=${PUBLIC_POCKETBASE_URL:-http://localhost:8090}
       - POCKETBASE_ADMIN_EMAIL=${POCKETBASE_ADMIN_EMAIL:-admin@admin.local}
       - POCKETBASE_ADMIN_PASSWORD=${POCKETBASE_ADMIN_PASSWORD:-1234567890}
+      - R2_ENDPOINT=${R2_ENDPOINT:-}
+      - R2_BUCKET=${R2_BUCKET:-}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
     depends_on:
       pocketbase:
         condition: service_healthy

@@ -6,12 +6,15 @@
 	import { pb } from '$lib/database/client';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import {
+		CollectionRole,
 		EditionStatus,
 		GlobalRole,
 		ReviewStage,
 		STATUS_LABELS,
-		EDITION_STATUS_TRANSITIONS
+		EDITION_STATUS_TRANSITIONS,
+		type UserRoleContext
 	} from '$lib/types/roles';
+	import { canDeleteEdition } from '$lib/utils/permissions';
 	import { ReviewDecision } from '$lib/types/reviews';
 	import type { EditionReview, ReviewAssignment } from '$lib/types/reviews';
 	import { updateEditionStatus } from '$lib/database/edition-helpers';
@@ -26,7 +29,11 @@
 	import CollaboratorManager from '$lib/components/workflow/CollaboratorManager.svelte';
 	import ReviewFeedbackForm from '$lib/components/workflow/ReviewFeedbackForm.svelte';
 	import ReviewFeedbackList from '$lib/components/workflow/ReviewFeedbackList.svelte';
+	import RichTextEditor from '$lib/components/ui/RichTextEditor.svelte';
+	import EditionAssetsPanel from '$lib/components/uploads/EditionAssetsPanel.svelte';
+	import { DEFAULT_VOYAGER_VERSION } from '$lib/utils/asset-urls';
 	import toast from 'svelte-french-toast';
+	import type { RecordModel } from 'pocketbase';
 
 	interface Edition {
 		id: string;
@@ -40,6 +47,7 @@
 	}
 
 	let edition = $state<Edition | null>(null);
+	let editionRecord = $state<RecordModel | null>(null);
 	let isLoading = $state(true);
 	let assignments = $state<ReviewAssignment[]>([]);
 	let reviews = $state<EditionReview[]>([]);
@@ -49,15 +57,52 @@
 	let myAssignment = $state<ReviewAssignment | null>(null);
 	let myExistingReview = $state<EditionReview | null>(null);
 	let isAdmin = $derived(
-		authStore.globalRole === GlobalRole.SuperAdmin || authStore.globalRole === GlobalRole.Admin
+		authStore.globalRole === GlobalRole.Admin
 	);
+	let collectionRole = $state<CollectionRole | undefined>(undefined);
+	let roleContext = $derived<UserRoleContext>({
+		globalRole: authStore.globalRole,
+		collectionRole
+	});
+	let canDelete = $derived(!!edition && canDeleteEdition(roleContext));
+	let showDeleteModal = $state(false);
+	let isDeleting = $state(false);
 
 	// Concept form state
 	let conceptTitle = $state('');
 	let conceptDescription = $state('');
 	let conceptPeerReview = $state(false);
+	let conceptDcSubtitle = $state('');
+	let conceptDcCreator = $state('');
+	let conceptDcContributor = $state('');
+	let conceptDcInstitution = $state('');
+	let conceptDcSubject = $state('');
+	let conceptDcKeyword = $state('');
+	let conceptDcCoveragePlace = $state('');
+	let conceptDcLanguage = $state('');
+	let conceptDcRightsHolder = $state('');
+	let conceptDcRightsLicense = $state('');
 	let isSaving = $state(false);
 	let isSubmitting = $state(false);
+
+	// Viewer-mirror layout state
+	let activeFormTab = $state<'description' | 'metadata' | 'peer-review' | 'team'>('description');
+	let isSidebarCollapsed = $state(false);
+
+	// Scene/viewer state
+	let editionPubNum = $state(0);
+	let collectionPubNum = $state(0);
+	let sceneFile = $state('');
+	let voyagerVersion = $state(DEFAULT_VOYAGER_VERSION);
+
+	function jsonArrayToString(val: unknown): string {
+		if (Array.isArray(val)) return val.join(', ');
+		return '';
+	}
+
+	function stringToJsonArray(val: string): string[] {
+		return val.split(',').map((s) => s.trim()).filter(Boolean);
+	}
 
 	// Collections for concept form
 	let collections = $state<{ id: string; title: string }[]>([]);
@@ -169,6 +214,7 @@
 			const edRecord = await pb.collection('editions').getOne(slug, {
 				expand: 'collection'
 			});
+			editionRecord = edRecord;
 			edition = {
 				id: edRecord.id,
 				title: edRecord.dcTitle || edRecord.title || '',
@@ -184,6 +230,22 @@
 			conceptTitle = edition.title;
 			conceptDescription = edition.description;
 			conceptPeerReview = edition.peerReviewRequested;
+			conceptDcSubtitle = edRecord.dcSubtitle || '';
+			conceptDcCreator = jsonArrayToString(edRecord.dcCreator);
+			conceptDcContributor = jsonArrayToString(edRecord.dcContributor);
+			conceptDcInstitution = jsonArrayToString(edRecord.dcInstitution);
+			conceptDcSubject = jsonArrayToString(edRecord.dcSubject);
+			conceptDcKeyword = jsonArrayToString(edRecord.dcKeyword);
+			conceptDcCoveragePlace = edRecord.dcCoveragePlace || '';
+			conceptDcLanguage = jsonArrayToString(edRecord.dcLanguage);
+			conceptDcRightsHolder = edRecord.dcRightsHolder || '';
+			conceptDcRightsLicense = edRecord.dcRightsLicense || '';
+
+			// Initialize viewer/scene data
+			editionPubNum = edRecord.pubNum || 0;
+			collectionPubNum = edRecord.expand?.collection?.pubNum || 0;
+			sceneFile = edRecord.settingsSceneFile || edRecord.sceneFile || '';
+			voyagerVersion = edRecord.settingsAuthorToolVersion || DEFAULT_VOYAGER_VERSION;
 
 			// Load user's relationship to this edition
 			if (authStore.appUserId) {
@@ -192,6 +254,13 @@
 				});
 				isAuthor = edUsers.items.some((r) => r.role === 'author');
 				isReviewer = edUsers.items.some((r) => r.role === 'reviewer');
+
+				if (edition.collectionId) {
+					const collRoles = await pb.collection('collectionUsers').getList(1, 1, {
+						filter: `collection = "${edition.collectionId}" && userId = "${authStore.appUserId}"`
+					});
+					collectionRole = (collRoles.items[0]?.role as CollectionRole) || undefined;
+				}
 			}
 
 			// Load assignments and reviews
@@ -267,15 +336,31 @@
 	}
 
 	// --- Concept Form Actions ---
+	function buildEditionData() {
+		return {
+			title: conceptTitle.trim(),
+			dcTitle: conceptTitle.trim(),
+			dcSubtitle: conceptDcSubtitle.trim(),
+			dcAbstract: conceptDescription,
+			dcDescription: conceptDescription,
+			dcCreator: stringToJsonArray(conceptDcCreator),
+			dcContributor: stringToJsonArray(conceptDcContributor),
+			dcInstitution: stringToJsonArray(conceptDcInstitution),
+			dcSubject: stringToJsonArray(conceptDcSubject),
+			dcKeyword: stringToJsonArray(conceptDcKeyword),
+			dcCoveragePlace: conceptDcCoveragePlace.trim(),
+			dcLanguage: stringToJsonArray(conceptDcLanguage),
+			dcRightsHolder: conceptDcRightsHolder.trim(),
+			dcRightsLicense: conceptDcRightsLicense.trim(),
+			peerReviewRequested: conceptPeerReview
+		};
+	}
+
 	async function saveDraft() {
 		if (!edition) return;
 		isSaving = true;
 		try {
-			await pb.collection('editions').update(edition.id, {
-				dcTitle: conceptTitle,
-				dcAbstract: conceptDescription,
-				peerReviewRequested: conceptPeerReview
-			});
+			await pb.collection('editions').update(edition.id, buildEditionData());
 			edition.title = conceptTitle;
 			edition.description = conceptDescription;
 			edition.peerReviewRequested = conceptPeerReview;
@@ -288,6 +373,28 @@
 		}
 	}
 
+	async function deleteEdition() {
+		if (!edition || isDeleting) return;
+		isDeleting = true;
+		try {
+			const deletedId = edition.id;
+			const deletedTitle = edition.title;
+			const deletedStatus = edition.status;
+			await pb.collection('editions').delete(deletedId);
+			await logAudit('edition_deleted', 'edition', deletedId, authStore.user?.email || '', {
+				title: deletedTitle,
+				status: deletedStatus
+			});
+			toast.success('Edition deleted');
+			showDeleteModal = false;
+			goto(`${base}/editions`);
+		} catch (error) {
+			console.error('Error deleting edition:', error);
+			toast.error('Failed to delete edition');
+			isDeleting = false;
+		}
+	}
+
 	async function submitConcept() {
 		if (!edition) return;
 		if (!conceptTitle.trim()) {
@@ -296,11 +403,7 @@
 		}
 		isSubmitting = true;
 		try {
-			await pb.collection('editions').update(edition.id, {
-				dcTitle: conceptTitle,
-				dcAbstract: conceptDescription,
-				peerReviewRequested: conceptPeerReview
-			});
+			await pb.collection('editions').update(edition.id, buildEditionData());
 
 			await updateEditionStatus(edition.id, EditionStatus.ConceptSubmitted);
 
@@ -379,7 +482,10 @@
 	}
 
 	function formatDate(dateStr: string): string {
-		return new Date(dateStr).toLocaleDateString('en-US', {
+		if (!dateStr) return '';
+		const d = new Date(dateStr);
+		if (isNaN(d.getTime())) return '';
+		return d.toLocaleDateString('en-US', {
 			month: 'short',
 			day: 'numeric',
 			year: 'numeric'
@@ -387,125 +493,267 @@
 	}
 </script>
 
-<div id="edition-workflow-page" class="mx-auto max-w-4xl p-4 lg:p-8">
+<div id="edition-workflow-page" class="mx-auto p-4 lg:p-8" class:max-w-7xl={edition && viewMode === 'concept-form'} class:max-w-4xl={!edition || viewMode !== 'concept-form'}>
 	{#if isLoading}
 		<div class="flex items-center justify-center py-12">
 			<span class="loading loading-lg loading-spinner"></span>
 		</div>
 	{:else if edition}
 		<!-- Header -->
-		<div class="mb-6">
-			<div class="flex flex-wrap items-center gap-3">
-				<h1 class="text-2xl font-bold">{edition.title || 'Untitled Edition'}</h1>
-				<StatusBadge status={edition.status} />
-			</div>
-			{#if edition.collectionTitle}
-				<p class="mt-1 text-base-content/60">in {edition.collectionTitle}</p>
-			{/if}
-			<a href="{base}/editions/{edition.id}" class="mt-2 inline-block link text-sm link-primary">
-				View Edition
-			</a>
-		</div>
-
-		<!-- Concept Proposal Form -->
-		{#if viewMode === 'concept-form'}
-			<div class="rounded-box border border-base-300 bg-base-100 p-6">
-				<h2 class="mb-4 text-xl font-semibold">
-					{edition.status === EditionStatus.ConceptRejected
-						? 'Revise & Resubmit Concept'
-						: 'Concept Proposal'}
-				</h2>
-
-				<!-- Show rejection feedback if resubmitting -->
-				{#if edition.status === EditionStatus.ConceptRejected && previousFeedback.length > 0}
-					<div class="mb-4 alert alert-warning">
-						<div>
-							<p class="font-semibold">Previous Review Feedback</p>
-							{#each previousFeedback as fb (fb.created)}
-								{#if fb.comment}
-									<p class="mt-1 text-sm">{fb.comment}</p>
-								{/if}
-							{/each}
-						</div>
-					</div>
-				{/if}
-
-				<form
-					onsubmit={(e) => {
-						e.preventDefault();
-						submitConcept();
-					}}
-					class="space-y-4"
-				>
-					<div class="form-control">
-						<label class="label" for="concept-title">
-							<span class="label-text font-semibold">Title</span>
-						</label>
-						<input
-							id="concept-title"
-							type="text"
-							class="input-bordered input w-full"
-							bind:value={conceptTitle}
-							placeholder="Edition title"
-							required
-						/>
-					</div>
-
-					<div class="form-control">
-						<label class="label" for="concept-description">
-							<span class="label-text font-semibold">Description</span>
-						</label>
-						<textarea
-							id="concept-description"
-							class="textarea-bordered textarea w-full"
-							rows="6"
-							bind:value={conceptDescription}
-							placeholder="Describe your edition concept..."
-						></textarea>
-					</div>
-
-					<div class="form-control">
-						<label class="label cursor-pointer justify-start gap-3">
-							<input type="checkbox" class="checkbox" bind:checked={conceptPeerReview} />
-							<div>
-								<span class="label-text font-semibold">Request peer review</span>
-								<p class="text-xs text-base-content/60">
-									If enabled, the edition will go through alpha and final review stages before
-									publication.
-								</p>
-							</div>
-						</label>
-					</div>
-
-					<div class="flex gap-2">
+		{#if viewMode !== 'concept-form'}
+			<div class="mb-6">
+				<div class="flex flex-wrap items-center gap-3">
+					<h1 class="text-2xl font-bold">{edition.title || 'Untitled Edition'}</h1>
+					<StatusBadge status={edition.status} />
+					{#if canDelete}
 						<button
 							type="button"
-							class="btn btn-ghost"
-							onclick={saveDraft}
-							disabled={isSaving || isSubmitting}
+							class="btn btn-sm btn-error btn-outline ms-auto"
+							onclick={() => (showDeleteModal = true)}
 						>
-							{#if isSaving}
-								<span class="loading loading-sm loading-spinner"></span>
-							{/if}
-							Save Draft
+							Delete Edition
 						</button>
-						<button type="submit" class="btn btn-primary" disabled={isSaving || isSubmitting}>
-							{#if isSubmitting}
-								<span class="loading loading-sm loading-spinner"></span>
-							{/if}
-							Submit for Review
-						</button>
-					</div>
-				</form>
+					{/if}
+				</div>
+				{#if edition.collectionTitle}
+					<p class="mt-1 text-base-content/60">in {edition.collectionTitle}</p>
+				{/if}
+				<a href="{base}/editions/{edition.id}" class="mt-2 inline-block link text-sm link-primary">
+					View Edition
+				</a>
 			</div>
+		{/if}
 
-			<!-- Collaborator Management (concept form view) -->
-			{#if edition}
-				<div class="mt-6 rounded-box border border-base-300 bg-base-100 p-6">
-					<h2 class="mb-4 text-lg font-semibold">Collaborators</h2>
-					<CollaboratorManager editionId={edition.id} isReadOnly={!canManageCollaborators} />
+		<!-- Workflow Timeline (always visible) -->
+		<div class="mb-6">
+			<WorkflowTimeline currentStatus={edition.status} />
+		</div>
+
+		<!-- Concept Proposal Form — mirrors viewer layout -->
+		{#if viewMode === 'concept-form'}
+			<!-- Show rejection feedback if resubmitting -->
+			{#if edition.status === EditionStatus.ConceptRejected && previousFeedback.length > 0}
+				<div class="mb-4 alert alert-warning">
+					<div>
+						<p class="font-semibold">Previous Review Feedback</p>
+						{#each previousFeedback as fb (fb.created)}
+							{#if fb.comment}
+								<p class="mt-1 text-sm">{fb.comment}</p>
+							{/if}
+						{/each}
+					</div>
 				</div>
 			{/if}
+
+			<form onsubmit={(e) => { e.preventDefault(); submitConcept(); }}>
+				<!-- Header: editable title + authors (mirrors viewer header) -->
+				<div class="mb-6 flex items-start gap-4">
+					<div class="min-w-0 flex-1">
+						<div class="flex items-center gap-3">
+							<input
+								type="text"
+								class="input w-full border-0 bg-transparent text-3xl font-bold placeholder:text-base-content/30 focus:outline-none md:text-4xl"
+								bind:value={conceptTitle}
+								required
+								placeholder="Edition title"
+							/>
+							<StatusBadge status={edition.status} />
+						</div>
+						<input
+							type="text"
+							class="input mt-1 w-full border-0 bg-transparent text-base-content/70 placeholder:text-base-content/30 focus:outline-none"
+							bind:value={conceptDcCreator}
+							placeholder="Authors (comma-separated)"
+						/>
+						{#if edition.collectionTitle}
+							<p class="mt-1 text-sm text-base-content/50">in {edition.collectionTitle}</p>
+						{/if}
+					</div>
+					<!-- Sidebar toggle -->
+					<button
+						type="button"
+						onclick={() => (isSidebarCollapsed = !isSidebarCollapsed)}
+						class="btn hidden btn-ghost btn-sm lg:flex"
+					>
+						{isSidebarCollapsed ? 'Show details' : 'Hide details'}
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform duration-300" class:rotate-180={isSidebarCollapsed} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+						</svg>
+					</button>
+				</div>
+
+				<!-- Two-column layout (mirrors viewer) -->
+				<div class="relative flex flex-col gap-8 transition-all duration-300 lg:flex-row lg:items-start">
+					<!-- Left Column: 3D Viewer + Asset Uploads -->
+					<div class="min-w-0 flex-1 space-y-4">
+						{#if editionRecord}
+							<EditionAssetsPanel
+								bind:edition={editionRecord}
+								{collectionPubNum}
+								{editionPubNum}
+								onupdated={(r) => (editionRecord = r)}
+							/>
+						{/if}
+					</div>
+
+					<!-- Right Column: Tabbed Sidebar -->
+					<div
+						class="shrink-0 transition-all duration-300 ease-in-out"
+						class:lg:w-96={!isSidebarCollapsed}
+						class:lg:w-0={isSidebarCollapsed}
+					>
+						<div class="lg:sticky lg:top-4">
+							<div
+								class="card overflow-hidden bg-base-200 shadow-xl transition-all duration-300"
+								class:lg:w-0={isSidebarCollapsed}
+								class:lg:opacity-0={isSidebarCollapsed}
+								class:lg:invisible={isSidebarCollapsed}
+							>
+								<div class="w-96 max-w-full p-0">
+									<!-- Tabs -->
+									<div role="tablist" class="tabs-bordered tabs bg-base-300">
+										<button type="button" role="tab" class="tab flex-1" class:tab-active={activeFormTab === 'description'} onclick={() => (activeFormTab = 'description')}>
+											Description
+										</button>
+										<button type="button" role="tab" class="tab flex-1" class:tab-active={activeFormTab === 'metadata'} onclick={() => (activeFormTab = 'metadata')}>
+											Metadata
+										</button>
+										<button type="button" role="tab" class="tab flex-1" class:tab-active={activeFormTab === 'peer-review'} onclick={() => (activeFormTab = 'peer-review')}>
+											Review
+										</button>
+										<button type="button" role="tab" class="tab flex-1" class:tab-active={activeFormTab === 'team'} onclick={() => (activeFormTab = 'team')}>
+											Team
+										</button>
+									</div>
+
+									<!-- Tab Content -->
+									<div class="p-5">
+										{#if activeFormTab === 'description'}
+											<div class="space-y-4">
+												<div>
+													<span class="mb-2 block text-sm font-semibold">Abstract</span>
+													<RichTextEditor content={conceptDescription} onchange={(html) => (conceptDescription = html)} minHeight="150px" />
+												</div>
+												<div class="form-control">
+													<label class="label py-0.5" for="concept-keyword">
+														<span class="label-text text-sm font-semibold">Tags / Keywords</span>
+														<span class="label-text-alt text-xs">comma-separated</span>
+													</label>
+													<input id="concept-keyword" type="text" class="input-bordered input input-sm" bind:value={conceptDcKeyword} placeholder="ceramic, sculpture, museum" />
+												</div>
+											</div>
+
+										{:else if activeFormTab === 'metadata'}
+											<div class="space-y-3">
+												<div class="form-control">
+													<label class="label py-0.5" for="concept-subtitle">
+														<span class="label-text text-sm">Subtitle</span>
+													</label>
+													<input id="concept-subtitle" type="text" class="input-bordered input input-sm" bind:value={conceptDcSubtitle} />
+												</div>
+												<div class="form-control">
+													<label class="label py-0.5" for="concept-contributor">
+														<span class="label-text text-sm">Contributors</span>
+													</label>
+													<input id="concept-contributor" type="text" class="input-bordered input input-sm" bind:value={conceptDcContributor} placeholder="comma-separated" />
+												</div>
+												<div class="form-control">
+													<label class="label py-0.5" for="concept-institution">
+														<span class="label-text text-sm">Institutions</span>
+													</label>
+													<input id="concept-institution" type="text" class="input-bordered input input-sm" bind:value={conceptDcInstitution} placeholder="comma-separated" />
+												</div>
+												<div class="form-control">
+													<label class="label py-0.5" for="concept-subject">
+														<span class="label-text text-sm">Subjects</span>
+													</label>
+													<input id="concept-subject" type="text" class="input-bordered input input-sm" bind:value={conceptDcSubject} placeholder="comma-separated" />
+												</div>
+												<div class="grid grid-cols-2 gap-3">
+													<div class="form-control">
+														<label class="label py-0.5" for="concept-place">
+															<span class="label-text text-sm">Place</span>
+														</label>
+														<input id="concept-place" type="text" class="input-bordered input input-sm" bind:value={conceptDcCoveragePlace} placeholder="Rome, Italy" />
+													</div>
+													<div class="form-control">
+														<label class="label py-0.5" for="concept-language">
+															<span class="label-text text-sm">Languages</span>
+														</label>
+														<input id="concept-language" type="text" class="input-bordered input input-sm" bind:value={conceptDcLanguage} placeholder="en, nl" />
+													</div>
+												</div>
+												<div class="grid grid-cols-2 gap-3">
+													<div class="form-control">
+														<label class="label py-0.5" for="concept-rights-holder">
+															<span class="label-text text-sm">Rights Holder</span>
+														</label>
+														<input id="concept-rights-holder" type="text" class="input-bordered input input-sm" bind:value={conceptDcRightsHolder} />
+													</div>
+													<div class="form-control">
+														<label class="label py-0.5" for="concept-license">
+															<span class="label-text text-sm">License</span>
+														</label>
+														<input id="concept-license" type="text" class="input-bordered input input-sm" bind:value={conceptDcRightsLicense} placeholder="CC BY 4.0" />
+													</div>
+												</div>
+											</div>
+
+										{:else if activeFormTab === 'peer-review'}
+											<div class="space-y-4">
+												<label class="flex cursor-pointer items-start gap-3">
+													<input type="checkbox" class="checkbox checkbox-sm mt-0.5" bind:checked={conceptPeerReview} />
+													<div>
+														<span class="text-sm font-semibold">Request peer review</span>
+														<p class="text-xs text-base-content/60">
+															If enabled, the edition will go through alpha and final review stages before publication.
+														</p>
+													</div>
+												</label>
+												{#if edition.status === EditionStatus.ConceptRejected && previousFeedback.length > 0}
+													<div class="mt-4">
+														<h3 class="mb-2 text-sm font-semibold">Previous Feedback</h3>
+														{#each previousFeedback as fb (fb.created)}
+															{#if fb.comment}
+																<p class="mt-1 rounded bg-base-300 p-2 text-sm">{fb.comment}</p>
+															{/if}
+														{/each}
+													</div>
+												{/if}
+											</div>
+
+										{:else if activeFormTab === 'team'}
+											<CollaboratorManager editionId={edition.id} isReadOnly={!canManageCollaborators} />
+										{/if}
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Action bar -->
+				<div class="mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-base-300 pt-4">
+					<a href="{base}/editions/{edition.id}" class="link text-sm link-primary mr-auto">View Edition</a>
+					<button
+						type="button"
+						class="btn btn-ghost btn-sm"
+						onclick={saveDraft}
+						disabled={isSaving || isSubmitting}
+					>
+						{#if isSaving}
+							<span class="loading loading-xs loading-spinner"></span>
+						{/if}
+						Save Draft
+					</button>
+					<button type="submit" class="btn btn-primary btn-sm" disabled={isSaving || isSubmitting}>
+						{#if isSubmitting}
+							<span class="loading loading-xs loading-spinner"></span>
+						{/if}
+						Submit for Review
+					</button>
+				</div>
+			</form>
 		{/if}
 
 		<!-- Review Form (for assigned reviewers) -->
@@ -570,12 +818,6 @@
 		<!-- Status View (default for authors viewing progress) -->
 		{#if viewMode === 'status-view'}
 			<div class="space-y-6">
-				<!-- Timeline -->
-				<div class="rounded-box border border-base-300 bg-base-100 p-6">
-					<h2 class="mb-4 text-lg font-semibold">Progress</h2>
-					<WorkflowTimeline currentStatus={edition.status} />
-				</div>
-
 				<!-- Review feedback (if any) -->
 				{#if displayReviews.length > 0}
 					<div class="rounded-box border border-base-300 bg-base-100 p-6">
@@ -680,3 +922,42 @@
 		{/if}
 	{/if}
 </div>
+
+{#if showDeleteModal && edition}
+	<div class="modal modal-open">
+		<div class="modal-box">
+			<h3 class="text-lg font-bold">Delete edition?</h3>
+			<p class="py-4">
+				This will permanently delete <strong>{edition.title || 'this edition'}</strong>. This
+				action cannot be undone.
+			</p>
+			<div class="modal-action">
+				<button
+					type="button"
+					class="btn"
+					onclick={() => (showDeleteModal = false)}
+					disabled={isDeleting}
+				>
+					Cancel
+				</button>
+				<button
+					type="button"
+					class="btn btn-error"
+					onclick={deleteEdition}
+					disabled={isDeleting}
+				>
+					{#if isDeleting}
+						<span class="loading loading-sm loading-spinner"></span>
+					{/if}
+					Delete
+				</button>
+			</div>
+		</div>
+		<button
+			type="button"
+			class="modal-backdrop"
+			onclick={() => !isDeleting && (showDeleteModal = false)}
+			aria-label="Close"
+		></button>
+	</div>
+{/if}
