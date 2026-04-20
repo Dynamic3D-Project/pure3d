@@ -27,7 +27,7 @@
 	const collectionRoleValues = Object.values(CollectionRole) as string[];
 
 	let canManageAllMembers = $derived(
-		authStore.globalRole === GlobalRole.SuperAdmin || authStore.globalRole === GlobalRole.Admin
+		authStore.globalRole === GlobalRole.Admin
 	);
 
 	onMount(() => {
