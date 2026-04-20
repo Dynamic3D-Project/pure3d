@@ -73,7 +73,6 @@ Open the app:
 
 Demo accounts (created automatically):
 
-- `superadmin@pure3d.eu` / `1234567890`
 - `admin@pure3d.eu` / `1234567890`
 - `editor@pure3d.eu` / `1234567890`
 - `viewer@pure3d.eu` / `1234567890`

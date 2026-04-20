@@ -14,9 +14,13 @@ export type AuditAction =
 	| 'feedback_created'
 	| 'feedback_resolved'
 	| 'collaborator_added'
-	| 'collaborator_removed';
+	| 'collaborator_removed'
+	| 'doc_created'
+	| 'doc_updated'
+	| 'doc_deleted'
+	| 'edition_deleted';
 
-export type AuditTargetType = 'user' | 'collection' | 'edition';
+export type AuditTargetType = 'user' | 'collection' | 'edition' | 'documentation';
 
 export async function logAudit(
 	action: AuditAction,

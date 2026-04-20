@@ -77,6 +77,8 @@ export async function fetchEditions(): Promise<Edition[]> {
 			description: record.dcAbstract || '',
 			authors: Array.isArray(record.dcCreator) ? record.dcCreator.join(', ') : '',
 			thumbnail,
+			coverImage: (record.coverImage as string | undefined) || '',
+			collectionName: record.collectionName || 'editions',
 			voyagerUrl,
 			usageConditions: '',
 			alternativeVersion: null,

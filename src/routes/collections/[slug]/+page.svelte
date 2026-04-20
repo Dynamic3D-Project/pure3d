@@ -9,6 +9,7 @@
 	import {
 		CollectionRole,
 		COLLECTION_ROLE_LABELS,
+		EditionStatus,
 		GlobalRole,
 		Permission,
 		type UserRoleContext
@@ -29,6 +30,7 @@
 	let manageTab = $state<'details' | 'members' | 'danger'>('details');
 	let deleteConfirmOpen = $state(false);
 	let isDeleting = $state(false);
+	let isCreating = $state(false);
 
 	// Edit-details form
 	let editTitle = $state('');
@@ -41,6 +43,7 @@
 	let canEdit = $derived(hasPermission(permissionContext, Permission.CollectionEdit));
 	let canManageUsers = $derived(hasPermission(permissionContext, Permission.CollectionManageUsers));
 	let canDelete = $derived(hasPermission(permissionContext, Permission.CollectionDelete));
+	let canCreateEdition = $derived(hasPermission(permissionContext, Permission.EditionCreate));
 	let canManagePage = $derived(canEdit || canManageUsers || canDelete);
 
 	onMount(async () => {
@@ -99,6 +102,39 @@
 			isDeleting = false;
 		}
 	}
+
+	async function createEdition() {
+		isCreating = true;
+		try {
+			const record = await pb.collection('editions').create({
+				title: 'Untitled Edition',
+				dcTitle: 'Untitled Edition',
+				collection: collection.id,
+				status: EditionStatus.Draft,
+				isPublished: false
+			});
+
+			if (authStore.appUserId) {
+				try {
+					await pb.collection('editionUsers').create({
+						edition: record.id,
+						editionId: record.id,
+						user: authStore.appUserId,
+						userId: authStore.appUserId,
+						role: 'author'
+					});
+				} catch {
+					// Non-critical
+				}
+			}
+
+			goto(`${base}/editions/${record.id}/workflow`);
+		} catch (e: any) {
+			toast.error(e?.message || 'Failed to create edition');
+		} finally {
+			isCreating = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -130,18 +166,28 @@
 					<span class="mt-2 badge badge-warning">Hidden</span>
 				{/if}
 			</div>
-			<p class="text-lg leading-relaxed text-base-content/70">
-				{collection.description}
-			</p>
-			{#if canManagePage}
-				<div class="mt-4">
-					<button
-						class="btn btn-sm btn-primary"
-						onclick={() => (manageOpen = !manageOpen)}
-						aria-expanded={manageOpen}
-					>
-						{manageOpen ? 'Close Manage' : 'Manage'}
-					</button>
+			<div class="prose mx-auto max-w-none text-lg leading-relaxed text-base-content/70">
+				{@html collection.description}
+			</div>
+			{#if canManagePage || canCreateEdition}
+				<div class="mt-4 flex justify-center gap-3">
+					{#if canManagePage}
+						<button
+							class="btn btn-sm btn-primary"
+							onclick={() => (manageOpen = !manageOpen)}
+							aria-expanded={manageOpen}
+						>
+							{manageOpen ? 'Close Manage' : 'Manage'}
+						</button>
+					{/if}
+					{#if canCreateEdition}
+						<button class="btn btn-sm btn-primary" onclick={createEdition} disabled={isCreating}>
+							{#if isCreating}
+								<span class="loading loading-xs loading-spinner"></span>
+							{/if}
+							+ New Edition
+						</button>
+					{/if}
 				</div>
 			{/if}
 		</div>
@@ -214,6 +260,10 @@
 							rows="4"
 							bind:value={editDescription}
 						></textarea>
+						<p class="mt-1 text-xs text-base-content/60">
+							For rich-text editing, use the
+							<a href="{base}/collections/{collection.slug}/edit" class="link">full edit page</a>.
+						</p>
 					</div>
 					<div class="form-control">
 						<label class="label cursor-pointer justify-start gap-3">

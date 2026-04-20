@@ -71,6 +71,8 @@ export interface Edition {
 	description: string;
 	authors: string;
 	thumbnail: string;
+	coverImage?: string;
+	collectionName?: string;
 	voyagerUrl: string;
 	usageConditions: string;
 	alternativeVersion: string | null;
