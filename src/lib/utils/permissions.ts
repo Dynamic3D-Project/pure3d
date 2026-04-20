@@ -32,17 +32,16 @@ export function canTransitionStatus(current: EditionStatus, target: EditionStatu
 export function hasPermission(context: UserRoleContext, permission: Permission): boolean {
 	const { globalRole, collectionRole, editionRole } = context;
 
-	// Super Admin has all permissions
-	if (globalRole === GlobalRole.SuperAdmin) return true;
+	// Admin has all permissions
+	if (globalRole === GlobalRole.Admin) return true;
 
 	switch (permission) {
 		// --- Edition actions ---
 		case Permission.EditionCreate:
-			return globalRole === GlobalRole.Admin || collectionRole === CollectionRole.Owner;
+			return collectionRole === CollectionRole.Owner;
 
 		case Permission.EditionEdit:
 			return (
-				globalRole === GlobalRole.Admin ||
 				collectionRole === CollectionRole.Owner ||
 				collectionRole === CollectionRole.Editor ||
 				editionRole === EditionRole.Author ||
@@ -50,11 +49,10 @@ export function hasPermission(context: UserRoleContext, permission: Permission):
 			);
 
 		case Permission.EditionDelete:
-			return globalRole === GlobalRole.Admin || collectionRole === CollectionRole.Owner;
+			return collectionRole === CollectionRole.Owner;
 
 		case Permission.EditionViewDraft:
 			return (
-				globalRole === GlobalRole.Admin ||
 				collectionRole === CollectionRole.Owner ||
 				collectionRole === CollectionRole.Editor ||
 				collectionRole === CollectionRole.Viewer ||
@@ -67,76 +65,59 @@ export function hasPermission(context: UserRoleContext, permission: Permission):
 			return editionRole === EditionRole.Reviewer;
 
 		case Permission.EditionAssignToCollection:
-			return (
-				globalRole === GlobalRole.Admin ||
-				collectionRole === CollectionRole.Owner ||
-				editionRole === EditionRole.Author
-			);
+			return collectionRole === CollectionRole.Owner || editionRole === EditionRole.Author;
 
 		// --- Workflow actions ---
 		case Permission.WorkflowSubmit:
-			return (
-				globalRole === GlobalRole.Admin ||
-				collectionRole === CollectionRole.Owner ||
-				editionRole === EditionRole.Author
-			);
+			return collectionRole === CollectionRole.Owner || editionRole === EditionRole.Author;
 
 		case Permission.WorkflowReview:
 			return (
-				globalRole === GlobalRole.Admin ||
-				globalRole === GlobalRole.EditorialBoard ||
-				editionRole === EditionRole.Reviewer
+				globalRole === GlobalRole.EditorialBoard || editionRole === EditionRole.Reviewer
 			);
 
 		case Permission.WorkflowApprove:
 		case Permission.WorkflowReject:
 			return (
-				globalRole === GlobalRole.Admin ||
-				globalRole === GlobalRole.EditorialBoard ||
-				editionRole === EditionRole.Reviewer
+				globalRole === GlobalRole.EditorialBoard || editionRole === EditionRole.Reviewer
 			);
 
 		case Permission.WorkflowRequestRevisions:
 			return (
-				globalRole === GlobalRole.Admin ||
-				globalRole === GlobalRole.EditorialBoard ||
-				editionRole === EditionRole.Reviewer
+				globalRole === GlobalRole.EditorialBoard || editionRole === EditionRole.Reviewer
 			);
 
 		case Permission.WorkflowPublish:
 		case Permission.WorkflowUnpublish:
-			return globalRole === GlobalRole.Admin || collectionRole === CollectionRole.Owner;
+			return collectionRole === CollectionRole.Owner;
 
 		case Permission.ReviewerAssign:
-			return globalRole === GlobalRole.Admin;
+			return false; // Only Admin (handled above)
 
 		case Permission.ReviewerSuggest:
 			return globalRole === GlobalRole.EditorialBoard;
 
 		// --- Collection actions ---
 		case Permission.CollectionCreate:
-			return globalRole === GlobalRole.Admin;
+			return false; // Only Admin (handled above)
 
 		case Permission.CollectionEdit:
 			return (
-				globalRole === GlobalRole.Admin ||
 				collectionRole === CollectionRole.Owner ||
 				collectionRole === CollectionRole.Editor
 			);
 
 		case Permission.CollectionDelete:
-			return globalRole === GlobalRole.Admin || collectionRole === CollectionRole.Owner;
+			return collectionRole === CollectionRole.Owner;
 
 		case Permission.CollectionManageUsers:
-			return globalRole === GlobalRole.Admin || collectionRole === CollectionRole.Owner;
+			return collectionRole === CollectionRole.Owner;
 
 		// --- Admin actions ---
 		case Permission.AdminViewPanel:
 		case Permission.AdminManageUsers:
-			return globalRole === GlobalRole.Admin;
-
 		case Permission.AdminManagePlatform:
-			return false; // Only SuperAdmin (handled above)
+			return false; // Only Admin (handled above)
 
 		default:
 			return false;
@@ -154,8 +135,8 @@ export function canUserTransitionStatus(
 ): boolean {
 	if (!canTransitionStatus(current, target)) return false;
 
-	// SuperAdmin can do all valid transitions
-	if (context.globalRole === GlobalRole.SuperAdmin) return true;
+	// Admin can do all valid transitions
+	if (context.globalRole === GlobalRole.Admin) return true;
 
 	switch (target) {
 		// --- Concept stage ---

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import { authStore } from '$lib/database';
+	import { GlobalRole } from '$lib/types/roles';
 	import LoginForm from './LoginForm.svelte';
 	import LoginMarketingPanel from './LoginMarketingPanel.svelte';
 </script>
@@ -22,6 +23,25 @@
 				<li class="menu-title px-4 py-2">
 					<span class="text-xs text-base-content/70">{authStore.user?.email}</span>
 				</li>
+				<div class="divider my-0"></div>
+				<li>
+					<a href="{base}/reviews" class="flex items-center gap-2">
+						<svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+						</svg>
+						My Work
+					</a>
+				</li>
+				{#if authStore.globalRole === GlobalRole.Admin}
+					<li>
+						<a href="{base}/admin" class="flex items-center gap-2">
+							<svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+							</svg>
+							Admin
+						</a>
+					</li>
+				{/if}
 				<div class="divider my-0"></div>
 				<li>
 					<a href="{base}/profile" class="flex items-center gap-2">

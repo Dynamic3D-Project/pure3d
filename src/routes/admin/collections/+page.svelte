@@ -45,7 +45,7 @@
 				title: r.title,
 				isVisible: r.isVisible,
 				pubNum: r.pubNum,
-				thumbnailUrl: r.thumbnailFile ? pb.files.getURL(r, r.thumbnailFile, { thumb: '80x80' }) : ''
+				thumbnailUrl: r.thumbnail || ''
 			}));
 		} catch (error) {
 			console.error('Error loading collections:', error);

@@ -26,7 +26,6 @@ On a new machine, `docker compose up -d` will:
 
 These are created automatically for local development:
 
-- `superadmin@pure3d.eu` / `1234567890`
 - `admin@pure3d.eu` / `1234567890`
 - `editor@pure3d.eu` / `1234567890`
 - `viewer@pure3d.eu` / `1234567890`
