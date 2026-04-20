@@ -214,8 +214,7 @@
 
 	let canManageMembers = $derived(
 		hasPermission(permissionContext, Permission.EditionEdit) &&
-			(permissionContext.globalRole === GlobalRole.SuperAdmin ||
-				permissionContext.globalRole === GlobalRole.Admin ||
+			(permissionContext.globalRole === GlobalRole.Admin ||
 				permissionContext.collectionRole === 'owner' ||
 				permissionContext.editionRole === EditionRole.Author)
 	);
