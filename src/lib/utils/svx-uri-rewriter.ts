@@ -1,3 +1,5 @@
+import { pbNormalize } from './pb-filename';
+
 export type FileMap = Record<string, string>;
 
 function basename(path: string): string {
@@ -13,7 +15,7 @@ function rewriteValue(value: unknown, fileMap: FileMap): unknown {
 		const result: Record<string, unknown> = {};
 		for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
 			if (key === 'uri' && typeof v === 'string') {
-				const mapped = fileMap[basename(v)];
+				const mapped = fileMap[basename(v)] ?? fileMap[pbNormalize(basename(v))];
 				result[key] = mapped ?? v;
 			} else {
 				result[key] = rewriteValue(v, fileMap);

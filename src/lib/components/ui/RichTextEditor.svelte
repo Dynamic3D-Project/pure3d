@@ -81,7 +81,7 @@
 
 <div class="rounded-box border border-base-300 bg-base-100">
 	<!-- Toolbar -->
-	<div class="flex flex-wrap gap-1 border-b border-base-300 p-2">
+	<div class="flex flex-wrap items-center border-b border-base-300 bg-base-200 px-1 py-1">
 		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('bold')}
 			onclick={() => editor?.chain().focus().toggleBold().run()} title="Bold">
 			<strong>B</strong>
@@ -95,7 +95,7 @@
 			<u>U</u>
 		</button>
 
-		<div class="divider divider-horizontal mx-0.5"></div>
+		<div class="mx-1 h-5 w-px bg-base-300"></div>
 
 		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('heading', { level: 1 })}
 			onclick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()} title="Heading 1">
@@ -110,7 +110,7 @@
 			H3
 		</button>
 
-		<div class="divider divider-horizontal mx-0.5"></div>
+		<div class="mx-1 h-5 w-px bg-base-300"></div>
 
 		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('bulletList')}
 			onclick={() => editor?.chain().focus().toggleBulletList().run()} title="Bullet List">
@@ -125,7 +125,7 @@
 			&ldquo; Quote
 		</button>
 
-		<div class="divider divider-horizontal mx-0.5"></div>
+		<div class="mx-1 h-5 w-px bg-base-300"></div>
 
 		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('link')}
 			onclick={setLink} title="Link">

@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
+	import toast from 'svelte-french-toast';
 	import { pb } from '$lib/database/client';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { EditionStatus, STATUS_LABELS } from '$lib/types/roles';
@@ -147,6 +148,28 @@
 			day: 'numeric',
 			year: 'numeric'
 		});
+	}
+
+	let deletingId = $state<string | null>(null);
+
+	async function deleteDraft(edition: DashEdition) {
+		if (edition.status !== EditionStatus.Draft) return;
+		const confirmed = confirm(
+			`Delete draft "${edition.title}"? This cannot be undone.`
+		);
+		if (!confirmed) return;
+
+		deletingId = edition.id;
+		try {
+			await pb.collection('editions').delete(edition.id);
+			myEditions = myEditions.filter((e) => e.id !== edition.id);
+			toast.success(`Deleted "${edition.title}"`);
+		} catch (err) {
+			console.error('Delete failed:', err);
+			toast.error((err as Error).message || 'Failed to delete edition');
+		} finally {
+			deletingId = null;
+		}
 	}
 
 	function getStageLabel(stage: number): string {
@@ -311,9 +334,22 @@
 											<span class="font-medium">{edition.title}</span>
 											<StatusBadge status={edition.status} />
 										</div>
-										<a href="{base}/editions/{edition.id}/workflow" class="btn btn-ghost btn-sm">
-											View Workflow
-										</a>
+										<div class="flex items-center gap-2">
+											{#if edition.status === EditionStatus.Draft}
+												<button
+													type="button"
+													class="btn btn-ghost btn-sm text-error"
+													disabled={deletingId === edition.id}
+													onclick={() => deleteDraft(edition)}
+													aria-label="Delete draft"
+												>
+													{deletingId === edition.id ? 'Deleting…' : 'Delete'}
+												</button>
+											{/if}
+											<a href="{base}/editions/{edition.id}/workflow" class="btn btn-ghost btn-sm">
+												View Workflow
+											</a>
+										</div>
 									</div>
 									{#if edition.collectionTitle}
 										<p class="mt-1 text-sm text-base-content/50">in {edition.collectionTitle}</p>

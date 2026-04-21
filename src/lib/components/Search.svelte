@@ -388,7 +388,7 @@
 			bind:this={dropdownElement}
 			id="search-results"
 			class="card card-compact fixed z-50 overflow-hidden bg-base-100 shadow-xl"
-			style="min-width: 400px; visibility: hidden;"
+			style="min-width: 300px; visibility: hidden;"
 			role="listbox"
 		>
 			<div class="card-body p-0">
