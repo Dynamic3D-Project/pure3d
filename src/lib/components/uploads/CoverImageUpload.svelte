@@ -5,16 +5,23 @@
 
 	type Props = {
 		record: RecordModel;
+		collectionName?: string;
 		disabled?: boolean;
 		onuploaded?: (r: RecordModel) => void;
 		onremoved?: (r: RecordModel) => void;
 	};
-	let { record = $bindable(), disabled, onuploaded, onremoved }: Props = $props();
+	let {
+		record = $bindable(),
+		collectionName = 'editions',
+		disabled,
+		onuploaded,
+		onremoved
+	}: Props = $props();
 </script>
 
 <FileUploadField
 	bind:record
-	collectionName="editions"
+	{collectionName}
 	fieldName="coverImage"
 	accept="image/jpeg,image/png,image/webp,image/avif"
 	maxSize={20 * 1024 * 1024}

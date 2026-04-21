@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { base } from '$app/paths';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { pb } from '$lib/database/client';
 	import { CollectionRole, COLLECTION_ROLE_LABELS, GlobalRole } from '$lib/types/roles';
@@ -58,14 +60,61 @@
 	function toggleExpand(collectionId: string) {
 		expandedId = expandedId === collectionId ? null : collectionId;
 	}
+
+	let isCreating = $state(false);
+
+	async function createCollection() {
+		if (!authStore.isAuthenticated || !authStore.appUserId) {
+			toast.error('Please sign in to create a collection');
+			return;
+		}
+		isCreating = true;
+		try {
+			const record = await pb.collection('collections').create({
+				title: 'Untitled Collection',
+				dcTitle: 'Untitled Collection',
+				isVisible: false
+			});
+
+			try {
+				await pb.collection('collectionUsers').create({
+					collection: record.id,
+					user: authStore.appUserId,
+					userId: authStore.appUserId,
+					role: CollectionRole.Owner
+				});
+			} catch {
+				// Non-critical
+			}
+
+			goto(`${base}/collections/${record.id}`);
+		} catch (e: unknown) {
+			const message = e instanceof Error ? e.message : 'Failed to create collection';
+			toast.error(message);
+		} finally {
+			isCreating = false;
+		}
+	}
 </script>
 
 <div id="admin-collections-page" class="mx-auto max-w-6xl">
-	<div class="mb-8">
-		<h1 class="text-3xl font-bold">Collection Management</h1>
-		<p class="mt-2 text-base-content/60">
-			Manage collection members and their roles. {collections.length} collections.
-		</p>
+	<div class="mb-8 flex items-start justify-between gap-4">
+		<div>
+			<h1 class="text-3xl font-bold">Collection Management</h1>
+			<p class="mt-2 text-base-content/60">
+				Manage collection members and their roles. {collections.length} collections.
+			</p>
+		</div>
+		<button
+			class="btn btn-primary btn-sm flex-none"
+			onclick={createCollection}
+			disabled={isCreating}
+		>
+			{#if isCreating}
+				<span class="loading loading-xs loading-spinner"></span>
+			{/if}
+			+ New Collection
+		</button>
 	</div>
 
 	<div class="mb-6">

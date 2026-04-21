@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
 	import MemberManager from '$lib/components/admin/MemberManager.svelte';
+	import CoverImageUpload from '$lib/components/uploads/CoverImageUpload.svelte';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { pb } from '$lib/database/client';
 	import {
@@ -17,7 +18,9 @@
 	import { hasPermission } from '$lib/utils/permissions';
 	import { resolvePageContext } from '$lib/utils/page-permissions';
 	import { logAudit } from '$lib/utils/audit';
+	import { getCollectionCoverUrl } from '$lib/utils/asset-urls';
 	import toast from 'svelte-french-toast';
+	import type { RecordModel } from 'pocketbase';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -31,6 +34,7 @@
 	let deleteConfirmOpen = $state(false);
 	let isDeleting = $state(false);
 	let isCreating = $state(false);
+	let collectionRecord = $state<RecordModel | null>(null);
 
 	// Edit-details form
 	let editTitle = $state('');
@@ -61,7 +65,18 @@
 			userProfileId: authStore.appUserId,
 			collectionId: collection.id
 		});
+
+		try {
+			collectionRecord = await pb.collection('collections').getOne(collection.id);
+		} catch (error) {
+			console.error('Error loading collection record:', error);
+		}
 	});
+
+	function onCoverChanged(r: RecordModel) {
+		collectionRecord = r;
+		collection.thumbnail = getCollectionCoverUrl(r, r.pubNum) || '';
+	}
 
 	async function saveDetails() {
 		isSaving = true;
@@ -238,6 +253,19 @@
 						saveDetails();
 					}}
 				>
+					{#if collectionRecord}
+						<div class="form-control">
+							<span class="label-text mb-2 block font-semibold">Cover Image</span>
+							<div class="w-full max-w-xs">
+								<CoverImageUpload
+									bind:record={collectionRecord}
+									collectionName="collections"
+									onuploaded={onCoverChanged}
+									onremoved={onCoverChanged}
+								/>
+							</div>
+						</div>
+					{/if}
 					<div class="form-control">
 						<label class="label" for="collection-title">
 							<span class="label-text font-semibold">Title</span>

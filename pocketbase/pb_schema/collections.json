@@ -211,6 +211,23 @@
 				"maxSelect": 1,
 				"collectionId": "site",
 				"cascadeDelete": false
+			},
+			{
+				"name": "coverImage",
+				"type": "file",
+				"required": false,
+				"maxSelect": 1,
+				"maxSize": 20971520,
+				"mimeTypes": [
+					"image/jpeg",
+					"image/png",
+					"image/webp",
+					"image/avif"
+				],
+				"thumbs": [
+					"400x300",
+					"100x100"
+				]
 			}
 		],
 		"indexes": [

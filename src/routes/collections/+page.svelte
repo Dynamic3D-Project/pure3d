@@ -8,6 +8,10 @@
 		fetchCollections,
 		isStale
 	} from '$lib/stores/data.store';
+	import { authStore } from '$lib/database/stores/auth.svelte';
+	import { pb } from '$lib/database/client';
+	import { CollectionRole } from '$lib/types/roles';
+	import toast from 'svelte-french-toast';
 
 	// Reactive data from persisted store
 	let collections = $derived($collectionsStore.items ?? []);
@@ -131,6 +135,41 @@
 		selectedIndex = -1;
 		inputElement?.focus();
 	}
+
+	let isCreating = $state(false);
+
+	async function createCollection() {
+		if (!authStore.isAuthenticated || !authStore.appUserId) {
+			toast.error('Please sign in to create a collection');
+			return;
+		}
+		isCreating = true;
+		try {
+			const record = await pb.collection('collections').create({
+				title: 'Untitled Collection',
+				dcTitle: 'Untitled Collection',
+				isVisible: false
+			});
+
+			try {
+				await pb.collection('collectionUsers').create({
+					collection: record.id,
+					user: authStore.appUserId,
+					userId: authStore.appUserId,
+					role: CollectionRole.Owner
+				});
+			} catch {
+				// Non-critical
+			}
+
+			goto(`${base}/collections/${record.id}`);
+		} catch (e: unknown) {
+			const message = e instanceof Error ? e.message : 'Failed to create collection';
+			toast.error(message);
+		} finally {
+			isCreating = false;
+		}
+	}
 </script>
 
 <svelte:window onclick={handleClickOutside} />
@@ -150,6 +189,18 @@
 		<p class="text-lg text-base-content/70 max-w-2xl mx-auto">
 			A Virtual Research Environment for 3D Digital Humanities And Heritage
 		</p>
+		{#if authStore.isAuthenticated}
+			<button
+				class="btn btn-primary btn-sm mt-6"
+				onclick={createCollection}
+				disabled={isCreating}
+			>
+				{#if isCreating}
+					<span class="loading loading-xs loading-spinner"></span>
+				{/if}
+				+ New Collection
+			</button>
+		{/if}
 	</div>
 
 	<!-- Search Section -->

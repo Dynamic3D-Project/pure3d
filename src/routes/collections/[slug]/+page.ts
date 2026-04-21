@@ -3,7 +3,7 @@ import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
 import {
 	getEditionThumbnailUrl,
-	getCollectionThumbnailUrl,
+	getCollectionCoverUrl,
 	getEditionRoot
 } from '$lib/utils/asset-urls';
 
@@ -11,8 +11,7 @@ export const load: PageLoad = async ({ params }) => {
 	try {
 		const collectionRecord = await pb.collection('collections').getOne(params.slug);
 
-		const thumbnail =
-			collectionRecord.pubNum > 0 ? getCollectionThumbnailUrl(collectionRecord.pubNum) : '';
+		const thumbnail = getCollectionCoverUrl(collectionRecord, collectionRecord.pubNum) || '';
 
 		const collection = {
 			id: collectionRecord.id,

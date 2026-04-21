@@ -321,7 +321,16 @@ async function main() {
 			{ name: 'dcCoveragePlace', type: 'text', required: false },
 			{ name: 'dcLanguage', type: 'json', required: false },
 			{ name: 'dcDateCreated', type: 'text', required: false },
-			{ name: 'dcDateModified', type: 'text', required: false }
+			{ name: 'dcDateModified', type: 'text', required: false },
+			{
+				name: 'coverImage',
+				type: 'file',
+				required: false,
+				maxSelect: 1,
+				maxSize: 20 * 1024 * 1024,
+				mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/avif'],
+				thumbs: ['400x300', '100x100']
+			}
 		]
 	});
 

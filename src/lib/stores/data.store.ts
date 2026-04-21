@@ -17,7 +17,7 @@ import type { Edition, Collection } from '$lib/types/collection';
 import { EditionStatus } from '$lib/types/roles';
 import {
 	getEditionThumbnailUrl,
-	getCollectionThumbnailUrl,
+	getCollectionCoverUrl,
 	getEditionRoot
 } from '$lib/utils/asset-urls';
 
@@ -167,8 +167,8 @@ export async function fetchCollections(): Promise<(Collection & { editionCount?:
 	}
 
 	const mappedCollections = collectionsResult.items.map((record) => {
-		// Thumbnail: use asset URL built from pubNum (respects PUBLIC_ASSET_BASE_URL / R2)
-		const thumbnail = record.pubNum > 0 ? getCollectionThumbnailUrl(record.pubNum) : '';
+		// Cover image: uploaded coverImage file → legacy thumbnail URL → asset URL from pubNum
+		const thumbnail = getCollectionCoverUrl(record, record.pubNum) || '';
 
 		return {
 			id: record.id,

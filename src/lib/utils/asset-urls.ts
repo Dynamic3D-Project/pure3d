@@ -104,3 +104,17 @@ export function getEditionCoverUrl(
 	}
 	return null;
 }
+
+export function getCollectionCoverUrl(
+	collection: RecordModel,
+	collectionPubNum?: number | null
+): string | null {
+	const coverImage = (collection.coverImage as string | undefined) ?? '';
+	if (coverImage) return pb.files.getURL(collection, coverImage, { thumb: '400x300' });
+	if (collectionPubNum && collectionPubNum > 0) {
+		return getCollectionThumbnailUrl(collectionPubNum);
+	}
+	const thumbnail = (collection.thumbnail as string | undefined) ?? '';
+	if (thumbnail) return thumbnail;
+	return null;
+}
