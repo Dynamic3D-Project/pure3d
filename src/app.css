@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter+Tight:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @import './lib/assets/css/scrollbar-color.css';
 
 @import 'tailwindcss';
@@ -10,41 +11,61 @@
 @plugin "@tailwindcss/forms";
 @plugin "@tailwindcss/container-queries";
 
+/* Pure 3D design-system tokens — shared with /design-system.
+   Exposed as both Tailwind theme tokens (usable via font-sans/font-serif/font-mono)
+   and raw CSS custom properties for non-Tailwind consumers. */
+@theme {
+  --font-sans: 'Inter Tight', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-serif: 'Fraunces', 'Times New Roman', serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
-
+  --color-paper: #f4f1eb;
+  --color-paper-2: #ece7dd;
+  --color-paper-3: #e2dccf;
+  --color-ink: #141413;
+  --color-ink-2: #2b2a27;
+  --color-ink-3: #555249;
+  --color-ink-4: #8a8579;
+  --color-vermillion: oklch(62% 0.19 35);
+  --color-vermillion-ink: oklch(40% 0.15 35);
+  --color-vermillion-wash: oklch(95% 0.035 35);
+}
 
 @plugin "daisyui/theme" {
   name: "pure3d";
   default: false;
   prefersdark: false;
   color-scheme: "light";
-  --color-base-100: oklch(97.8% 0.004 56.4);
-  --color-base-200: oklch(94% 0.007 61.4);
-  --color-base-300: oklch(91.6% 0.006 53.4);
-  --color-base-content: oklch(23.6% 0.066 313.2);
-  --color-primary: oklch(70% 0.14 182.503);
-  --color-primary-content: #ffffff;
-  --color-secondary: oklch(55% 0.18 220);
-  --color-secondary-content: oklch(97% 0.01 220);
-  --color-accent: oklch(72% 0.15 55);
-  --color-accent-content: oklch(22% 0.05 55);
-  --color-neutral: oklch(25% 0.04 265);
-  --color-neutral-content: oklch(92% 0.005 265);
-  --color-info: oklch(68% 0.169 237.3);
-  --color-info-content: oklch(29% 0.066 243.2);
-  --color-success: oklch(69% 0.17 162.5);
-  --color-success-content: oklch(26% 0.051 172.6);
-  --color-warning: oklch(79% 0.184 86);
-  --color-warning-content: oklch(28% 0.066 53.8);
-  --color-error: oklch(64% 0.246 16.4);
-  --color-error-content: oklch(97% 0.01 16);
-  --radius-selector: 2rem;
-  --radius-field: 0.5rem;
-  --radius-box: 0.75rem;
+  /* Pure 3D — paper · ink · vermillion.
+     Primary = ink (dominant action is dark-on-paper).
+     Accent  = vermillion (reserved for signal: pins, links, active tool). */
+  --color-base-100: #f4f1eb;
+  --color-base-200: #ece7dd;
+  --color-base-300: #e2dccf;
+  --color-base-content: #141413;
+  --color-primary: #141413;
+  --color-primary-content: #f4f1eb;
+  --color-secondary: #555249;
+  --color-secondary-content: #f4f1eb;
+  --color-accent: oklch(62% 0.19 35);
+  --color-accent-content: #ffffff;
+  --color-neutral: #2b2a27;
+  --color-neutral-content: #f4f1eb;
+  --color-info: oklch(55% 0.15 220);
+  --color-info-content: #f4f1eb;
+  --color-success: oklch(45% 0.12 150);
+  --color-success-content: #f4f1eb;
+  --color-warning: oklch(72% 0.16 70);
+  --color-warning-content: #141413;
+  --color-error: oklch(55% 0.2 25);
+  --color-error-content: #f4f1eb;
+  --radius-selector: 0.125rem;
+  --radius-field: 0.125rem;
+  --radius-box: 0.25rem;
   --size-selector: 0.25rem;
   --size-field: 0.28125rem;
   --border: 1px;
-  --depth: 1;
+  --depth: 0;
   --noise: 0;
 }
 
