@@ -61,7 +61,7 @@
 			if (!userLookup) {
 				const reviewerIds = [...new Set(feedbackItems.map((f) => f.reviewerId))];
 				if (reviewerIds.length > 0) {
-					const userResult = await pb.collection('userProfiles').getList(1, 100, {
+					const userResult = await pb.collection('users').getList(1, 100, {
 						filter: reviewerIds.map((id) => `id = "${id}"`).join(' || ')
 					});
 					localUserLookup = new Map(

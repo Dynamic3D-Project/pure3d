@@ -88,8 +88,18 @@ async function waitForPocketBase() {
 
 async function authenticate() {
 	console.log('Authenticating...');
-	await pb.collection('_superusers').authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
-	console.log('Authenticated successfully\n');
+	try {
+		await pb.collection('_superusers').authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
+		console.log('Authenticated successfully\n');
+	} catch (err: any) {
+		console.error('Auth error:');
+		console.error('  url:      ', pb.baseUrl);
+		console.error('  email:    ', ADMIN_EMAIL);
+		console.error('  status:   ', err?.status);
+		console.error('  message:  ', err?.message);
+		console.error('  response: ', JSON.stringify(err?.response ?? err?.data ?? err, null, 2));
+		throw err;
+	}
 }
 
 async function getCollection(name: string) {
@@ -122,6 +132,32 @@ function mergeFields(existingFields: Record<string, unknown>[], desiredFields: F
 	return mergedFields;
 }
 
+/**
+ * Detect relation fields whose target collection changed. PB rejects this
+ * in a single update with "validation_field_relation_change", so we have to
+ * drop and re-add across two separate update calls.
+ */
+function findRelationRetargets(
+	existingFields: Record<string, unknown>[],
+	desiredFields: FieldDef[]
+): string[] {
+	const names: string[] = [];
+	for (const desired of desiredFields) {
+		const existing = existingFields.find((f) => f?.name === desired.name);
+		if (!existing) continue;
+		if (
+			desired.type === 'relation' &&
+			existing.type === 'relation' &&
+			typeof desired.collectionId === 'string' &&
+			typeof existing.collectionId === 'string' &&
+			desired.collectionId !== existing.collectionId
+		) {
+			names.push(desired.name);
+		}
+	}
+	return names;
+}
+
 async function ensureCollection(definition: CollectionDef) {
 	const existing = await getCollection(definition.name);
 
@@ -135,14 +171,42 @@ async function ensureCollection(definition: CollectionDef) {
 		return created.id;
 	}
 
-	const mergedFields = mergeFields(
-		Array.isArray(existing.fields) ? existing.fields : [],
-		definition.fields
-	);
+	const existingFieldsArr = Array.isArray(existing.fields) ? existing.fields : [];
 
-	await pb.collections.update(existing.id, {
-		fields: mergedFields
-	});
+	// Handle relation-target retargets with a pre-update that drops those
+	// fields, so the main update can add them fresh pointing at the new
+	// target. PB refuses to change a relation's collectionId in place.
+	const retargets = findRelationRetargets(existingFieldsArr, definition.fields);
+	let workingFields = existingFieldsArr;
+	if (retargets.length > 0) {
+		console.log(`   ${definition.name}: retargeting relation(s): ${retargets.join(', ')}`);
+		workingFields = existingFieldsArr.filter(
+			(f) => typeof f?.name !== 'string' || !retargets.includes(f.name as string)
+		);
+		try {
+			await pb.collections.update(existing.id, { fields: workingFields });
+		} catch (err: any) {
+			console.error(`   ${definition.name}: retarget-drop failed`);
+			console.error('     status: ', err?.status);
+			console.error('     message:', err?.message);
+			console.error('     response:', JSON.stringify(err?.response ?? err?.data ?? err, null, 2));
+			throw err;
+		}
+	}
+
+	const mergedFields = mergeFields(workingFields, definition.fields);
+
+	try {
+		await pb.collections.update(existing.id, {
+			fields: mergedFields
+		});
+	} catch (err: any) {
+		console.error(`   ${definition.name}: update failed`);
+		console.error('     status: ', err?.status);
+		console.error('     message:', err?.message);
+		console.error('     response:', JSON.stringify(err?.response ?? err?.data ?? err, null, 2));
+		throw err;
+	}
 
 	console.log(`   ${definition.name}: ensured`);
 	return existing.id;
@@ -169,6 +233,16 @@ async function setOpenRules(name: string) {
 	console.log(`   ${name}: API rules set to open`);
 }
 
+async function dropLegacyUserProfiles() {
+	try {
+		const existing = await pb.collections.getOne('userProfiles');
+		await pb.collections.delete(existing.id);
+		console.log('   dropped legacy userProfiles collection\n');
+	} catch {
+		// collection already absent — nothing to do
+	}
+}
+
 async function main() {
 	console.log('Creating PocketBase schema');
 	console.log(`   URL: ${POCKETBASE_URL}`);
@@ -184,25 +258,16 @@ async function main() {
 	collectionIds['users'] = await ensureCollection({
 		name: 'users',
 		type: 'auth',
-		fields: []
-	});
-
-	collectionIds['userProfiles'] = await ensureCollection({
-		name: 'userProfiles',
-		type: 'base',
 		fields: [
-			{ name: 'user', type: 'text', required: false },
-			{ name: 'userHash', type: 'text', required: false },
-			{ name: 'email', type: 'email', required: true },
-			{ name: 'nickname', type: 'text', required: true },
+			{ name: 'nickname', type: 'text', required: false },
 			{
 				name: 'role',
 				type: 'select',
-				required: true,
+				required: false,
 				maxSelect: 1,
 				values: globalRoleValues
 			},
-			{ name: 'pbAuthId', type: 'text', required: false }
+			{ name: 'userHash', type: 'text', required: false }
 		]
 	});
 
@@ -417,7 +482,7 @@ async function main() {
 		type: 'base',
 		fields: [
 			relationField('collection', collectionIds['collections'], { cascadeDelete: true }),
-			relationField('publishedBy', collectionIds['userProfiles'])
+			relationField('publishedBy', collectionIds['users'])
 		]
 	});
 
@@ -426,8 +491,8 @@ async function main() {
 		type: 'base',
 		fields: [
 			relationField('collection', collectionIds['collections'], { cascadeDelete: true }),
-			relationField('user', collectionIds['userProfiles']),
-			relationField('userId', collectionIds['userProfiles'])
+			relationField('user', collectionIds['users']),
+			relationField('userId', collectionIds['users'])
 		]
 	});
 
@@ -437,8 +502,8 @@ async function main() {
 		fields: [
 			relationField('edition', collectionIds['editions'], { cascadeDelete: true }),
 			relationField('editionId', collectionIds['editions'], { cascadeDelete: true }),
-			relationField('user', collectionIds['userProfiles']),
-			relationField('userId', collectionIds['userProfiles'])
+			relationField('user', collectionIds['users']),
+			relationField('userId', collectionIds['users'])
 		]
 	});
 
@@ -449,7 +514,7 @@ async function main() {
 		type: 'base',
 		fields: [
 			relationField('editionId', collectionIds['editions'], { required: true, cascadeDelete: true }),
-			relationField('reviewerId', collectionIds['userProfiles'], { required: true }),
+			relationField('reviewerId', collectionIds['users'], { required: true }),
 			{ name: 'reviewStage', type: 'number', required: true },
 			{
 				name: 'decision',
@@ -467,8 +532,8 @@ async function main() {
 		type: 'base',
 		fields: [
 			relationField('editionId', collectionIds['editions'], { required: true, cascadeDelete: true }),
-			relationField('reviewerId', collectionIds['userProfiles'], { required: true }),
-			relationField('assignedBy', collectionIds['userProfiles'], { required: true }),
+			relationField('reviewerId', collectionIds['users'], { required: true }),
+			relationField('assignedBy', collectionIds['users'], { required: true }),
 			{ name: 'reviewStage', type: 'number', required: true },
 			{
 				name: 'status',
@@ -485,7 +550,7 @@ async function main() {
 		type: 'base',
 		fields: [
 			relationField('editionId', collectionIds['editions'], { required: true, cascadeDelete: true }),
-			relationField('reviewerId', collectionIds['userProfiles'], { required: true }),
+			relationField('reviewerId', collectionIds['users'], { required: true }),
 			{ name: 'reviewStage', type: 'number', required: true },
 			{
 				name: 'category',
@@ -504,7 +569,7 @@ async function main() {
 		name: 'notifications',
 		type: 'base',
 		fields: [
-			relationField('recipientId', collectionIds['userProfiles'], { required: true, cascadeDelete: true }),
+			relationField('recipientId', collectionIds['users'], { required: true, cascadeDelete: true }),
 			relationField('editionId', collectionIds['editions'], { cascadeDelete: true }),
 			{
 				name: 'type',
@@ -520,11 +585,13 @@ async function main() {
 		]
 	});
 
-	console.log('\nPhase 4: Setting open API rules...\n');
+	console.log('\nPhase 4: Dropping legacy userProfiles (if present)...\n');
+	await dropLegacyUserProfiles();
+
+	console.log('\nPhase 5: Setting open API rules...\n');
 
 	for (const name of [
 		'users',
-		'userProfiles',
 		'site',
 		'keywords',
 		'collections',

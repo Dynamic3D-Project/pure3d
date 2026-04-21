@@ -53,7 +53,7 @@
 				pb.collection('editionUsers').getList(1, 100, {
 					filter: `editionId = "${editionId}" && role != "reviewer"`
 				}),
-				pb.collection('userProfiles').getList(1, 500)
+				pb.collection('users').getList(1, 500)
 			]);
 
 			const profileMap = new Map(

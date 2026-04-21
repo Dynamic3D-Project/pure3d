@@ -199,34 +199,33 @@ async function main() {
 		console.log(`   Skipped, site already exists (${siteId})`);
 	}
 
-	console.log('\nImporting user profiles...');
+	console.log('\nImporting users...');
 	const usersData = readJsonArray<any>('user.json');
-	const existingProfiles = await pb.collection('userProfiles').getFullList();
-	const existingProfileEmails = new Set(existingProfiles.map((record: any) => normalizeEmail(record.email)));
+	const existingUsers = await pb.collection('users').getFullList();
+	const existingEmails = new Set(existingUsers.map((record: any) => normalizeEmail(record.email)));
 
-	for (const record of existingProfiles) {
+	for (const record of existingUsers) {
 		if (record.userHash) {
 			userHashToId.set(record.userHash, record.id);
 		}
-		if (record.user) {
-			userHashToId.set(record.user, record.id);
-		}
 	}
 
-	let importedProfiles = 0;
-	let skippedProfiles = 0;
+	let importedUsers = 0;
+	let skippedUsers = 0;
 
 	for (const doc of usersData) {
 		const email = normalizeEmail(doc.email);
-		if (email && existingProfileEmails.has(email)) {
-			skippedProfiles++;
+		if (email && existingEmails.has(email)) {
+			skippedUsers++;
 			continue;
 		}
 
-		const result = await pb.collection('userProfiles').create({
-			user: doc.user,
-			userHash: doc.user,
+		const tempPassword = `${doc.user || 'import'}-${Math.random().toString(36).slice(2, 10)}`;
+		const result = await pb.collection('users').create({
 			email: doc.email,
+			password: tempPassword,
+			passwordConfirm: tempPassword,
+			userHash: doc.user,
 			nickname: doc.nickname,
 			role: mapGlobalRole(doc.role)
 		});
@@ -235,13 +234,13 @@ async function main() {
 			userHashToId.set(doc.user, result.id);
 		}
 		if (email) {
-			existingProfileEmails.add(email);
+			existingEmails.add(email);
 		}
 
-		importedProfiles++;
+		importedUsers++;
 	}
 
-	console.log(`   Imported ${importedProfiles}, skipped ${skippedProfiles}`);
+	console.log(`   Imported ${importedUsers}, skipped ${skippedUsers}`);
 
 	console.log('\nImporting keywords...');
 	const keywordsData = readJsonArray<any>('keyword.json');

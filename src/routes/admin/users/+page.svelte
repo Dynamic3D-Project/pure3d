@@ -59,7 +59,7 @@
 	async function loadUsers() {
 		try {
 			isLoading = true;
-			const result = await pb.collection('userProfiles').getList(1, 500);
+			const result = await pb.collection('users').getList(1, 500);
 			users = result.items.map((record) => ({
 				id: record.id,
 				email: record.email || '',
@@ -121,7 +121,7 @@
 			});
 
 			// 2. Create userProfile linked to auth record
-			await pb.collection('userProfiles').create({
+			await pb.collection('users').create({
 				email: createEmail,
 				nickname: createNickname || createEmail.split('@')[0],
 				role: createRole,
@@ -176,7 +176,7 @@
 
 		isSaving = true;
 		try {
-			await pb.collection('userProfiles').update(editingUser.id, changes);
+			await pb.collection('users').update(editingUser.id, changes);
 
 			await logAudit('user_updated', 'user', editingUser.id, authStore.user?.email || '', {
 				email: editingUser.email,
@@ -234,7 +234,7 @@
 			}
 
 			// 3. Delete userProfile
-			await pb.collection('userProfiles').delete(deletingUser.id);
+			await pb.collection('users').delete(deletingUser.id);
 
 			// 4. Delete PB auth user
 			if (deletingUser.pbAuthId) {
