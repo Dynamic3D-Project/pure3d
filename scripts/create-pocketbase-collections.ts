@@ -5,7 +5,7 @@
  */
 import PocketBase from 'pocketbase';
 
-const POCKETBASE_URL = process.env.POCKETBASE_URL || 'http://pocketbase:8090';
+const POCKETBASE_URL = process.env.POCKETBASE_URL || 'http://localhost:8090';
 const ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL || 'admin@admin.local';
 const ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD || '1234567890';
 
@@ -330,7 +330,15 @@ async function main() {
 				required: false,
 				maxSelect: 1,
 				maxSize: 500 * 1024 * 1024,
-				mimeTypes: ['application/octet-stream', 'model/gltf-binary', 'model/gltf+json']
+				mimeTypes: []
+			},
+			{
+				name: 'modelAssets',
+				type: 'file',
+				required: false,
+				maxSelect: 200,
+				maxSize: 500 * 1024 * 1024,
+				mimeTypes: []
 			},
 			{
 				name: 'sceneDocument',
@@ -338,7 +346,7 @@ async function main() {
 				required: false,
 				maxSelect: 1,
 				maxSize: 0,
-				mimeTypes: ['application/json']
+				mimeTypes: []
 			}
 		]
 	});

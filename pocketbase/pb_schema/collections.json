@@ -483,22 +483,21 @@
 				"type": "file",
 				"required": false,
 				"maxSelect": 1,
-				"maxSize": 524288000,
-				"mimeTypes": [
-					"application/octet-stream",
-					"model/gltf-binary",
-					"model/gltf+json"
-				]
+				"maxSize": 524288000
+			},
+			{
+				"name": "modelAssets",
+				"type": "file",
+				"required": false,
+				"maxSelect": 200,
+				"maxSize": 524288000
 			},
 			{
 				"name": "sceneDocument",
 				"type": "file",
 				"required": false,
 				"maxSelect": 1,
-				"maxSize": 0,
-				"mimeTypes": [
-					"application/json"
-				]
+				"maxSize": 0
 			}
 		],
 		"indexes": [

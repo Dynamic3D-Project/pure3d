@@ -37,8 +37,27 @@
 	let uploading = $state(false);
 	let errorMsg = $state('');
 	let pendingFile = $state<File | null>(null);
+	let dragActive = $state(false);
 	let currentXhr: XMLHttpRequest | null = null;
 	let inputEl: HTMLInputElement | undefined = $state();
+
+	let acceptList = $derived(
+		accept
+			.split(',')
+			.map((s) => s.trim().toLowerCase())
+			.filter(Boolean)
+	);
+
+	function acceptsFile(file: File): boolean {
+		if (acceptList.length === 0) return true;
+		const type = file.type.toLowerCase();
+		const name = file.name.toLowerCase();
+		return acceptList.some((token) => {
+			if (token.startsWith('.')) return name.endsWith(token);
+			if (token.endsWith('/*')) return type.startsWith(token.slice(0, -1));
+			return type === token;
+		});
+	}
 
 	$effect(() => {
 		return () => {
@@ -154,11 +173,12 @@
 		if (!currentFilename) return;
 		try {
 			const updated = await pb.collection(collectionName).update(record.id, {
-				[`${fieldName}-`]: true
+				[fieldName]: null
 			});
 			record = updated;
 			onremoved?.(updated);
 		} catch (err) {
+			console.error(`Remove ${fieldName} failed:`, err);
 			toast.error((err as Error).message || 'Failed to remove file');
 		}
 	}
@@ -171,7 +191,32 @@
 		inputEl?.click();
 	}
 
-	let fileUrl = $derived(currentFilename ? pb.files.getUrl(record, currentFilename) : '');
+	function onDragOver(e: DragEvent) {
+		if (disabled || uploading) return;
+		if (!e.dataTransfer?.types.includes('Files')) return;
+		e.preventDefault();
+		dragActive = true;
+	}
+
+	function onDragLeave() {
+		dragActive = false;
+	}
+
+	function onDrop(e: DragEvent) {
+		e.preventDefault();
+		dragActive = false;
+		if (disabled || uploading) return;
+		const file = e.dataTransfer?.files?.[0];
+		if (!file) return;
+		if (!acceptsFile(file)) {
+			errorMsg = `File type not accepted. Allowed: ${accept}`;
+			toast.error(errorMsg);
+			return;
+		}
+		upload(file);
+	}
+
+	let fileUrl = $derived(currentFilename ? pb.files.getURL(record, currentFilename) : '');
 </script>
 
 <div class="space-y-2">
@@ -184,34 +229,53 @@
 		onchange={onFilePicked}
 	/>
 
-	{#if currentFilename && !uploading}
-		{#if preview}
-			{@render preview({ filename: currentFilename, url: fileUrl })}
+	<div
+		class="relative rounded-lg transition-all {dragActive
+			? 'ring-2 ring-primary ring-offset-2 ring-offset-base-100'
+			: ''}"
+		ondragover={onDragOver}
+		ondragenter={onDragOver}
+		ondragleave={onDragLeave}
+		ondrop={onDrop}
+		role="presentation"
+	>
+		{#if currentFilename && !uploading}
+			{#if preview}
+				{@render preview({ filename: currentFilename, url: fileUrl })}
+			{:else}
+				<div class="text-xs">{currentFilename}</div>
+			{/if}
+			<div class="mt-2 flex gap-2">
+				<button type="button" class="btn btn-outline btn-xs" onclick={pick} {disabled}>
+					Replace
+				</button>
+				<button type="button" class="btn btn-ghost btn-xs" onclick={remove} {disabled}>
+					Remove
+				</button>
+			</div>
+		{:else if uploading}
+			<div class="space-y-1">
+				<div class="text-xs text-base-content/60">Uploading {humanSize(pendingFile?.size ?? 0)}...</div>
+				<progress class="progress w-full progress-primary" value={progress} max="100"></progress>
+				<div class="text-xs text-base-content/40">{progress}%</div>
+			</div>
 		{:else}
-			<div class="text-xs">{currentFilename}</div>
-		{/if}
-		<div class="flex gap-2">
-			<button type="button" class="btn btn-outline btn-xs" onclick={pick} {disabled}>
-				Replace
+			{#if emptyPreview}
+				{@render emptyPreview()}
+			{/if}
+			<button type="button" class="btn btn-outline btn-sm mt-2 w-full" onclick={pick} {disabled}>
+				Choose file
 			</button>
-			<button type="button" class="btn btn-ghost btn-xs" onclick={remove} {disabled}>
-				Remove
-			</button>
-		</div>
-	{:else if uploading}
-		<div class="space-y-1">
-			<div class="text-xs text-base-content/60">Uploading {humanSize(pendingFile?.size ?? 0)}...</div>
-			<progress class="progress w-full progress-primary" value={progress} max="100"></progress>
-			<div class="text-xs text-base-content/40">{progress}%</div>
-		</div>
-	{:else}
-		{#if emptyPreview}
-			{@render emptyPreview()}
 		{/if}
-		<button type="button" class="btn btn-outline btn-sm w-full" onclick={pick} {disabled}>
-			Choose file
-		</button>
-	{/if}
+
+		{#if dragActive}
+			<div
+				class="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-primary/10"
+			>
+				<span class="text-xs font-medium text-primary">Drop to upload</span>
+			</div>
+		{/if}
+	</div>
 
 	{#if errorMsg}
 		<div class="alert alert-sm alert-error">

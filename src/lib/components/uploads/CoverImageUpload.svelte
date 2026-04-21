@@ -25,7 +25,7 @@
 	{#snippet preview({ filename })}
 		<div class="overflow-hidden rounded-lg border border-base-300">
 			<img
-				src={pb.files.getUrl(record, filename, { thumb: '400x300' })}
+				src={pb.files.getURL(record, filename, { thumb: '400x300' })}
 				alt="Cover"
 				class="aspect-[4/3] w-full object-cover"
 			/>

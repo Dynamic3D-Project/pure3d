@@ -23,6 +23,19 @@
 		url: string;
 		/** Document path (only for direct mode) */
 		document?: string;
+		/** Model path (direct mode) — loads a glTF/GLB file directly without a scene document. Ignored when `document` is set. */
+		model?: string;
+		/** Geometry path (direct mode) — loads a raw mesh (OBJ/PLY). Ignored when `document` or `model` is set. */
+		geometry?: string;
+		/** Fetch overrides — when Voyager fetches one of these URLs, return the provided content instead. Used to serve rewritten scene JSON at a real HTTP URL. */
+		fetchOverrides?: Array<{ url: string; content: string; contentType?: string }>;
+		/**
+		 * Companion asset redirection. When Voyager fetches a URL under `baseDir`, the request's basename
+		 * is looked up in `byBasename` (after normalization) and the original fetch is replaced with one
+		 * against the mapped URL. Used to serve GLTF/OBJ companion files that PocketBase stores under
+		 * normalized names without subdirectories.
+		 */
+		companionAssets?: { baseDir: string; byBasename: Record<string, string> };
 		/** Title for accessibility */
 		title: string;
 		/** Use direct embedding instead of iframe */
@@ -82,6 +95,10 @@
 	let {
 		url,
 		document: documentPath,
+		model,
+		geometry,
+		fetchOverrides,
+		companionAssets,
 		title,
 		direct = false,
 		showControls = false,
@@ -140,6 +157,44 @@
 		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 	}
 
+	// PocketBase normalizes filenames on upload: splits camelCase (DamagedHelmet →
+	// damaged_helmet, metalRoughness → metal_roughness), lowercases, replaces
+	// non-alphanumerics with "_", and appends a 10-char random suffix before the
+	// extension. Here we mirror the normalization (without the suffix) so GLTF-referenced
+	// paths like "Textures/Default_metalRoughness.jpg" match stored companion names.
+	function normalizeBasename(name: string): string {
+		const dot = name.lastIndexOf('.');
+		const stem = dot >= 0 ? name.slice(0, dot) : name;
+		const ext = dot >= 0 ? name.slice(dot) : '';
+		return (
+			stem
+				.replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+				.replace(/([A-Z])([A-Z][a-z])/g, '$1_$2')
+				.toLowerCase()
+				.replace(/[^a-z0-9_-]+/g, '_')
+				.replace(/_+/g, '_')
+				.replace(/^_|_$/g, '') + ext.toLowerCase()
+		);
+	}
+
+	function resolveCompanion(requestedUrl: string): string | null {
+		if (!companionAssets) return null;
+		if (!requestedUrl.startsWith(companionAssets.baseDir)) return null;
+
+		let pathname: string;
+		try {
+			pathname = new URL(requestedUrl).pathname;
+		} catch {
+			return null;
+		}
+		const slash = pathname.lastIndexOf('/');
+		const raw = decodeURIComponent(slash >= 0 ? pathname.slice(slash + 1) : pathname);
+		if (!raw) return null;
+
+		const key = normalizeBasename(raw);
+		return companionAssets.byBasename[key] ?? null;
+	}
+
 	// Install fetch interceptor to track download progress
 	function installFetchInterceptor(): () => void {
 		const originalFetch = window.fetch;
@@ -157,6 +212,20 @@
 
 		window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
 			const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+
+			const override = fetchOverrides?.find((o) => o.url === url);
+			if (override) {
+				return new Response(override.content, {
+					status: 200,
+					headers: { 'content-type': override.contentType ?? 'application/json' }
+				});
+			}
+
+			const companionUrl = resolveCompanion(url);
+			if (companionUrl && companionUrl !== url) {
+				return window.fetch(companionUrl, init);
+			}
+
 			const shouldTrack = trackedExtensions.some((ext) => url.toLowerCase().includes(ext));
 
 			if (!shouldTrack) {
@@ -232,6 +301,21 @@
 				? `${resourceRoot}js/voyager-explorer.min.js`
 				: `/voyager/${voyagerVersion}/js/voyager-explorer.min.js`;
 
+			// If Voyager is already registered (user navigated to this view previously),
+			// re-loading the script would bundle another Three.js copy and re-register
+			// existing custom elements — which throws. Reuse the existing registration.
+			if (customElements.get('voyager-explorer')) {
+				isScriptLoaded = true;
+				loadingPhase = 'document';
+				setTimeout(loadContent, 500);
+				return () => {
+					if (cleanupFetchInterceptor) {
+						cleanupFetchInterceptor();
+						cleanupFetchInterceptor = null;
+					}
+				};
+			}
+
 			// Load Voyager Explorer script
 			const script = document.createElement('script');
 			script.src = scriptUrl;
@@ -249,8 +333,9 @@
 					cleanupFetchInterceptor();
 					cleanupFetchInterceptor = null;
 				}
-				// Cleanup script
-				document.head.removeChild(script);
+				// Leave the script tag in place — Voyager registers custom elements
+				// globally, so removing the script doesn't un-register them and
+				// re-adding it on next mount would throw "already defined".
 			};
 		}
 	});
@@ -677,7 +762,7 @@
 			</div>
 
 			<!-- Two Column Layout: Viewer Left, Controls Right -->
-			<div class="grid gap-4 lg:grid-cols-[1fr_400px]">
+			<div class="grid gap-4 lg:grid-cols-[1fr_300px]">
 				<!-- Left Column: Viewer -->
 				<div class="order-2 lg:order-1">
 					<!-- Voyager Explorer Component -->
@@ -692,7 +777,9 @@
 								class="absolute top-0 left-0 h-full w-full"
 								root={url}
 								resourceroot={resourceRoot || `/voyager/${voyagerVersion}/`}
-								document={documentPath || 'scene.svx.json'}
+								document={model || geometry ? undefined : documentPath || 'scene.svx.json'}
+								model={geometry ? undefined : model}
+								{geometry}
 								{title}
 								uimode={showVoyagerUI ? 'all' : uiMode}
 								controls={enableControls}
@@ -1042,7 +1129,9 @@
 						class="absolute top-0 left-0 h-full w-full"
 						root={url}
 						resourceroot={resourceRoot || `/voyager/${voyagerVersion}/`}
-						document={documentPath || 'scene.svx.json'}
+						document={model || geometry ? undefined : documentPath || 'scene.svx.json'}
+						model={geometry ? undefined : model}
+						{geometry}
 						{title}
 						uimode={uiMode}
 						controls={enableControls}

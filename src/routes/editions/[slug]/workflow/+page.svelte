@@ -31,6 +31,7 @@
 	import ReviewFeedbackList from '$lib/components/workflow/ReviewFeedbackList.svelte';
 	import RichTextEditor from '$lib/components/ui/RichTextEditor.svelte';
 	import EditionAssetsPanel from '$lib/components/uploads/EditionAssetsPanel.svelte';
+	import CoverImageUpload from '$lib/components/uploads/CoverImageUpload.svelte';
 	import { DEFAULT_VOYAGER_VERSION } from '$lib/utils/asset-urls';
 	import toast from 'svelte-french-toast';
 	import type { RecordModel } from 'pocketbase';
@@ -87,7 +88,6 @@
 
 	// Viewer-mirror layout state
 	let activeFormTab = $state<'description' | 'metadata' | 'peer-review' | 'team'>('description');
-	let isSidebarCollapsed = $state(false);
 
 	// Scene/viewer state
 	let editionPubNum = $state(0);
@@ -524,6 +524,15 @@
 			</div>
 		{/if}
 
+		<!-- Breadcrumbs -->
+		<nav class="breadcrumbs mb-4 text-sm">
+			<ul>
+				<li><a href="{base}/" class="link link-hover">Home</a></li>
+				<li><a href="{base}/editions" class="link link-hover">Editions</a></li>
+				<li class="text-base-content/70">{edition.title || 'Untitled Edition'}</li>
+			</ul>
+		</nav>
+
 		<!-- Workflow Timeline (always visible) -->
 		<div class="mb-6">
 			<WorkflowTimeline currentStatus={edition.status} />
@@ -546,44 +555,45 @@
 			{/if}
 
 			<form onsubmit={(e) => { e.preventDefault(); submitConcept(); }}>
-				<!-- Header: editable title + authors (mirrors viewer header) -->
-				<div class="mb-6 flex items-start gap-4">
-					<div class="min-w-0 flex-1">
-						<div class="flex items-center gap-3">
-							<input
-								type="text"
-								class="input input-bordered w-full text-3xl font-bold placeholder:text-base-content/30 md:text-4xl h-auto py-3"
-								bind:value={conceptTitle}
-								required
-								placeholder="Edition title"
+				<!-- Header: cover image + editable title + authors -->
+				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-stretch">
+					{#if editionRecord}
+						<div class="w-full flex-none sm:w-36">
+							<CoverImageUpload
+								bind:record={editionRecord}
+								onuploaded={(r) => (editionRecord = r)}
+								onremoved={(r) => (editionRecord = r)}
 							/>
-							<StatusBadge status={edition.status} />
 						</div>
+					{/if}
+					<div class="min-w-0 flex-1">
+						<label for="concept-title" class="mb-1 block text-sm font-semibold">Title</label>
 						<input
+							id="concept-title"
 							type="text"
-							class="input input-bordered mt-2 w-full text-base-content/70 placeholder:text-base-content/30"
+							class="input input-bordered w-full text-2xl font-semibold placeholder:text-base-content/30"
+							bind:value={conceptTitle}
+							required
+							placeholder="Edition title"
+						/>
+						<label for="concept-authors" class="mb-1 mt-3 block text-sm font-semibold">
+							Authors <span class="font-normal text-base-content/60">comma-separated</span>
+						</label>
+						<input
+							id="concept-authors"
+							type="text"
+							class="input input-bordered w-full text-base-content/70 placeholder:text-base-content/30"
 							bind:value={conceptDcCreator}
-							placeholder="Authors (comma-separated)"
+							placeholder="e.g. Jane Doe, John Smith"
 						/>
 						{#if edition.collectionTitle}
 							<p class="mt-1 text-sm text-base-content/50">in {edition.collectionTitle}</p>
 						{/if}
 					</div>
-					<!-- Sidebar toggle -->
-					<button
-						type="button"
-						onclick={() => (isSidebarCollapsed = !isSidebarCollapsed)}
-						class="btn hidden btn-ghost btn-sm lg:flex"
-					>
-						{isSidebarCollapsed ? 'Show details' : 'Hide details'}
-						<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform duration-300" class:rotate-180={isSidebarCollapsed} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-						</svg>
-					</button>
 				</div>
 
 				<!-- Two-column layout (mirrors viewer) -->
-				<div class="relative flex flex-col gap-8 transition-all duration-300 lg:flex-row lg:items-start">
+				<div class="relative flex flex-col gap-8 lg:flex-row lg:items-start">
 					<!-- Left Column: 3D Viewer + Asset Uploads -->
 					<div class="min-w-0 flex-1 space-y-4">
 						{#if editionRecord}
@@ -597,18 +607,9 @@
 					</div>
 
 					<!-- Right Column: Tabbed Sidebar -->
-					<div
-						class="shrink-0 transition-all duration-300 ease-in-out"
-						class:lg:w-96={!isSidebarCollapsed}
-						class:lg:w-0={isSidebarCollapsed}
-					>
+					<div class="shrink-0 lg:w-96">
 						<div class="lg:sticky lg:top-4">
-							<div
-								class="card overflow-hidden bg-base-200 shadow-xl transition-all duration-300"
-								class:lg:w-0={isSidebarCollapsed}
-								class:lg:opacity-0={isSidebarCollapsed}
-								class:lg:invisible={isSidebarCollapsed}
-							>
+							<div class="overflow-hidden rounded-xl border border-base-300 bg-base-200">
 								<div class="w-96 max-w-full p-0">
 									<!-- Tabs -->
 									<div role="tablist" class="tabs-bordered tabs bg-base-300">
@@ -632,7 +633,7 @@
 											<div class="space-y-4">
 												<div>
 													<span class="mb-2 block text-sm font-semibold">Abstract</span>
-													<RichTextEditor content={conceptDescription} onchange={(html) => (conceptDescription = html)} minHeight="150px" />
+													<RichTextEditor content={conceptDescription} onchange={(html) => (conceptDescription = html)} minHeight="200px" />
 												</div>
 												<div class="form-control">
 													<label class="label py-0.5" for="concept-keyword">

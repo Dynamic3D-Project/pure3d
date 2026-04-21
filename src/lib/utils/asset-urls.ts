@@ -96,7 +96,7 @@ export function getEditionCoverUrl(
 	editionPubNum?: number | null
 ): string | null {
 	const coverImage = (edition.coverImage as string | undefined) ?? '';
-	if (coverImage) return pb.files.getUrl(edition, coverImage, { thumb: '400x300' });
+	if (coverImage) return pb.files.getURL(edition, coverImage, { thumb: '400x300' });
 	const thumbnail = (edition.thumbnail as string | undefined) ?? '';
 	if (thumbnail) return thumbnail;
 	if (collectionPubNum && editionPubNum) {
