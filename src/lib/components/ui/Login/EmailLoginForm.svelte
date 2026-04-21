@@ -1,8 +1,13 @@
 <script lang="ts">
 	import PhKeyBold from '~icons/ph/key-bold';
 	import { dev } from '$app/environment';
+	import { PUBLIC_SHOW_DEMO_ACCOUNTS } from '$env/static/public';
 	import { authStore } from '$lib/database';
 	import { closeLoginModal, getAuthErrorMessage, validateEmail } from './utils';
+
+	// Show demo-account buttons in dev always, and in prod only when
+	// PUBLIC_SHOW_DEMO_ACCOUNTS="true" is set at build time.
+	const showDemoAccounts = dev || PUBLIC_SHOW_DEMO_ACCOUNTS === 'true';
 
 	let email = $state('');
 	let password = $state('');
@@ -99,7 +104,7 @@
 			{isLoading ? 'Signing in...' : 'Sign in with Email'}
 		</button>
 
-		{#if dev}
+		{#if showDemoAccounts}
 			<div id="demo-accounts" class="mt-4 rounded-lg border border-dashed border-base-300 p-3">
 				<p class="mb-2 text-xs font-medium text-base-content/50">Demo Accounts</p>
 				<div class="flex flex-wrap gap-1.5">
