@@ -84,17 +84,93 @@
 </svelte:head>
 
 <div class="ds-root" bind:this={rootEl} data-density={density}>
+	<!-- ============== REUSABLE SYMBOLS ============== -->
+	<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+		<defs>
+			<!--
+				MARK: "D" as a faceted geodesic half-dome.
+				Subdivided triangles forming the D-shape, wireframe in ink with
+				vertices picked out and a single accent on the front-left vertex.
+			-->
+			<symbol id="p3d-mark" viewBox="0 0 64 64">
+				<path
+					d="M10 8 L44 8 C 56 8, 60 20, 60 32 C 60 44, 56 56, 44 56 L10 56 Z"
+					fill="currentColor"
+					opacity="0.04"
+				/>
+				<g fill="currentColor" opacity="0.12" stroke="none">
+					<polygon points="44,8 60,32 44,32" />
+					<polygon points="44,32 60,32 44,56" />
+				</g>
+				<g fill="currentColor" opacity="0.05" stroke="none">
+					<polygon points="8,8 32,8 8,32" />
+					<polygon points="8,56 32,56 8,32" />
+				</g>
+				<path
+					d="M8 8 L44 8 C 56 8, 60 20, 60 32 C 60 44, 56 56, 44 56 L8 56 Z"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linejoin="round"
+				/>
+				<g fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round" stroke-linecap="round">
+					<path d="M8 8 L8 56" />
+					<path d="M8 32 L60 32" />
+					<path d="M8 8 L32 8 L8 32" />
+					<path d="M32 8 L44 8 L32 32 L8 32" />
+					<path d="M44 8 L60 32 L32 32 L32 8 L44 8" />
+					<path d="M8 32 L32 32 L32 56 L8 56" />
+					<path d="M32 32 L44 56 L32 56" />
+					<path d="M32 32 L60 32 L44 56 L32 56" />
+					<path d="M8 8 L32 32" />
+					<path d="M32 8 L8 32" />
+					<path d="M8 32 L32 56" />
+					<path d="M32 32 L8 56" />
+					<path d="M32 8 L60 32" />
+					<path d="M32 56 L60 32" />
+				</g>
+				<g>
+					<circle cx="8" cy="8" r="1.6" fill="currentColor" />
+					<circle cx="44" cy="8" r="1.6" fill="currentColor" />
+					<circle cx="8" cy="56" r="1.6" fill="currentColor" />
+					<circle cx="44" cy="56" r="1.6" fill="currentColor" />
+					<circle cx="8" cy="32" r="2.2" fill="var(--ds-vermillion, #D55A3D)" />
+					<circle cx="60" cy="32" r="1.8" fill="currentColor" />
+					<circle cx="32" cy="32" r="1.6" fill="currentColor" />
+				</g>
+			</symbol>
+
+			<!-- Small simplified mark for sub-24px placements -->
+			<symbol id="p3d-mark-sm" viewBox="0 0 24 24">
+				<path
+					d="M3 3 L15 3 C 21 3, 22 9, 22 12 C 22 15, 21 21, 15 21 L3 21 Z"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.6"
+					stroke-linejoin="round"
+				/>
+				<path
+					d="M3 3 L3 21 M3 12 L22 12 M3 3 L12 12 L3 21 M12 3 L12 21 M12 12 L22 12 M12 3 L22 12 L12 21"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1"
+					stroke-linejoin="round"
+					opacity="0.9"
+				/>
+				<circle cx="3" cy="12" r="1.4" fill="var(--ds-vermillion, #D55A3D)" />
+				<circle cx="22" cy="12" r="1" fill="currentColor" />
+				<circle cx="12" cy="12" r="1" fill="currentColor" />
+			</symbol>
+		</defs>
+	</svg>
+
 	<!-- ============== TOP BAR ============== -->
 	<header class="topbar">
 		<div class="shell topbar-inner">
 			<div class="mark">
-				<svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
-					<path d="M11 2 L20 17 L2 17 Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
-					<path d="M11 2 L11 17" stroke="currentColor" stroke-width="1.4" />
-					<path d="M2 17 L11 9 L20 17" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
-					<circle cx="11" cy="9" r="1.6" fill="var(--ds-vermillion)" />
-				</svg>
-				<span>Pure 3D</span>
+				<span class="wm-inline"
+					>Pure&nbsp;<span class="wm-3">3</span><svg class="wm-d-xs" aria-hidden="true"><use href="#p3d-mark-sm" /></svg></span
+				>
 				<small>Design System · v0.1</small>
 			</div>
 			<nav>
@@ -214,52 +290,28 @@
 						<span class="crosshair br">+ 16.00, 10.00</span>
 
 						<div class="logo-hero">
-							<svg class="logo-mark" viewBox="0 0 84 84" fill="none" aria-hidden="true">
-								<path d="M42 6 L78 72 L6 72 Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
-								<path d="M42 6 L42 72" stroke="currentColor" stroke-width="2" />
-								<path d="M6 72 L42 38 L78 72" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
-								<circle cx="42" cy="38" r="5" fill="var(--ds-vermillion)" />
-							</svg>
-							<div class="logo-wm">Pure <sup>3D</sup></div>
+							<div class="logo-wm">Pure <span class="wm-num">3</span><svg class="wm-d-lg" aria-hidden="true"><use href="#p3d-mark" /></svg></div>
 						</div>
 					</div>
 
 					<div class="lockup-variants">
 						<div class="lvar">
 							<div class="lg">
-								<svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-									<path d="M14 3 L25 22 L3 22 Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
-									<path d="M14 3 L14 22" stroke="currentColor" stroke-width="1.4" />
-									<path d="M3 22 L14 12 L25 22" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
-									<circle cx="14" cy="12" r="2" fill="var(--ds-vermillion)" />
-								</svg>
-								<div class="wm">Pure <sup>3D</sup></div>
+								<div class="wm">Pure <span class="wm-num-sm">3</span><svg class="wm-d-sm" aria-hidden="true"><use href="#p3d-mark" /></svg></div>
 							</div>
 							<span class="lab">Primary / Paper</span>
 						</div>
 
 						<div class="lvar ink">
 							<div class="lg">
-								<svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-									<path d="M14 3 L25 22 L3 22 Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
-									<path d="M14 3 L14 22" stroke="currentColor" stroke-width="1.4" />
-									<path d="M3 22 L14 12 L25 22" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
-									<circle cx="14" cy="12" r="2" fill="var(--ds-vermillion)" />
-								</svg>
-								<div class="wm">Pure <sup>3D</sup></div>
+								<div class="wm">Pure <span class="wm-num-sm">3</span><svg class="wm-d-sm" aria-hidden="true"><use href="#p3d-mark" /></svg></div>
 							</div>
 							<span class="lab">Inverse / Ink</span>
 						</div>
 
 						<div class="lvar vermillion">
 							<div class="lg">
-								<svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-									<path d="M14 3 L25 22 L3 22 Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
-									<path d="M14 3 L14 22" stroke="currentColor" stroke-width="1.4" />
-									<path d="M3 22 L14 12 L25 22" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
-									<circle cx="14" cy="12" r="2" fill="currentColor" />
-								</svg>
-								<div class="wm">Pure <sup>3D</sup></div>
+								<div class="wm">Pure <span class="wm-num-sm">3</span><svg class="wm-d-sm" aria-hidden="true"><use href="#p3d-mark" /></svg></div>
 							</div>
 							<span class="lab">Accent / Signal</span>
 						</div>
@@ -801,11 +853,7 @@
 						<div class="plate-label"><span>Catalog card</span><span class="pl-r">Default surface</span></div>
 						<div class="catalog-card">
 							<div class="cat-thumb">
-								<svg width="40" height="40" viewBox="0 0 84 84" fill="none">
-									<path d="M42 6 L78 72 L6 72 Z" stroke="var(--ds-paper)" stroke-width="2" stroke-linejoin="round" />
-									<path d="M42 6 L42 72" stroke="var(--ds-paper)" stroke-width="2" />
-									<circle cx="42" cy="38" r="5" fill="var(--ds-vermillion)" />
-								</svg>
+								<svg class="cat-mark" viewBox="0 0 24 24" aria-hidden="true"><use href="#p3d-mark-sm" /></svg>
 							</div>
 							<div>
 								<div class="cat-row">
@@ -1176,13 +1224,9 @@
 				<footer>
 					<div>
 						<div class="foot-mark">
-							<svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
-								<path d="M11 2 L20 17 L2 17 Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
-								<path d="M11 2 L11 17" stroke="currentColor" stroke-width="1.4" />
-								<path d="M2 17 L11 9 L20 17" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
-								<circle cx="11" cy="9" r="1.6" fill="var(--ds-vermillion)" />
-							</svg>
-							<span>Pure 3D</span>
+							<span class="wm-inline"
+								>Pure&nbsp;<span class="wm-3">3</span><svg class="wm-d-xs" aria-hidden="true"><use href="#p3d-mark-sm" /></svg></span
+							>
 						</div>
 						<p class="colophon">
 							A design system for a scholarly publishing platform of interactive 3D objects. The marks and measures above are a
@@ -1738,26 +1782,49 @@
 		gap: 22px;
 		color: var(--ds-ink);
 	}
-	.logo-mark {
-		width: 84px;
-		height: 84px;
+	/* Wordmark ("Pure 3D" where the D is the faceted-dome mark) */
+	.wm-inline {
+		display: inline-flex;
+		align-items: baseline;
+		gap: 0;
+		font-family: var(--ds-sans);
+		font-weight: 600;
+		letter-spacing: -0.015em;
+		font-size: 15px;
+		color: var(--ds-ink);
 	}
+	.wm-inline .wm-3 {
+		font-feature-settings: 'ss01';
+	}
+	.wm-d-xs {
+		width: 15px;
+		height: 15px;
+		margin-left: 1px;
+		align-self: center;
+		flex: none;
+	}
+
 	.logo-wm {
+		display: flex;
+		align-items: center;
+		gap: 4px;
 		font-family: var(--ds-sans);
 		font-weight: 500;
-		font-size: 60px;
-		letter-spacing: -0.035em;
-		line-height: 0.95;
+		font-size: 96px;
+		letter-spacing: -0.045em;
+		line-height: 0.9;
+		color: var(--ds-ink);
 	}
-	.logo-wm sup {
-		font-family: var(--ds-serif);
-		font-style: italic;
-		font-weight: 400;
-		font-size: 0.55em;
-		color: var(--ds-vermillion-ink);
-		letter-spacing: 0;
-		vertical-align: 0.7em;
+	.logo-wm .wm-num {
+		font-feature-settings: 'ss01';
+	}
+	.logo-wm .wm-d-lg {
+		width: 0.92em;
+		height: 0.92em;
+		color: var(--ds-ink);
 		margin-left: 2px;
+		align-self: center;
+		filter: drop-shadow(0 6px 12px #14141320);
 	}
 
 	.lockup-variants {
@@ -1795,27 +1862,38 @@
 	.lvar .lg {
 		display: flex;
 		align-items: center;
-		gap: 10px;
+		gap: 2px;
 	}
 	.lvar .lg .wm {
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
 		font-family: var(--ds-sans);
 		font-weight: 500;
-		font-size: 22px;
-		letter-spacing: -0.02em;
+		font-size: 24px;
+		letter-spacing: -0.025em;
+		color: var(--ds-ink);
 	}
-	.lvar .lg .wm sup {
-		font-family: var(--ds-serif);
-		font-style: italic;
-		font-weight: 400;
-		font-size: 0.6em;
-		color: var(--ds-vermillion-ink);
-		letter-spacing: 0;
+	.lvar.ink .lg .wm,
+	.lvar.vermillion .lg .wm {
+		color: #f4f1eb;
 	}
-	.lvar.ink .lg .wm sup {
-		color: #f4b5a0;
+	.lvar .lg .wm-num-sm {
+		font-feature-settings: 'ss01';
 	}
-	.lvar.vermillion .lg .wm sup {
-		color: #ffe4d8;
+	.lvar .lg .wm-d-sm {
+		width: 22px;
+		height: 22px;
+		color: currentColor;
+		margin-left: 2px;
+		align-self: center;
+		flex: none;
+	}
+
+	.cat-mark {
+		width: 40px;
+		height: 40px;
+		color: var(--ds-paper);
 	}
 
 	.construction {
