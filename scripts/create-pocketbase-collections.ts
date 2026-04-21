@@ -186,7 +186,6 @@ async function main() {
 
 	await waitForPocketBase();
 	await authenticate();
-	await dropLegacyUserProfiles();
 
 	const collectionIds: Record<string, string> = {};
 
@@ -522,7 +521,10 @@ async function main() {
 		]
 	});
 
-	console.log('\nPhase 4: Setting open API rules...\n');
+	console.log('\nPhase 4: Dropping legacy userProfiles (if present)...\n');
+	await dropLegacyUserProfiles();
+
+	console.log('\nPhase 5: Setting open API rules...\n');
 
 	for (const name of [
 		'users',
