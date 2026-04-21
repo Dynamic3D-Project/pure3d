@@ -13,6 +13,9 @@ export const load: PageLoad = async ({ params }) => {
 
 		const thumbnail = getCollectionCoverUrl(collectionRecord, collectionRecord.pubNum) || '';
 
+		const toArray = (v: unknown): string[] =>
+			Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && !!x) : [];
+
 		const collection = {
 			id: collectionRecord.id,
 			slug: params.slug,
@@ -21,7 +24,13 @@ export const load: PageLoad = async ({ params }) => {
 			thumbnail,
 			isVisible: collectionRecord.isVisible !== false,
 			pubNum: collectionRecord.pubNum || 0,
-			editionIds: []
+			editionIds: [],
+			dcCreator: toArray(collectionRecord.dcCreator),
+			dcInstitution: toArray(collectionRecord.dcInstitution),
+			dcSubject: toArray(collectionRecord.dcSubject),
+			dcLanguage: toArray(collectionRecord.dcLanguage),
+			dcCoveragePeriod: (collectionRecord.dcCoveragePeriod as string | undefined) || '',
+			dcCoveragePlace: (collectionRecord.dcCoveragePlace as string | undefined) || ''
 		};
 
 		// Get editions for this collection

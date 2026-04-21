@@ -103,6 +103,11 @@
 				/>
 			</div>
 		{/if}
+		{#if edition.pubNum}
+			<div class="absolute top-2 left-2 z-10 rounded-md bg-black/55 px-1.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
+				#{edition.pubNum}
+			</div>
+		{/if}
 		<!-- Placeholder: show on error -->
 		<div
 			class="absolute inset-0 flex items-center justify-center text-base-content/30"
@@ -138,9 +143,12 @@
 			{/if}
 		{/if}
 	</figure>
-	<div class="card-body p-4">
+	<div class="card-body gap-1 p-4">
 		<h3 class="card-title text-sm line-clamp-2 group-hover:text-primary transition-colors">
 			{edition.title}
 		</h3>
+		{#if edition.authors}
+			<p class="text-xs text-base-content/60 line-clamp-1">{edition.authors}</p>
+		{/if}
 	</div>
 </a>

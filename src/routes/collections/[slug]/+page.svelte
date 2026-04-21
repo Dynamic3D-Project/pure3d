@@ -35,6 +35,23 @@
 	let isDeleting = $state(false);
 	let isCreating = $state(false);
 	let collectionRecord = $state<RecordModel | null>(null);
+	let descriptionExpanded = $state(false);
+
+	const DESCRIPTION_CLAMP_LENGTH = 320;
+
+	function stripHtml(html: string): string {
+		return html.replace(/<[^>]*>/g, '').trim();
+	}
+
+	let descriptionIsLong = $derived(
+		stripHtml(collection.description).length > DESCRIPTION_CLAMP_LENGTH
+	);
+
+	function formatCreators(creators: string[]): string {
+		if (creators.length === 0) return '';
+		if (creators.length <= 3) return creators.join(', ');
+		return `${creators.slice(0, 2).join(', ')}, +${creators.length - 2} more`;
+	}
 
 	// Edit-details form
 	let editTitle = $state('');
@@ -174,37 +191,128 @@
 			</ul>
 		</nav>
 
-		<div class="mx-auto max-w-4xl text-center">
-			<div class="flex items-start justify-center gap-3">
-				<h1 class="mb-6 text-4xl font-bold md:text-5xl">{collection.title}</h1>
-				{#if !collection.isVisible}
-					<span class="mt-2 badge badge-warning">Hidden</span>
+		<div class="relative grid gap-8 md:grid-cols-[minmax(0,320px)_1fr] md:items-start md:gap-10 lg:gap-14">
+			<!-- Cover -->
+			<figure
+				class="relative aspect-square w-full overflow-hidden rounded-2xl bg-base-200 shadow-lg ring-1 ring-base-300 md:sticky md:top-24"
+			>
+				{#if collection.thumbnail}
+					<img
+						src={collection.thumbnail}
+						alt={collection.title}
+						class="h-full w-full object-cover"
+						loading="eager"
+					/>
+				{:else}
+					<div class="flex h-full w-full items-center justify-center text-base-content/20">
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.25" d="M4.5 4.5h15v15h-15z M4.5 15l4-4 4 4 3-3 4 4" />
+						</svg>
+					</div>
 				{/if}
-			</div>
-			<div class="prose mx-auto max-w-none text-lg leading-relaxed text-base-content/70">
-				{@html collection.description}
-			</div>
-			{#if canManagePage || canCreateEdition}
-				<div class="mt-4 flex justify-center gap-3">
-					{#if canManagePage}
-						<button
-							class="btn btn-sm btn-primary"
-							onclick={() => (manageOpen = !manageOpen)}
-							aria-expanded={manageOpen}
-						>
-							{manageOpen ? 'Close Manage' : 'Manage'}
-						</button>
-					{/if}
-					{#if canCreateEdition}
-						<button class="btn btn-sm btn-primary" onclick={createEdition} disabled={isCreating}>
-							{#if isCreating}
-								<span class="loading loading-xs loading-spinner"></span>
-							{/if}
-							+ New Edition
-						</button>
+			</figure>
+
+			<!-- Info column -->
+			<div class="flex min-w-0 flex-col">
+				{#if canManagePage || canCreateEdition}
+					<div
+						class="mb-3 flex flex-wrap justify-end gap-2 md:absolute md:top-0 md:right-0 md:z-10 md:mb-0"
+					>
+						{#if canManagePage}
+							<button
+								class="btn btn-sm btn-ghost"
+								onclick={() => (manageOpen = !manageOpen)}
+								aria-expanded={manageOpen}
+							>
+								{manageOpen ? 'Close Manage' : 'Manage'}
+							</button>
+						{/if}
+						{#if canCreateEdition}
+							<button
+								class="btn btn-sm btn-primary"
+								onclick={createEdition}
+								disabled={isCreating}
+							>
+								{#if isCreating}
+									<span class="loading loading-xs loading-spinner"></span>
+								{/if}
+								+ New Edition
+							</button>
+						{/if}
+					</div>
+				{/if}
+
+				<div class="mb-4 flex flex-wrap items-start gap-3">
+					<h1 class="text-3xl font-bold leading-tight md:text-4xl lg:text-5xl">
+						{collection.title}
+					</h1>
+					{#if !collection.isVisible}
+						<span class="mt-2 badge badge-warning">Hidden</span>
 					{/if}
 				</div>
-			{/if}
+
+				<!-- Creators byline -->
+				{#if collection.dcCreator.length > 0}
+					<p class="mb-3 text-sm text-base-content/70">
+						<span class="text-base-content/50">by</span>
+						{formatCreators(collection.dcCreator)}
+					</p>
+				{/if}
+
+				<!-- Meta chips -->
+				<div class="mb-5 flex flex-wrap items-center gap-2 text-sm">
+					<span class="badge badge-ghost">
+						{editions.length} {editions.length === 1 ? 'edition' : 'editions'}
+					</span>
+					{#if collection.dcCoveragePeriod}
+						<span class="badge badge-outline">{collection.dcCoveragePeriod}</span>
+					{/if}
+					{#if collection.dcCoveragePlace}
+						<span class="badge badge-outline">{collection.dcCoveragePlace}</span>
+					{/if}
+					{#each collection.dcLanguage as lang (lang)}
+						<span class="badge badge-outline">{lang}</span>
+					{/each}
+				</div>
+
+				{#if collection.description}
+					<div class="relative">
+						<div
+							class="prose max-w-prose text-base leading-relaxed text-base-content/80"
+							class:line-clamp-6={descriptionIsLong && !descriptionExpanded}
+						>
+							{@html collection.description}
+						</div>
+						{#if descriptionIsLong}
+							<button
+								type="button"
+								class="mt-2 text-sm font-medium text-primary hover:underline"
+								onclick={() => (descriptionExpanded = !descriptionExpanded)}
+							>
+								{descriptionExpanded ? 'Show less' : 'Show more'}
+							</button>
+						{/if}
+					</div>
+				{/if}
+
+				{#if collection.dcInstitution.length > 0}
+					<p class="mt-4 text-sm text-base-content/60">
+						<span class="text-xs font-semibold tracking-wider uppercase text-base-content/50">
+							Institutions
+						</span>
+						<br />
+						{collection.dcInstitution.join(', ')}
+					</p>
+				{/if}
+
+				{#if collection.dcSubject.length > 0}
+					<div class="mt-5 flex flex-wrap gap-1.5">
+						{#each collection.dcSubject as subject (subject)}
+							<span class="badge badge-sm badge-neutral">{subject}</span>
+						{/each}
+					</div>
+				{/if}
+			</div>
 		</div>
 	</div>
 
@@ -347,8 +455,8 @@
 				{/each}
 			</div>
 		{:else}
-			<div class="alert alert-info">
-				<span>No editions available in this collection yet.</span>
+			<div class="rounded-lg border border-dashed border-base-300 bg-base-200/40 px-4 py-8 text-center text-sm text-base-content/60">
+				No editions available in this collection yet.
 			</div>
 		{/if}
 	</div>
