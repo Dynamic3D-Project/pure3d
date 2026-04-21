@@ -23,6 +23,13 @@
 		imageError = true;
 	}
 
+	// Strip HTML tags for plain-text preview
+	function stripHtml(html: string): string {
+		return html.replace(/<[^>]*>/g, '').trim();
+	}
+
+	let plainDescription = $derived(stripHtml(collection.description || ''));
+
 	// Check if thumbnail is from local static assets
 	const isLocalAsset = $derived(collection.thumbnail?.includes('/project/'));
 </script>
@@ -30,7 +37,7 @@
 <a
 	href={`${base}/collections/${collection.slug}`}
 	data-sveltekit-preload-data="hover"
-	class="group card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden"
+	class="group card bg-base-100 shadow-md hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 overflow-hidden"
 >
 	<figure class="relative overflow-hidden bg-base-200 aspect-[4/3]">
 		<!-- Placeholder: show on error -->
@@ -45,13 +52,13 @@
 		<!-- Actual image with format fallback -->
 		{#if collection.thumbnail && !imageError}
 			{#if isLocalAsset}
-				<picture>
+				<picture class="block w-full h-full">
 					<source srcset={collection.thumbnail.replace('.png', '.avif')} type="image/avif" />
 					<source srcset={collection.thumbnail.replace('.png', '.webp')} type="image/webp" />
 					<img
 						src={collection.thumbnail}
 						alt={collection.title}
-						class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+						class="w-full h-full object-cover"
 						loading="lazy"
 						onerror={handleImageError}
 					/>
@@ -60,21 +67,18 @@
 				<img
 					src={collection.thumbnail}
 					alt={collection.title}
-					class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+					class="w-full h-full object-cover"
 					loading="lazy"
 					onerror={handleImageError}
 				/>
 			{/if}
 		{/if}
-		<div
-			class="absolute inset-0 bg-gradient-to-t from-base-300/90 via-base-300/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-		></div>
 	</figure>
 	<div class="card-body p-4">
 		<h3 class="card-title text-base line-clamp-2 group-hover:text-primary transition-colors">
 			{collection.title}
 		</h3>
-		<p class="text-sm text-base-content/70 line-clamp-2">{collection.description}</p>
+		<p class="text-sm text-base-content/70 line-clamp-2">{plainDescription}</p>
 		<div class="card-actions justify-end mt-2">
 			<div class="badge badge-outline text-xs">{collection.editionCount || collection.editionIds?.length || 0} editions</div>
 		</div>

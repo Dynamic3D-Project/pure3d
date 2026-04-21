@@ -1,5 +1,14 @@
 {
   "window.title": "🧊 Pure3D - ${activeEditorShort}",
+   "workbench.editor.limit.value": 1,
+   "workbench.colorCustomizations": {                                                                                                                                                                                                                                     
+    "titleBar.activeBackground": "#00bfff",
+    "titleBar.activeForeground": "#000000" ,                                                                                                                                                                                                                            
+    // "terminal.foreground": "#000000",  
+    "statusBar.background": "#543b00",                                                                                                                                                                                                                                     
+      "statusBar.foreground": "#ffffff",    
+      
+}   ,
   "files.exclude": {
     "**/.git": true,
     "**/.svn": true,

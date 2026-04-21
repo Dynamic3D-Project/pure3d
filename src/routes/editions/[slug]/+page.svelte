@@ -1,11 +1,31 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import { dev } from '$app/environment';
+	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import type { PageData } from './$types';
 	import VoyagerViewer, { type VoyagerAPI } from '$lib/components/voyager/VoyagerViewer.svelte';
 	import VoyagerAPIDemo from '$lib/components/voyager/VoyagerAPIDemo.svelte';
 	import ReviewFeedbackList from '$lib/components/workflow/ReviewFeedbackList.svelte';
 	import ImagineModal from '$lib/components/ui/ImagineModal.svelte';
+	import StatusTransitionPanel from '$lib/components/workflow/StatusTransitionPanel.svelte';
+	import MemberManager from '$lib/components/admin/MemberManager.svelte';
+	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
+	import { authStore } from '$lib/database/stores/auth.svelte';
+	import { pb } from '$lib/database/client';
+	import {
+		EditionRole,
+		EditionStatus,
+		EDITION_ROLE_LABELS,
+		EDITION_STATUS_TRANSITIONS,
+		GlobalRole,
+		Permission,
+		type UserRoleContext
+	} from '$lib/types/roles';
+	import { hasPermission, canUserTransitionStatus } from '$lib/utils/permissions';
+	import { resolvePageContext } from '$lib/utils/page-permissions';
+	import { logAudit } from '$lib/utils/audit';
+	import toast from 'svelte-french-toast';
 
 	// View preset type for camera positions
 	interface ViewPreset {
@@ -173,6 +193,76 @@
 			isFullWindow = false;
 		}
 	}
+
+	// --- Manage panel (permission-gated CRUD on this page) ---
+	let permissionContext = $state<UserRoleContext>({ globalRole: GlobalRole.Viewer });
+	let manageOpen = $state(false);
+	let manageTab = $state<'workflow' | 'members' | 'danger'>('workflow');
+	let currentStatus = $state<EditionStatus>(EditionStatus.Draft);
+	let deleteConfirmOpen = $state(false);
+	let isDeleting = $state(false);
+
+	const editionRoleValues = Object.values(EditionRole) as string[];
+
+	let canManageMembers = $derived(
+		hasPermission(permissionContext, Permission.EditionEdit) &&
+			(permissionContext.globalRole === GlobalRole.Admin ||
+				permissionContext.collectionRole === 'owner' ||
+				permissionContext.editionRole === EditionRole.Author)
+	);
+
+	let hasActionableTransition = $derived(
+		(EDITION_STATUS_TRANSITIONS[currentStatus] ?? []).some((target) =>
+			canUserTransitionStatus(permissionContext, currentStatus, target)
+		)
+	);
+
+	let canManagePage = $derived(
+		hasPermission(permissionContext, Permission.EditionDelete) ||
+			canManageMembers ||
+			hasActionableTransition
+	);
+
+	let canDelete = $derived(hasPermission(permissionContext, Permission.EditionDelete));
+	let canEditMetadata = $derived(hasPermission(permissionContext, Permission.EditionEdit));
+
+	onMount(async () => {
+		if (edition.id === 'demo') return;
+		currentStatus = ((edition as unknown as { status?: EditionStatus }).status as EditionStatus) ||
+			EditionStatus.Draft;
+
+		if (!authStore.isAuthenticated || !authStore.appUserId) {
+			permissionContext = { globalRole: authStore.globalRole };
+			return;
+		}
+
+		permissionContext = await resolvePageContext({
+			globalRole: authStore.globalRole,
+			userProfileId: authStore.appUserId,
+			collectionId: (edition as unknown as { collectionId?: string }).collectionId || null,
+			editionId: edition.id
+		});
+	});
+
+	function handleStatusChanged(newStatus: EditionStatus) {
+		currentStatus = newStatus;
+	}
+
+	async function deleteEdition() {
+		isDeleting = true;
+		try {
+			await pb.collection('editions').delete(edition.id);
+			await logAudit('user_deleted', 'edition', edition.id, authStore.user?.email || '', {
+				title: edition.title
+			});
+			toast.success('Edition deleted');
+			goto(`${base}/editions`);
+		} catch (error) {
+			console.error('Error deleting edition:', error);
+			toast.error('Failed to delete edition');
+			isDeleting = false;
+		}
+	}
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -218,6 +308,15 @@
 				<h1 class="mb-1 text-3xl font-bold md:text-4xl">{edition.title}</h1>
 				<p class="text-base-content/70">{edition.authors}</p>
 			</div>
+			{#if canManagePage}
+				<button
+					class="btn btn-sm btn-primary"
+					onclick={() => (manageOpen = !manageOpen)}
+					aria-expanded={manageOpen}
+				>
+					{manageOpen ? 'Close Manage' : 'Manage'}
+				</button>
+			{/if}
 			<!-- Sidebar toggle button -->
 			<button
 				onclick={toggleSidebar}
@@ -237,6 +336,91 @@
 				</svg>
 			</button>
 		</div>
+
+		{#if manageOpen && canManagePage}
+			<div class="mb-6 rounded-box border border-base-300 bg-base-200 p-4">
+				<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+					<div class="flex items-center gap-3">
+						<h2 class="text-lg font-semibold">Manage Edition</h2>
+						<StatusBadge status={currentStatus} />
+					</div>
+					<div class="flex gap-2">
+						{#if canEditMetadata}
+							<a
+								href="{base}/editions/{edition.id}/workflow"
+								class="btn btn-outline btn-sm"
+							>
+								Edit in Workflow
+							</a>
+						{/if}
+					</div>
+				</div>
+
+				<div role="tablist" class="tabs-bordered tabs mb-4">
+					<button
+						role="tab"
+						class="tab"
+						class:tab-active={manageTab === 'workflow'}
+						onclick={() => (manageTab = 'workflow')}
+					>
+						Workflow
+					</button>
+					{#if canManageMembers}
+						<button
+							role="tab"
+							class="tab"
+							class:tab-active={manageTab === 'members'}
+							onclick={() => (manageTab = 'members')}
+						>
+							Members
+						</button>
+					{/if}
+					{#if canDelete}
+						<button
+							role="tab"
+							class="tab"
+							class:tab-active={manageTab === 'danger'}
+							onclick={() => (manageTab = 'danger')}
+						>
+							Danger Zone
+						</button>
+					{/if}
+				</div>
+
+				{#if manageTab === 'workflow'}
+					<StatusTransitionPanel
+						editionId={edition.id}
+						title={edition.title}
+						status={currentStatus}
+						context={permissionContext}
+						onchanged={handleStatusChanged}
+					/>
+				{:else if manageTab === 'members' && canManageMembers}
+					<MemberManager
+						membershipCollection="editionUsers"
+						parentField="editionId"
+						parentId={edition.id}
+						roleValues={editionRoleValues}
+						roleLabels={EDITION_ROLE_LABELS}
+						defaultRole={EditionRole.Collaborator}
+						auditTargetType="edition"
+					/>
+				{:else if manageTab === 'danger' && canDelete}
+					<div class="space-y-3">
+						<p class="text-sm text-base-content/70">
+							Deleting this edition is permanent and cannot be undone.
+						</p>
+						<button
+							class="btn btn-sm btn-error"
+							onclick={() => (deleteConfirmOpen = true)}
+							disabled={isDeleting}
+						>
+							Delete Edition
+						</button>
+					</div>
+				{/if}
+			</div>
+		{/if}
 
 		<!-- Main Content Grid -->
 		<div
@@ -733,6 +917,37 @@
 
 <!-- Imagine AI Modal -->
 <ImagineModal bind:open={imagineModalOpen} {edition} onclose={() => (imagineModalOpen = false)} />
+
+<!-- Delete confirmation modal -->
+{#if canDelete}
+	<dialog class="modal" class:modal-open={deleteConfirmOpen}>
+		<div class="modal-box">
+			<h3 class="text-lg font-bold">Delete this edition?</h3>
+			<p class="py-4 text-base-content/70">
+				"{edition.title}" will be permanently removed. This action cannot be undone.
+			</p>
+			<div class="modal-action">
+				<button
+					type="button"
+					class="btn btn-ghost"
+					onclick={() => (deleteConfirmOpen = false)}
+					disabled={isDeleting}
+				>
+					Cancel
+				</button>
+				<button type="button" class="btn btn-error" onclick={deleteEdition} disabled={isDeleting}>
+					{#if isDeleting}
+						<span class="loading loading-xs loading-spinner"></span>
+					{/if}
+					Delete
+				</button>
+			</div>
+		</div>
+		<form method="dialog" class="modal-backdrop">
+			<button type="button" onclick={() => (deleteConfirmOpen = false)}>close</button>
+		</form>
+	</dialog>
+{/if}
 
 <style>
 	/* Full window mode for the 3D viewer */

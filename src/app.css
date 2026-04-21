@@ -10,36 +10,45 @@
 @plugin "@tailwindcss/forms";
 @plugin "@tailwindcss/container-queries";
 
-@plugin "daisyui/theme" {
-  name: 'ctw';
-  default: false;
-  /* set as default */
-  prefersdark: false;
-  /* set as default dark mode (prefers-color-scheme:dark) */
-  color-scheme: dark;
-  /* color of browser-provided UI */
 
-  --color-primary: #ffb83d;
-  --color-primary-focus: #db8b00;
-  --color-primary-content: black;
-  --color-secondary: #5e9c91;
-  --color-secondary-focus: #3e655f;
-  --color-secondary-content: #ffffff;
-  --color-accent: #37cdbe;
-  --color-accent-focus: #2aa79b;
-  --color-accent-content: #ffffff;
-  --color-neutral: #3d4451;
-  --color-neutral-focus: #2a2e37;
-  --color-neutral-content: #ffffff;
-  --color-base-100: #171717;
-  --color-base-200: #333;
-  --color-base-300: #555;
-  --color-base-content: #e8e8e8;
-  --color-info: #2094f3;
-  --color-success: #009485;
-  --color-warning: #ff9900;
-  --color-error: #ff5724;
+
+
+@plugin "daisyui/theme" {
+  name: "pure3d";
+  default: false;
+  prefersdark: false;
+  color-scheme: "light";
+  --color-base-100: oklch(97.8% 0.004 56.4);
+  --color-base-200: oklch(94% 0.007 61.4);
+  --color-base-300: oklch(91.6% 0.006 53.4);
+  --color-base-content: oklch(23.6% 0.066 313.2);
+  --color-primary: oklch(70% 0.14 182.503);
+  --color-primary-content: oklch(43% 0.078 188.2);
+  --color-secondary: oklch(55% 0.18 220);
+  --color-secondary-content: oklch(97% 0.01 220);
+  --color-accent: oklch(72% 0.15 55);
+  --color-accent-content: oklch(22% 0.05 55);
+  --color-neutral: oklch(25% 0.04 265);
+  --color-neutral-content: oklch(92% 0.005 265);
+  --color-info: oklch(68% 0.169 237.3);
+  --color-info-content: oklch(29% 0.066 243.2);
+  --color-success: oklch(69% 0.17 162.5);
+  --color-success-content: oklch(26% 0.051 172.6);
+  --color-warning: oklch(79% 0.184 86);
+  --color-warning-content: oklch(28% 0.066 53.8);
+  --color-error: oklch(64% 0.246 16.4);
+  --color-error-content: oklch(97% 0.01 16);
+  --radius-selector: 2rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.28125rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
 }
+
+
 
 /*
   The default border color has changed to `currentcolor` in Tailwind CSS v4,

@@ -1,6 +1,6 @@
 # Pure3D Role-Based Access Control (RBAC)
 
-This document defines the role system for the Pure3D platform, covering all 7 roles, their permissions, and the editorial workflow.
+This document defines the role system for the Pure3D platform, covering all roles, their permissions, and the editorial workflow.
 
 ## Role Definitions
 
@@ -10,8 +10,7 @@ These roles are assigned system-wide in the `users` collection.
 
 | Role | Who | Scope |
 |------|-----|-------|
-| **Super Admin** | Platform maintainers, KNAW/HuC staff | Full system access. Can manage all users, collections, editions, and platform settings. |
-| **Admin** | Trusted staff or delegated managers | Can manage users and oversee all collections/editions. Cannot modify platform-level settings. |
+| **Admin** | Platform maintainers, KNAW/HuC staff, trusted managers | Full system access. Can manage all users, collections, editions, and platform settings. |
 | **Editorial Board** | Appointed reviewers for peer review | Can review submitted editions across all collections. Cannot create or edit content. |
 | **Viewer** | Default role for registered users | Can browse published content. No editing or management permissions. |
 
@@ -37,47 +36,47 @@ These roles are assigned per-edition in the `editionUsers` join table.
 
 ## Permission Matrix
 
-Actions marked with the role that can perform them. Global roles (SA=Super Admin, A=Admin, EB=Editorial Board, V=Viewer) and scoped roles (CO=Collection Owner, E=Editor, Au=Author, Cl=Collaborator, R=Reviewer).
+Actions marked with the role that can perform them. Global roles (A=Admin, EB=Editorial Board, V=Viewer) and scoped roles (CO=Collection Owner, E=Editor, Au=Author, Cl=Collaborator, R=Reviewer).
 
 ### Edition Lifecycle
 
-| Action | SA | A | EB | V | CO | E | Au | Cl | R |
-|--------|:--:|:-:|:--:|:-:|:--:|:-:|:--:|:--:|:-:|
-| Create edition | x | x | | | x | | | | |
-| Edit edition content | x | x | | | x | x | x | x | |
-| Delete edition | x | x | | | x | | | | |
-| View draft edition | x | x | | | x | x | x | x | x |
-| Submit for review | x | x | | | x | | x | | |
-| Approve/reject edition | x | | x | | | | | | x |
-| Publish edition | x | x | | | x | | | | |
-| Unpublish edition | x | x | | | x | | | | |
+| Action | A | EB | V | CO | E | Au | Cl | R |
+|--------|:-:|:--:|:-:|:--:|:-:|:--:|:--:|:-:|
+| Create edition | x | | | x | | | | |
+| Edit edition content | x | | | x | x | x | x | |
+| Delete edition | x | | | x | | | | |
+| View draft edition | x | | | x | x | x | x | x |
+| Submit for review | x | | | x | | x | | |
+| Approve/reject edition | x | x | | | | | | x |
+| Publish edition | x | | | x | | | | |
+| Unpublish edition | x | | | x | | | | |
 
 ### Collection Management
 
-| Action | SA | A | EB | V | CO | E |
-|--------|:--:|:-:|:--:|:-:|:--:|:-:|
-| Create collection | x | x | | | | |
-| Edit collection metadata | x | x | | | x | x |
-| Delete collection | x | x | | | x | |
-| Manage collection users | x | x | | | x | |
+| Action | A | EB | V | CO | E |
+|--------|:-:|:--:|:-:|:--:|:-:|
+| Create collection | x | | | | |
+| Edit collection metadata | x | | | x | x |
+| Delete collection | x | | | x | |
+| Manage collection users | x | | | x | |
 
 ### User & Platform Management
 
-| Action | SA | A | EB | V |
-|--------|:--:|:-:|:--:|:-:|
-| View admin panel | x | x | | |
-| Manage user global roles | x | x | | |
-| Manage platform settings | x | | | |
-| View all users | x | x | | |
+| Action | A | EB | V |
+|--------|:-:|:--:|:-:|
+| View admin panel | x | | |
+| Manage user global roles | x | | |
+| Manage platform settings | x | | |
+| View all users | x | | |
 
 ### Content Browsing
 
-| Action | SA | A | EB | V |
-|--------|:--:|:-:|:--:|:-:|
-| Browse published editions | x | x | x | x |
-| Browse published collections | x | x | x | x |
-| Search/filter content | x | x | x | x |
-| View own profile | x | x | x | x |
+| Action | A | EB | V |
+|--------|:-:|:--:|:-:|
+| Browse published editions | x | x | x |
+| Browse published collections | x | x | x |
+| Search/filter content | x | x | x |
+| View own profile | x | x | x |
 
 ## Editorial Workflow
 
@@ -128,20 +127,19 @@ Editions follow a review workflow with defined status transitions:
 
 | From | To | Who Can Trigger |
 |------|----|-----------------|
-| `draft` | `submitted` | Author, Collection Owner, Super Admin, Admin |
-| `submitted` | `in_review` | Editorial Board, Reviewer, Super Admin, Admin |
-| `in_review` | `approved` | Editorial Board, Reviewer, Super Admin |
-| `in_review` | `rejected` | Editorial Board, Reviewer, Super Admin |
-| `approved` | `published` | Collection Owner, Super Admin, Admin |
-| `rejected` | `draft` | Author, Collection Owner, Super Admin, Admin |
-| `published` | `draft` | Collection Owner, Super Admin, Admin |
+| `draft` | `submitted` | Author, Collection Owner, Admin |
+| `submitted` | `in_review` | Editorial Board, Reviewer, Admin |
+| `in_review` | `approved` | Editorial Board, Reviewer, Admin |
+| `in_review` | `rejected` | Editorial Board, Reviewer, Admin |
+| `approved` | `published` | Collection Owner, Admin |
+| `rejected` | `draft` | Author, Collection Owner, Admin |
+| `published` | `draft` | Collection Owner, Admin |
 
 ## PocketBase Schema Mapping
 
 ### Global Roles → `users.role` (select field)
 
 ```
-superadmin  → Super Admin
 admin       → Admin
 editorial_board → Editorial Board
 viewer      → Viewer (default for new registrations)
@@ -192,7 +190,7 @@ The `users` collection (app data) stores a `pbAuthId` field that links to the Po
 
 | Area | Status |
 |------|--------|
-| `users.role` values | `superadmin`, `admin`, `editorial_board`, `viewer` — matches partner diagram |
+| `users.role` values | `admin`, `editorial_board`, `viewer` — matches partner diagram |
 | `collectionUsers.role` values | `owner`, `editor`, `viewer` — explicit ownership |
 | `editionUsers.role` values | `author`, `collaborator`, `reviewer` — clear responsibilities |
 | Edition status/workflow | `status` select field with 6 states and defined transitions |

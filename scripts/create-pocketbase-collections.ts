@@ -5,7 +5,7 @@
  */
 import PocketBase from 'pocketbase';
 
-const POCKETBASE_URL = process.env.POCKETBASE_URL || 'http://pocketbase:8090';
+const POCKETBASE_URL = process.env.POCKETBASE_URL || 'http://localhost:8090';
 const ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL || 'admin@admin.local';
 const ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD || '1234567890';
 
@@ -19,7 +19,7 @@ const openRules = {
 	deleteRule: ''
 };
 
-const globalRoleValues = ['superadmin', 'admin', 'editorial_board', 'viewer'];
+const globalRoleValues = ['admin', 'editorial_board', 'viewer'];
 const collectionRoleValues = ['owner', 'editor', 'viewer'];
 const editionRoleValues = ['author', 'collaborator', 'reviewer'];
 const editionStatusValues = [
@@ -314,7 +314,40 @@ async function main() {
 			{ name: 'sceneFile', type: 'text', required: false },
 			{ name: 'settingsAuthorToolName', type: 'text', required: false },
 			{ name: 'settingsAuthorToolVersion', type: 'text', required: false },
-			{ name: 'settingsSceneFile', type: 'text', required: false }
+			{ name: 'settingsSceneFile', type: 'text', required: false },
+			{
+				name: 'coverImage',
+				type: 'file',
+				required: false,
+				maxSelect: 1,
+				maxSize: 20 * 1024 * 1024,
+				mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/avif'],
+				thumbs: ['400x300', '100x100']
+			},
+			{
+				name: 'modelFile',
+				type: 'file',
+				required: false,
+				maxSelect: 1,
+				maxSize: 500 * 1024 * 1024,
+				mimeTypes: []
+			},
+			{
+				name: 'modelAssets',
+				type: 'file',
+				required: false,
+				maxSelect: 200,
+				maxSize: 500 * 1024 * 1024,
+				mimeTypes: []
+			},
+			{
+				name: 'sceneDocument',
+				type: 'file',
+				required: false,
+				maxSelect: 1,
+				maxSize: 0,
+				mimeTypes: []
+			}
 		]
 	});
 
@@ -505,6 +538,35 @@ async function main() {
 		'notifications'
 	]) {
 		await setOpenRules(name);
+	}
+
+	// Configure S3 storage only when all four R2_* env vars are present.
+	// Per-field `maxSize` on file fields gates upload sizes (PocketBase v0.22+
+	// removed the global body-limit setting).
+	const r2Endpoint = process.env.R2_ENDPOINT;
+	const r2Bucket = process.env.R2_BUCKET;
+	const r2AccessKey = process.env.R2_ACCESS_KEY_ID;
+	const r2Secret = process.env.R2_SECRET_ACCESS_KEY;
+
+	if (r2Endpoint && r2Bucket && r2AccessKey && r2Secret) {
+		console.log('📦 Configuring S3 storage (R2)');
+		try {
+			await pb.settings.update({
+				s3: {
+					enabled: true,
+					bucket: r2Bucket,
+					region: 'auto',
+					endpoint: r2Endpoint,
+					accessKey: r2AccessKey,
+					secret: r2Secret,
+					forcePathStyle: true
+				}
+			});
+		} catch (err) {
+			console.warn('⚠️  Could not apply S3 settings:', err);
+		}
+	} else {
+		console.log('📁 Using local-disk storage (R2 env vars not set)');
 	}
 
 	console.log('\nSchema is ready.\n');

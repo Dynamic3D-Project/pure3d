@@ -10,6 +10,10 @@
 		fetchEditions,
 		isStale
 	} from '$lib/stores/data.store';
+	import { authStore } from '$lib/database/stores/auth.svelte';
+	import { pb } from '$lib/database/client';
+	import { EditionStatus } from '$lib/types/roles';
+	import toast from 'svelte-french-toast';
 
 	// Reactive data from persisted store
 	let editions = $derived($editionsStore.items);
@@ -179,6 +183,43 @@
 	function closeDrawer() {
 		drawerOpen = false;
 	}
+
+	let isCreating = $state(false);
+
+	async function createEdition() {
+		if (!authStore.isAuthenticated || !authStore.appUserId) {
+			toast.error('Please sign in to create an edition');
+			return;
+		}
+		isCreating = true;
+		try {
+			const record = await pb.collection('editions').create({
+				title: 'Untitled Edition',
+				dcTitle: 'Untitled Edition',
+				status: EditionStatus.Draft,
+				isPublished: false
+			});
+
+			try {
+				await pb.collection('editionUsers').create({
+					edition: record.id,
+					editionId: record.id,
+					user: authStore.appUserId,
+					userId: authStore.appUserId,
+					role: 'author'
+				});
+			} catch {
+				// Non-critical
+			}
+
+			goto(`${base}/editions/${record.id}/workflow`);
+		} catch (e: unknown) {
+			const message = e instanceof Error ? e.message : 'Failed to create edition';
+			toast.error(message);
+		} finally {
+			isCreating = false;
+		}
+	}
 </script>
 
 <svelte:window onclick={handleClickOutside} />
@@ -206,11 +247,25 @@
 	<div class="drawer-content">
 		<div class="container mx-auto px-4 py-8 max-w-7xl">
 			<!-- Header -->
-			<div class="mb-8">
-				<h1 class="text-3xl md:text-4xl font-bold mb-2">Editions</h1>
-				<p class="text-base-content/70">
-					Browse our collection of 3D scholarly editions
-				</p>
+			<div class="mb-8 flex items-start justify-between gap-4">
+				<div>
+					<h1 class="text-3xl md:text-4xl font-bold mb-2">Editions</h1>
+					<p class="text-base-content/70">
+						Browse our collection of 3D scholarly editions
+					</p>
+				</div>
+				{#if authStore.isAuthenticated}
+					<button
+						class="btn btn-primary btn-sm flex-none"
+						onclick={createEdition}
+						disabled={isCreating}
+					>
+						{#if isCreating}
+							<span class="loading loading-xs loading-spinner"></span>
+						{/if}
+						+ New Edition
+					</button>
+				{/if}
 			</div>
 
 			<!-- Search and Filter Button (mobile) -->
