@@ -5,8 +5,10 @@
  * Set to empty string to serve from local static/project/ instead.
  */
 
+import type { RecordModel } from 'pocketbase';
 import { PUBLIC_ASSET_BASE_URL } from '$env/static/public';
 import { base } from '$app/paths';
+import { pb } from '$lib/database/client';
 
 const DEFAULT_ASSET_BASE_URL = 'https://pure3d-assets.ctwhome.com';
 
@@ -87,3 +89,18 @@ export const VOYAGER_VERSIONS = ['0.59.0'] as const;
 export const MIN_DERIVATIVES_VERSION = '0.59.0';
 
 export type VoyagerVersion = (typeof VOYAGER_VERSIONS)[number];
+
+export function getEditionCoverUrl(
+	edition: RecordModel,
+	collectionPubNum?: number | null,
+	editionPubNum?: number | null
+): string | null {
+	const coverImage = (edition.coverImage as string | undefined) ?? '';
+	if (coverImage) return pb.files.getURL(edition, coverImage, { thumb: '400x300' });
+	const thumbnail = (edition.thumbnail as string | undefined) ?? '';
+	if (thumbnail) return thumbnail;
+	if (collectionPubNum && editionPubNum) {
+		return getEditionThumbnailUrl(collectionPubNum, editionPubNum);
+	}
+	return null;
+}

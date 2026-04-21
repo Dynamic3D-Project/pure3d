@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
+	import toast from 'svelte-french-toast';
 	import { pb } from '$lib/database/client';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { EditionStatus, STATUS_LABELS } from '$lib/types/roles';
@@ -9,16 +10,18 @@
 	import { ReviewDecision } from '$lib/types/reviews';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
 	import WorkflowTimeline from '$lib/components/workflow/WorkflowTimeline.svelte';
+	import { getEditionThumbnailUrl } from '$lib/utils/asset-urls';
 
 	interface DashEdition {
 		id: string;
 		title: string;
 		status: EditionStatus;
 		collectionTitle: string;
+		thumbnail: string;
 		created: string;
 	}
 
-	let activeTab = $state<'reviews' | 'editions'>('reviews');
+	let activeTab = $state<'reviews' | 'editions'>('editions');
 	let isLoading = $state(true);
 
 	// My Reviews data
@@ -95,11 +98,20 @@
 					expand: 'collection'
 				});
 				for (const r of edResult.items) {
+					const col = r.expand?.collection;
+					const collectionPubNum = col?.pubNum || 0;
+					const editionPubNum = r.pubNum || 0;
+					const thumbnail =
+						r.thumbnail ||
+						(collectionPubNum > 0 && editionPubNum > 0
+							? getEditionThumbnailUrl(collectionPubNum, editionPubNum)
+							: '');
 					editionMap.set(r.id, {
 						id: r.id,
 						title: r.dcTitle || r.title,
 						status: (r.status as EditionStatus) || EditionStatus.Draft,
-						collectionTitle: r.expand?.collection?.title || '',
+						collectionTitle: col?.title || '',
+						thumbnail,
 						created: r.created
 					});
 				}
@@ -128,11 +140,36 @@
 	}
 
 	function formatDate(dateStr: string): string {
-		return new Date(dateStr).toLocaleDateString('en-US', {
+		if (!dateStr) return '';
+		const d = new Date(dateStr);
+		if (isNaN(d.getTime())) return '';
+		return d.toLocaleDateString('en-US', {
 			month: 'short',
 			day: 'numeric',
 			year: 'numeric'
 		});
+	}
+
+	let deletingId = $state<string | null>(null);
+
+	async function deleteDraft(edition: DashEdition) {
+		if (edition.status !== EditionStatus.Draft) return;
+		const confirmed = confirm(
+			`Delete draft "${edition.title}"? This cannot be undone.`
+		);
+		if (!confirmed) return;
+
+		deletingId = edition.id;
+		try {
+			await pb.collection('editions').delete(edition.id);
+			myEditions = myEditions.filter((e) => e.id !== edition.id);
+			toast.success(`Deleted "${edition.title}"`);
+		} catch (err) {
+			console.error('Delete failed:', err);
+			toast.error((err as Error).message || 'Failed to delete edition');
+		} finally {
+			deletingId = null;
+		}
 	}
 
 	function getStageLabel(stage: number): string {
@@ -152,21 +189,11 @@
 <div id="reviews-dashboard" class="mx-auto max-w-4xl p-4 lg:p-8">
 	<div class="mb-6">
 		<h1 class="text-2xl font-bold">My Work</h1>
-		<p class="mt-1 text-base-content/60">Your review assignments and authored editions.</p>
+		<p class="mt-1 text-base-content/60">Your authored editions and review assignments.</p>
 	</div>
 
 	<!-- Tabs -->
 	<div class="tabs-bordered mb-6 tabs">
-		<button
-			class="tab"
-			class:tab-active={activeTab === 'reviews'}
-			onclick={() => (activeTab = 'reviews')}
-		>
-			My Reviews
-			{#if pendingAssignments.length > 0}
-				<span class="ml-1 badge badge-sm badge-primary">{pendingAssignments.length}</span>
-			{/if}
-		</button>
 		<button
 			class="tab"
 			class:tab-active={activeTab === 'editions'}
@@ -175,6 +202,16 @@
 			My Editions
 			{#if myEditions.length > 0}
 				<span class="ml-1 badge badge-sm">{myEditions.length}</span>
+			{/if}
+		</button>
+		<button
+			class="tab"
+			class:tab-active={activeTab === 'reviews'}
+			onclick={() => (activeTab = 'reviews')}
+		>
+			My Reviews
+			{#if pendingAssignments.length > 0}
+				<span class="ml-1 badge badge-sm badge-primary">{pendingAssignments.length}</span>
 			{/if}
 		</button>
 	</div>
@@ -277,18 +314,48 @@
 				<div class="space-y-3">
 					{#each myEditions as edition (edition.id)}
 						<div class="rounded-box border border-base-300 bg-base-100 p-4">
-							<div class="flex flex-wrap items-center justify-between gap-3">
-								<div class="flex flex-wrap items-center gap-3">
-									<span class="font-medium">{edition.title}</span>
-									<StatusBadge status={edition.status} />
+							<div class="flex gap-4">
+								{#if edition.thumbnail}
+									<img
+										src={edition.thumbnail}
+										alt={edition.title}
+										class="size-16 shrink-0 rounded-lg object-cover"
+									/>
+								{:else}
+									<div class="flex size-16 shrink-0 items-center justify-center rounded-lg bg-base-200 text-base-content/30">
+										<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+											<path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" />
+										</svg>
+									</div>
+								{/if}
+								<div class="min-w-0 flex-1">
+									<div class="flex flex-wrap items-center justify-between gap-3">
+										<div class="flex flex-wrap items-center gap-3">
+											<span class="font-medium">{edition.title}</span>
+											<StatusBadge status={edition.status} />
+										</div>
+										<div class="flex items-center gap-2">
+											{#if edition.status === EditionStatus.Draft}
+												<button
+													type="button"
+													class="btn btn-ghost btn-sm text-error"
+													disabled={deletingId === edition.id}
+													onclick={() => deleteDraft(edition)}
+													aria-label="Delete draft"
+												>
+													{deletingId === edition.id ? 'Deleting…' : 'Delete'}
+												</button>
+											{/if}
+											<a href="{base}/editions/{edition.id}/workflow" class="btn btn-ghost btn-sm">
+												View Workflow
+											</a>
+										</div>
+									</div>
+									{#if edition.collectionTitle}
+										<p class="mt-1 text-sm text-base-content/50">in {edition.collectionTitle}</p>
+									{/if}
 								</div>
-								<a href="{base}/editions/{edition.id}/workflow" class="btn btn-ghost btn-sm">
-									View Workflow
-								</a>
 							</div>
-							{#if edition.collectionTitle}
-								<p class="mt-1 text-sm text-base-content/50">in {edition.collectionTitle}</p>
-							{/if}
 							<div class="mt-3">
 								<WorkflowTimeline currentStatus={edition.status} />
 							</div>

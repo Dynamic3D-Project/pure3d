@@ -79,11 +79,11 @@
 			{/if}
 			<div class="flex flex-col items-center gap-1">
 				<div
-					class="flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold {state ===
+					class="flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] {state ===
 					'completed'
 						? 'bg-success text-success-content'
 						: state === 'current'
-							? 'bg-primary text-primary-content'
+							? 'bg-primary text-primary-content font-semibold'
 							: 'bg-base-300 text-base-content/40'}"
 				>
 					{#if state === 'completed'}
@@ -93,7 +93,7 @@
 							viewBox="0 0 24 24"
 							stroke-width="2"
 							stroke="currentColor"
-							class="size-4"
+							class="size-3.5"
 						>
 							<path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
 						</svg>
@@ -102,9 +102,9 @@
 					{/if}
 				</div>
 				<span
-					class="max-w-16 text-center text-xs {state === 'current'
+					class="max-w-16 text-center text-[11px] {state === 'current'
 						? 'font-semibold'
-						: ''} {state === 'future' ? 'text-base-content/40' : ''}"
+						: 'text-base-content/60'} {state === 'future' ? 'text-base-content/40' : ''}"
 				>
 					{stage.label}
 				</span>

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import type { Edition } from '$lib/types/collection';
+	import type { RecordModel } from 'pocketbase';
+	import { getEditionCoverUrl } from '$lib/utils/asset-urls';
 
 	interface Props {
 		edition: Edition;
@@ -9,6 +11,8 @@
 	let { edition }: Props = $props();
 	let imageError = $state(false);
 	let hasPrefetched = false;
+
+	let coverUrl = $derived(getEditionCoverUrl(edition as unknown as RecordModel));
 
 	function handleImageError() {
 		imageError = true;
@@ -86,7 +90,7 @@
 	href={`${base}/editions/${edition.slug}`}
 	data-sveltekit-preload-data="hover"
 	onmouseenter={prefetch3DAssets}
-	class="group card bg-base-100 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden"
+	class="group card bg-base-100 shadow-md hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 overflow-hidden"
 >
 	<figure class="relative overflow-hidden aspect-square bg-base-200">
 		<!-- Peer Review Badge -->
@@ -102,40 +106,37 @@
 		<!-- Placeholder: show on error -->
 		<div
 			class="absolute inset-0 flex items-center justify-center text-base-content/30"
-			class:hidden={edition.thumbnail && !imageError}
+			class:hidden={coverUrl && !imageError}
 		>
 			<svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
 			</svg>
 		</div>
 		<!-- Actual image with format fallback -->
-		{#if edition.thumbnail && !imageError}
-			{@const isLocalAsset = edition.thumbnail.includes('/project/')}
+		{#if coverUrl && !imageError}
+			{@const isLocalAsset = coverUrl.includes('/project/')}
 			{#if isLocalAsset}
-				<picture>
-					<source srcset={edition.thumbnail.replace('.png', '.avif')} type="image/avif" />
-					<source srcset={edition.thumbnail.replace('.png', '.webp')} type="image/webp" />
+				<picture class="block w-full h-full">
+					<source srcset={coverUrl.replace('.png', '.avif')} type="image/avif" />
+					<source srcset={coverUrl.replace('.png', '.webp')} type="image/webp" />
 					<img
-						src={edition.thumbnail}
+						src={coverUrl}
 						alt={edition.title}
-						class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+						class="w-full h-full object-cover"
 						loading="lazy"
 						onerror={handleImageError}
 					/>
 				</picture>
 			{:else}
 				<img
-					src={edition.thumbnail}
+					src={coverUrl}
 					alt={edition.title}
-					class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+					class="w-full h-full object-cover"
 					loading="lazy"
 					onerror={handleImageError}
 				/>
 			{/if}
 		{/if}
-		<div
-			class="absolute inset-0 bg-gradient-to-t from-base-300/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-		></div>
 	</figure>
 	<div class="card-body p-4">
 		<h3 class="card-title text-sm line-clamp-2 group-hover:text-primary transition-colors">

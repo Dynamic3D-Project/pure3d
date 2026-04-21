@@ -149,7 +149,12 @@ export const load: PageLoad = async ({ params }) => {
 			hasPeerReview: !!record.peerReviewKind && record.peerReviewKind !== 'No peer review',
 			peerReviewKind: record.peerReviewKind || null,
 			peerReviewContent: record.peerReviewContent || null,
-			modelSize: record.modelSize || null
+			modelSize: record.modelSize || null,
+			// Fields used by the Manage panel
+			status: record.status || null,
+			isPublished: !!record.isPublished,
+			collectionId: record.collection || null,
+			collectionTitle: collection?.title || ''
 		};
 
 		return {

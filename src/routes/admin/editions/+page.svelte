@@ -6,14 +6,13 @@
 		EditionRole,
 		EditionStatus,
 		EDITION_ROLE_LABELS,
-		STATUS_LABELS,
-		EDITION_STATUS_TRANSITIONS
+		GlobalRole,
+		type UserRoleContext
 	} from '$lib/types/roles';
-	import { canUserTransitionStatus } from '$lib/utils/permissions';
-	import { logAudit } from '$lib/utils/audit';
 	import toast from 'svelte-french-toast';
-	import UserSearchSelect from '$lib/components/ui/UserSearchSelect.svelte';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
+	import StatusTransitionPanel from '$lib/components/workflow/StatusTransitionPanel.svelte';
+	import MemberManager from '$lib/components/admin/MemberManager.svelte';
 
 	interface AdminEdition {
 		id: string;
@@ -24,20 +23,6 @@
 		thumbnailUrl: string;
 		collectionId: string;
 		collectionTitle: string;
-	}
-
-	interface EditionMember {
-		id: string;
-		userId: string;
-		nickname: string;
-		email: string;
-		role: EditionRole;
-	}
-
-	interface AppUser {
-		id: string;
-		nickname: string;
-		email: string;
 	}
 
 	let editions = $state<AdminEdition[]>([]);
@@ -53,22 +38,14 @@
 				)
 			: editions
 	);
-	let members = $state<EditionMember[]>([]);
-	let membersLoading = $state(false);
-	let allUsers = $state<AppUser[]>([]);
-	let savingMemberId = $state<string | null>(null);
-	let transitioningStatus = $state(false);
 
-	// Add member form
-	let addUserId = $state('');
-	let addRole = $state<EditionRole>(EditionRole.Collaborator);
-	let isAdding = $state(false);
+	const editionRoleValues = Object.values(EditionRole) as string[];
 
-	const editionRoleValues = Object.values(EditionRole);
+	// Admins inherit the full status-transition matrix via their global role
+	let adminContext = $derived<UserRoleContext>({ globalRole: authStore.globalRole });
 
 	onMount(() => {
 		loadEditions();
-		loadAllUsers();
 	});
 
 	async function loadEditions() {
@@ -83,9 +60,7 @@
 				isPublished: r.isPublished,
 				status: (r.status as EditionStatus) || EditionStatus.Draft,
 				pubNum: r.pubNum,
-				thumbnailUrl: r.thumbnailFile
-					? pb.files.getURL(r, r.thumbnailFile, { thumb: '80x80' })
-					: '',
+				thumbnailUrl: r.thumbnail || '',
 				collectionId: r.collection,
 				collectionTitle: r.expand?.collection?.title || ''
 			}));
@@ -97,170 +72,19 @@
 		}
 	}
 
-	async function loadAllUsers() {
-		try {
-			const result = await pb.collection('userProfiles').getList(1, 500);
-			allUsers = result.items.map((r) => ({
-				id: r.id,
-				nickname: r.nickname || '',
-				email: r.email || ''
-			}));
-		} catch {
-			// silent fail
-		}
+	function toggleExpand(editionId: string) {
+		expandedId = expandedId === editionId ? null : editionId;
 	}
 
-	async function toggleExpand(editionId: string) {
-		if (expandedId === editionId) {
-			expandedId = null;
-			members = [];
-			return;
-		}
-		expandedId = editionId;
-		await loadMembers(editionId);
+	function onStatusChanged(edition: AdminEdition, newStatus: EditionStatus) {
+		edition.status = newStatus;
+		edition.isPublished = newStatus === EditionStatus.Published;
+		editions = [...editions];
 	}
 
-	async function loadMembers(editionId: string) {
-		membersLoading = true;
-		try {
-			const result = await pb.collection('editionUsers').getList(1, 500, {
-				filter: `editionId = "${editionId}"`,
-				expand: 'userId'
-			});
-			members = result.items.map((r) => ({
-				id: r.id,
-				userId: r.userId,
-				nickname: r.expand?.userId?.nickname || '',
-				email: r.expand?.userId?.email || r.user || '',
-				role: (r.role as EditionRole) || EditionRole.Collaborator
-			}));
-		} catch (error) {
-			console.error('Error loading edition members:', error);
-			toast.error('Failed to load members');
-			members = [];
-		} finally {
-			membersLoading = false;
-		}
-	}
-
-	function getAvailableTransitions(edition: AdminEdition): EditionStatus[] {
-		const possible = EDITION_STATUS_TRANSITIONS[edition.status] || [];
-		const context = { globalRole: authStore.globalRole };
-		return possible.filter((target) => canUserTransitionStatus(context, edition.status, target));
-	}
-
-	async function transitionStatus(edition: AdminEdition, newStatus: EditionStatus) {
-		transitioningStatus = true;
-		try {
-			const oldStatus = edition.status;
-			const isPublished = newStatus === EditionStatus.Published;
-
-			await pb.collection('editions').update(edition.id, {
-				status: newStatus,
-				isPublished
-			});
-
-			await logAudit('status_transition', 'edition', edition.id, authStore.user?.email || '', {
-				from: oldStatus,
-				to: newStatus,
-				title: edition.title
-			});
-
-			edition.status = newStatus;
-			edition.isPublished = isPublished;
-			editions = [...editions];
-			toast.success(`Status changed to ${STATUS_LABELS[newStatus]}`);
-		} catch (error) {
-			console.error('Error transitioning status:', error);
-			toast.error('Failed to change status');
-		} finally {
-			transitioningStatus = false;
-		}
-	}
-
-	async function updateMemberRole(memberId: string, newRole: EditionRole) {
-		savingMemberId = memberId;
-		try {
-			const member = members.find((m) => m.id === memberId);
-			const oldRole = member?.role;
-
-			await pb.collection('editionUsers').update(memberId, { role: newRole });
-
-			await logAudit('role_change', 'edition', expandedId || '', authStore.user?.email || '', {
-				memberId,
-				from: oldRole,
-				to: newRole,
-				nickname: member?.nickname
-			});
-
-			if (member) {
-				member.role = newRole;
-				members = [...members];
-			}
-			toast.success('Role updated');
-		} catch (error) {
-			console.error('Error updating member role:', error);
-			toast.error('Failed to update role');
-		} finally {
-			savingMemberId = null;
-		}
-	}
-
-	async function removeMember(memberId: string) {
-		try {
-			const member = members.find((m) => m.id === memberId);
-
-			await pb.collection('editionUsers').delete(memberId);
-
-			await logAudit('user_removed', 'edition', expandedId || '', authStore.user?.email || '', {
-				memberId,
-				nickname: member?.nickname,
-				role: member?.role
-			});
-
-			members = members.filter((m) => m.id !== memberId);
-			toast.success('Member removed');
-		} catch (error) {
-			console.error('Error removing member:', error);
-			toast.error('Failed to remove member');
-		}
-	}
-
-	async function addMember() {
-		if (!addUserId || !expandedId) return;
-		isAdding = true;
-		try {
-			const user = allUsers.find((u) => u.id === addUserId);
-
-			await pb.collection('editionUsers').create({
-				editionId: expandedId,
-				userId: addUserId,
-				user: addUserId,
-				role: addRole
-			});
-
-			await logAudit('user_assigned', 'edition', expandedId, authStore.user?.email || '', {
-				userId: addUserId,
-				nickname: user?.nickname,
-				role: addRole
-			});
-
-			addUserId = '';
-			addRole = EditionRole.Collaborator;
-			await loadMembers(expandedId);
-			toast.success('Member added');
-		} catch (error) {
-			console.error('Error adding member:', error);
-			toast.error('Failed to add member');
-		} finally {
-			isAdding = false;
-		}
-	}
-
-	function availableUsers(): AppUser[] {
-		const existingIds = new Set(members.map((m) => m.userId));
-		return allUsers.filter((u) => !existingIds.has(u.id));
-	}
+	let canManageAllMembers = $derived(
+		authStore.globalRole === GlobalRole.Admin
+	);
 </script>
 
 <div id="admin-editions-page" class="mx-auto max-w-6xl">
@@ -340,128 +164,33 @@
 						</svg>
 					</button>
 					{#if expandedId === edition.id}
-						{@const transitions = getAvailableTransitions(edition)}
 						<div class="border-t border-base-300 px-4 pt-2 pb-4">
 							<!-- Workflow transitions -->
-							{#if transitions.length > 0}
-								<div class="mb-4 border-b border-base-300 pb-4">
-									<h3 class="mb-2 text-sm font-semibold text-base-content/60 uppercase">
-										Workflow
-									</h3>
-									<div class="flex flex-wrap gap-2">
-										{#each transitions as target (target)}
-											<button
-												class="btn btn-outline btn-sm"
-												onclick={() => transitionStatus(edition, target)}
-												disabled={transitioningStatus}
-											>
-												{#if transitioningStatus}
-													<span class="loading loading-xs loading-spinner"></span>
-												{/if}
-												Move to {STATUS_LABELS[target]}
-											</button>
-										{/each}
-									</div>
-								</div>
-							{/if}
+							<div class="mb-4 border-b border-base-300 pb-4">
+								<h3 class="mb-2 text-sm font-semibold text-base-content/60 uppercase">
+									Workflow
+								</h3>
+								<StatusTransitionPanel
+									editionId={edition.id}
+									title={edition.title}
+									status={edition.status}
+									context={adminContext}
+									onchanged={(s) => onStatusChanged(edition, s)}
+								/>
+							</div>
 
 							<!-- Members -->
 							<h3 class="mb-2 text-sm font-semibold text-base-content/60 uppercase">Members</h3>
-
-							{#if membersLoading}
-								<div class="flex justify-center py-4">
-									<span class="loading loading-sm loading-spinner"></span>
-								</div>
-							{:else}
-								{#if members.length > 0}
-									<div class="overflow-x-auto">
-										<table class="table table-sm">
-											<thead>
-												<tr>
-													<th>User</th>
-													<th>Email</th>
-													<th>Role</th>
-													<th>Actions</th>
-												</tr>
-											</thead>
-											<tbody>
-												{#each members as member (member.id)}
-													<tr>
-														<td class="font-medium">{member.nickname || '—'}</td>
-														<td class="text-base-content/70">{member.email}</td>
-														<td>
-															<select
-																class="select-bordered select w-36 select-sm"
-																value={member.role}
-																onchange={(e) =>
-																	updateMemberRole(member.id, e.currentTarget.value as EditionRole)}
-																disabled={savingMemberId === member.id}
-															>
-																{#each editionRoleValues as rv (rv)}
-																	<option value={rv} selected={member.role === rv}>
-																		{EDITION_ROLE_LABELS[rv]}
-																	</option>
-																{/each}
-															</select>
-														</td>
-														<td>
-															<button
-																class="btn text-error btn-ghost btn-sm"
-																onclick={() => removeMember(member.id)}
-															>
-																Remove
-															</button>
-														</td>
-													</tr>
-												{/each}
-											</tbody>
-										</table>
-									</div>
-								{:else}
-									<p class="py-2 text-base-content/60">No members assigned.</p>
-								{/if}
-
-								<!-- Add member form -->
-								<div class="mt-4 flex flex-wrap items-end gap-2 border-t border-base-300 pt-4">
-									<div class="form-control">
-										<label class="label" for="add-user-{edition.id}">
-											<span class="label-text">User</span>
-										</label>
-										<UserSearchSelect
-											users={availableUsers()}
-											bind:value={addUserId}
-											id="add-user-{edition.id}"
-											placeholder="Search user..."
-										/>
-									</div>
-									<div class="form-control">
-										<label class="label" for="add-role-{edition.id}">
-											<span class="label-text">Role</span>
-										</label>
-										<select
-											id="add-role-{edition.id}"
-											class="select-bordered select w-36 select-sm"
-											bind:value={addRole}
-										>
-											{#each editionRoleValues as rv (rv)}
-												<option value={rv}>
-													{EDITION_ROLE_LABELS[rv]}
-												</option>
-											{/each}
-										</select>
-									</div>
-									<button
-										class="btn btn-sm btn-primary"
-										onclick={addMember}
-										disabled={!addUserId || isAdding}
-									>
-										{#if isAdding}
-											<span class="loading loading-xs loading-spinner"></span>
-										{/if}
-										Add Member
-									</button>
-								</div>
-							{/if}
+							<MemberManager
+								membershipCollection="editionUsers"
+								parentField="editionId"
+								parentId={edition.id}
+								roleValues={editionRoleValues}
+								roleLabels={EDITION_ROLE_LABELS}
+								defaultRole={EditionRole.Collaborator}
+								auditTargetType="edition"
+								isReadOnly={!canManageAllMembers}
+							/>
 						</div>
 					{/if}
 				</div>

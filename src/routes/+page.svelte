@@ -331,8 +331,8 @@
 					publish your interactive 3D research. Join our growing community of digital humanities
 					scholars.
 				</p>
-				<a href="{base}/about" class="btn btn-lg btn-primary">
-					Learn More
+				<a href="{base}/documentation/submission" class="btn btn-lg btn-primary">
+					Submission Guidelines
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						class="ml-1 h-5 w-5"

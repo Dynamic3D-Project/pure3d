@@ -24,17 +24,34 @@
 		role_change: 'Role Change',
 		status_transition: 'Status Transition',
 		user_assigned: 'User Assigned',
-		user_removed: 'User Removed'
+		user_removed: 'User Removed',
+		user_deleted: 'User Deleted',
+		doc_created: 'Doc Created',
+		doc_updated: 'Doc Updated',
+		doc_deleted: 'Doc Deleted'
 	};
 
 	const actionBadgeClass: Record<string, string> = {
 		role_change: 'badge-info',
 		status_transition: 'badge-warning',
 		user_assigned: 'badge-success',
-		user_removed: 'badge-error'
+		user_removed: 'badge-error',
+		user_deleted: 'badge-error',
+		doc_created: 'badge-success',
+		doc_updated: 'badge-info',
+		doc_deleted: 'badge-error'
 	};
 
-	const actionOptions = ['role_change', 'status_transition', 'user_assigned', 'user_removed'];
+	const actionOptions = [
+		'role_change',
+		'status_transition',
+		'user_assigned',
+		'user_removed',
+		'user_deleted',
+		'doc_created',
+		'doc_updated',
+		'doc_deleted'
+	];
 
 	onMount(() => {
 		loadEntries();
@@ -77,7 +94,10 @@
 	}
 
 	function formatDate(dateStr: string): string {
-		return new Date(dateStr).toLocaleString();
+		if (!dateStr) return '—';
+		const d = new Date(dateStr);
+		if (isNaN(d.getTime())) return '—';
+		return d.toLocaleString();
 	}
 
 	function formatDetails(details: Record<string, unknown>): string {
@@ -119,8 +139,9 @@
 			<span class="loading loading-lg loading-spinner"></span>
 		</div>
 	{:else}
-		<div class="overflow-x-auto rounded-lg border border-base-300 bg-base-100 shadow-md">
-			<table class="table">
+		<!-- Desktop table -->
+		<div class="hidden overflow-x-auto rounded-lg border border-base-300 bg-base-100 shadow-md md:block">
+			<table class="table table-sm">
 				<thead>
 					<tr>
 						<th>Timestamp</th>
@@ -155,17 +176,39 @@
 					{/each}
 				</tbody>
 			</table>
+		</div>
 
-			{#if entries.length === 0}
-				<div class="py-8 text-center text-base-content/60">
-					{#if filterAction}
-						No entries for "{actionLabels[filterAction]}".
-					{:else}
-						No audit entries yet.
+		<!-- Mobile cards -->
+		<div class="flex flex-col gap-3 md:hidden">
+			{#each entries as entry (entry.id)}
+				<div class="rounded-lg border border-base-300 bg-base-100 p-4 shadow-sm">
+					<div class="mb-2 flex items-center justify-between">
+						<span class="badge badge-sm {actionBadgeClass[entry.action] || 'badge-ghost'}">
+							{actionLabels[entry.action] || entry.action}
+						</span>
+						<span class="text-xs text-base-content/50">{formatDate(entry.created)}</span>
+					</div>
+					<div class="text-sm">
+						<span class="font-medium">{entry.targetType}</span>
+						<span class="font-mono text-xs text-base-content/50">{entry.targetId.slice(0, 8)}...</span>
+					</div>
+					<div class="mt-1 text-sm text-base-content/70">{entry.performedBy}</div>
+					{#if formatDetails(entry.details) !== '—'}
+						<div class="mt-1 text-xs text-base-content/50">{formatDetails(entry.details)}</div>
 					{/if}
 				</div>
-			{/if}
+			{/each}
 		</div>
+
+		{#if entries.length === 0}
+			<div class="py-8 text-center text-base-content/60">
+				{#if filterAction}
+					No entries for "{actionLabels[filterAction]}".
+				{:else}
+					No audit entries yet.
+				{/if}
+			</div>
+		{/if}
 
 		<!-- Pagination -->
 		{#if totalPages > 1}
