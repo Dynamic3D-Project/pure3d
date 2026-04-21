@@ -112,7 +112,7 @@
 					expand: 'reviewerId,assignedBy'
 				}),
 				pb.collection('editionReviews').getList(1, 1000, { expand: 'reviewerId' }),
-				pb.collection('userProfiles').getList(1, 500)
+				pb.collection('users').getList(1, 500)
 			]);
 
 			editions = edResult.items.map((r) => ({

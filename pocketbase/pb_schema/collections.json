@@ -1,44 +1,27 @@
 [
 	{
 		"name": "users",
-		"type": "base",
+		"type": "auth",
 		"fields": [
-			{
-				"name": "user",
-				"type": "text",
-				"required": true
-			},
-			{
-				"name": "email",
-				"type": "email",
-				"required": true
-			},
 			{
 				"name": "nickname",
 				"type": "text",
-				"required": true
+				"required": false
 			},
 			{
 				"name": "role",
 				"type": "select",
-				"required": true,
+				"required": false,
 				"maxSelect": 1,
 				"values": [
 					"admin",
 					"editorial_board",
 					"viewer"
 				]
-			},
-			{
-				"name": "pbAuthId",
-				"type": "text",
-				"required": false
 			}
 		],
 		"indexes": [
-			"CREATE UNIQUE INDEX idx_users_user ON users (user)",
-			"CREATE INDEX idx_users_email ON users (email)",
-			"CREATE UNIQUE INDEX idx_users_pbAuthId ON users (pbAuthId)"
+			"CREATE INDEX IF NOT EXISTS idx_users_userHash ON users (userHash)"
 		],
 		"listRule": "",
 		"viewRule": "",
@@ -844,7 +827,7 @@
 				"type": "relation",
 				"required": true,
 				"maxSelect": 1,
-				"collectionId": "userProfiles",
+				"collectionId": "users",
 				"cascadeDelete": false
 			},
 			{

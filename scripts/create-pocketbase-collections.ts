@@ -169,6 +169,16 @@ async function setOpenRules(name: string) {
 	console.log(`   ${name}: API rules set to open`);
 }
 
+async function dropLegacyUserProfiles() {
+	try {
+		const existing = await pb.collections.getOne('userProfiles');
+		await pb.collections.delete(existing.id);
+		console.log('   dropped legacy userProfiles collection\n');
+	} catch {
+		// collection already absent — nothing to do
+	}
+}
+
 async function main() {
 	console.log('Creating PocketBase schema');
 	console.log(`   URL: ${POCKETBASE_URL}`);
@@ -176,6 +186,7 @@ async function main() {
 
 	await waitForPocketBase();
 	await authenticate();
+	await dropLegacyUserProfiles();
 
 	const collectionIds: Record<string, string> = {};
 
@@ -184,25 +195,16 @@ async function main() {
 	collectionIds['users'] = await ensureCollection({
 		name: 'users',
 		type: 'auth',
-		fields: []
-	});
-
-	collectionIds['userProfiles'] = await ensureCollection({
-		name: 'userProfiles',
-		type: 'base',
 		fields: [
-			{ name: 'user', type: 'text', required: false },
-			{ name: 'userHash', type: 'text', required: false },
-			{ name: 'email', type: 'email', required: true },
-			{ name: 'nickname', type: 'text', required: true },
+			{ name: 'nickname', type: 'text', required: false },
 			{
 				name: 'role',
 				type: 'select',
-				required: true,
+				required: false,
 				maxSelect: 1,
 				values: globalRoleValues
 			},
-			{ name: 'pbAuthId', type: 'text', required: false }
+			{ name: 'userHash', type: 'text', required: false }
 		]
 	});
 
@@ -417,7 +419,7 @@ async function main() {
 		type: 'base',
 		fields: [
 			relationField('collection', collectionIds['collections'], { cascadeDelete: true }),
-			relationField('publishedBy', collectionIds['userProfiles'])
+			relationField('publishedBy', collectionIds['users'])
 		]
 	});
 
@@ -426,8 +428,8 @@ async function main() {
 		type: 'base',
 		fields: [
 			relationField('collection', collectionIds['collections'], { cascadeDelete: true }),
-			relationField('user', collectionIds['userProfiles']),
-			relationField('userId', collectionIds['userProfiles'])
+			relationField('user', collectionIds['users']),
+			relationField('userId', collectionIds['users'])
 		]
 	});
 
@@ -437,8 +439,8 @@ async function main() {
 		fields: [
 			relationField('edition', collectionIds['editions'], { cascadeDelete: true }),
 			relationField('editionId', collectionIds['editions'], { cascadeDelete: true }),
-			relationField('user', collectionIds['userProfiles']),
-			relationField('userId', collectionIds['userProfiles'])
+			relationField('user', collectionIds['users']),
+			relationField('userId', collectionIds['users'])
 		]
 	});
 
@@ -449,7 +451,7 @@ async function main() {
 		type: 'base',
 		fields: [
 			relationField('editionId', collectionIds['editions'], { required: true, cascadeDelete: true }),
-			relationField('reviewerId', collectionIds['userProfiles'], { required: true }),
+			relationField('reviewerId', collectionIds['users'], { required: true }),
 			{ name: 'reviewStage', type: 'number', required: true },
 			{
 				name: 'decision',
@@ -467,8 +469,8 @@ async function main() {
 		type: 'base',
 		fields: [
 			relationField('editionId', collectionIds['editions'], { required: true, cascadeDelete: true }),
-			relationField('reviewerId', collectionIds['userProfiles'], { required: true }),
-			relationField('assignedBy', collectionIds['userProfiles'], { required: true }),
+			relationField('reviewerId', collectionIds['users'], { required: true }),
+			relationField('assignedBy', collectionIds['users'], { required: true }),
 			{ name: 'reviewStage', type: 'number', required: true },
 			{
 				name: 'status',
@@ -485,7 +487,7 @@ async function main() {
 		type: 'base',
 		fields: [
 			relationField('editionId', collectionIds['editions'], { required: true, cascadeDelete: true }),
-			relationField('reviewerId', collectionIds['userProfiles'], { required: true }),
+			relationField('reviewerId', collectionIds['users'], { required: true }),
 			{ name: 'reviewStage', type: 'number', required: true },
 			{
 				name: 'category',
@@ -504,7 +506,7 @@ async function main() {
 		name: 'notifications',
 		type: 'base',
 		fields: [
-			relationField('recipientId', collectionIds['userProfiles'], { required: true, cascadeDelete: true }),
+			relationField('recipientId', collectionIds['users'], { required: true, cascadeDelete: true }),
 			relationField('editionId', collectionIds['editions'], { cascadeDelete: true }),
 			{
 				name: 'type',
@@ -524,7 +526,6 @@ async function main() {
 
 	for (const name of [
 		'users',
-		'userProfiles',
 		'site',
 		'keywords',
 		'collections',

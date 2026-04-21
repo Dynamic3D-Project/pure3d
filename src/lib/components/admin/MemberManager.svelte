@@ -88,7 +88,7 @@
 					filter,
 					expand: 'userId'
 				}),
-				pb.collection('userProfiles').getList(1, 500)
+				pb.collection('users').getList(1, 500)
 			]);
 
 			const profileMap = new Map(
