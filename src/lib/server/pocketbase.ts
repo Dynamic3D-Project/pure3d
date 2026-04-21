@@ -75,7 +75,7 @@ export async function getUsers() {
 	const pb = createPocketBaseClient();
 
 	try {
-		const result = await pb.collection('userProfiles').getList(1, 500);
+		const result = await pb.collection('users').getList(1, 500);
 		return result.items.map((record) => ({
 			id: record.id,
 			mongoId: record.mongoId,
@@ -482,7 +482,7 @@ export async function updateUserRole(userId: string, newRole: GlobalRole) {
 	const pb = createPocketBaseClient();
 
 	try {
-		await pb.collection('userProfiles').update(userId, { role: newRole });
+		await pb.collection('users').update(userId, { role: newRole });
 		return true;
 	} catch (error) {
 		console.error('Error updating user role:', error);
