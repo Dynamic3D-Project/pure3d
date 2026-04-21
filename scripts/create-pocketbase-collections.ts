@@ -88,8 +88,18 @@ async function waitForPocketBase() {
 
 async function authenticate() {
 	console.log('Authenticating...');
-	await pb.collection('_superusers').authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
-	console.log('Authenticated successfully\n');
+	try {
+		await pb.collection('_superusers').authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
+		console.log('Authenticated successfully\n');
+	} catch (err: any) {
+		console.error('Auth error:');
+		console.error('  url:      ', pb.baseUrl);
+		console.error('  email:    ', ADMIN_EMAIL);
+		console.error('  status:   ', err?.status);
+		console.error('  message:  ', err?.message);
+		console.error('  response: ', JSON.stringify(err?.response ?? err?.data ?? err, null, 2));
+		throw err;
+	}
 }
 
 async function getCollection(name: string) {
@@ -122,6 +132,32 @@ function mergeFields(existingFields: Record<string, unknown>[], desiredFields: F
 	return mergedFields;
 }
 
+/**
+ * Detect relation fields whose target collection changed. PB rejects this
+ * in a single update with "validation_field_relation_change", so we have to
+ * drop and re-add across two separate update calls.
+ */
+function findRelationRetargets(
+	existingFields: Record<string, unknown>[],
+	desiredFields: FieldDef[]
+): string[] {
+	const names: string[] = [];
+	for (const desired of desiredFields) {
+		const existing = existingFields.find((f) => f?.name === desired.name);
+		if (!existing) continue;
+		if (
+			desired.type === 'relation' &&
+			existing.type === 'relation' &&
+			typeof desired.collectionId === 'string' &&
+			typeof existing.collectionId === 'string' &&
+			desired.collectionId !== existing.collectionId
+		) {
+			names.push(desired.name);
+		}
+	}
+	return names;
+}
+
 async function ensureCollection(definition: CollectionDef) {
 	const existing = await getCollection(definition.name);
 
@@ -135,14 +171,42 @@ async function ensureCollection(definition: CollectionDef) {
 		return created.id;
 	}
 
-	const mergedFields = mergeFields(
-		Array.isArray(existing.fields) ? existing.fields : [],
-		definition.fields
-	);
+	const existingFieldsArr = Array.isArray(existing.fields) ? existing.fields : [];
 
-	await pb.collections.update(existing.id, {
-		fields: mergedFields
-	});
+	// Handle relation-target retargets with a pre-update that drops those
+	// fields, so the main update can add them fresh pointing at the new
+	// target. PB refuses to change a relation's collectionId in place.
+	const retargets = findRelationRetargets(existingFieldsArr, definition.fields);
+	let workingFields = existingFieldsArr;
+	if (retargets.length > 0) {
+		console.log(`   ${definition.name}: retargeting relation(s): ${retargets.join(', ')}`);
+		workingFields = existingFieldsArr.filter(
+			(f) => typeof f?.name !== 'string' || !retargets.includes(f.name as string)
+		);
+		try {
+			await pb.collections.update(existing.id, { fields: workingFields });
+		} catch (err: any) {
+			console.error(`   ${definition.name}: retarget-drop failed`);
+			console.error('     status: ', err?.status);
+			console.error('     message:', err?.message);
+			console.error('     response:', JSON.stringify(err?.response ?? err?.data ?? err, null, 2));
+			throw err;
+		}
+	}
+
+	const mergedFields = mergeFields(workingFields, definition.fields);
+
+	try {
+		await pb.collections.update(existing.id, {
+			fields: mergedFields
+		});
+	} catch (err: any) {
+		console.error(`   ${definition.name}: update failed`);
+		console.error('     status: ', err?.status);
+		console.error('     message:', err?.message);
+		console.error('     response:', JSON.stringify(err?.response ?? err?.data ?? err, null, 2));
+		throw err;
+	}
 
 	console.log(`   ${definition.name}: ensured`);
 	return existing.id;
