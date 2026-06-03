@@ -50,7 +50,7 @@
 	let voyagerAPI = $state<VoyagerAPI | null>(null);
 
 	// Make these reactive so they update when data changes on navigation
-	let edition = $derived(data.edition);
+	let edition = $derived(data.edition as PageData['edition'] & Record<string, any>);
 	let viewerHelp = $derived(data.viewerHelp);
 	let viewerHelpVideoUrl = $derived(data.viewerHelpVideoUrl);
 
@@ -228,7 +228,8 @@
 
 	onMount(async () => {
 		if (edition.id === 'demo') return;
-		currentStatus = ((edition as unknown as { status?: EditionStatus }).status as EditionStatus) ||
+		currentStatus =
+			((edition as unknown as { status?: EditionStatus }).status as EditionStatus) ||
 			EditionStatus.Draft;
 
 		if (!authStore.isAuthenticated || !authStore.appUserId) {
@@ -272,7 +273,7 @@
 	<meta name="description" content={edition.description} />
 
 	<!-- Preconnect to Voyager API for faster loading -->
-	<link rel="preconnect" href="https://3d-api.si.edu" crossorigin />
+	<link rel="preconnect" href="https://3d-api.si.edu" crossorigin="anonymous" />
 	<link rel="dns-prefetch" href="https://3d-api.si.edu" />
 </svelte:head>
 
@@ -346,17 +347,14 @@
 					</div>
 					<div class="flex gap-2">
 						{#if canEditMetadata}
-							<a
-								href="{base}/editions/{edition.id}/workflow"
-								class="btn btn-outline btn-sm"
-							>
+							<a href="{base}/editions/{edition.id}/workflow" class="btn btn-outline btn-sm">
 								Edit in Workflow
 							</a>
 						{/if}
 					</div>
 				</div>
 
-				<div role="tablist" class="tabs-bordered tabs mb-4">
+				<div role="tablist" class="tabs-bordered mb-4 tabs">
 					<button
 						role="tab"
 						class="tab"
@@ -916,7 +914,11 @@
 {/if}
 
 <!-- Imagine AI Modal -->
-<ImagineModal bind:open={imagineModalOpen} {edition} onclose={() => (imagineModalOpen = false)} />
+<ImagineModal
+	bind:open={imagineModalOpen}
+	edition={edition as any}
+	onclose={() => (imagineModalOpen = false)}
+/>
 
 <!-- Delete confirmation modal -->
 {#if canDelete}

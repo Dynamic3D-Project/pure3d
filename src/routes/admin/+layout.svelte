@@ -49,11 +49,11 @@
 
 	onMount(() => {
 		if (!authStore.isAuthenticated) {
-			goto(resolveRoute('/', {}));
+			goto(resolveRoute('/'));
 			return;
 		}
 		if (authStore.globalRole !== GlobalRole.Admin) {
-			goto(resolveRoute('/', {}));
+			goto(resolveRoute('/'));
 			return;
 		}
 	});

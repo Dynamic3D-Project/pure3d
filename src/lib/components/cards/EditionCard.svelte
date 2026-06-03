@@ -5,7 +5,7 @@
 	import { getEditionCoverUrl } from '$lib/utils/asset-urls';
 
 	interface Props {
-		edition: Edition;
+		edition: Partial<Edition> & Pick<Edition, 'id' | 'slug' | 'title'>;
 	}
 
 	let { edition }: Props = $props();
@@ -90,21 +90,23 @@
 	href={`${base}/editions/${edition.slug}`}
 	data-sveltekit-preload-data="hover"
 	onmouseenter={prefetch3DAssets}
-	class="group card bg-base-100 shadow-md hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 overflow-hidden"
+	class="group card overflow-hidden bg-base-100 shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-2xl"
 >
-	<figure class="relative overflow-hidden aspect-square bg-base-200">
+	<figure class="relative aspect-square overflow-hidden bg-base-200">
 		<!-- Peer Review Badge -->
 		{#if edition.hasPeerReview}
 			<div class="absolute top-2 right-2 z-10" title="Peer Reviewed">
 				<img
 					src="{base}/images/peer-reviewed-badge.svg"
 					alt="Peer Reviewed"
-					class="w-10 h-10 drop-shadow-md"
+					class="h-10 w-10 drop-shadow-md"
 				/>
 			</div>
 		{/if}
 		{#if edition.pubNum}
-			<div class="absolute top-2 left-2 z-10 rounded-md bg-black/55 px-1.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
+			<div
+				class="absolute top-2 left-2 z-10 rounded-md bg-black/55 px-1.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm"
+			>
 				#{edition.pubNum}
 			</div>
 		{/if}
@@ -113,21 +115,32 @@
 			class="absolute inset-0 flex items-center justify-center text-base-content/30"
 			class:hidden={coverUrl && !imageError}
 		>
-			<svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="h-16 w-16"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="1.5"
+					d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+				/>
 			</svg>
 		</div>
 		<!-- Actual image with format fallback -->
 		{#if coverUrl && !imageError}
 			{@const isLocalAsset = coverUrl.includes('/project/')}
 			{#if isLocalAsset}
-				<picture class="block w-full h-full">
+				<picture class="block h-full w-full">
 					<source srcset={coverUrl.replace('.png', '.avif')} type="image/avif" />
 					<source srcset={coverUrl.replace('.png', '.webp')} type="image/webp" />
 					<img
 						src={coverUrl}
 						alt={edition.title}
-						class="w-full h-full object-cover"
+						class="h-full w-full object-cover"
 						loading="lazy"
 						onerror={handleImageError}
 					/>
@@ -136,7 +149,7 @@
 				<img
 					src={coverUrl}
 					alt={edition.title}
-					class="w-full h-full object-cover"
+					class="h-full w-full object-cover"
 					loading="lazy"
 					onerror={handleImageError}
 				/>
@@ -144,11 +157,11 @@
 		{/if}
 	</figure>
 	<div class="card-body gap-1 p-4">
-		<h3 class="card-title text-sm line-clamp-2 group-hover:text-primary transition-colors">
+		<h3 class="card-title line-clamp-2 text-sm transition-colors group-hover:text-primary">
 			{edition.title}
 		</h3>
 		{#if edition.authors}
-			<p class="text-xs text-base-content/60 line-clamp-1">{edition.authors}</p>
+			<p class="line-clamp-1 text-xs text-base-content/60">{edition.authors}</p>
 		{/if}
 	</div>
 </a>

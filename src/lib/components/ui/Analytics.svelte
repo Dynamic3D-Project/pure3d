@@ -5,8 +5,8 @@
 
 	const MEASUREMENT_ID = 'G-DHQ2TX1XM1';
 	run(() => {
-		if (typeof gtag !== 'undefined') {
-			gtag('config', 'G-DHQ2TX1XM1', {
+		if (typeof window !== 'undefined' && typeof window.gtag !== 'undefined') {
+			window.gtag('config', MEASUREMENT_ID, {
 				page_title: document.title,
 				page_path: $page.url.pathname
 			});
@@ -19,12 +19,11 @@
 	</script>
 	<script>
 		window.dataLayer = window.dataLayer || [];
+		window.gtag = function gtag() {
+			window.dataLayer.push(arguments);
+		};
 
-		function gtag() {
-			dataLayer.push(arguments);
-		}
-
-		gtag('js', new Date());
-		gtag('config', 'G-DHQ2TX1XM1');
+		window.gtag('js', new Date());
+		window.gtag('config', 'G-DHQ2TX1XM1');
 	</script>
 </svelte:head>

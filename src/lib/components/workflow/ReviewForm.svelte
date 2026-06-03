@@ -103,10 +103,8 @@
 	}}
 	class="space-y-4"
 >
-	<div>
-		<label class="label">
-			<span class="label-text font-semibold">Verdict</span>
-		</label>
+	<fieldset>
+		<legend class="label-text mb-2 font-semibold">Verdict</legend>
 		<div class="grid gap-2 sm:grid-cols-{availableDecisions.length}">
 			{#each availableDecisions as d (d)}
 				<button
@@ -121,7 +119,7 @@
 				</button>
 			{/each}
 		</div>
-	</div>
+	</fieldset>
 
 	<div>
 		<label class="label" for="review-comment">

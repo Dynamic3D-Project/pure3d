@@ -116,23 +116,15 @@
 
 			if (editingId) {
 				await pb.collection('documentation').update(editingId, data);
-				await logAudit(
-					'doc_updated',
-					'documentation',
-					editingId,
-					authStore.user?.email || '',
-					{ title: data.title }
-				);
+				await logAudit('doc_updated', 'documentation', editingId, authStore.user?.email || '', {
+					title: data.title
+				});
 				toast.success('Page updated');
 			} else {
 				const record = await pb.collection('documentation').create(data);
-				await logAudit(
-					'doc_created',
-					'documentation',
-					record.id,
-					authStore.user?.email || '',
-					{ title: data.title }
-				);
+				await logAudit('doc_created', 'documentation', record.id, authStore.user?.email || '', {
+					title: data.title
+				});
 				toast.success('Page created');
 			}
 
@@ -148,13 +140,9 @@
 	async function deleteDoc(doc: Documentation) {
 		try {
 			await pb.collection('documentation').delete(doc.id);
-			await logAudit(
-				'doc_deleted',
-				'documentation',
-				doc.id,
-				authStore.user?.email || '',
-				{ title: doc.title }
-			);
+			await logAudit('doc_deleted', 'documentation', doc.id, authStore.user?.email || '', {
+				title: doc.title
+			});
 			toast.success('Page deleted');
 			deletingId = null;
 			await loadDocs();
@@ -175,13 +163,10 @@
 	async function togglePublished(doc: Documentation) {
 		try {
 			await pb.collection('documentation').update(doc.id, { isPublished: !doc.isPublished });
-			await logAudit(
-				'doc_updated',
-				'documentation',
-				doc.id,
-				authStore.user?.email || '',
-				{ title: doc.title, isPublished: !doc.isPublished }
-			);
+			await logAudit('doc_updated', 'documentation', doc.id, authStore.user?.email || '', {
+				title: doc.title,
+				isPublished: !doc.isPublished
+			});
 			toast.success(doc.isPublished ? 'Unpublished' : 'Published');
 			await loadDocs();
 		} catch {
@@ -193,9 +178,7 @@
 <div>
 	<div class="mb-6 flex items-center justify-between">
 		<h1 class="text-2xl font-bold">Documentation Pages</h1>
-		<button class="btn btn-primary btn-sm" onclick={startCreate}>
-			+ New Page
-		</button>
+		<button class="btn btn-sm btn-primary" onclick={startCreate}> + New Page </button>
 	</div>
 
 	{#if showForm}
@@ -213,7 +196,7 @@
 						<input
 							id="doc-title"
 							type="text"
-							class="input input-bordered"
+							class="input-bordered input"
 							bind:value={formTitle}
 							oninput={handleTitleInput}
 							placeholder="Page title"
@@ -226,7 +209,7 @@
 						<input
 							id="doc-slug"
 							type="text"
-							class="input input-bordered"
+							class="input-bordered input"
 							bind:value={formSlug}
 							oninput={() => (autoSlug = false)}
 							placeholder="url-friendly-slug"
@@ -240,7 +223,7 @@
 					</label>
 					<textarea
 						id="doc-summary"
-						class="textarea textarea-bordered"
+						class="textarea-bordered textarea"
 						bind:value={formSummary}
 						placeholder="Short description for the overview page"
 						rows="2"
@@ -255,7 +238,7 @@
 						<input
 							id="doc-order"
 							type="number"
-							class="input input-bordered w-24"
+							class="input-bordered input w-24"
 							bind:value={formOrder}
 							min="0"
 						/>
@@ -274,9 +257,9 @@
 				</div>
 
 				<div class="form-control">
-					<label class="label">
+					<div class="label" aria-hidden="true">
 						<span class="label-text">Content</span>
-					</label>
+					</div>
 					<RichTextEditor
 						content={formContent}
 						placeholder="Write your documentation page content..."
@@ -285,9 +268,9 @@
 				</div>
 
 				<div class="flex gap-2">
-					<button class="btn btn-primary btn-sm" onclick={saveDoc} disabled={isSaving}>
+					<button class="btn btn-sm btn-primary" onclick={saveDoc} disabled={isSaving}>
 						{#if isSaving}
-							<span class="loading loading-spinner loading-xs"></span>
+							<span class="loading loading-xs loading-spinner"></span>
 						{/if}
 						{editingId ? 'Update' : 'Create'}
 					</button>
@@ -299,7 +282,7 @@
 
 	{#if isLoading}
 		<div class="flex justify-center py-12">
-			<span class="loading loading-spinner loading-lg"></span>
+			<span class="loading loading-lg loading-spinner"></span>
 		</div>
 	{:else if docs.length === 0}
 		<p class="py-12 text-center text-base-content/60">No documentation pages yet.</p>
@@ -321,7 +304,7 @@
 							<td>
 								<input
 									type="number"
-									class="input input-bordered input-xs w-16"
+									class="input-bordered input input-xs w-16"
 									value={doc.order}
 									onchange={(e) => updateOrder(doc, parseInt(e.currentTarget.value) || 0)}
 									min="0"
@@ -345,14 +328,17 @@
 										Edit
 									</button>
 									{#if deletingId === doc.id}
-										<button class="btn btn-error btn-xs" onclick={() => deleteDoc(doc)}>
+										<button class="btn btn-xs btn-error" onclick={() => deleteDoc(doc)}>
 											Confirm
 										</button>
 										<button class="btn btn-ghost btn-xs" onclick={() => (deletingId = null)}>
 											Cancel
 										</button>
 									{:else}
-										<button class="btn btn-ghost btn-xs text-error" onclick={() => (deletingId = doc.id)}>
+										<button
+											class="btn text-error btn-ghost btn-xs"
+											onclick={() => (deletingId = doc.id)}
+										>
 											Delete
 										</button>
 									{/if}

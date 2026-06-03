@@ -18,7 +18,12 @@
 		onchange?: (html: string) => void;
 	}
 
-	let { content = '', placeholder = 'Start writing...', minHeight = '200px', onchange }: Props = $props();
+	let {
+		content = '',
+		placeholder = 'Start writing...',
+		minHeight = '200px',
+		onchange
+	}: Props = $props();
 
 	let element: HTMLDivElement;
 	let editor: Editor | null = $state(null);
@@ -50,7 +55,7 @@
 	// Update editor content when the content prop changes externally
 	$effect(() => {
 		if (editor && content !== editor.getHTML()) {
-			editor.commands.setContent(content, false);
+			editor.commands.setContent(content, { emitUpdate: false });
 		}
 	});
 
@@ -82,70 +87,133 @@
 <div class="rounded-box border border-base-300 bg-base-100">
 	<!-- Toolbar -->
 	<div class="flex flex-wrap items-center border-b border-base-300 bg-base-200 px-1 py-1">
-		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('bold')}
-			onclick={() => editor?.chain().focus().toggleBold().run()} title="Bold">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			class:btn-active={editor?.isActive('bold')}
+			onclick={() => editor?.chain().focus().toggleBold().run()}
+			title="Bold"
+		>
 			<strong>B</strong>
 		</button>
-		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('italic')}
-			onclick={() => editor?.chain().focus().toggleItalic().run()} title="Italic">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			class:btn-active={editor?.isActive('italic')}
+			onclick={() => editor?.chain().focus().toggleItalic().run()}
+			title="Italic"
+		>
 			<em>I</em>
 		</button>
-		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('underline')}
-			onclick={() => editor?.chain().focus().toggleUnderline().run()} title="Underline">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			class:btn-active={editor?.isActive('underline')}
+			onclick={() => editor?.chain().focus().toggleUnderline().run()}
+			title="Underline"
+		>
 			<u>U</u>
 		</button>
 
 		<div class="mx-1 h-5 w-px bg-base-300"></div>
 
-		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('heading', { level: 1 })}
-			onclick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()} title="Heading 1">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			class:btn-active={editor?.isActive('heading', { level: 1 })}
+			onclick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
+			title="Heading 1"
+		>
 			H1
 		</button>
-		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('heading', { level: 2 })}
-			onclick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} title="Heading 2">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			class:btn-active={editor?.isActive('heading', { level: 2 })}
+			onclick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
+			title="Heading 2"
+		>
 			H2
 		</button>
-		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('heading', { level: 3 })}
-			onclick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()} title="Heading 3">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			class:btn-active={editor?.isActive('heading', { level: 3 })}
+			onclick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}
+			title="Heading 3"
+		>
 			H3
 		</button>
 
 		<div class="mx-1 h-5 w-px bg-base-300"></div>
 
-		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('bulletList')}
-			onclick={() => editor?.chain().focus().toggleBulletList().run()} title="Bullet List">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			class:btn-active={editor?.isActive('bulletList')}
+			onclick={() => editor?.chain().focus().toggleBulletList().run()}
+			title="Bullet List"
+		>
 			&bull; List
 		</button>
-		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('orderedList')}
-			onclick={() => editor?.chain().focus().toggleOrderedList().run()} title="Ordered List">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			class:btn-active={editor?.isActive('orderedList')}
+			onclick={() => editor?.chain().focus().toggleOrderedList().run()}
+			title="Ordered List"
+		>
 			1. List
 		</button>
-		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('blockquote')}
-			onclick={() => editor?.chain().focus().toggleBlockquote().run()} title="Blockquote">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			class:btn-active={editor?.isActive('blockquote')}
+			onclick={() => editor?.chain().focus().toggleBlockquote().run()}
+			title="Blockquote"
+		>
 			&ldquo; Quote
 		</button>
 
 		<div class="mx-1 h-5 w-px bg-base-300"></div>
 
-		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('link')}
-			onclick={setLink} title="Link">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			class:btn-active={editor?.isActive('link')}
+			onclick={setLink}
+			title="Link"
+		>
 			Link
 		</button>
 		<button type="button" class="btn btn-ghost btn-xs" onclick={addImage} title="Image">
 			Image
 		</button>
-		<button type="button" class="btn btn-ghost btn-xs"
-			onclick={() => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Table">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			onclick={() =>
+				editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+			title="Table"
+		>
 			Table
 		</button>
-		<button type="button" class="btn btn-ghost btn-xs"
-			onclick={() => editor?.chain().focus().setHorizontalRule().run()} title="Horizontal Rule">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			onclick={() => editor?.chain().focus().setHorizontalRule().run()}
+			title="Horizontal Rule"
+		>
 			&mdash;
 		</button>
 	</div>
 
 	<!-- Editor content -->
-	<div bind:this={element} class="editor-wrapper prose prose-sm max-w-none p-4 focus-within:outline-none" style:--editor-min-h={minHeight}></div>
+	<div
+		bind:this={element}
+		class="editor-wrapper prose prose-sm max-w-none p-4 focus-within:outline-none"
+		style:--editor-min-h={minHeight}
+	></div>
 </div>
 
 <style>

@@ -113,7 +113,7 @@
 
 			// Check if the result has actual content (not all transparent/white)
 			const sample = ctx.getImageData(0, 0, copy.width, Math.min(copy.height, 10));
-			const hasContent = sample.data.some((v, i) => i % 4 !== 3 ? v !== 0 && v !== 255 : false);
+			const hasContent = sample.data.some((v, i) => (i % 4 !== 3 ? v !== 0 && v !== 255 : false));
 
 			if (hasContent) {
 				capturedImageDataUrl = copy.toDataURL('image/png');
@@ -129,7 +129,10 @@
 	 * Resize and compress an image data URL to fit within API limits.
 	 * Returns { data: base64string, mimeType: string }
 	 */
-	function resizeImage(dataUrl: string, maxDim = 1024): Promise<{ data: string; mimeType: string }> {
+	function resizeImage(
+		dataUrl: string,
+		maxDim = 1024
+	): Promise<{ data: string; mimeType: string }> {
 		return new Promise((resolve) => {
 			const img = new Image();
 			img.onload = () => {
@@ -252,10 +255,7 @@
 					body: JSON.stringify({
 						contents: [
 							{
-								parts: [
-									{ text: prompt },
-									...(imagePart ? [imagePart] : [])
-								]
+								parts: [{ text: prompt }, ...(imagePart ? [imagePart] : [])]
 							}
 						],
 						generationConfig: {
@@ -360,7 +360,12 @@
 						/>
 					</svg>
 				</button>
-				<button type="button" class="btn btn-circle btn-ghost btn-sm" onclick={handleClose}>
+				<button
+					type="button"
+					class="btn btn-circle btn-ghost btn-sm"
+					aria-label="Close imagine modal"
+					onclick={handleClose}
+				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						fill="none"
@@ -391,16 +396,14 @@
 				<div class="flex gap-2">
 					<input
 						type="password"
-						class="input input-bordered flex-1 input-sm"
+						class="input-bordered input input-sm flex-1"
 						placeholder="Enter your Gemini API key..."
 						bind:value={apiKey}
 						onkeydown={(e) => e.key === 'Enter' && saveApiKey()}
 					/>
-					<button type="button" class="btn btn-primary btn-sm" onclick={saveApiKey}>Save</button>
+					<button type="button" class="btn btn-sm btn-primary" onclick={saveApiKey}>Save</button>
 					{#if apiKey}
-						<button type="button" class="btn btn-ghost btn-sm" onclick={clearApiKey}
-							>Clear</button
-						>
+						<button type="button" class="btn btn-ghost btn-sm" onclick={clearApiKey}>Clear</button>
 					{/if}
 				</div>
 				<!-- Model selector -->
@@ -408,7 +411,7 @@
 					<label for="model-select" class="mb-1 block text-xs font-semibold">Model</label>
 					<select
 						id="model-select"
-						class="select select-bordered w-full select-sm"
+						class="select-bordered select w-full select-sm"
 						bind:value={selectedModel}
 						onchange={() => localStorage.setItem('gemini-model', selectedModel)}
 					>
@@ -430,7 +433,7 @@
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div
 					id="comparison-container"
-					class="relative cursor-col-resize select-none overflow-hidden rounded-lg border border-base-300 shadow-lg"
+					class="relative cursor-col-resize overflow-hidden rounded-lg border border-base-300 shadow-lg select-none"
 					bind:this={comparisonContainer}
 					onmousedown={startDrag}
 					ontouchstart={startDrag}
@@ -469,7 +472,14 @@
 								fill="currentColor"
 								class="h-4 w-4 text-base-content/60"
 							>
-								<path d="M8 5l-5 7 5 7M16 5l5 7-5 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+								<path
+									d="M8 5l-5 7 5 7M16 5l5 7-5 7"
+									stroke="currentColor"
+									stroke-width="2"
+									fill="none"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/>
 							</svg>
 						</div>
 					</div>
@@ -506,9 +516,7 @@
 
 		<!-- Metadata summary -->
 		<div class="mb-4 rounded-lg bg-base-200 p-3">
-			<p class="mb-1 text-xs font-semibold text-base-content/60">
-				Context from edition metadata
-			</p>
+			<p class="mb-1 text-xs font-semibold text-base-content/60">Context from edition metadata</p>
 			<div class="flex flex-wrap gap-1">
 				<span class="badge badge-sm badge-primary">{edition.title}</span>
 				{#if edition.dcCoveragePeriod?.length}
@@ -545,7 +553,7 @@
 			>
 			<textarea
 				id="additional-prompt"
-				class="textarea textarea-bordered w-full"
+				class="textarea-bordered textarea w-full"
 				rows="3"
 				placeholder="Add details to guide the image generation... e.g., 'Show it in a museum setting with dramatic lighting' or 'Recreate it being used in ancient times'"
 				bind:value={additionalPrompt}
@@ -554,7 +562,7 @@
 
 		<!-- Error message -->
 		{#if errorMessage}
-			<div class="alert alert-error mb-4">
+			<div class="mb-4 alert alert-error">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
 					class="h-5 w-5 shrink-0"
@@ -576,7 +584,7 @@
 		<!-- Loading state -->
 		{#if isGenerating}
 			<div class="mb-4 flex flex-col items-center gap-3 py-8">
-				<span class="loading loading-spinner loading-lg text-primary"></span>
+				<span class="loading loading-lg loading-spinner text-primary"></span>
 				<p class="text-sm text-base-content/60">
 					Generating a realistic visualization of <strong>{edition.title}</strong>...
 				</p>
@@ -604,7 +612,7 @@
 					</svg>
 					Download
 				</button>
-				<button type="button" class="btn btn-primary btn-sm" onclick={generateImage}>
+				<button type="button" class="btn btn-sm btn-primary" onclick={generateImage}>
 					Regenerate
 				</button>
 			{:else}
@@ -616,7 +624,7 @@
 					disabled={isGenerating}
 				>
 					{#if isGenerating}
-						<span class="loading loading-spinner loading-sm"></span>
+						<span class="loading loading-sm loading-spinner"></span>
 						Generating...
 					{:else}
 						<svg

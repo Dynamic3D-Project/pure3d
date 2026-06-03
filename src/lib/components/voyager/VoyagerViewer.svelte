@@ -210,7 +210,7 @@
 			'.draco'
 		];
 
-		window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+		window.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
 			const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
 
 			const override = fetchOverrides?.find((o) => o.url === url);
@@ -267,7 +267,7 @@
 				status: response.status,
 				statusText: response.statusText
 			});
-		};
+		}) as typeof fetch;
 
 		// Return cleanup function
 		return () => {
@@ -286,7 +286,11 @@
 			// Patch getContext to force preserveDrawingBuffer on WebGL contexts.
 			// This allows canvas screenshot capture (toDataURL/drawImage) to work.
 			const origGetContext = HTMLCanvasElement.prototype.getContext;
-			HTMLCanvasElement.prototype.getContext = function (type: string, attrs?: any) {
+			HTMLCanvasElement.prototype.getContext = function (
+				this: HTMLCanvasElement,
+				type: string,
+				attrs?: any
+			) {
 				if (type === 'webgl' || type === 'webgl2') {
 					attrs = { ...attrs, preserveDrawingBuffer: true };
 				}

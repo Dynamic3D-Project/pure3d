@@ -54,7 +54,7 @@
 			>
 				<Logo />
 			</a>
-			<div class="flex-1" />
+			<div class="flex-1"></div>
 			{#if showSearch}
 				<div class=" max-w-2xl px-2 sm:px-0">
 					<Search />
@@ -118,6 +118,7 @@
 
 		/*   Cut the part of the backdrop that falls outside of <nav /> */
 		--cutoff: calc(100% - var(--extended-by));
+		mask-image: linear-gradient(to bottom, black 0, black var(--cutoff), transparent var(--cutoff));
 		-webkit-mask-image: linear-gradient(
 			to bottom,
 			black 0,
@@ -146,6 +147,7 @@
 		backdrop-filter: var(--filter);
 		pointer-events: none;
 
+		mask-image: linear-gradient(to bottom, black 0, black var(--offset), transparent var(--offset));
 		-webkit-mask-image: linear-gradient(
 			to bottom,
 			black 0,

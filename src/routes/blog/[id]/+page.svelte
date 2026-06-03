@@ -11,6 +11,7 @@
 	onMount(async () => {
 		try {
 			const postId = $page.params.id;
+			if (!postId) throw new Error('Missing post id');
 			post = await pb.collection('posts').getOne<Post>(postId);
 		} catch (err) {
 			console.error('Error loading post:', err);

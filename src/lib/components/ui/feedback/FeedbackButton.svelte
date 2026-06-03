@@ -11,8 +11,8 @@
 
 	let { showButton = true }: Props = $props();
 
-	let textarea: HTMLTextAreaElement = $state();
-	let modal: HTMLDialogElement = $state();
+	let textarea = $state<HTMLTextAreaElement | undefined>();
+	let modal = $state<HTMLDialogElement | undefined>();
 	let browserInfo = $state({
 		browser: '',
 		platform: '',
@@ -45,12 +45,12 @@
 
 		openFeedbackModal.set(() => {
 			updateBrowserInfo();
-			modal.showModal();
+			modal?.showModal();
 		});
 	});
 
 	function closeModal() {
-		modal.close();
+		modal?.close();
 	}
 
 	function getBrowserInfo() {
@@ -76,7 +76,7 @@
 	}
 
 	async function sendFeedback() {
-		const feedback = textarea.value;
+		const feedback = textarea?.value ?? '';
 		const browserInfo = getBrowserInfo();
 		const currentUrl = window.location.href;
 		const userInfo = getUserInfo();
@@ -120,7 +120,7 @@
 			console.log('Feedback result:', result);
 			if (result.success) {
 				toastStore.success(result.message);
-				textarea.value = ''; // Clear the feedback input
+				if (textarea) textarea.value = ''; // Clear the feedback input
 				closeModal();
 			} else {
 				toastStore.error(result.message);
@@ -137,7 +137,7 @@
 		class="btn btn-sm"
 		onclick={() => {
 			updateBrowserInfo();
-			modal.showModal();
+			modal?.showModal();
 		}}
 	>
 		Feedback
@@ -155,7 +155,7 @@
 			placeholder="Write your feedback here"
 			rows="6"
 		></textarea>
-		<div class="text-base-content/50 mt-2 text-xs">
+		<div class="mt-2 text-xs text-base-content/50">
 			<div>Page: {browserInfo.currentPath}</div>
 			<div>Browser: {browserInfo.browser} • Platform: {browserInfo.platform}</div>
 		</div>

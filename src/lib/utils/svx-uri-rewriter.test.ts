@@ -32,10 +32,7 @@ describe('rewriteSceneJson', () => {
 		const scene = {
 			scenes: [
 				{
-					nodes: [
-						{ model: { uri: 'model.glb' } },
-						{ annotations: [{ uri: 'note.html' }] }
-					]
+					nodes: [{ model: { uri: 'model.glb' } }, { annotations: [{ uri: 'note.html' }] }]
 				}
 			]
 		};
@@ -43,7 +40,7 @@ describe('rewriteSceneJson', () => {
 			'model.glb': 'https://a/model_1.glb',
 			'note.html': 'https://a/note_1.html'
 		};
-		const result = rewriteSceneJson(scene, fileMap) as typeof scene;
+		const result = rewriteSceneJson(scene, fileMap) as any;
 		expect(result.scenes[0].nodes[0].model.uri).toBe('https://a/model_1.glb');
 		expect(result.scenes[0].nodes[1].annotations[0].uri).toBe('https://a/note_1.html');
 	});
