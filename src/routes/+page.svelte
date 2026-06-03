@@ -114,7 +114,7 @@
 			<div class="hero-grid">
 				<p class="hero-lede">
 					Pure 3D publishes cultural-heritage and scientific objects as interactive, citable,
-					long-lived records. The interface recedes — paper, ink, and precise chrome framing the
+					long-lived records. The interface recedes, paper, ink, and precise chrome framing the
 					model itself.
 				</p>
 				<div class="hero-actions">
