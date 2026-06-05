@@ -116,6 +116,7 @@ export const load: PageLoad = async ({ params }) => {
 
 		const site = siteResult.items[0];
 		const collection = record.expand?.collection;
+		const collectionId = record.collection;
 		const collectionPubNum = collection?.pubNum || 0;
 		const editionPubNum = record.pubNum || 1;
 
@@ -128,6 +129,9 @@ export const load: PageLoad = async ({ params }) => {
 		// Thumbnail from asset URL (respects PUBLIC_ASSET_BASE_URL / R2)
 		const thumbnail =
 			collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, editionPubNum) : '';
+
+		const toArray = (v: unknown): string[] =>
+			Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && !!x) : [];
 
 		const edition = {
 			id: record.id,
@@ -150,15 +154,56 @@ export const load: PageLoad = async ({ params }) => {
 			peerReviewKind: record.peerReviewKind || null,
 			peerReviewContent: record.peerReviewContent || null,
 			modelSize: record.modelSize || null,
+			// Edition version metadata
+			pubNum: editionPubNum,
+			dcDoi: toArray(record.dcDoi),
+			dcInstitution: toArray(record.dcInstitution),
+			dcCreator: toArray(record.dcCreator),
+			dcCoveragePeriod: record.dcCoveragePeriod || null,
+			dcCoveragePlace: record.dcCoveragePlace || null,
+			settingsAuthorToolVersion: record.settingsAuthorToolVersion || null,
+			settingsAuthorToolName: record.settingsAuthorToolName || null,
+			dcProvenance: record.dcProvenance || null,
 			// Fields used by the Manage panel
 			status: record.status || null,
 			isPublished: !!record.isPublished,
-			collectionId: record.collection || null,
+			collectionId: collectionId || null,
 			collectionTitle: collection?.title || ''
 		};
 
+		// Fetch sibling editions (version history) for the same collection
+		let siblingEditions: Array<Record<string, unknown>> = [];
+		if (collectionId) {
+			try {
+				const siblingsResult = await pb.collection('editions').getList(1, 100, {
+					sort: '-pubNum',
+					filter: `collection = "${collectionId}" && isPublished = true`
+				});
+				siblingEditions = siblingsResult.items
+					.filter((r) => r.id !== record.id)
+					.map((r) => ({
+						id: r.id,
+						slug: r.id,
+						title: r.dcTitle || r.title,
+						pubNum: r.pubNum || 0,
+						status: r.status || null,
+						dcDoi: toArray(r.dcDoi),
+						modelSize: r.modelSize || null,
+						dcAbstract: r.dcAbstract || '',
+						created: r.created,
+						hasPeerReview: !!r.peerReviewKind && r.peerReviewKind !== 'No peer review',
+						thumbnail: collectionPubNum > 0
+							? getEditionThumbnailUrl(collectionPubNum, r.pubNum || 1)
+							: ''
+					}));
+			} catch {
+				// Non-critical — sibling editions are bonus data
+			}
+		}
+
 		return {
 			edition,
+			siblingEditions,
 			viewerHelp: site?.viewerHelp || null,
 			viewerHelpVideoUrl: site?.viewerHelpVideoUrl || null
 		};
