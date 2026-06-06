@@ -238,10 +238,10 @@
 			'.draco'
 		];
 
-		window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+		(window as any).fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
 			const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
 
-			const override = fetchOverrides?.find((o) => o.url === url);
+			const override = fetchOverrides?.find((o: any) => o.url === url);
 			if (override) {
 				return new Response(override.content, {
 					status: 200,
@@ -278,7 +278,7 @@
 
 			const reader = response.body.getReader();
 			const stream = new ReadableStream({
-				async start(controller) {
+				async start(this: any, controller: ReadableStreamDefaultController) {
 					while (true) {
 						const { done, value } = await reader.read();
 						if (done) break;
@@ -299,7 +299,7 @@
 
 		// Return cleanup function
 		return () => {
-			window.fetch = originalFetch;
+			(window as any).fetch = originalFetch;
 		};
 	}
 

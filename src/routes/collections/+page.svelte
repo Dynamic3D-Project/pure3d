@@ -10,7 +10,7 @@
 	} from '$lib/stores/data.store';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { pb } from '$lib/database/client';
-	import { CollectionRole } from '$lib/types/roles';
+	import { CollectionRole, GlobalRole } from '$lib/types/roles';
 	import toast from 'svelte-french-toast';
 
 	// Reactive data from persisted store
@@ -189,7 +189,7 @@
 		<p class="text-lg text-base-content/70 max-w-2xl mx-auto">
 			A Virtual Research Environment for 3D Digital Humanities And Heritage
 		</p>
-		{#if authStore.isAuthenticated}
+		{#if authStore.globalRole === GlobalRole.Admin}
 			<button
 				class="btn btn-primary btn-sm mt-6"
 				onclick={createCollection}

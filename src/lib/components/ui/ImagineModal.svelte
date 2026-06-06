@@ -805,6 +805,6 @@
 
 	<!-- Backdrop -->
 	<form method="dialog" class="modal-backdrop">
-		<button type="button" onclick={handleClose}>close</button>
+		<button type="button" onclick={handleClose} aria-label="Close">close</button>
 	</form>
 </dialog>

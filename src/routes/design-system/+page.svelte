@@ -71,6 +71,63 @@
 		if (parts.length === 3) return { before: parts[0], italic: parts[1], after: parts[2], ok: true };
 		return { before: heroHeadline, italic: '', after: '', ok: false };
 	});
+
+
+	const editionShowcase = [
+		{
+			number: '03',
+			status: 'Current',
+			title: 'Inlay re-interpretation & annotation cleanup',
+			date: '2026-04-12',
+			doi: '10.60131/p3d.0142.03',
+			mesh: '240k △',
+			texture: '4k PBR',
+			change: '+3 annotations',
+			note: 'Medallion inscription re-read with Dr. Haddad. Earlier solder joint re-annotated as restoration.',
+			current: true
+		},
+		{
+			number: '02',
+			status: 'Peer reviewed',
+			title: 'High-resolution re-scan',
+			date: '2025-11-03',
+			doi: '10.60131/p3d.0142.02',
+			mesh: '240k △',
+			texture: '4k PBR',
+			change: 'geometry rebuilt',
+			note: 'Photogrammetry recaptured with TRITOP; mesh reduced from 1.1M to 240k △ without visible loss.'
+		},
+		{
+			number: '01',
+			status: 'Original',
+			title: 'First publication',
+			date: '2024-07-19',
+			doi: '10.60131/p3d.0142.01',
+			mesh: '180k △',
+			texture: '2k PBR',
+			change: 'archive import',
+			note: "Initial record, imported from the museum's internal scan archive."
+		}
+	];
+
+	const editionDataExamples = [
+		{
+			label: 'Identity',
+			fields: ['dcTitle', 'dcCreator[]', 'dcInstitution[]', 'dcDoi[]', 'pubNum']
+		},
+		{
+			label: 'Object data',
+			fields: ['dcAbstract', 'dcSubject[]', 'dcCoveragePeriod[]', 'dcCoveragePlace', 'dcRightsLicense']
+		},
+		{
+			label: '3D delivery',
+			fields: ['settingsSceneFile', 'voyagerUrl', 'thumbnail', 'mesh count', 'texture profile']
+		},
+		{
+			label: 'Review state',
+			fields: ['status', 'peerReviewKind', 'reviewStage', 'publishedAt', 'publishedBy']
+		}
+	];
 </script>
 
 <svelte:head>
@@ -220,7 +277,7 @@
 				<div class="hero-grid">
 					<p class="hero-lede">
 						Pure 3D publishes cultural-heritage and scientific objects as interactive, citable, long-lived records. The interface should
-						recede, <pre></pre>aper, ink, and precise chrome framing the model itself. This document declares the system: the marks, the measures,
+						recede — paper, ink, and precise chrome framing the model itself. This document declares the system: the marks, the measures,
 						and the manner.
 					</p>
 					<dl class="hero-meta">
@@ -1113,98 +1170,117 @@
 					</div>
 				</div>
 
-				<div class="ed-wrap">
-					<div>
-						<div class="plate ed-plate">
-							<div class="plate-label plate-label-head"><span>Edition history</span><span class="pl-r">P3D-2026-0142</span></div>
-
-							<div class="edition">
-								<div class="ed-rail">
-									<div class="ed-dot current"></div>
-									<div class="ed-line"></div>
+				<div class="ed-showcase">
+					<div class="ed-hero-card">
+						<div class="plate-label plate-label-head"><span>Edition card · catalog hero</span><span class="pl-r">Featured current edition</span></div>
+						<div class="ed-hero-grid">
+							<div class="ed-object-frame" aria-label="Wireframe preview of a 3D edition thumbnail">
+								<div class="ed-wire-object">
+									<div class="ed-wire-lid"></div>
+									<div class="ed-wire-body"></div>
+									<div class="ed-wire-foot"></div>
 								</div>
-								<div class="ed-body">
-									<div class="ed-head">
-										<div>
-											<span class="ed-num">Ed. 03</span>
-											<span class="ed-label current-tag">Current</span>
-										</div>
-										<div class="ed-date">2026-04-12</div>
-									</div>
-									<div class="ed-title">Inlay re-interpretation &amp; annotation cleanup</div>
-									<div class="ed-meta">
-										<span>doi:10.60131/p3d.0142.03</span>
-										<span>· 240k △</span>
-										<span>· 4k PBR</span>
-										<span>· +3 annotations</span>
-									</div>
-									<div class="ed-note">
-										Medallion inscription re-read with Dr. Haddad. Earlier solder joint re-annotated as restoration (was: damage).
-									</div>
-								</div>
+								<div class="ed-object-badge">Interactive 3D</div>
+								<div class="ed-object-actions"><span>Orbit</span><span>Annotate</span><span>Cite</span></div>
 							</div>
 
-							<div class="edition">
-								<div class="ed-rail"><div class="ed-dot"></div><div class="ed-line"></div></div>
-								<div class="ed-body">
-									<div class="ed-head">
-										<div><span class="ed-num">Ed. 02</span></div>
-										<div class="ed-date">2025-11-03</div>
-									</div>
-									<div class="ed-title">High-resolution re-scan</div>
-									<div class="ed-meta">
-										<span>doi:10.60131/p3d.0142.02</span>
-										<span>· 240k △</span>
-										<span>· 4k PBR</span>
-									</div>
-									<div class="ed-note">Photogrammetry recaptured with TRITOP; mesh reduced from 1.1M to 240k △ without visible loss.</div>
+							<div class="ed-hero-copy">
+								<div class="ed-kicker">P3D-2026-0142 · Ed. 03 · Current</div>
+								<h3>Bronze Ewer, <em>Khorasan, c. 1180</em></h3>
+								<p>
+									The edition card should sell the object first: large square visual, scholarly title, quiet citation metadata, then a compact change summary.
+								</p>
+								<div class="ed-facts">
+									<div><span>Creator</span>Dr. Leila Haddad</div>
+									<div><span>Institution</span>Rijksmuseum</div>
+									<div><span>Coverage</span>Khorasan · 12th c.</div>
+									<div><span>License</span>CC-BY-NC-SA 4.0</div>
 								</div>
-							</div>
-
-							<div class="edition">
-								<div class="ed-rail"><div class="ed-dot"></div></div>
-								<div class="ed-body">
-									<div class="ed-head">
-										<div><span class="ed-num">Ed. 01</span><span class="ed-label">Original</span></div>
-										<div class="ed-date">2024-07-19</div>
-									</div>
-									<div class="ed-title">First publication</div>
-									<div class="ed-meta">
-										<span>doi:10.60131/p3d.0142.01</span>
-										<span>· 180k △</span>
-										<span>· 2k PBR</span>
-									</div>
-									<div class="ed-note">Initial record, imported from the museum's internal scan archive.</div>
+								<div class="ed-primary-actions">
+									<button class="btn btn-primary">Open viewer <span class="k">↵</span></button>
+									<button class="btn btn-secondary">Compare editions</button>
+									<button class="btn btn-ghost">Copy DOI</button>
 								</div>
 							</div>
 						</div>
 					</div>
 
-					<div class="ed-side">
-						<div class="plate">
-							<div class="plate-label"><span>Cite this edition</span><span class="pl-r">Chicago · MLA · BibTeX</span></div>
-							<div class="cite-body">
-								Haddad, L. <em>Bronze Ewer, Khorasan, c. 1180.</em> Pure 3D, ed. 03 (2026). doi:10.60131/p3d.0142.03.
-							</div>
-							<div class="cite-actions">
-								<button class="btn btn-secondary sm">Copy citation</button>
-								<button class="btn btn-ghost sm">Download .bib</button>
+					<div class="ed-wire-grid">
+						<div class="plate ed-plate">
+							<div class="plate-label plate-label-head"><span>Edition history · timeline/card hybrid</span><span class="pl-r">Most recent first</span></div>
+							<div class="ed-list">
+								{#each editionShowcase as edition, index (edition.number)}
+									<article class="edition-card" class:current={edition.current}>
+										<div class="ed-card-rail">
+											<div class="ed-dot" class:current={edition.current}></div>
+											{#if index < editionShowcase.length - 1}<div class="ed-line"></div>{/if}
+										</div>
+										<div class="ed-card-body">
+											<div class="ed-head">
+												<div><span class="ed-num">Ed. {edition.number}</span><span class="ed-label" class:current-tag={edition.current}>{edition.status}</span></div>
+												<div class="ed-date">{edition.date}</div>
+											</div>
+											<div class="ed-title">{edition.title}</div>
+											<div class="ed-meta-row">
+												<span>{edition.doi}</span><span>{edition.mesh}</span><span>{edition.texture}</span><span>{edition.change}</span>
+											</div>
+											<div class="ed-note">{edition.note}</div>
+										</div>
+									</article>
+								{/each}
 							</div>
 						</div>
 
-						<div class="plate">
-							<div class="plate-label"><span>Edition chip · inline</span><span class="pl-r">In running text</span></div>
-							<div class="chip-body">
-								"…the medallion's inscription (see <span class="ed-chip"><span class="ed-chip-n">Ed.</span> 03 <span class="ed-chip-dot"></span></span>) now reads as a dedication rather than a signature…"
+						<div class="ed-side">
+							<div class="plate">
+								<div class="plate-label"><span>Data structure · editor groups</span><span class="pl-r">What the form edits</span></div>
+								<div class="data-groups">
+									{#each editionDataExamples as group (group.label)}
+										<div class="data-group">
+											<div class="data-group-title">{group.label}</div>
+											<div class="data-fields">
+												{#each group.fields as field (field)}<span>{field}</span>{/each}
+											</div>
+										</div>
+									{/each}
+								</div>
 							</div>
-						</div>
 
-						<div class="plate">
-							<div class="plate-label"><span>Diff · what changed</span><span class="pl-r">Ed. 02 → 03</span></div>
-							<div class="diff">
-								<div class="diff-row add"><span>+</span><span class="serif">Annotation 3 · Foot, repaired c. 1890</span></div>
-								<div class="diff-row mod"><span>~</span><span class="serif">Annotation 1 · Medallion re-transcribed</span></div>
-								<div class="diff-row del"><span>−</span><span class="serif">Legacy mesh (180k △) retired</span></div>
+							<div class="plate">
+								<div class="plate-label"><span>Editor wireframe · recommended layout</span><span class="pl-r">Object-first, metadata second</span></div>
+								<div class="edit-wireframe">
+									<div class="wf-top"><span>Title + status</span><span>Save draft / Publish</span></div>
+									<div class="wf-body">
+										<div class="wf-preview">3D preview<br /><small>scene.svx.json</small></div>
+										<div class="wf-fields">
+											<div></div><div></div><div></div><div></div><div class="short"></div>
+										</div>
+									</div>
+									<div class="wf-tabs"><span>Identity</span><span>Object</span><span>Rights</span><span>Review</span></div>
+								</div>
+							</div>
+
+							<div class="plate">
+								<div class="plate-label"><span>Citation + inline edition reference</span><span class="pl-r">Chicago · BibTeX · prose</span></div>
+								<div class="cite-body">
+									Haddad, L. <em>Bronze Ewer, Khorasan, c. 1180.</em> Pure 3D, ed. 03 (2026). doi:10.60131/p3d.0142.03.
+								</div>
+								<div class="cite-actions">
+									<button class="btn btn-secondary sm">Copy citation</button>
+									<button class="btn btn-ghost sm">Download .bib</button>
+								</div>
+								<div class="chip-body mt-4">
+									"…the medallion's inscription (see <span class="ed-chip"><span class="ed-chip-n">Ed.</span> 03 <span class="ed-chip-dot"></span></span>) now reads as a dedication…"
+								</div>
+							</div>
+
+							<div class="plate">
+								<div class="plate-label"><span>Diff · what changed</span><span class="pl-r">Ed. 02 → 03</span></div>
+								<div class="diff">
+									<div class="diff-row add"><span>+</span><span class="serif">Annotation 3 · Foot, repaired c. 1890</span></div>
+									<div class="diff-row mod"><span>~</span><span class="serif">Annotation 1 · Medallion re-transcribed</span></div>
+									<div class="diff-row del"><span>−</span><span class="serif">Legacy mesh (180k △) retired</span></div>
+								</div>
 							</div>
 						</div>
 					</div>
@@ -3415,14 +3491,182 @@
 	}
 
 	/* ---------- EDITIONS ---------- */
-	.ed-wrap {
+	.ed-showcase {
+		display: flex;
+		flex-direction: column;
+		gap: var(--s-7);
+	}
+	.ed-hero-card {
+		background: var(--ds-paper-bg);
+		border: 1px solid var(--ds-rule-strong);
+		box-shadow: var(--shadow-2);
+		overflow: hidden;
+	}
+	.ed-hero-grid {
 		display: grid;
-		grid-template-columns: 1.3fr 1fr;
+		grid-template-columns: minmax(320px, 0.85fr) 1.15fr;
+		gap: 0;
+		border-top: 1px solid var(--ds-rule);
+	}
+	.ed-object-frame {
+		min-height: 440px;
+		position: relative;
+		display: grid;
+		place-items: center;
+		background:
+			linear-gradient(90deg, var(--ds-rule) 1px, transparent 1px),
+			linear-gradient(0deg, var(--ds-rule) 1px, transparent 1px),
+			linear-gradient(145deg, var(--ds-paper-2), var(--ds-paper-bg));
+		background-size: 32px 32px, 32px 32px, auto;
+		border-right: 1px solid var(--ds-rule);
+	}
+	.ed-wire-object {
+		position: relative;
+		width: 180px;
+		height: 250px;
+		filter: drop-shadow(0 30px 34px #1414132e);
+	}
+	.ed-wire-lid,
+	.ed-wire-body,
+	.ed-wire-foot {
+		position: absolute;
+		left: 50%;
+		transform: translateX(-50%);
+		border: 1px solid var(--ds-ink-2);
+		background: color-mix(in srgb, var(--ds-paper-bg) 70%, var(--ds-vermillion-wash));
+	}
+	.ed-wire-lid {
+		top: 0;
+		width: 88px;
+		height: 36px;
+		border-radius: 50% 50% 8px 8px;
+	}
+	.ed-wire-body {
+		top: 32px;
+		width: 140px;
+		height: 185px;
+		border-radius: 52px 52px 28px 28px;
+		background-image: linear-gradient(90deg, transparent 48%, var(--ds-rule-strong) 49%, transparent 51%);
+	}
+	.ed-wire-body::after {
+		content: '';
+		position: absolute;
+		right: -38px;
+		top: 52px;
+		width: 54px;
+		height: 92px;
+		border: 9px solid var(--ds-ink-3);
+		border-left: 0;
+		border-radius: 0 60px 60px 0;
+		opacity: 0.85;
+	}
+	.ed-wire-foot {
+		bottom: 0;
+		width: 92px;
+		height: 18px;
+		border-radius: 50%;
+		background: var(--ds-ink-2);
+	}
+	.ed-object-badge,
+	.ed-object-actions {
+		position: absolute;
+		font-family: var(--ds-mono);
+		font-size: 10px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+	.ed-object-badge {
+		top: var(--s-5);
+		left: var(--s-5);
+		padding: 4px 7px;
+		background: var(--ds-ink);
+		color: var(--ds-paper);
+	}
+	.ed-object-actions {
+		bottom: var(--s-5);
+		left: var(--s-5);
+		right: var(--s-5);
+		display: flex;
+		justify-content: space-between;
+		color: var(--ds-ink-3);
+		border-top: 1px solid var(--ds-rule);
+		padding-top: var(--s-3);
+	}
+	.ed-hero-copy {
+		padding: var(--s-7);
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+	}
+	.ed-kicker {
+		font-family: var(--ds-mono);
+		font-size: 11px;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--ds-vermillion-ink);
+		margin-bottom: var(--s-4);
+	}
+	.ed-hero-copy h3 {
+		font-size: clamp(34px, 4.6vw, 62px);
+		line-height: 0.96;
+		font-weight: 500;
+		letter-spacing: -0.045em;
+		margin: 0 0 var(--s-5);
+	}
+	.ed-hero-copy h3 em {
+		font-family: var(--ds-serif);
+		font-style: italic;
+		font-weight: 400;
+		letter-spacing: -0.035em;
+	}
+	.ed-hero-copy p {
+		max-width: 58ch;
+		font-family: var(--ds-serif);
+		font-size: 18px;
+		line-height: 1.55;
+		color: var(--ds-ink-2);
+		margin: 0 0 var(--s-5);
+	}
+	.ed-facts {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: var(--s-3) var(--s-5);
+		padding: var(--s-5) 0;
+		border-top: 1px solid var(--ds-rule);
+		border-bottom: 1px solid var(--ds-rule);
+		margin-bottom: var(--s-5);
+	}
+	.ed-facts div {
+		font-size: 14px;
+		color: var(--ds-ink-2);
+	}
+	.ed-facts span {
+		display: block;
+		font-family: var(--ds-mono);
+		font-size: 10px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--ds-ink-4);
+		margin-bottom: 2px;
+	}
+	.ed-primary-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--s-3);
+	}
+	.ed-wire-grid {
+		display: grid;
+		grid-template-columns: 1.15fr 0.85fr;
 		gap: var(--s-7);
 	}
 	@media (max-width: 900px) {
-		.ed-wrap {
+		.ed-hero-grid,
+		.ed-wire-grid {
 			grid-template-columns: 1fr;
+		}
+		.ed-object-frame {
+			border-right: 0;
+			border-bottom: 1px solid var(--ds-rule);
 		}
 	}
 	.ed-plate {
@@ -3430,18 +3674,25 @@
 		overflow: hidden;
 	}
 	.plate-label-head {
-		padding: var(--s-5) var(--s-6) 0;
+		padding: var(--s-5) var(--s-6) var(--s-4);
 		margin-bottom: 0;
 	}
-	.edition {
+	.ed-list {
+		border-top: 1px solid var(--ds-rule);
+	}
+	.edition-card {
 		display: grid;
-		grid-template-columns: 32px 1fr;
+		grid-template-columns: 34px 1fr;
 		gap: var(--s-4);
 		padding: var(--s-5) var(--s-6);
-		border-top: 1px solid var(--ds-rule);
+		border-bottom: 1px solid var(--ds-rule);
 		position: relative;
+		background: var(--ds-paper-bg);
 	}
-	.ed-rail {
+	.edition-card.current {
+		background: linear-gradient(90deg, var(--ds-vermillion-wash), var(--ds-paper-bg) 36%);
+	}
+	.ed-card-rail {
 		position: relative;
 		display: flex;
 		flex-direction: column;
@@ -3472,7 +3723,7 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: baseline;
-		margin-bottom: 4px;
+		margin-bottom: 6px;
 		flex-wrap: wrap;
 		gap: 4px 10px;
 	}
@@ -3508,21 +3759,29 @@
 	.ed-title {
 		font-family: var(--ds-sans);
 		font-weight: 500;
-		font-size: 17px;
-		letter-spacing: -0.01em;
-		margin-bottom: 4px;
+		font-size: 20px;
+		letter-spacing: -0.02em;
+		margin-bottom: 6px;
 	}
-	.ed-meta {
+	.ed-meta-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		margin-bottom: 8px;
+	}
+	.ed-meta-row span {
 		font-family: var(--ds-mono);
 		font-size: 10.5px;
-		color: var(--ds-ink-3);
 		letter-spacing: 0.04em;
-		margin-bottom: 6px;
+		color: var(--ds-ink-3);
+		border: 1px solid var(--ds-rule);
+		padding: 2px 5px;
+		background: color-mix(in srgb, var(--ds-paper-bg) 65%, var(--ds-paper));
 	}
 	.ed-note {
 		font-family: var(--ds-serif);
 		font-style: italic;
-		font-size: 13.5px;
+		font-size: 14px;
 		color: var(--ds-ink-2);
 		line-height: 1.5;
 	}
@@ -3531,7 +3790,96 @@
 		flex-direction: column;
 		gap: var(--s-5);
 	}
-
+	.data-groups {
+		display: grid;
+		gap: var(--s-3);
+	}
+	.data-group {
+		padding: var(--s-4);
+		border: 1px solid var(--ds-rule);
+		background: var(--ds-paper-bg);
+	}
+	.data-group-title {
+		font-family: var(--ds-mono);
+		font-size: 11px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--ds-ink);
+		margin-bottom: var(--s-3);
+	}
+	.data-fields {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+	}
+	.data-fields span {
+		font-family: var(--ds-mono);
+		font-size: 10px;
+		color: var(--ds-ink-3);
+		background: var(--ds-paper-2);
+		border: 1px solid var(--ds-rule);
+		padding: 2px 5px;
+	}
+	.edit-wireframe {
+		border: 1px solid var(--ds-rule-strong);
+		background: var(--ds-paper-bg);
+	}
+	.wf-top,
+	.wf-tabs {
+		display: flex;
+		justify-content: space-between;
+		gap: var(--s-3);
+		padding: var(--s-3) var(--s-4);
+		font-family: var(--ds-mono);
+		font-size: 10px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--ds-ink-4);
+		border-bottom: 1px solid var(--ds-rule);
+	}
+	.wf-tabs {
+		border-top: 1px solid var(--ds-rule);
+		border-bottom: 0;
+	}
+	.wf-tabs span:first-child {
+		color: var(--ds-vermillion-ink);
+	}
+	.wf-body {
+		display: grid;
+		grid-template-columns: 0.9fr 1.1fr;
+		gap: var(--s-4);
+		padding: var(--s-4);
+	}
+	.wf-preview {
+		min-height: 154px;
+		display: grid;
+		place-items: center;
+		text-align: center;
+		border: 1px dashed var(--ds-rule-strong);
+		background: var(--ds-paper-2);
+		font-family: var(--ds-mono);
+		font-size: 11px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--ds-ink-3);
+	}
+	.wf-preview small {
+		font-size: 9px;
+		color: var(--ds-ink-4);
+	}
+	.wf-fields {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+	.wf-fields div {
+		height: 20px;
+		background: linear-gradient(90deg, var(--ds-ink-4), transparent 78%);
+		opacity: 0.35;
+	}
+	.wf-fields div.short {
+		width: 58%;
+	}
 	.ed-chip {
 		display: inline-flex;
 		align-items: center;

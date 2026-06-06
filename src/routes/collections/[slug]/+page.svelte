@@ -67,6 +67,33 @@
 	let canCreateEdition = $derived(hasPermission(permissionContext, Permission.EditionCreate));
 	let canManagePage = $derived(canManageUsers || canDelete);
 
+	// Group editions by status for version-aware display
+	let editionGroups = $derived.by(() => {
+		const groups: Record<string, typeof editions> = {};
+		for (const edition of editions) {
+			const key = (edition as any).status || 'Unknown';
+			if (!groups[key]) groups[key] = [];
+			groups[key].push(edition);
+		}
+		// Sort groups: want "published" or "current" first, then others
+		const priority: Record<string, number> = { 'published': 0, 'current': 0, 'draft': 2, 'review': 1 };
+		const sortedKeys = Object.keys(groups).sort((a, b) => {
+			const pa = priority[a.toLowerCase()] ?? 3;
+			const pb = priority[b.toLowerCase()] ?? 3;
+			return pa - pb;
+		});
+		return sortedKeys.map((key) => ({ status: key, editions: groups[key] }));
+	});
+
+	// Latest edition (highest pubNum)
+	let latestEdition = $derived(
+		editions.length > 0
+			? editions.reduce((a, b) =>
+				((a as any).pubNum || 0) > ((b as any).pubNum || 0) ? a : b
+			)
+			: null
+	);
+
 	onMount(async () => {
 		editTitle = collection.title;
 		editDescription = collection.description;
@@ -447,13 +474,38 @@
 		<h2 class="mb-6 text-2xl font-semibold">Editions</h2>
 
 		{#if editions.length > 0}
-			<div
-				class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
-			>
-				{#each editions as edition (edition.id)}
-					<EditionCard {edition} />
+			<!-- Version summary -->
+			{#if latestEdition && ((latestEdition as any).pubNum > 1)}
+				<div class="mb-4 text-sm text-base-content/60">
+					{editions.length} editions · Latest: Ed. {String((latestEdition as any).pubNum).padStart(2, '0')} ·
+					<a href="{base}/editions/{latestEdition.id}" data-sveltekit-preload-data="hover" class="link link-hover">
+						{latestEdition.title}
+					</a>
+				</div>
+			{/if}
+
+			<!-- Grouped by status -->
+			{#if editionGroups.length > 1}
+				{#each editionGroups as group}
+					<div class="mb-6">
+						<h3 class="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-base-content/50">
+							{group.status}
+							<span class="badge badge-sm">{group.editions.length}</span>
+						</h3>
+						<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+							{#each group.editions as edition (edition.id)}
+								<EditionCard edition={edition as any} />
+							{/each}
+						</div>
+					</div>
 				{/each}
-			</div>
+			{:else}
+				<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+					{#each editions as edition (edition.id)}
+						<EditionCard edition={edition as any} />
+					{/each}
+				</div>
+			{/if}
 		{:else}
 			<div class="rounded-lg border border-dashed border-base-300 bg-base-200/40 px-4 py-8 text-center text-sm text-base-content/60">
 				No editions available in this collection yet.

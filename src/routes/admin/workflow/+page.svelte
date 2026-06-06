@@ -775,7 +775,7 @@
 				</button>
 			</div>
 		</div>
-		<div class="modal-backdrop" onclick={() => (publishModalEdition = null)}></div>
+		<button class="modal-backdrop" onclick={() => (publishModalEdition = null)} aria-label="Close publish modal"></button>
 	</div>
 {/if}
 
