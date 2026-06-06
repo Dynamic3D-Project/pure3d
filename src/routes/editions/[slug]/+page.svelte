@@ -23,6 +23,7 @@
 		type UserRoleContext
 	} from '$lib/types/roles';
 	import { hasPermission, canUserTransitionStatus } from '$lib/utils/permissions';
+	import { type ViewerMode, DEFAULT_VIEWER_MODE, VIEWER_MODE_LABELS } from '$lib/types/roles';
 	import { resolvePageContext } from '$lib/utils/page-permissions';
 	import { logAudit } from '$lib/utils/audit';
 	import toast from 'svelte-french-toast';
@@ -64,6 +65,11 @@
 
 	// Custom controls are the inverse of Voyager menu visibility
 	const showCustomControls = $derived(!showVoyagerMenu);
+
+	// Viewer mode — persisted per edition, defaults to classic
+	let viewerMode = $state<ViewerMode>(DEFAULT_VIEWER_MODE);
+	// Sync from edition data when it loads
+	$effect(() => { const m = (edition as any).viewerMode; if (m) viewerMode = m as ViewerMode; });
 
 	/**
 	 * Parse description text and extract view link markers
@@ -432,7 +438,28 @@
 						Compare editions
 					</button>
 				{/if}
-				<!-- Copy DOI -->
+				<!-- Viewer mode selector -->
+				<div class="dropdown dropdown-end">
+					<button class="btn btn-sm btn-ghost gap-1">
+						<span class="text-xs opacity-60">View:</span>
+						{VIEWER_MODE_LABELS[viewerMode]}
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+					</button>
+					<ul class="dropdown-content menu p-1 bg-base-100 rounded-box shadow w-52 z-10">
+						{#each (['classic','expert','standalone'] as ViewerMode[]) as m}
+							<li>
+								<button class:active={viewerMode === m} onclick={() => (viewerMode = m)}>
+									<div>
+										<div class="text-sm font-medium">{VIEWER_MODE_LABELS[m]}</div>
+										<div class="text-xs text-base-content/50">{m === 'classic' ? 'Orbit & zoom only' : m === 'expert' ? 'Full controls' : 'Expert + menu + editor'}</div>
+									</div>
+								</button>
+							</li>
+						{/each}
+					</ul>
+				</div>
+
+			<!-- Copy DOI -->
 				{#if primaryDoi}
 					<button class="btn btn-sm btn-ghost" onclick={copyDoi}>
 						{#if citationCopied}
@@ -572,6 +599,7 @@
 							onReady={handleViewerReady}
 							onFullWindowToggle={toggleFullWindow}
 							showEditorSwitch
+							mode={viewerMode}
 							{isFullWindow}
 							{showVoyagerMenu}
 						/>

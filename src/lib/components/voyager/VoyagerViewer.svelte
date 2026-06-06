@@ -17,6 +17,7 @@
 
 	import { onMount } from 'svelte';
 	import toast from 'svelte-french-toast';
+	import { type ViewerMode, DEFAULT_VIEWER_MODE } from '$lib/types/roles';
 
 	interface Props {
 		/** URL for iframe mode OR root path for direct mode */
@@ -40,6 +41,8 @@
 		title: string;
 		/** Use direct embedding instead of iframe */
 		direct?: boolean;
+		/** Viewer mode — controls UI complexity. Classic=minimal, Expert=full controls, Standalone=expert+menu+editor */
+		mode?: ViewerMode;
 		/** Show control toolbar (only available in direct mode) */
 		showControls?: boolean;
 		/** UI mode - controls which UI elements are visible initially (e.g., "none", "none|title", "all") */
@@ -107,6 +110,7 @@
 		companionAssets,
 		title,
 		direct = false,
+		mode = DEFAULT_VIEWER_MODE,
 		showControls = false,
 		uiMode = 'none',
 		enableControls = true,
@@ -123,6 +127,17 @@
 		showEditorSwitch = false,
 		editorUrl
 	}: Props = $props();
+
+	// Derive control visibility from viewer mode
+	const effectiveShowControls = $derived(
+		mode === 'classic' ? false : showControls
+	);
+	const effectiveShowVoyagerMenu = $derived(
+		mode === 'standalone' ? true : mode === 'classic' ? false : showVoyagerMenu
+	);
+	const effectiveShowEditorSwitch = $derived(
+		mode === 'standalone' ? true : showEditorSwitch
+	);
 
 	// Compute the container style based on height prop
 	const containerStyle = $derived(
@@ -794,7 +809,7 @@
 	{:else if direct}
 		<!-- Direct Embedding Mode with Full API Control -->
 		<div class="voyager-container">
-		{#if showControls && isScriptLoaded}
+		{#if effectiveShowControls && isScriptLoaded}
 			<!-- Global UI Toggle -->
 			<div class="mb-4">
 				<button
@@ -1210,7 +1225,7 @@
 		</div>
 	{/if}
 
-	{#if showEditorSwitch}
+	{#if effectiveShowEditorSwitch}
 		<div class="flex flex-wrap items-center justify-between gap-3 bg-base-100/95 p-3">
 			<div class="join" role="group" aria-label="Voyager mode">
 				<button

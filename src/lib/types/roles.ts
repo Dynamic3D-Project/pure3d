@@ -162,6 +162,23 @@ export const ROLE_LABELS: Record<string, string> = {
 	...GLOBAL_ROLE_LABELS
 };
 
+// Voyager viewer modes — control the UI complexity of the 3D viewer
+export type ViewerMode = 'classic' | 'expert' | 'standalone';
+
+export const VIEWER_MODE_LABELS: Record<ViewerMode, string> = {
+	classic: 'Classic',
+	expert: 'Expert',
+	standalone: 'Standalone'
+};
+
+export const VIEWER_MODE_DESCRIPTIONS: Record<ViewerMode, string> = {
+	classic: 'Minimal viewer — orbit and zoom only',
+	expert: 'Full controls — annotations, measurements, camera, background',
+	standalone: 'Expert controls + Voyager menu and story editor'
+};
+
+export const DEFAULT_VIEWER_MODE: ViewerMode = 'classic';
+
 // Edition status display labels
 export const STATUS_LABELS: Record<EditionStatus, string> = {
 	[EditionStatus.Draft]: 'Draft',
