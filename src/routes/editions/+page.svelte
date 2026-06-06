@@ -12,7 +12,7 @@
 	} from '$lib/stores/data.store';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { pb } from '$lib/database/client';
-	import { EditionStatus } from '$lib/types/roles';
+	import { EditionStatus, GlobalRole } from '$lib/types/roles';
 	import toast from 'svelte-french-toast';
 
 	// Reactive data from persisted store
@@ -254,7 +254,7 @@
 						Browse our collection of 3D scholarly editions
 					</p>
 				</div>
-				{#if authStore.isAuthenticated}
+				{#if authStore.globalRole === GlobalRole.Admin}
 					<button
 						class="btn btn-primary btn-sm flex-none"
 						onclick={createEdition}
