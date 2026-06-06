@@ -50,7 +50,7 @@
 	// Update editor content when the content prop changes externally
 	$effect(() => {
 		if (editor && content !== editor.getHTML()) {
-			editor.commands.setContent(content, false);
+			editor.commands.setContent(content, {});
 		}
 	});
 

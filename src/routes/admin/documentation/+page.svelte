@@ -274,9 +274,9 @@
 				</div>
 
 				<div class="form-control">
-					<label class="label">
+					<span class="label">
 						<span class="label-text">Content</span>
-					</label>
+					</span>
 					<RichTextEditor
 						content={formContent}
 						placeholder="Write your documentation page content..."

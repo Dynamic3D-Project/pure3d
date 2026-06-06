@@ -38,7 +38,7 @@
 	let containerElement: HTMLDivElement | undefined = $state();
 	let searchInputElement: HTMLInputElement | undefined = $state();
 	let dropdownElement: HTMLDivElement | undefined = $state();
-	let resultsListElement: HTMLUListElement | undefined = $state();
+	let resultsListElement: HTMLElement | undefined = $state();
 	let cleanupAutoUpdate: (() => void) | undefined;
 
 	async function performSearch(query: string) {

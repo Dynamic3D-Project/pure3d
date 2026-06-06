@@ -1,25 +1,26 @@
-<script>
+<script lang="ts">
 	import { onMount } from 'svelte';
 	let searchValue = $state('');
-	let options = [];
-	let filteredOptions = $state([]);
+	let options: string[] = [];
+	let filteredOptions = $state<string[]>([]);
 	let selectedIndex = $state(-1);
 	let showDropdown = $state(false);
-	let timeoutId = null;
+	let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
-	function handleInput(event) {
-		searchValue = event.target.value;
-		clearTimeout(timeoutId);
+	function handleInput(event: Event) {
+		const target = event.target as HTMLInputElement;
+		searchValue = target.value;
+		if (timeoutId) clearTimeout(timeoutId);
 		timeoutId = setTimeout(() => {
 			fetchOptions(searchValue);
 		}, 500);
 	}
 
-	async function fetchOptions(searchTerm) {
+	async function fetchOptions(searchTerm: string) {
 		try {
 			const response = await fetch(`https://jsonplaceholder.typicode.com/posts?q=${searchTerm}`);
 			const data = await response.json();
-			options = data.map((post) => post.title);
+			options = data.map((post: { title: string }) => post.title);
 			filteredOptions = options.filter((option) =>
 				option.toLowerCase().includes(searchValue.toLowerCase())
 			);
@@ -30,7 +31,7 @@
 		}
 	}
 
-	function handleKeyDown(event) {
+	function handleKeyDown(event: KeyboardEvent) {
 		switch (event.key) {
 			case 'ArrowDown':
 				if (selectedIndex < filteredOptions.length - 1) {

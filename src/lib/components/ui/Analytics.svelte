@@ -1,3 +1,7 @@
+<script lang="ts" context="module">
+	declare function gtag(...args: any[]): void;
+</script>
+
 <script lang="ts">
 	import { run } from 'svelte/legacy';
 
