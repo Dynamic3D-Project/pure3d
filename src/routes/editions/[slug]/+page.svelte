@@ -570,6 +570,8 @@
 							uiMode="menu|title|language"
 							onModelLoaded={handleModelLoaded}
 							onReady={handleViewerReady}
+							onFullWindowToggle={toggleFullWindow}
+							showEditorSwitch
 							{isFullWindow}
 							{showVoyagerMenu}
 						/>

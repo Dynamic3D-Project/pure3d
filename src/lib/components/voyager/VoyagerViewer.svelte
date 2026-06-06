@@ -60,10 +60,16 @@
 		isFullWindow?: boolean;
 		/** Callback when viewer is ready, provides API methods */
 		onReady?: (api: VoyagerAPI) => void;
+		/** Callback to toggle full-window mode from the embedded editor controls */
+		onFullWindowToggle?: () => void;
 		/** Height of the viewer (e.g., "500px", "60vh", "100%"). Defaults to aspect-ratio 4/3 with max-height 90dvh */
 		height?: string;
 		/** Show Voyager's built-in menu (sv-main-menu). Defaults to false (hidden) */
 		showVoyagerMenu?: boolean;
+		/** Show a Viewer/Editor switch below the Voyager surface */
+		showEditorSwitch?: boolean;
+		/** URL for Voyager Story editor. Defaults to locally hosted Voyager Story wrapper. */
+		editorUrl?: string;
 	}
 
 	export interface VoyagerAPI {
@@ -111,8 +117,11 @@
 		onModelLoaded,
 		isFullWindow = false,
 		onReady,
+		onFullWindowToggle,
 		height,
-		showVoyagerMenu = false
+		showVoyagerMenu = false,
+		showEditorSwitch = false,
+		editorUrl
 	}: Props = $props();
 
 	// Compute the container style based on height prop
@@ -149,6 +158,25 @@
 
 	// UI visibility toggle
 	let showVoyagerUI = $state(false);
+	let activeMode = $state<'viewer' | 'editor'>('viewer');
+	const resolvedEditorUrl = $derived.by(() => {
+		if (editorUrl) return editorUrl;
+
+		const params = new URLSearchParams();
+		params.set('version', voyagerVersion);
+		params.set('root', url);
+		params.set('resourceRoot', resourceRoot || `/voyager/${voyagerVersion}/`);
+
+		if (geometry) {
+			params.set('geometry', geometry);
+		} else if (model) {
+			params.set('model', model);
+		} else {
+			params.set('document', documentPath || 'scene.svx.json');
+		}
+
+		return `/voyager/story.html?${params.toString()}`;
+	});
 
 	// Format bytes to human readable string
 	function formatBytes(bytes: number): string {
@@ -286,7 +314,11 @@
 			// Patch getContext to force preserveDrawingBuffer on WebGL contexts.
 			// This allows canvas screenshot capture (toDataURL/drawImage) to work.
 			const origGetContext = HTMLCanvasElement.prototype.getContext;
-			HTMLCanvasElement.prototype.getContext = function (type: string, attrs?: any) {
+			HTMLCanvasElement.prototype.getContext = function (
+				this: HTMLCanvasElement,
+				type: string,
+				attrs?: any
+			) {
 				if (type === 'webgl' || type === 'webgl2') {
 					attrs = { ...attrs, preserveDrawingBuffer: true };
 				}
@@ -733,7 +765,7 @@
 </script>
 
 {#snippet progressBar()}
-	{#if loadingPhase !== 'complete'}
+	{#if activeMode === 'viewer' && loadingPhase !== 'complete'}
 		<div class="pointer-events-none absolute right-0 bottom-0 left-0 z-10">
 			<progress
 				class="progress h-1 w-full rounded-none progress-primary"
@@ -744,9 +776,24 @@
 	{/if}
 {/snippet}
 
-{#if direct}
-	<!-- Direct Embedding Mode with Full API Control -->
-	<div class="voyager-container">
+<div id="voyager-viewer" class="voyager-viewer-shell">
+	{#if activeMode === 'editor'}
+		<div
+			class="relative w-full overflow-hidden rounded-lg bg-base-300"
+			style="{containerStyle} background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);"
+		>
+			<iframe
+				name="Voyager Story"
+				src={resolvedEditorUrl}
+				title="Voyager Story editor"
+				class="absolute top-0 left-0 h-full w-full border-0"
+				loading="lazy"
+				allow="xr-spatial-tracking; fullscreen"
+			></iframe>
+		</div>
+	{:else if direct}
+		<!-- Direct Embedding Mode with Full API Control -->
+		<div class="voyager-container">
 		{#if showControls && isScriptLoaded}
 			<!-- Global UI Toggle -->
 			<div class="mb-4">
@@ -767,7 +814,7 @@
 				<div class="order-2 lg:order-1">
 					<!-- Voyager Explorer Component -->
 					<div
-						class="w-full overflow-hidden rounded-lg bg-gradient-to-b from-slate-700 to-slate-900"
+						class="relative w-full overflow-hidden rounded-lg bg-gradient-to-b from-slate-700 to-slate-900"
 						style={containerStyle}
 					>
 						{#if isScriptLoaded}
@@ -1119,7 +1166,7 @@
 		{:else}
 			<!-- Direct Mode without Controls Panel -->
 			<div
-				class="w-full overflow-hidden rounded-lg"
+				class="relative w-full overflow-hidden rounded-lg"
 				style="{containerStyle} background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);"
 			>
 				{#if isScriptLoaded}
@@ -1145,25 +1192,65 @@
 				{@render progressBar()}
 			</div>
 		{/if}
-	</div>
-{:else}
-	<!-- Iframe Mode (No API Control) -->
-	<div
-		class="w-full"
-		style="{containerStyle} background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);"
-	>
-		<iframe
-			name="Smithsonian Voyager"
-			src={url}
-			{title}
-			class="absolute top-0 left-0 h-full w-full border-0"
-			loading="eager"
-			allow="xr; xr-spatial-tracking; fullscreen"
-		></iframe>
-	</div>
-{/if}
+		</div>
+	{:else}
+		<!-- Iframe Mode (No API Control) -->
+		<div
+			class="relative w-full"
+			style="{containerStyle} background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);"
+		>
+			<iframe
+				name="Smithsonian Voyager"
+				src={url}
+				{title}
+				class="absolute top-0 left-0 h-full w-full border-0"
+				loading="eager"
+				allow="xr; xr-spatial-tracking; fullscreen"
+			></iframe>
+		</div>
+	{/if}
+
+	{#if showEditorSwitch}
+		<div class="flex flex-wrap items-center justify-between gap-3 bg-base-100/95 p-3">
+			<div class="join" role="group" aria-label="Voyager mode">
+				<button
+					type="button"
+					class="btn join-item btn-sm"
+					class:btn-active={activeMode === 'viewer'}
+					onclick={() => (activeMode = 'viewer')}
+				>
+					Viewer
+				</button>
+				<button
+					type="button"
+					class="btn join-item btn-sm"
+					class:btn-active={activeMode === 'editor'}
+					onclick={() => (activeMode = 'editor')}
+				>
+					Editor
+				</button>
+			</div>
+
+			{#if activeMode === 'editor' && onFullWindowToggle}
+				<button
+					type="button"
+					class="btn btn-outline btn-sm"
+					onclick={onFullWindowToggle}
+					aria-label={isFullWindow ? 'Exit full window' : 'Full window'}
+				>
+					{isFullWindow ? 'Exit full window' : 'Full window'}
+				</button>
+			{/if}
+		</div>
+	{/if}
+</div>
 
 <style>
+	.voyager-viewer-shell {
+		position: relative;
+		width: 100%;
+	}
+
 	/* Custom element styles */
 	:global(voyager-explorer) {
 		display: block;
