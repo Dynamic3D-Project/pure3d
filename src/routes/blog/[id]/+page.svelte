@@ -10,7 +10,7 @@
 
 	onMount(async () => {
 		try {
-			const postId = $page.params.id;
+			const postId = $page.params.id!;
 			post = await pb.collection('posts').getOne<Post>(postId);
 		} catch (err) {
 			console.error('Error loading post:', err);

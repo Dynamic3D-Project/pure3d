@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import Socialicons from '$components/ui/SocialIcons.svelte';
+	import Socialicons from '$lib/components/ui/SocialIcons.svelte';
 
 	interface Props {
 		class?: string;

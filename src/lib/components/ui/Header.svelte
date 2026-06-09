@@ -54,7 +54,7 @@
 			>
 				<Logo />
 			</a>
-			<div class="flex-1" />
+			<div class="flex-1"></div>
 			{#if showSearch}
 				<div class=" max-w-2xl px-2 sm:px-0">
 					<Search />
@@ -124,6 +124,12 @@
 			black var(--cutoff),
 			transparent var(--cutoff)
 		);
+		mask-image: linear-gradient(
+			to bottom,
+			black 0,
+			black var(--cutoff),
+			transparent var(--cutoff)
+		);
 	}
 
 	.bien-glass-edge {
@@ -147,6 +153,12 @@
 		pointer-events: none;
 
 		-webkit-mask-image: linear-gradient(
+			to bottom,
+			black 0,
+			black var(--offset),
+			transparent var(--offset)
+		);
+		mask-image: linear-gradient(
 			to bottom,
 			black 0,
 			black var(--offset),

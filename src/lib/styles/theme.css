@@ -1,0 +1,145 @@
+/* ==========================================================================
+   Pure3D Design Tokens
+   Extracted from design-system for global use across the application.
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* --------------------------------------------------------------------------
+   Layer: design-tokens (lowest priority, overridable by utilities)
+   -------------------------------------------------------------------------- */
+@layer design-tokens {
+  :root,
+  [data-theme='pure3d'] {
+    /* ---- Font Stacks ---- */
+    --ds-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace,
+      monospace;
+    --ds-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont,
+      'Segoe UI', Roboto, sans-serif;
+    --ds-serif: 'Crimson Pro', 'Georgia', 'Times New Roman', serif;
+
+    /* ---- Text Hierarchy (ink) ---- */
+    --ds-ink: oklch(23.6% 0.066 313.2); /* primary text, ~base-content */
+    --ds-ink-2: oklch(45% 0.05 313); /* secondary text, ~60% opacity */
+    --ds-ink-3: oklch(65% 0.03 313); /* tertiary/muted text */
+    --ds-ink-4: oklch(85% 0.01 313); /* placeholder/disabled text */
+
+    /* ---- Background Hierarchy (paper) ---- */
+    --ds-paper: oklch(97.8% 0.004 56.4); /* main surface, ~base-100 */
+    --ds-paper-bg: oklch(99% 0.001 56.4); /* page background, lighter */
+    --ds-paper-2: oklch(94% 0.007 61.4); /* elevated surface, ~base-200 */
+
+    /* ---- Borders & Dividers (rule) ---- */
+    --ds-rule: oklch(91.6% 0.006 53.4); /* subtle border, ~base-300 */
+    --ds-rule-strong: oklch(80% 0.01 53.4); /* pronounced border */
+
+    /* ---- Edition Accent (vermillion) ---- */
+    --ds-vermillion: oklch(64% 0.246 16.4); /* vibrant red-orange accent */
+    --ds-vermillion-wash: oklch(64% 0.246 16.4 / 0.1); /* subtle vermillion tint */
+    --ds-vermillion-ink: oklch(97% 0.01 16); /* text on vermillion bg */
+
+    /* ---- Primary Brand (scholarly blue-teal) ---- */
+    --ds-primary: oklch(70% 0.14 182.503);
+    --ds-primary-content: #ffffff;
+
+    /* ---- Secondary Brand ---- */
+    --ds-secondary: oklch(55% 0.18 220);
+    --ds-secondary-content: oklch(97% 0.01 220);
+
+    /* ---- Accent Brand ---- */
+    --ds-accent: oklch(72% 0.15 55);
+    --ds-accent-content: oklch(22% 0.05 55);
+
+    /* ---- Spacing Scale (--s-*) ---- */
+    --s-7: 0.125rem; /* 2px */
+    --s-6: 0.25rem; /* 4px */
+    --s-5: 0.5rem; /* 8px */
+    --s-4: 0.75rem; /* 12px */
+    --s-3: 1rem; /* 16px */
+    --s-2: 1.5rem; /* 24px */
+    --s-1: 2rem; /* 32px */
+
+    /* ---- Card Tokens ---- */
+    --ds-card-shadow: 0 1px 3px oklch(0% 0 0 / 0.08),
+      0 1px 2px oklch(0% 0 0 / 0.06);
+    --ds-card-shadow-hover: 0 10px 25px oklch(0% 0 0 / 0.12),
+      0 4px 10px oklch(0% 0 0 / 0.08);
+    --ds-card-radius: 0.75rem;
+    --ds-card-border: 1px solid var(--ds-rule);
+
+    /* ---- Button Tokens ---- */
+    --ds-btn-radius: 0.5rem;
+    --ds-btn-padding-x: var(--s-3);
+    --ds-btn-padding-y: var(--s-6);
+    --ds-btn-font-size: 0.875rem;
+    --ds-btn-font-weight: 500;
+  }
+
+  /* ------------------------------------------------------------------------
+     Dark Mode Overrides (for collection/immersive contexts)
+     ------------------------------------------------------------------------ */
+  [data-theme='dark'] {
+    --ds-paper: oklch(20% 0.02 265);
+    --ds-paper-bg: oklch(16% 0.02 265);
+    --ds-paper-2: oklch(26% 0.03 265);
+    --ds-ink: oklch(92% 0.005 265);
+    --ds-ink-2: oklch(72% 0.01 265);
+    --ds-ink-3: oklch(52% 0.01 265);
+    --ds-ink-4: oklch(32% 0.02 265);
+    --ds-rule: oklch(30% 0.02 265);
+    --ds-rule-strong: oklch(45% 0.02 265);
+    --ds-card-shadow: 0 1px 3px oklch(0% 0 0 / 0.2),
+      0 1px 2px oklch(0% 0 0 / 0.15);
+    --ds-card-shadow-hover: 0 10px 25px oklch(0% 0 0 / 0.3),
+      0 4px 10px oklch(0% 0 0 / 0.2);
+    --ds-card-border: 1px solid var(--ds-rule);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Utility classes based on design tokens
+   -------------------------------------------------------------------------- */
+@layer utilities {
+  /* Card base style */
+  .ds-card {
+    background: var(--ds-paper);
+    border: var(--ds-card-border);
+    border-radius: var(--ds-card-radius);
+    box-shadow: var(--ds-card-shadow);
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+  }
+  .ds-card:hover {
+    box-shadow: var(--ds-card-shadow-hover);
+    transform: translateY(-2px);
+  }
+
+  /* Edition indicator (vermillion accent) */
+  .ds-edition-indicator {
+    border-left: 3px solid var(--ds-vermillion);
+  }
+
+  /* Scholarly text */
+  .ds-scholarly {
+    font-family: var(--ds-serif);
+  }
+
+  /* Mono / metadata text */
+  .ds-mono {
+    font-family: var(--ds-mono);
+    font-size: 0.8125rem;
+    color: var(--ds-ink-3);
+  }
+
+  /* Page background */
+  .ds-page-bg {
+    background-color: var(--ds-paper-bg);
+  }
+
+  /* Section divider */
+  .ds-divider {
+    border-top: 1px solid var(--ds-rule);
+  }
+  .ds-divider-strong {
+    border-top: 1px solid var(--ds-rule-strong);
+  }
+}

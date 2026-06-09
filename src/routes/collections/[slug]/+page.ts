@@ -63,7 +63,11 @@ export const load: PageLoad = async ({ params }) => {
 				alternativeVersion: null,
 				tags: Array.isArray(record.dcKeyword) ? record.dcKeyword : [],
 				created: record.created,
-				hasPeerReview: !!record.peerReviewKind && record.peerReviewKind !== 'No peer review'
+				hasPeerReview: !!record.peerReviewKind && record.peerReviewKind !== 'No peer review',
+				pubNum: editionPubNum,
+				modelSize: record.modelSize || null,
+				status: record.status || null,
+				dcDoi: Array.isArray(record.dcDoi) ? record.dcDoi : []
 			};
 		});
 
