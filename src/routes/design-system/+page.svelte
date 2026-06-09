@@ -220,7 +220,7 @@
 				<div class="hero-grid">
 					<p class="hero-lede">
 						Pure 3D publishes cultural-heritage and scientific objects as interactive, citable, long-lived records. The interface should
-						recede, <pre></pre>aper, ink, and precise chrome framing the model itself. This document declares the system: the marks, the measures,
+						recede, paper, ink, and precise chrome framing the model itself. This document declares the system: the marks, the measures,
 						and the manner.
 					</p>
 					<dl class="hero-meta">

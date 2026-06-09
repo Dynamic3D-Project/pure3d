@@ -198,7 +198,10 @@
 	let permissionContext = $state<UserRoleContext>({ globalRole: GlobalRole.Viewer });
 	let manageOpen = $state(false);
 	let manageTab = $state<'workflow' | 'members' | 'danger'>('workflow');
-	let currentStatus = $state<EditionStatus>(EditionStatus.Draft);
+	let currentStatus = $state<EditionStatus>(
+		((data.edition as unknown as { status?: EditionStatus }).status as EditionStatus) ||
+			EditionStatus.Draft
+	);
 	let deleteConfirmOpen = $state(false);
 	let isDeleting = $state(false);
 
@@ -217,6 +220,8 @@
 		)
 	);
 
+	let showDraftBadge = $derived(edition.id !== 'demo' && currentStatus === EditionStatus.Draft);
+
 	let canManagePage = $derived(
 		hasPermission(permissionContext, Permission.EditionDelete) ||
 			canManageMembers ||
@@ -228,7 +233,8 @@
 
 	onMount(async () => {
 		if (edition.id === 'demo') return;
-		currentStatus = ((edition as unknown as { status?: EditionStatus }).status as EditionStatus) ||
+		currentStatus =
+			((edition as unknown as { status?: EditionStatus }).status as EditionStatus) ||
 			EditionStatus.Draft;
 
 		if (!authStore.isAuthenticated || !authStore.appUserId) {
@@ -305,7 +311,12 @@
 				</div>
 			{/if}
 			<div class="flex-1">
-				<h1 class="mb-1 text-3xl font-bold md:text-4xl">{edition.title}</h1>
+				<div class="mb-1 flex flex-wrap items-center gap-3">
+					<h1 class="text-3xl font-bold md:text-4xl">{edition.title}</h1>
+					{#if showDraftBadge}
+						<StatusBadge status={EditionStatus.Draft} size="md" />
+					{/if}
+				</div>
 				<p class="text-base-content/70">{edition.authors}</p>
 			</div>
 			{#if canManagePage}
@@ -346,17 +357,14 @@
 					</div>
 					<div class="flex gap-2">
 						{#if canEditMetadata}
-							<a
-								href="{base}/editions/{edition.id}/workflow"
-								class="btn btn-outline btn-sm"
-							>
+							<a href="{base}/editions/{edition.id}/workflow" class="btn btn-outline btn-sm">
 								Edit in Workflow
 							</a>
 						{/if}
 					</div>
 				</div>
 
-				<div role="tablist" class="tabs-bordered tabs mb-4">
+				<div role="tablist" class="tabs-bordered mb-4 tabs">
 					<button
 						role="tab"
 						class="tab"

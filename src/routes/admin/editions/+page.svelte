@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { base } from '$app/paths';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { pb } from '$lib/database/client';
 	import {
@@ -82,9 +83,7 @@
 		editions = [...editions];
 	}
 
-	let canManageAllMembers = $derived(
-		authStore.globalRole === GlobalRole.Admin
-	);
+	let canManageAllMembers = $derived(authStore.globalRole === GlobalRole.Admin);
 </script>
 
 <div id="admin-editions-page" class="mx-auto max-w-6xl">
@@ -112,64 +111,77 @@
 		<div class="space-y-2">
 			{#each filteredEditions as edition (edition.id)}
 				<div class="rounded-box border border-base-300 bg-base-100">
-					<button
-						class="flex w-full cursor-pointer items-center justify-between p-4 font-medium"
-						onclick={() => toggleExpand(edition.id)}
-					>
-						<div class="flex flex-wrap items-center gap-3">
-							{#if edition.thumbnailUrl}
-								<img
-									src={edition.thumbnailUrl}
-									alt={edition.title}
-									class="size-10 rounded object-cover"
-								/>
-							{:else}
-								<div
-									class="flex size-10 items-center justify-center rounded bg-base-300 text-base-content/40"
-								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke-width="1.5"
-										stroke="currentColor"
-										class="size-5"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"
-										/>
-									</svg>
-								</div>
-							{/if}
-							<span>{edition.title}</span>
-							<StatusBadge status={edition.status} />
-							{#if edition.collectionTitle}
-								<span class="text-sm text-base-content/50">
-									in {edition.collectionTitle}
-								</span>
-							{/if}
-						</div>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke-width="1.5"
-							stroke="currentColor"
-							class="size-4 shrink-0 transition-transform duration-200"
-							class:rotate-180={expandedId === edition.id}
+					<div class="flex w-full items-center justify-between gap-3 p-4">
+						<button
+							class="flex min-w-0 flex-1 cursor-pointer items-center text-left font-medium"
+							onclick={() => toggleExpand(edition.id)}
 						>
-							<path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-						</svg>
-					</button>
+							<div class="flex flex-wrap items-center gap-3">
+								{#if edition.thumbnailUrl}
+									<img
+										src={edition.thumbnailUrl}
+										alt={edition.title}
+										class="size-10 rounded object-cover"
+									/>
+								{:else}
+									<div
+										class="flex size-10 items-center justify-center rounded bg-base-300 text-base-content/40"
+									>
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke-width="1.5"
+											stroke="currentColor"
+											class="size-5"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"
+											/>
+										</svg>
+									</div>
+								{/if}
+								<span>{edition.title}</span>
+								<StatusBadge status={edition.status} />
+								{#if edition.collectionTitle}
+									<span class="text-sm text-base-content/50">
+										in {edition.collectionTitle}
+									</span>
+								{/if}
+							</div>
+						</button>
+						<div class="flex shrink-0 items-center gap-2">
+							<a href="{base}/editions/{edition.id}" class="btn btn-outline btn-sm">Open</a>
+							<button
+								class="btn btn-square btn-ghost btn-sm"
+								onclick={() => toggleExpand(edition.id)}
+								aria-label={expandedId === edition.id ? 'Collapse edition' : 'Expand edition'}
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke-width="1.5"
+									stroke="currentColor"
+									class="size-4 shrink-0 transition-transform duration-200"
+									class:rotate-180={expandedId === edition.id}
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="m19.5 8.25-7.5 7.5-7.5-7.5"
+									/>
+								</svg>
+							</button>
+						</div>
+					</div>
 					{#if expandedId === edition.id}
 						<div class="border-t border-base-300 px-4 pt-2 pb-4">
 							<!-- Workflow transitions -->
 							<div class="mb-4 border-b border-base-300 pb-4">
-								<h3 class="mb-2 text-sm font-semibold text-base-content/60 uppercase">
-									Workflow
-								</h3>
+								<h3 class="mb-2 text-sm font-semibold text-base-content/60 uppercase">Workflow</h3>
 								<StatusTransitionPanel
 									editionId={edition.id}
 									title={edition.title}
