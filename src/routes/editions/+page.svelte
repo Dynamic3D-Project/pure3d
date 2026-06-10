@@ -18,6 +18,9 @@
 	let isLoading = $state(true);
 
 	onMount(async () => {
+		const query = new URLSearchParams(window.location.search).get('q');
+		if (query) searchQuery = query;
+
 		// If we have fresh cached data, skip loading
 		if (hasCachedData && !isStale($editionsStore.lastFetched)) {
 			isLoading = false;

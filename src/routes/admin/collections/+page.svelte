@@ -181,11 +181,12 @@
 		<div class="space-y-2">
 			{#each filteredCollections as collection (collection.id)}
 				<div class="rounded-box border border-base-300 bg-base-100">
-					<button
-						class="flex w-full cursor-pointer items-center justify-between p-4 font-medium"
-						onclick={() => toggleExpand(collection.id)}
-					>
-						<div class="flex items-center gap-3">
+					<div class="flex w-full items-center justify-between gap-3 p-4">
+						<button
+							class="flex min-w-0 flex-1 cursor-pointer items-center text-left font-medium"
+							onclick={() => toggleExpand(collection.id)}
+						>
+							<div class="flex flex-wrap items-center gap-3">
 							{#if collection.thumbnailUrl}
 								<img
 									src={collection.thumbnailUrl}
@@ -220,18 +221,28 @@
 								<span class="badge badge-ghost badge-xs">#{collection.pubNum}</span>
 							{/if}
 						</div>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke-width="1.5"
-							stroke="currentColor"
-							class="size-4 transition-transform duration-200"
-							class:rotate-180={expandedId === collection.id}
-						>
-							<path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-						</svg>
-					</button>
+						</button>
+						<div class="flex shrink-0 items-center gap-2">
+							<a href="{base}/collections/{collection.id}" class="btn btn-outline btn-sm">Open</a>
+							<button
+								class="btn btn-square btn-ghost btn-sm"
+								onclick={() => toggleExpand(collection.id)}
+								aria-label={expandedId === collection.id ? 'Collapse collection' : 'Expand collection'}
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke-width="1.5"
+									stroke="currentColor"
+									class="size-4 transition-transform duration-200"
+									class:rotate-180={expandedId === collection.id}
+								>
+									<path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+								</svg>
+							</button>
+						</div>
+					</div>
 					{#if expandedId === collection.id}
 						<div class="border-t border-base-300 px-4 pt-2 pb-4">
 							<MemberManager

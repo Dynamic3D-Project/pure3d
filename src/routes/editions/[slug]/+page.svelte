@@ -8,6 +8,7 @@
 	import VoyagerAPIDemo from '$lib/components/voyager/VoyagerAPIDemo.svelte';
 	import ReviewFeedbackList from '$lib/components/workflow/ReviewFeedbackList.svelte';
 	import ImagineModal from '$lib/components/ui/ImagineModal.svelte';
+	import FloatingModal from '$lib/components/ui/FloatingModal.svelte';
 	import StatusTransitionPanel from '$lib/components/workflow/StatusTransitionPanel.svelte';
 	import MemberManager from '$lib/components/admin/MemberManager.svelte';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
@@ -107,6 +108,18 @@
 
 	// Parsed description segments
 	const descriptionSegments = $derived(parseDescription(edition.description || ''));
+	const creatorNames = $derived.by(() => {
+		const creators = ((edition as any).dcCreator as string[]) || [];
+		if (creators.length > 0) return creators;
+		return (edition.authors || '')
+			.split(',')
+			.map((author) => author.trim())
+			.filter(Boolean);
+	});
+
+	function authorEditionsHref(author: string): string {
+		return `${base}/editions?q=${encodeURIComponent(author)}`;
+	}
 
 	/**
 	 * Handle click on a view link - change camera position
@@ -246,6 +259,12 @@
 		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 	}
 
+	function formatDate(dateStr: string): string {
+		if (!dateStr) return '—';
+		const date = new Date(dateStr);
+		return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString();
+	}
+
 	function handleModelLoaded(totalBytes: number) {
 		loadedModelSize = totalBytes;
 	}
@@ -285,6 +304,7 @@
 	let permissionContext = $state<UserRoleContext>({ globalRole: GlobalRole.Viewer });
 	let manageOpen = $state(false);
 	let manageTab = $state<'workflow' | 'members' | 'danger'>('workflow');
+	let manageButtonElement: HTMLButtonElement | undefined = $state();
 	let currentStatus = $state<EditionStatus>(
 		((data.edition as unknown as { status?: EditionStatus }).status as EditionStatus) ||
 			EditionStatus.Draft
@@ -341,6 +361,22 @@
 		currentStatus = newStatus;
 	}
 
+	function openManageModal() {
+		if (manageTab === 'workflow' && !hasActionableTransition) {
+			manageTab = canManageMembers ? 'members' : 'danger';
+		} else if (manageTab === 'members' && !canManageMembers) {
+			manageTab = hasActionableTransition ? 'workflow' : 'danger';
+		} else if (manageTab === 'danger' && !canDelete) {
+			manageTab = hasActionableTransition ? 'workflow' : 'members';
+		}
+		manageOpen = true;
+	}
+
+	function closeManageModal() {
+		manageOpen = false;
+		deleteConfirmOpen = false;
+	}
+
 	async function deleteEdition() {
 		isDeleting = true;
 		try {
@@ -369,7 +405,7 @@
 	<link rel="dns-prefetch" href="https://3d-api.si.edu" />
 </svelte:head>
 
-<div class="bg-base-100">
+<div class="min-h-[calc(100vh-4rem)] bg-base-100">
 	<div class="container mx-auto max-w-7xl px-4 py-8">
 		<!-- Breadcrumbs -->
 		<nav class="breadcrumbs mb-6 text-sm">
@@ -416,7 +452,11 @@
 						<span class="badge badge-ghost badge-sm" title="Model size">{String((edition as any).modelSize)}</span>
 					{/if}
 				</div>
-				<p class="text-base-content/70">{edition.authors}</p>
+				<p class="text-base-content/70">
+					{#each creatorNames as author, index (author)}
+						<a href={authorEditionsHref(author)} class="link-hover link">{author}</a>{index < creatorNames.length - 1 ? ', ' : ''}
+					{/each}
+				</p>
 				<!-- Institution -->
 				{#if (edition as any).dcInstitution && (edition as any).dcInstitution.length > 0}
 					<p class="mt-1 text-xs text-base-content/50">
@@ -427,11 +467,14 @@
 			<div class="flex flex-col gap-2">
 				{#if canManagePage}
 					<button
+						bind:this={manageButtonElement}
 						class="btn btn-sm btn-primary"
-						onclick={() => (manageOpen = !manageOpen)}
+						onclick={() => (manageOpen ? closeManageModal() : openManageModal())}
 						aria-expanded={manageOpen}
+						aria-haspopup="dialog"
+						aria-controls="edition-manage-modal"
 					>
-						{manageOpen ? 'Close Manage' : 'Manage'}
+						Manage
 					</button>
 				{/if}
 				<!-- Compare editions button (if there are siblings) -->
@@ -441,16 +484,6 @@
 						onclick={() => (activeTab = 'versions')}
 					>
 						Compare editions
-					</button>
-				{/if}
-				<!-- Copy DOI -->
-				{#if primaryDoi}
-					<button class="btn btn-sm btn-ghost" onclick={copyDoi}>
-						{#if citationCopied}
-							Copied!
-						{:else}
-							Copy DOI
-						{/if}
 					</button>
 				{/if}
 			</div>
@@ -473,88 +506,6 @@
 				</svg>
 			</button>
 		</div>
-
-		{#if manageOpen && canManagePage}
-			<div class="mb-6 rounded-box border border-base-300 bg-base-200 p-4">
-				<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-					<div class="flex items-center gap-3">
-						<h2 class="text-lg font-semibold">Manage Edition</h2>
-						<StatusBadge status={currentStatus} />
-					</div>
-					<div class="flex gap-2">
-						{#if canEditMetadata}
-							<a href="{base}/editions/{edition.id}/workflow" class="btn btn-outline btn-sm">
-								Edit in Workflow
-							</a>
-						{/if}
-					</div>
-				</div>
-
-				<div role="tablist" class="tabs-bordered mb-4 tabs">
-					<button
-						role="tab"
-						class="tab"
-						class:tab-active={manageTab === 'workflow'}
-						onclick={() => (manageTab = 'workflow')}
-					>
-						Workflow
-					</button>
-					{#if canManageMembers}
-						<button
-							role="tab"
-							class="tab"
-							class:tab-active={manageTab === 'members'}
-							onclick={() => (manageTab = 'members')}
-						>
-							Members
-						</button>
-					{/if}
-					{#if canDelete}
-						<button
-							role="tab"
-							class="tab"
-							class:tab-active={manageTab === 'danger'}
-							onclick={() => (manageTab = 'danger')}
-						>
-							Danger Zone
-						</button>
-					{/if}
-				</div>
-
-				{#if manageTab === 'workflow'}
-					<StatusTransitionPanel
-						editionId={edition.id}
-						title={edition.title}
-						status={currentStatus}
-						context={permissionContext}
-						onchanged={handleStatusChanged}
-					/>
-				{:else if manageTab === 'members' && canManageMembers}
-					<MemberManager
-						membershipCollection="editionUsers"
-						parentField="editionId"
-						parentId={edition.id}
-						roleValues={editionRoleValues}
-						roleLabels={EDITION_ROLE_LABELS}
-						defaultRole={EditionRole.Collaborator}
-						auditTargetType="edition"
-					/>
-				{:else if manageTab === 'danger' && canDelete}
-					<div class="space-y-3">
-						<p class="text-sm text-base-content/70">
-							Deleting this edition is permanent and cannot be undone.
-						</p>
-						<button
-							class="btn btn-sm btn-error"
-							onclick={() => (deleteConfirmOpen = true)}
-							disabled={isDeleting}
-						>
-							Delete Edition
-						</button>
-					</div>
-				{/if}
-			</div>
-		{/if}
 
 		<!-- Main Content Grid -->
 		<div
@@ -949,20 +900,29 @@
 									</div>
 								{:else if activeTab === 'metadata'}
 									<div class="space-y-4">
-										{#if primaryDoi}
-											<div>
-												<h3 class="text-sm font-semibold text-base-content/60">DOI</h3>
+									{#if primaryDoi}
+										<div>
+											<h3 class="text-sm font-semibold text-base-content/60">DOI</h3>
+											<div class="mt-1 flex flex-wrap items-center gap-2">
 												<p class="font-mono text-xs break-all">{primaryDoi}</p>
+												<button class="btn btn-outline btn-xs" onclick={copyDoi} title={`Copy DOI ${primaryDoi}`}>
+													{citationCopied ? 'Copied' : 'Copy DOI'}
+												</button>
 											</div>
-										{/if}
-										<div>
-											<h3 class="text-sm font-semibold text-base-content/60">Created</h3>
-											<p>{new Date(edition.created).toLocaleDateString()}</p>
 										</div>
-										<div>
-											<h3 class="text-sm font-semibold text-base-content/60">Authors</h3>
-											<p>{edition.authors}</p>
-										</div>
+									{/if}
+									<div>
+										<h3 class="text-sm font-semibold text-base-content/60">Created</h3>
+										<p>{formatDate(edition.created)}</p>
+									</div>
+									<div>
+										<h3 class="text-sm font-semibold text-base-content/60">Authors</h3>
+										<p>
+											{#each creatorNames as author, index (author)}
+												<a href={authorEditionsHref(author)} class="link-hover link">{author}</a>{index < creatorNames.length - 1 ? ', ' : ''}
+											{/each}
+										</p>
+									</div>
 										{#if (edition as any).dcInstitution && (edition as any).dcInstitution.length > 0}
 											<div>
 												<h3 class="text-sm font-semibold text-base-content/60">Institution</h3>
@@ -1199,6 +1159,117 @@
 
 <!-- Imagine AI Modal -->
 <ImagineModal bind:open={imagineModalOpen} edition={edition as any} onclose={() => (imagineModalOpen = false)} />
+
+{#if canManagePage}
+	<FloatingModal
+		open={manageOpen}
+		referenceElement={manageButtonElement}
+		id="edition-manage-modal"
+		labelledby="edition-manage-title"
+		onclose={() => {
+			if (!deleteConfirmOpen) closeManageModal();
+		}}
+	>
+		{#snippet header()}
+			<div class="flex items-start justify-between gap-4">
+				<div class="flex flex-wrap items-center gap-3">
+					<h2 id="edition-manage-title" class="text-lg font-semibold">Manage Edition</h2>
+					<StatusBadge status={currentStatus} />
+				</div>
+				<button
+					type="button"
+					class="btn btn-ghost btn-xs"
+					onclick={closeManageModal}
+					aria-label="Close manage edition modal"
+				>
+					x
+				</button>
+			</div>
+
+			<div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+				<div role="tablist" class="tabs-bordered tabs">
+					{#if hasActionableTransition}
+						<button
+							role="tab"
+							class="tab"
+							class:tab-active={manageTab === 'workflow'}
+							onclick={() => (manageTab = 'workflow')}
+						>
+							Workflow
+						</button>
+					{/if}
+					{#if canManageMembers}
+						<button
+							role="tab"
+							class="tab"
+							class:tab-active={manageTab === 'members'}
+							onclick={() => (manageTab = 'members')}
+						>
+							Members
+						</button>
+					{/if}
+					{#if canDelete}
+						<button
+							role="tab"
+							class="tab"
+							class:tab-active={manageTab === 'danger'}
+							onclick={() => (manageTab = 'danger')}
+						>
+							Danger Zone
+						</button>
+					{/if}
+				</div>
+				{#if canEditMetadata}
+					<a href="{base}/editions/{edition.id}/workflow" class="btn btn-outline btn-sm">
+						Edit in Workflow
+					</a>
+				{/if}
+			</div>
+		{/snippet}
+
+		{#if manageTab === 'workflow' && hasActionableTransition}
+			<StatusTransitionPanel
+				editionId={edition.id}
+				title={edition.title}
+				status={currentStatus}
+				context={permissionContext}
+				onchanged={handleStatusChanged}
+			/>
+		{:else if manageTab === 'members' && canManageMembers}
+			<MemberManager
+				membershipCollection="editionUsers"
+				parentField="editionId"
+				parentId={edition.id}
+				roleValues={editionRoleValues}
+				roleLabels={EDITION_ROLE_LABELS}
+				defaultRole={EditionRole.Collaborator}
+				auditTargetType="edition"
+			/>
+		{:else if manageTab === 'danger' && canDelete}
+			<div class="space-y-3">
+				<p class="text-sm text-base-content/70">
+					Deleting this edition is permanent and cannot be undone.
+				</p>
+			</div>
+		{/if}
+
+		{#snippet footer()}
+			<div class="flex justify-end gap-2">
+				<button type="button" class="btn btn-ghost btn-sm" onclick={closeManageModal}>Close</button>
+				{#if manageTab === 'danger' && canDelete}
+					<button
+						type="button"
+						class="btn btn-sm btn-error"
+						onclick={() => (deleteConfirmOpen = true)}
+						disabled={isDeleting}
+					>
+						Delete Edition
+					</button>
+				{/if}
+			</div>
+		{/snippet}
+	</FloatingModal>
+{/if}
 
 <!-- Delete confirmation modal -->
 {#if canDelete}
