@@ -1,6 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter+Tight:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @import './lib/assets/css/scrollbar-color.css';
-@import './lib/styles/theme.css';
 
 @import 'tailwindcss';
 
@@ -92,12 +91,6 @@
 
   html {
     scrollbar-gutter: stable;
-    background-color: var(--ds-paper-bg);
-  }
-
-  body {
-    background-color: var(--ds-paper-bg);
-    font-family: var(--ds-sans);
   }
 }
 
@@ -166,4 +159,3 @@ a[target='_blank'] {
 .form-control-float input:focus-within {
   @apply border-primary outline-none;
 }
-
