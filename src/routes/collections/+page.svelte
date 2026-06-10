@@ -151,7 +151,7 @@
 				// Non-critical
 			}
 
-			goto(`${base}/collections/${record.id}`);
+			goto(`${base}/collections/${record.id}?manage=details`);
 		} catch (e: unknown) {
 			const message = e instanceof Error ? e.message : 'Failed to create collection';
 			toast.error(message);

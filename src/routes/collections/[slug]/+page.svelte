@@ -95,6 +95,8 @@
 	);
 
 	onMount(async () => {
+		const shouldOpenManageDetails = new URLSearchParams(window.location.search).get('manage') === 'details';
+
 		editTitle = collection.title;
 		editDescription = collection.description;
 		editIsVisible = collection.isVisible;
@@ -114,6 +116,11 @@
 			collectionRecord = await pb.collection('collections').getOne(collection.id);
 		} catch (error) {
 			console.error('Error loading collection record:', error);
+		}
+
+		if (shouldOpenManageDetails && canEdit) {
+			manageTab = 'details';
+			openManageModal();
 		}
 	});
 

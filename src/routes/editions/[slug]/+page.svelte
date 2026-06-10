@@ -440,18 +440,6 @@
 						<StatusBadge status={EditionStatus.Draft} size="md" />
 					{/if}
 				</div>
-				<div class="mb-1 flex flex-wrap items-center gap-2">
-					<!-- PubNum + Status -->
-					{#if (edition as any).pubNum}
-						<span class="badge badge-neutral font-mono text-xs">Ed. {String((edition as any).pubNum).padStart(2, '0')}</span>
-					{/if}
-					{#if !showDraftBadge && currentStatus}
-						<StatusBadge status={currentStatus} />
-					{/if}
-					{#if (edition as any).modelSize}
-						<span class="badge badge-ghost badge-sm" title="Model size">{String((edition as any).modelSize)}</span>
-					{/if}
-				</div>
 				<p class="text-base-content/70">
 					{#each creatorNames as author, index (author)}
 						<a href={authorEditionsHref(author)} class="link-hover link">{author}</a>{index < creatorNames.length - 1 ? ', ' : ''}
@@ -475,15 +463,6 @@
 						aria-controls="edition-manage-modal"
 					>
 						Manage
-					</button>
-				{/if}
-				<!-- Compare editions button (if there are siblings) -->
-				{#if siblingEditions && siblingEditions.length > 0}
-					<button
-						class="btn btn-sm btn-outline"
-						onclick={() => (activeTab = 'versions')}
-					>
-						Compare editions
 					</button>
 				{/if}
 			</div>
@@ -812,10 +791,10 @@
 					>
 						<div class="card-body w-96 p-0">
 							<!-- Tabs -->
-							<div role="tablist" class="tabs-bordered tabs bg-base-300">
+							<div role="tablist" class="tabs-bordered tabs flex-nowrap overflow-x-auto bg-base-300">
 								<button
 									role="tab"
-									class="tab flex-1"
+									class="tab shrink-0 whitespace-nowrap"
 									class:tab-active={activeTab === 'description'}
 									onclick={() => (activeTab = 'description')}
 								>
@@ -823,7 +802,7 @@
 								</button>
 								<button
 									role="tab"
-									class="tab flex-1"
+									class="tab shrink-0 whitespace-nowrap"
 									class:tab-active={activeTab === 'metadata'}
 									onclick={() => (activeTab = 'metadata')}
 								>
@@ -831,7 +810,7 @@
 								</button>
 								<button
 									role="tab"
-									class="tab flex-1"
+									class="tab shrink-0 whitespace-nowrap"
 									class:tab-active={activeTab === 'peer-review'}
 									onclick={() => (activeTab = 'peer-review')}
 								>
@@ -840,7 +819,7 @@
 								{#if siblingEditions && siblingEditions.length > 0}
 									<button
 										role="tab"
-										class="tab flex-1"
+										class="tab shrink-0 whitespace-nowrap"
 										class:tab-active={activeTab === 'versions'}
 										onclick={() => (activeTab = 'versions')}
 									>
@@ -849,7 +828,7 @@
 								{/if}
 								<button
 									role="tab"
-									class="tab flex-1"
+									class="tab shrink-0 whitespace-nowrap"
 									class:tab-active={activeTab === 'printables'}
 									onclick={() => (activeTab = 'printables')}
 								>
