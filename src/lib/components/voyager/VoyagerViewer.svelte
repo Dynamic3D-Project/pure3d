@@ -17,6 +17,7 @@
 
 	import { onMount } from 'svelte';
 	import toast from 'svelte-french-toast';
+	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
 
 	interface Props {
 		/** URL for iframe mode OR root path for direct mode */
@@ -238,7 +239,10 @@
 			'.draco'
 		];
 
-		(window as any).fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+		(window as any).fetch = async (
+			input: RequestInfo | URL,
+			init?: RequestInit
+		): Promise<Response> => {
 			const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
 
 			const override = fetchOverrides?.find((o: any) => o.url === url);
@@ -736,6 +740,10 @@
 		{ code: 'JA', name: '日本語' },
 		{ code: 'AR', name: 'العربية' }
 	];
+	const languageOptions = languages.map((language) => ({
+		value: language.code,
+		label: language.name
+	}));
 
 	function toggleVoyagerUI() {
 		showVoyagerUI = !showVoyagerUI;
@@ -794,404 +802,408 @@
 	{:else if direct}
 		<!-- Direct Embedding Mode with Full API Control -->
 		<div class="voyager-container">
-		{#if showControls && isScriptLoaded}
-			<!-- Global UI Toggle -->
-			<div class="mb-4">
-				<button
-					class="btn btn-block btn-lg {showVoyagerUI ? 'btn-warning' : 'btn-success'}"
-					onclick={toggleVoyagerUI}
-				>
-					{showVoyagerUI ? 'Hide Voyager UI' : 'Show Voyager UI'}
-				</button>
-				<div class="mt-2 text-center text-xs text-base-content/60">
-					{showVoyagerUI ? 'Full Voyager interface visible' : 'Clean API-controlled mode'}
-				</div>
-			</div>
-
-			<!-- Two Column Layout: Viewer Left, Controls Right -->
-			<div class="grid gap-4 lg:grid-cols-[1fr_300px]">
-				<!-- Left Column: Viewer -->
-				<div class="order-2 lg:order-1">
-					<!-- Voyager Explorer Component -->
-					<div
-						class="relative w-full overflow-hidden rounded-lg bg-gradient-to-b from-slate-700 to-slate-900"
-						style={containerStyle}
+			{#if showControls && isScriptLoaded}
+				<!-- Global UI Toggle -->
+				<div class="mb-4">
+					<button
+						class="btn btn-block btn-lg {showVoyagerUI ? 'btn-warning' : 'btn-success'}"
+						onclick={toggleVoyagerUI}
 					>
-						{#if isScriptLoaded}
-							<voyager-explorer
-								bind:this={voyagerElement}
-								id="voyager"
-								class="absolute top-0 left-0 h-full w-full"
-								root={url}
-								resourceroot={resourceRoot || `/voyager/${voyagerVersion}/`}
-								document={model || geometry ? undefined : documentPath || 'scene.svx.json'}
-								model={geometry ? undefined : model}
-								{geometry}
-								{title}
-								uimode={showVoyagerUI ? 'all' : uiMode}
-								controls={enableControls}
-								prompt={showPrompt}
-							></voyager-explorer>
-						{:else}
-							<div class="absolute inset-0 flex items-center justify-center">
-								<div class="loading loading-lg loading-spinner"></div>
-							</div>
-						{/if}
-						{@render progressBar()}
+						{showVoyagerUI ? 'Hide Voyager UI' : 'Show Voyager UI'}
+					</button>
+					<div class="mt-2 text-center text-xs text-base-content/60">
+						{showVoyagerUI ? 'Full Voyager interface visible' : 'Clean API-controlled mode'}
 					</div>
 				</div>
 
-				<!-- Right Column: Controls -->
-				<div class="order-1 lg:order-2">
-					<!-- Control Toolbar -->
-					<div class="voyager-controls card max-h-[80vh] overflow-y-auto bg-base-300 p-4 shadow-lg">
-						<div class="space-y-4">
-							<!-- Camera Orbit Controls -->
-							<div class="space-y-2">
-								<h3 class="text-sm font-semibold">Camera Orbit</h3>
-								<div class="form-control">
-									<div class="label py-1">
-										<span class="label-text text-xs">Yaw: {cameraYaw}°</span>
-									</div>
-									<input
-										type="range"
-										min="-180"
-										max="180"
-										bind:value={cameraYaw}
-										onchange={setCameraOrbitInternal}
-										class="range range-xs"
-										aria-label="Camera yaw angle"
-									/>
+				<!-- Two Column Layout: Viewer Left, Controls Right -->
+				<div class="grid gap-4 lg:grid-cols-[1fr_300px]">
+					<!-- Left Column: Viewer -->
+					<div class="order-2 lg:order-1">
+						<!-- Voyager Explorer Component -->
+						<div
+							class="relative w-full overflow-hidden rounded-lg bg-gradient-to-b from-slate-700 to-slate-900"
+							style={containerStyle}
+						>
+							{#if isScriptLoaded}
+								<voyager-explorer
+									bind:this={voyagerElement}
+									id="voyager"
+									class="absolute top-0 left-0 h-full w-full"
+									root={url}
+									resourceroot={resourceRoot || `/voyager/${voyagerVersion}/`}
+									document={model || geometry ? undefined : documentPath || 'scene.svx.json'}
+									model={geometry ? undefined : model}
+									{geometry}
+									{title}
+									uimode={showVoyagerUI ? 'all' : uiMode}
+									controls={enableControls}
+									prompt={showPrompt}
+								></voyager-explorer>
+							{:else}
+								<div class="absolute inset-0 flex items-center justify-center">
+									<div class="loading loading-lg loading-spinner"></div>
 								</div>
-								<div class="form-control">
-									<div class="label py-1">
-										<span class="label-text text-xs">Pitch: {cameraPitch}°</span>
-									</div>
-									<input
-										type="range"
-										min="-90"
-										max="90"
-										bind:value={cameraPitch}
-										onchange={setCameraOrbitInternal}
-										class="range range-xs"
-										aria-label="Camera pitch angle"
-									/>
-								</div>
-							</div>
+							{/if}
+							{@render progressBar()}
+						</div>
+					</div>
 
-							<!-- Camera Actions -->
-							<div class="space-y-2">
-								<h3 class="text-sm font-semibold">Camera Actions</h3>
-								<div class="flex gap-2">
-									<button class="btn flex-1 btn-outline btn-sm" onclick={resetCamera}>
-										Reset
-									</button>
-									<button class="btn flex-1 btn-outline btn-sm" onclick={getCurrentCameraPosition}>
-										Get Position
-									</button>
-								</div>
-							</div>
-
-							<!-- Camera Offset Controls -->
-							<div class="space-y-2">
-								<h3 class="text-sm font-semibold">Camera Offset</h3>
-								<div class="form-control">
-									<div class="label py-0">
-										<span class="label-text text-xs">X: {cameraOffsetX.toFixed(1)}</span>
-									</div>
-									<input
-										type="range"
-										min="-5"
-										max="5"
-										step="0.1"
-										bind:value={cameraOffsetX}
-										onchange={applyCameraOffset}
-										class="range range-xs"
-										aria-label="Camera X offset"
-									/>
-								</div>
-								<div class="form-control">
-									<div class="label py-0">
-										<span class="label-text text-xs">Y: {cameraOffsetY.toFixed(1)}</span>
-									</div>
-									<input
-										type="range"
-										min="-5"
-										max="5"
-										step="0.1"
-										bind:value={cameraOffsetY}
-										onchange={applyCameraOffset}
-										class="range range-xs"
-										aria-label="Camera Y offset"
-									/>
-								</div>
-								<div class="form-control">
-									<div class="label py-0">
-										<span class="label-text text-xs">Z: {cameraOffsetZ.toFixed(1)}</span>
-									</div>
-									<input
-										type="range"
-										min="-5"
-										max="5"
-										step="0.1"
-										bind:value={cameraOffsetZ}
-										onchange={applyCameraOffset}
-										class="range range-xs"
-										aria-label="Camera Z offset"
-									/>
-								</div>
-							</div>
-
-							<!-- Language & Display Controls -->
+					<!-- Right Column: Controls -->
+					<div class="order-1 lg:order-2">
+						<!-- Control Toolbar -->
+						<div
+							class="voyager-controls card max-h-[80vh] overflow-y-auto bg-base-300 p-4 shadow-lg"
+						>
 							<div class="space-y-4">
-								<!-- Language Selector -->
+								<!-- Camera Orbit Controls -->
 								<div class="space-y-2">
-									<h3 class="text-sm font-semibold">Language</h3>
-									<select
-										class="select-bordered select w-full select-sm"
-										bind:value={selectedLanguage}
-										onchange={() => setLanguage(selectedLanguage)}
-									>
-										{#each languages as lang}
-											<option value={lang.code}>{lang.name}</option>
-										{/each}
-									</select>
+									<h3 class="text-sm font-semibold">Camera Orbit</h3>
+									<div class="form-control">
+										<div class="label py-1">
+											<span class="label-text text-xs">Yaw: {cameraYaw}°</span>
+										</div>
+										<input
+											type="range"
+											min="-180"
+											max="180"
+											bind:value={cameraYaw}
+											onchange={setCameraOrbitInternal}
+											class="range range-xs"
+											aria-label="Camera yaw angle"
+										/>
+									</div>
+									<div class="form-control">
+										<div class="label py-1">
+											<span class="label-text text-xs">Pitch: {cameraPitch}°</span>
+										</div>
+										<input
+											type="range"
+											min="-90"
+											max="90"
+											bind:value={cameraPitch}
+											onchange={setCameraOrbitInternal}
+											class="range range-xs"
+											aria-label="Camera pitch angle"
+										/>
+									</div>
 								</div>
 
-								<!-- Display Toggles -->
+								<!-- Camera Actions -->
 								<div class="space-y-2">
-									<h3 class="text-sm font-semibold">Display Toggles</h3>
-									<div class="grid grid-cols-3 gap-2">
-										<button class="btn btn-outline btn-xs" onclick={toggleAnnotations}>
-											Annotations
+									<h3 class="text-sm font-semibold">Camera Actions</h3>
+									<div class="flex gap-2">
+										<button class="btn flex-1 btn-outline btn-sm" onclick={resetCamera}>
+											Reset
 										</button>
-										<button class="btn btn-outline btn-xs" onclick={toggleReader}> Reader </button>
-										<button class="btn btn-outline btn-xs" onclick={toggleTours}> Tours </button>
-										<button class="btn btn-outline btn-xs" onclick={toggleTools}> Tools </button>
-										<button class="btn btn-outline btn-xs" onclick={toggleMeasurement}>
-											Measurement
+										<button
+											class="btn flex-1 btn-outline btn-sm"
+											onclick={getCurrentCameraPosition}
+										>
+											Get Position
 										</button>
-										<button class="btn btn-outline btn-xs" onclick={enableAR}> AR Mode </button>
 									</div>
 								</div>
-							</div>
 
-							<!-- Background Controls -->
-							<div class="space-y-2">
-								<h3 class="text-sm font-semibold">Background Style</h3>
-								<div class="mb-3 flex gap-2">
-									<button
-										class="btn flex-1 btn-outline btn-xs"
-										onclick={() => setBackgroundStyle('Solid')}
-									>
-										Solid
-									</button>
-									<button
-										class="btn flex-1 btn-outline btn-xs"
-										onclick={() => setBackgroundStyle('LinearGradient')}
-									>
-										Linear
-									</button>
-									<button
-										class="btn flex-1 btn-outline btn-xs"
-										onclick={() => setBackgroundStyle('RadialGradient')}
-									>
-										Radial
-									</button>
-								</div>
-
-								<h3 class="text-sm font-semibold">Quick Colors</h3>
-								<div class="grid grid-cols-3 gap-2">
-									<button
-										class="btn btn-outline btn-xs"
-										onclick={() => setBackgroundColor('#1a1a1a', '#0a0a0a')}
-										title="Dark gray gradient"
-									>
-										Dark
-									</button>
-									<button
-										class="btn btn-outline btn-xs"
-										onclick={() => setBackgroundColor('#ffffff', '#e0e0e0')}
-										title="White to light gray"
-									>
-										Light
-									</button>
-									<button
-										class="btn btn-outline btn-xs"
-										onclick={() => setBackgroundColor('#1e3a8a', '#0c1d3f')}
-										title="Deep blue gradient"
-									>
-										Blue
-									</button>
-									<button
-										class="btn btn-outline btn-xs"
-										onclick={() => setBackgroundColor('#7c3aed', '#4c1d95')}
-										title="Purple gradient"
-									>
-										Purple
-									</button>
-									<button
-										class="btn btn-outline btn-xs"
-										onclick={() => setBackgroundColor('#dc2626', '#7f1d1d')}
-										title="Red gradient"
-									>
-										Red
-									</button>
-									<button
-										class="btn btn-outline btn-xs"
-										onclick={() => setBackgroundColor('#059669', '#064e3b')}
-										title="Green gradient"
-									>
-										Green
-									</button>
-									<button
-										class="btn btn-outline btn-xs"
-										onclick={() => setBackgroundColor('#ea580c', '#7c2d12')}
-										title="Orange gradient"
-									>
-										Orange
-									</button>
-									<button
-										class="btn btn-outline btn-xs"
-										onclick={() => setBackgroundColor('#0891b2', '#164e63')}
-										title="Cyan gradient"
-									>
-										Cyan
-									</button>
-									<button
-										class="btn btn-outline btn-xs"
-										onclick={() => setBackgroundColor('#ec4899', '#831843')}
-										title="Pink gradient"
-									>
-										Pink
-									</button>
-									<button
-										class="btn btn-outline btn-xs"
-										onclick={() => setBackgroundColor('#eab308', '#713f12')}
-										title="Gold gradient"
-									>
-										Gold
-									</button>
-									<button
-										class="btn btn-outline btn-xs"
-										onclick={() => setBackgroundColor('#14b8a6', '#134e4a')}
-										title="Teal gradient"
-									>
-										Teal
-									</button>
-									<button
-										class="btn btn-outline btn-xs"
-										onclick={() => setBackgroundColor('#f97316', '#9a3412')}
-										title="Amber gradient"
-									>
-										Amber
-									</button>
-								</div>
-							</div>
-
-							<!-- Annotations List -->
-							{#if annotations.length > 0}
-								<div class="mt-4">
-									<h3 class="mb-2 text-sm font-semibold">Annotations ({annotations.length})</h3>
-									<div class="flex flex-wrap gap-2">
-										{#each annotations as annotation}
-											<button
-												class="badge cursor-pointer badge-lg badge-primary hover:badge-accent"
-												onclick={() => setActiveAnnotation(annotation.id)}
-											>
-												{annotation.titles?.EN ||
-													annotation.titles?.en ||
-													annotation.title ||
-													annotation.name ||
-													annotation.id}
-											</button>
-										{/each}
+								<!-- Camera Offset Controls -->
+								<div class="space-y-2">
+									<h3 class="text-sm font-semibold">Camera Offset</h3>
+									<div class="form-control">
+										<div class="label py-0">
+											<span class="label-text text-xs">X: {cameraOffsetX.toFixed(1)}</span>
+										</div>
+										<input
+											type="range"
+											min="-5"
+											max="5"
+											step="0.1"
+											bind:value={cameraOffsetX}
+											onchange={applyCameraOffset}
+											class="range range-xs"
+											aria-label="Camera X offset"
+										/>
+									</div>
+									<div class="form-control">
+										<div class="label py-0">
+											<span class="label-text text-xs">Y: {cameraOffsetY.toFixed(1)}</span>
+										</div>
+										<input
+											type="range"
+											min="-5"
+											max="5"
+											step="0.1"
+											bind:value={cameraOffsetY}
+											onchange={applyCameraOffset}
+											class="range range-xs"
+											aria-label="Camera Y offset"
+										/>
+									</div>
+									<div class="form-control">
+										<div class="label py-0">
+											<span class="label-text text-xs">Z: {cameraOffsetZ.toFixed(1)}</span>
+										</div>
+										<input
+											type="range"
+											min="-5"
+											max="5"
+											step="0.1"
+											bind:value={cameraOffsetZ}
+											onchange={applyCameraOffset}
+											class="range range-xs"
+											aria-label="Camera Z offset"
+										/>
 									</div>
 								</div>
-							{/if}
 
-							<!-- Articles List -->
-							{#if articles.length > 0}
-								<div class="mt-4">
-									<h3 class="mb-2 text-sm font-semibold">Articles ({articles.length})</h3>
-									<div class="flex flex-wrap gap-2">
-										{#each articles as article}
-											<button
-												class="badge cursor-pointer badge-lg badge-secondary hover:badge-accent"
-												onclick={() => openArticle(article.id)}
-											>
-												{article.titles?.EN ||
-													article.titles?.en ||
-													article.title ||
-													article.name ||
-													article.id}
-											</button>
-										{/each}
-									</div>
-								</div>
-							{/if}
-
-							<!-- Tours List -->
-							{#if tours.length > 0}
-								<div class="mt-4">
-									<h3 class="mb-2 text-sm font-semibold">Tours</h3>
+								<!-- Language & Display Controls -->
+								<div class="space-y-4">
+									<!-- Language Selector -->
 									<div class="space-y-2">
-										{#each tours as tour, tourIdx}
-											<div class="card bg-base-200 p-2">
-												<div class="mb-1 text-xs font-semibold">
-													{tour.title || tour.titles?.EN || `Tour ${tourIdx + 1}`}
-												</div>
-												{#if tour.steps && tour.steps.length > 0}
-													<div class="flex flex-wrap gap-1">
-														{#each tour.steps as step, stepIdx}
-															<button
-																class="btn btn-outline btn-xs"
-																onclick={() => setTourStep(tourIdx, stepIdx, true)}
-																title={step.title || step.titles?.EN || `Step ${stepIdx + 1}`}
-															>
-																{stepIdx + 1}
-															</button>
-														{/each}
-													</div>
-												{/if}
-											</div>
-										{/each}
+										<h3 class="text-sm font-semibold">Language</h3>
+										<FloatingSelect
+											value={selectedLanguage}
+											options={languageOptions}
+											class="w-full"
+											onchange={setLanguage}
+										/>
+									</div>
+
+									<!-- Display Toggles -->
+									<div class="space-y-2">
+										<h3 class="text-sm font-semibold">Display Toggles</h3>
+										<div class="grid grid-cols-3 gap-2">
+											<button class="btn btn-outline btn-xs" onclick={toggleAnnotations}>
+												Annotations
+											</button>
+											<button class="btn btn-outline btn-xs" onclick={toggleReader}>
+												Reader
+											</button>
+											<button class="btn btn-outline btn-xs" onclick={toggleTours}> Tours </button>
+											<button class="btn btn-outline btn-xs" onclick={toggleTools}> Tools </button>
+											<button class="btn btn-outline btn-xs" onclick={toggleMeasurement}>
+												Measurement
+											</button>
+											<button class="btn btn-outline btn-xs" onclick={enableAR}> AR Mode </button>
+										</div>
 									</div>
 								</div>
-							{/if}
+
+								<!-- Background Controls -->
+								<div class="space-y-2">
+									<h3 class="text-sm font-semibold">Background Style</h3>
+									<div class="mb-3 flex gap-2">
+										<button
+											class="btn flex-1 btn-outline btn-xs"
+											onclick={() => setBackgroundStyle('Solid')}
+										>
+											Solid
+										</button>
+										<button
+											class="btn flex-1 btn-outline btn-xs"
+											onclick={() => setBackgroundStyle('LinearGradient')}
+										>
+											Linear
+										</button>
+										<button
+											class="btn flex-1 btn-outline btn-xs"
+											onclick={() => setBackgroundStyle('RadialGradient')}
+										>
+											Radial
+										</button>
+									</div>
+
+									<h3 class="text-sm font-semibold">Quick Colors</h3>
+									<div class="grid grid-cols-3 gap-2">
+										<button
+											class="btn btn-outline btn-xs"
+											onclick={() => setBackgroundColor('#1a1a1a', '#0a0a0a')}
+											title="Dark gray gradient"
+										>
+											Dark
+										</button>
+										<button
+											class="btn btn-outline btn-xs"
+											onclick={() => setBackgroundColor('#ffffff', '#e0e0e0')}
+											title="White to light gray"
+										>
+											Light
+										</button>
+										<button
+											class="btn btn-outline btn-xs"
+											onclick={() => setBackgroundColor('#1e3a8a', '#0c1d3f')}
+											title="Deep blue gradient"
+										>
+											Blue
+										</button>
+										<button
+											class="btn btn-outline btn-xs"
+											onclick={() => setBackgroundColor('#7c3aed', '#4c1d95')}
+											title="Purple gradient"
+										>
+											Purple
+										</button>
+										<button
+											class="btn btn-outline btn-xs"
+											onclick={() => setBackgroundColor('#dc2626', '#7f1d1d')}
+											title="Red gradient"
+										>
+											Red
+										</button>
+										<button
+											class="btn btn-outline btn-xs"
+											onclick={() => setBackgroundColor('#059669', '#064e3b')}
+											title="Green gradient"
+										>
+											Green
+										</button>
+										<button
+											class="btn btn-outline btn-xs"
+											onclick={() => setBackgroundColor('#ea580c', '#7c2d12')}
+											title="Orange gradient"
+										>
+											Orange
+										</button>
+										<button
+											class="btn btn-outline btn-xs"
+											onclick={() => setBackgroundColor('#0891b2', '#164e63')}
+											title="Cyan gradient"
+										>
+											Cyan
+										</button>
+										<button
+											class="btn btn-outline btn-xs"
+											onclick={() => setBackgroundColor('#ec4899', '#831843')}
+											title="Pink gradient"
+										>
+											Pink
+										</button>
+										<button
+											class="btn btn-outline btn-xs"
+											onclick={() => setBackgroundColor('#eab308', '#713f12')}
+											title="Gold gradient"
+										>
+											Gold
+										</button>
+										<button
+											class="btn btn-outline btn-xs"
+											onclick={() => setBackgroundColor('#14b8a6', '#134e4a')}
+											title="Teal gradient"
+										>
+											Teal
+										</button>
+										<button
+											class="btn btn-outline btn-xs"
+											onclick={() => setBackgroundColor('#f97316', '#9a3412')}
+											title="Amber gradient"
+										>
+											Amber
+										</button>
+									</div>
+								</div>
+
+								<!-- Annotations List -->
+								{#if annotations.length > 0}
+									<div class="mt-4">
+										<h3 class="mb-2 text-sm font-semibold">Annotations ({annotations.length})</h3>
+										<div class="flex flex-wrap gap-2">
+											{#each annotations as annotation}
+												<button
+													class="badge cursor-pointer badge-lg badge-primary hover:badge-accent"
+													onclick={() => setActiveAnnotation(annotation.id)}
+												>
+													{annotation.titles?.EN ||
+														annotation.titles?.en ||
+														annotation.title ||
+														annotation.name ||
+														annotation.id}
+												</button>
+											{/each}
+										</div>
+									</div>
+								{/if}
+
+								<!-- Articles List -->
+								{#if articles.length > 0}
+									<div class="mt-4">
+										<h3 class="mb-2 text-sm font-semibold">Articles ({articles.length})</h3>
+										<div class="flex flex-wrap gap-2">
+											{#each articles as article}
+												<button
+													class="badge cursor-pointer badge-lg badge-secondary hover:badge-accent"
+													onclick={() => openArticle(article.id)}
+												>
+													{article.titles?.EN ||
+														article.titles?.en ||
+														article.title ||
+														article.name ||
+														article.id}
+												</button>
+											{/each}
+										</div>
+									</div>
+								{/if}
+
+								<!-- Tours List -->
+								{#if tours.length > 0}
+									<div class="mt-4">
+										<h3 class="mb-2 text-sm font-semibold">Tours</h3>
+										<div class="space-y-2">
+											{#each tours as tour, tourIdx}
+												<div class="card bg-base-200 p-2">
+													<div class="mb-1 text-xs font-semibold">
+														{tour.title || tour.titles?.EN || `Tour ${tourIdx + 1}`}
+													</div>
+													{#if tour.steps && tour.steps.length > 0}
+														<div class="flex flex-wrap gap-1">
+															{#each tour.steps as step, stepIdx}
+																<button
+																	class="btn btn-outline btn-xs"
+																	onclick={() => setTourStep(tourIdx, stepIdx, true)}
+																	title={step.title || step.titles?.EN || `Step ${stepIdx + 1}`}
+																>
+																	{stepIdx + 1}
+																</button>
+															{/each}
+														</div>
+													{/if}
+												</div>
+											{/each}
+										</div>
+									</div>
+								{/if}
+							</div>
 						</div>
 					</div>
 				</div>
-			</div>
-		{:else}
-			<!-- Direct Mode without Controls Panel -->
-			<div
-				class="relative w-full overflow-hidden rounded-lg"
-				style="{containerStyle} background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);"
-			>
-				{#if isScriptLoaded}
-					<voyager-explorer
-						bind:this={voyagerElement}
-						id="voyager"
-						class="absolute top-0 left-0 h-full w-full"
-						root={url}
-						resourceroot={resourceRoot || `/voyager/${voyagerVersion}/`}
-						document={model || geometry ? undefined : documentPath || 'scene.svx.json'}
-						model={geometry ? undefined : model}
-						{geometry}
-						{title}
-						uimode={uiMode}
-						controls={enableControls}
-						prompt={showPrompt}
-					></voyager-explorer>
-				{:else}
-					<div class="absolute inset-0 flex items-center justify-center">
-						<div class="loading loading-lg loading-spinner"></div>
-					</div>
-				{/if}
-				{@render progressBar()}
-			</div>
-		{/if}
+			{:else}
+				<!-- Direct Mode without Controls Panel -->
+				<div
+					class="relative w-full overflow-hidden rounded-lg"
+					style="{containerStyle} background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);"
+				>
+					{#if isScriptLoaded}
+						<voyager-explorer
+							bind:this={voyagerElement}
+							id="voyager"
+							class="absolute top-0 left-0 h-full w-full"
+							root={url}
+							resourceroot={resourceRoot || `/voyager/${voyagerVersion}/`}
+							document={model || geometry ? undefined : documentPath || 'scene.svx.json'}
+							model={geometry ? undefined : model}
+							{geometry}
+							{title}
+							uimode={uiMode}
+							controls={enableControls}
+							prompt={showPrompt}
+						></voyager-explorer>
+					{:else}
+						<div class="absolute inset-0 flex items-center justify-center">
+							<div class="loading loading-lg loading-spinner"></div>
+						</div>
+					{/if}
+					{@render progressBar()}
+				</div>
+			{/if}
 		</div>
 	{:else}
 		<!-- Iframe Mode (No API Control) -->

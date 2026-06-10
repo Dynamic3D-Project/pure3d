@@ -1,16 +1,20 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import FloatingDropdown from '$lib/components/ui/FloatingDropdown.svelte';
 	import themes from './themes.json';
 	import type { Theme, ThemeChangeProps } from './types';
 
-	let className: ThemeChangeProps['class'] = undefined;
+	let className: ThemeChangeProps['class'] = $state(undefined);
 	export { className as class };
 
 	const themes_data: Theme[] = themes;
+	let open = $state(false);
+	let buttonElement: HTMLButtonElement | undefined = $state();
 
 	function setTheme(themeId: string) {
 		document.documentElement.setAttribute('data-theme', themeId);
 		localStorage.setItem('theme', themeId);
+		open = false;
 	}
 
 	onMount(() => {
@@ -21,8 +25,15 @@
 	});
 </script>
 
-<div title="Change Theme" class={'dropdown dropdown-end flex-none' + className}>
-	<div tabIndex="0" class=" gap-1 normal-case opacity-80">
+<div title="Change Theme" class={'flex-none' + className}>
+	<button
+		bind:this={buttonElement}
+		type="button"
+		class="gap-1 normal-case opacity-80"
+		aria-haspopup="true"
+		aria-expanded={open}
+		onclick={() => (open = !open)}
+	>
 		<svg
 			width="20"
 			height="20"
@@ -48,11 +59,18 @@
 		>
 			<path d="M1799 349l242 241-1017 1017L7 590l242-241 775 775 775-775z" />
 		</svg>
-	</div>
-	<div
-		class="dropdown-content top-px z-10 h-[70vh] max-h-96 w-52 overflow-y-auto rounded-t-box rounded-b-box bg-base-200 text-base-content shadow-2xl"
+	</button>
+	<FloatingDropdown
+		{open}
+		referenceElement={buttonElement}
+		placement="bottom-end"
+		minWidth={208}
+		maxWidth={208}
+		maxHeight={384}
+		class="bg-base-200"
+		onclose={() => (open = false)}
 	>
-		<div class="grid grid-cols-1 gap-3 p-3" tabIndex="0">
+		<div class="grid grid-cols-1 gap-3 p-3">
 			{#each themes_data as theme}
 				<div
 					class="overflow-hidden rounded-lg outline outline-2 outline-offset-2 outline-base-content"
@@ -62,8 +80,8 @@
 					<div
 						data-theme={theme.id}
 						class="w-full cursor-pointer bg-base-100 font-sans text-base-content"
-						on:click={() => setTheme(theme.id)}
-						on:keydown={(e) => e.key === 'Enter' && setTheme(theme.id)}
+						onclick={() => setTheme(theme.id)}
+						onkeydown={(e) => e.key === 'Enter' && setTheme(theme.id)}
 						role="button"
 						tabindex="0"
 					>
@@ -84,5 +102,5 @@
 				</div>
 			{/each}
 		</div>
-	</div>
+	</FloatingDropdown>
 </div>

@@ -616,7 +616,7 @@ async function main() {
 		await setOpenRules(name);
 	}
 
-	// Configure S3 storage only when all four R2_* env vars are present.
+	// Configure S3-compatible storage only when all four R2_* env vars are present.
 	// Per-field `maxSize` on file fields gates upload sizes (PocketBase v0.22+
 	// removed the global body-limit setting).
 	const r2Endpoint = process.env.R2_ENDPOINT;
@@ -625,7 +625,7 @@ async function main() {
 	const r2Secret = process.env.R2_SECRET_ACCESS_KEY;
 
 	if (r2Endpoint && r2Bucket && r2AccessKey && r2Secret) {
-		console.log('📦 Configuring S3 storage (R2)');
+		console.log('📦 Configuring S3-compatible storage');
 		try {
 			await pb.settings.update({
 				s3: {

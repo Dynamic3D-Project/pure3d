@@ -8,9 +8,11 @@
 		EditionStatus,
 		EDITION_ROLE_LABELS,
 		GlobalRole,
+		STATUS_LABELS,
 		type UserRoleContext
 	} from '$lib/types/roles';
 	import toast from 'svelte-french-toast';
+	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
 	import StatusTransitionPanel from '$lib/components/workflow/StatusTransitionPanel.svelte';
 	import MemberManager from '$lib/components/admin/MemberManager.svelte';
@@ -29,18 +31,44 @@
 	let editions = $state<AdminEdition[]>([]);
 	let isLoading = $state(true);
 	let searchQuery = $state('');
+	let statusFilter = $state('');
+	let collectionFilter = $state('');
 	let expandedId = $state<string | null>(null);
 	let filteredEditions = $derived(
-		searchQuery
-			? editions.filter(
-					(e) =>
-						e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-						e.collectionTitle.toLowerCase().includes(searchQuery.toLowerCase())
-				)
-			: editions
+		editions.filter((e) => {
+			const query = searchQuery.toLowerCase();
+			const matchesSearch =
+				!query ||
+				e.title.toLowerCase().includes(query) ||
+				e.collectionTitle.toLowerCase().includes(query);
+			const matchesStatus = !statusFilter || e.status === statusFilter;
+			const matchesCollection = !collectionFilter || e.collectionId === collectionFilter;
+
+			return matchesSearch && matchesStatus && matchesCollection;
+		})
 	);
+	let hasActiveFilters = $derived(Boolean(searchQuery || statusFilter || collectionFilter));
 
 	const editionRoleValues = Object.values(EditionRole) as string[];
+	const statusFilterOptions = [
+		{ value: '', label: 'All statuses' },
+		...(Object.values(EditionStatus) as EditionStatus[]).map((status) => ({
+			value: status,
+			label: STATUS_LABELS[status]
+		}))
+	];
+	let collectionFilterOptions = $derived([
+		{ value: '', label: 'All collections' },
+		...Array.from(
+			new Map(
+				editions
+					.filter((edition) => edition.collectionId && edition.collectionTitle)
+					.map((edition) => [edition.collectionId, edition.collectionTitle])
+			).entries()
+		)
+			.sort(([, a], [, b]) => a.localeCompare(b))
+			.map(([value, label]) => ({ value, label }))
+	]);
 
 	// Admins inherit the full status-transition matrix via their global role
 	let adminContext = $derived<UserRoleContext>({ globalRole: authStore.globalRole });
@@ -94,13 +122,55 @@
 		</p>
 	</div>
 
-	<div class="mb-6">
-		<input
-			type="text"
-			placeholder="Search editions or collections..."
-			class="input-bordered input w-full max-w-md"
-			bind:value={searchQuery}
-		/>
+	<div class="mb-6 rounded-box border border-base-300 bg-base-100 p-4 shadow-sm">
+		<div class="mb-3 flex items-center justify-between gap-3">
+			<div>
+				<h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/70">Filters</h2>
+				<p class="text-xs text-base-content/50">Narrow editions by title, workflow, or collection.</p>
+			</div>
+			{#if hasActiveFilters}
+				<button
+					type="button"
+					class="btn btn-ghost btn-xs"
+					onclick={() => {
+						searchQuery = '';
+						statusFilter = '';
+						collectionFilter = '';
+					}}
+				>
+					Clear
+				</button>
+			{/if}
+		</div>
+		<div class="grid gap-3 md:grid-cols-[minmax(16rem,1fr)_13rem_16rem]">
+			<label class="form-control">
+				<span class="label pb-1 pt-0"><span class="label-text text-xs">Search</span></span>
+				<input
+					type="text"
+					placeholder="Title or collection..."
+					class="input input-bordered w-full bg-base-200/40"
+					bind:value={searchQuery}
+				/>
+			</label>
+			<label class="form-control">
+				<span class="label pb-1 pt-0"><span class="label-text text-xs">Status</span></span>
+				<FloatingSelect
+					id="edition-status-filter"
+					bind:value={statusFilter}
+					options={statusFilterOptions}
+					class="w-full bg-base-200/40"
+				/>
+			</label>
+			<label class="form-control">
+				<span class="label pb-1 pt-0"><span class="label-text text-xs">Collection</span></span>
+				<FloatingSelect
+					id="edition-collection-filter"
+					bind:value={collectionFilter}
+					options={collectionFilterOptions}
+					class="w-full bg-base-200/40"
+				/>
+			</label>
+		</div>
 	</div>
 
 	{#if isLoading}
@@ -211,12 +281,18 @@
 
 		{#if filteredEditions.length === 0}
 			<div class="py-8 text-center text-base-content/60">
-				{#if searchQuery}
-					No editions match "{searchQuery}"
+				{#if hasActiveFilters}
+					No editions match the selected filters.
 				{:else}
 					No editions found.
 				{/if}
 			</div>
+		{/if}
+
+		{#if filteredEditions.length > 0 && hasActiveFilters}
+			<p class="mt-4 text-sm text-base-content/60">
+				Showing {filteredEditions.length} of {editions.length} editions
+			</p>
 		{/if}
 	{/if}
 </div>

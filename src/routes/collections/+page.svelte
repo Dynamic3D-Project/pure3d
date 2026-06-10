@@ -3,13 +3,10 @@
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import CollectionCard from '$lib/components/cards/CollectionCard.svelte';
-	import {
-		collectionsStore,
-		fetchCollections,
-		isStale
-	} from '$lib/stores/data.store';
+	import { collectionsStore, fetchCollections, isStale } from '$lib/stores/data.store';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { pb } from '$lib/database/client';
+	import FloatingDropdown from '$lib/components/ui/FloatingDropdown.svelte';
 	import { CollectionRole, GlobalRole } from '$lib/types/roles';
 	import toast from 'svelte-french-toast';
 
@@ -39,16 +36,14 @@
 	let showSuggestions = $state(false);
 	let selectedIndex = $state(-1);
 	let inputElement: HTMLInputElement | undefined = $state();
-	let suggestionsElement: HTMLUListElement | undefined = $state();
+	let suggestionsElement: HTMLDivElement | undefined = $state();
 
 	// Filter collections based on search query
 	const filteredCollections = $derived.by(() => {
 		if (!searchQuery.trim()) return collections;
 		const query = searchQuery.toLowerCase();
 		return collections.filter(
-			(c) =>
-				c.title.toLowerCase().includes(query) ||
-				c.description.toLowerCase().includes(query)
+			(c) => c.title.toLowerCase().includes(query) || c.description.toLowerCase().includes(query)
 		);
 	});
 
@@ -103,12 +98,14 @@
 
 	function scrollToSelected() {
 		requestAnimationFrame(() => {
-			const selected = suggestionsElement?.querySelector(`[data-index="${selectedIndex}"]`) as HTMLElement | null;
+			const selected = suggestionsElement?.querySelector(
+				`[data-index="${selectedIndex}"]`
+			) as HTMLElement | null;
 			selected?.scrollIntoView({ block: 'nearest' });
 		});
 	}
 
-	function navigateToCollection(collection: typeof collections[0]) {
+	function navigateToCollection(collection: (typeof collections)[0]) {
 		showSuggestions = false;
 		selectedIndex = -1;
 		searchQuery = '';
@@ -118,14 +115,6 @@
 	function handleFocus() {
 		if (searchQuery.trim() && suggestions.length > 0) {
 			showSuggestions = true;
-		}
-	}
-
-	function handleClickOutside(event: MouseEvent) {
-		const target = event.target as HTMLElement;
-		if (!target.closest('.search-container')) {
-			showSuggestions = false;
-			selectedIndex = -1;
 		}
 	}
 
@@ -172,8 +161,6 @@
 	}
 </script>
 
-<svelte:window onclick={handleClickOutside} />
-
 <svelte:head>
 	<title>Explore Our Collections | Pure 3D</title>
 	<meta
@@ -182,19 +169,15 @@
 	/>
 </svelte:head>
 
-<div class="container mx-auto px-4 py-12 max-w-7xl">
+<div class="container mx-auto max-w-7xl px-4 py-12">
 	<!-- Hero Section -->
-	<div class="text-center mb-12">
-		<h1 class="text-4xl md:text-5xl font-bold mb-4">Explore our Collections</h1>
-		<p class="text-lg text-base-content/70 max-w-2xl mx-auto">
+	<div class="mb-12 text-center">
+		<h1 class="mb-4 text-4xl font-bold md:text-5xl">Explore our Collections</h1>
+		<p class="mx-auto max-w-2xl text-lg text-base-content/70">
 			A Virtual Research Environment for 3D Digital Humanities And Heritage
 		</p>
 		{#if authStore.globalRole === GlobalRole.Admin}
-			<button
-				class="btn btn-primary btn-sm mt-6"
-				onclick={createCollection}
-				disabled={isCreating}
-			>
+			<button class="btn mt-6 btn-sm btn-primary" onclick={createCollection} disabled={isCreating}>
 				{#if isCreating}
 					<span class="loading loading-xs loading-spinner"></span>
 				{/if}
@@ -204,11 +187,11 @@
 	</div>
 
 	<!-- Search Section -->
-	<div class="mb-8 max-w-xl mx-auto">
-		<div class="search-container relative">
+	<div class="mx-auto mb-8 max-w-xl">
+		<div class="search-container">
 			<div class="relative">
 				<svg
-					class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-base-content/50"
+					class="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-base-content/50"
 					fill="none"
 					stroke="currentColor"
 					viewBox="0 0 24 24"
@@ -228,7 +211,7 @@
 					onfocus={handleFocus}
 					onkeydown={handleKeydown}
 					placeholder="Search collections..."
-					class="input input-bordered w-full pl-10 pr-10"
+					class="input-bordered input w-full pr-10 pl-10"
 					role="combobox"
 					aria-expanded={showSuggestions}
 					aria-haspopup="listbox"
@@ -239,71 +222,99 @@
 					<button
 						type="button"
 						onclick={clearSearch}
-						class="absolute right-3 top-1/2 -translate-y-1/2 btn btn-ghost btn-xs btn-circle"
+						class="btn absolute top-1/2 right-3 btn-circle -translate-y-1/2 btn-ghost btn-xs"
 						aria-label="Clear search"
 					>
 						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M6 18L18 6M6 6l12 12"
+							/>
 						</svg>
 					</button>
 				{/if}
 			</div>
 
 			<!-- Autocomplete Suggestions Dropdown -->
-			{#if showSuggestions && suggestions.length > 0}
-				<ul
-					bind:this={suggestionsElement}
-					id="collection-suggestions"
-					class="absolute z-50 w-full mt-1 bg-base-100 rounded-box shadow-xl border border-base-300 max-h-80 overflow-y-auto"
-					role="listbox"
-				>
-					{#each suggestions as suggestion, index (suggestion.id)}
-						{@const isSelected = selectedIndex === index}
-						<li role="option" aria-selected={isSelected}>
-							<button
-								type="button"
-								data-index={index}
-								class="w-full px-4 py-3 cursor-pointer transition-colors flex items-center gap-3 text-left {isSelected ? 'bg-primary text-primary-content' : 'hover:bg-base-200'}"
-								onclick={() => navigateToCollection(suggestion)}
-								onmouseenter={() => (selectedIndex = index)}
-							>
-								{#if suggestion.thumbnail}
-									<img
-										src={suggestion.thumbnail}
-										alt=""
-										class="w-10 h-10 rounded object-cover shrink-0"
-									/>
-								{:else}
-									<div class="w-10 h-10 rounded bg-base-300 flex items-center justify-center shrink-0">
-										<svg class="w-5 h-5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-										</svg>
+			<FloatingDropdown
+				open={showSuggestions && suggestions.length > 0}
+				referenceElement={inputElement}
+				bind:element={suggestionsElement}
+				role="listbox"
+				maxHeight={320}
+				class="shadow-xl"
+				onclose={() => {
+					showSuggestions = false;
+					selectedIndex = -1;
+				}}
+			>
+				{#each suggestions as suggestion, index (suggestion.id)}
+					{@const isSelected = selectedIndex === index}
+					<div role="option" aria-selected={isSelected}>
+						<button
+							type="button"
+							data-index={index}
+							class="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left text-base-content transition-colors hover:bg-base-200 hover:text-base-content"
+							class:bg-base-200={isSelected}
+							onclick={() => navigateToCollection(suggestion)}
+							onmouseenter={() => (selectedIndex = index)}
+						>
+							{#if suggestion.thumbnail}
+								<img
+									src={suggestion.thumbnail}
+									alt=""
+									class="h-10 w-10 shrink-0 rounded object-cover"
+								/>
+							{:else}
+								<div
+									class="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-base-300"
+								>
+									<svg
+										class="h-5 w-5 opacity-50"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+										/>
+									</svg>
+								</div>
+							{/if}
+							<div class="min-w-0 flex-1">
+								<div class="truncate font-medium">{suggestion.title}</div>
+								{#if suggestion.description}
+									<div class="truncate text-sm opacity-60">
+										{suggestion.description.slice(0, 60)}{suggestion.description.length > 60
+											? '...'
+											: ''}
 									</div>
 								{/if}
-								<div class="min-w-0 flex-1">
-									<div class="font-medium truncate">{suggestion.title}</div>
-									{#if suggestion.description}
-										<div class="text-sm opacity-60 truncate">{suggestion.description.slice(0, 60)}{suggestion.description.length > 60 ? '...' : ''}</div>
-									{/if}
-								</div>
-								{#if suggestion.editionCount !== undefined}
-									<span class="badge badge-sm {isSelected ? 'badge-primary-content' : 'badge-ghost'}">{suggestion.editionCount} editions</span>
-								{/if}
-							</button>
-						</li>
-					{/each}
-					<li class="px-3 py-2 text-xs text-base-content/50 border-t border-base-200 flex items-center gap-4">
-						<span><kbd class="kbd kbd-xs">↑</kbd><kbd class="kbd kbd-xs">↓</kbd> navigate</span>
-						<span><kbd class="kbd kbd-xs">Enter</kbd> select</span>
-						<span><kbd class="kbd kbd-xs">Esc</kbd> close</span>
-					</li>
-				</ul>
-			{/if}
+							</div>
+							{#if suggestion.editionCount !== undefined}
+								<span class="badge badge-ghost badge-sm">{suggestion.editionCount} editions</span>
+							{/if}
+						</button>
+					</div>
+				{/each}
+				<div
+					class="flex items-center gap-4 border-t border-base-200 px-3 py-2 text-xs text-base-content/50"
+				>
+					<span><kbd class="kbd kbd-xs">↑</kbd><kbd class="kbd kbd-xs">↓</kbd> navigate</span>
+					<span><kbd class="kbd kbd-xs">Enter</kbd> select</span>
+					<span><kbd class="kbd kbd-xs">Esc</kbd> close</span>
+				</div>
+			</FloatingDropdown>
 		</div>
 
 		<!-- Results count when filtering -->
 		{#if searchQuery.trim()}
-			<div class="text-sm text-base-content/70 mt-2 text-center">
+			<div class="mt-2 text-center text-sm text-base-content/70">
 				Showing {filteredCollections.length} of {collections.length} collections
 			</div>
 		{/if}
@@ -332,7 +343,7 @@
 	{#if filteredCollections.length === 0 && searchQuery.trim()}
 		<div class="flex flex-col items-center justify-center py-16 text-center">
 			<svg
-				class="h-16 w-16 text-base-content/30 mb-4"
+				class="mb-4 h-16 w-16 text-base-content/30"
 				fill="none"
 				viewBox="0 0 24 24"
 				stroke="currentColor"
@@ -344,13 +355,11 @@
 					d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 				/>
 			</svg>
-			<h3 class="text-lg font-medium mb-2">No collections found</h3>
-			<p class="text-base-content/60 max-w-md">
+			<h3 class="mb-2 text-lg font-medium">No collections found</h3>
+			<p class="max-w-md text-base-content/60">
 				No collections match "{searchQuery}". Try a different search term.
 			</p>
-			<button class="btn btn-primary btn-sm mt-4" onclick={clearSearch}>
-				Clear search
-			</button>
+			<button class="btn mt-4 btn-sm btn-primary" onclick={clearSearch}> Clear search </button>
 		</div>
 	{/if}
 </div>

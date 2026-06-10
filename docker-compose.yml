@@ -1,4 +1,30 @@
 services:
+  minio:
+    image: minio/minio:latest
+    ports:
+      - '${MINIO_API_PORT:-9000}:9000'
+      - '${MINIO_CONSOLE_PORT:-9001}:9001'
+    volumes:
+      - ./minio/data:/data
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-pure3d}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-pure3d-local-secret}
+    command: server /data --console-address ':9001'
+    restart: unless-stopped
+
+  minio-setup:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    volumes:
+      - ./:/app:ro
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-pure3d}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-pure3d-local-secret}
+      - R2_BUCKET=${R2_BUCKET:-pure3d-assets}
+    entrypoint: ["/bin/sh", "/app/scripts/setup-minio.sh"]
+    restart: "no"
+
   pocketbase:
     image: ghcr.io/muchobien/pocketbase:latest
     ports:
@@ -36,11 +62,13 @@ services:
       - PUBLIC_POCKETBASE_URL=${PUBLIC_POCKETBASE_URL:-http://localhost:8090}
       - POCKETBASE_ADMIN_EMAIL=${POCKETBASE_ADMIN_EMAIL:-admin@admin.local}
       - POCKETBASE_ADMIN_PASSWORD=${POCKETBASE_ADMIN_PASSWORD:-1234567890}
-      - R2_ENDPOINT=${R2_ENDPOINT:-}
-      - R2_BUCKET=${R2_BUCKET:-}
-      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
-      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
+      - R2_ENDPOINT=${R2_ENDPOINT:-http://minio:9000}
+      - R2_BUCKET=${R2_BUCKET:-pure3d-assets}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-pure3d}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-pure3d-local-secret}
     depends_on:
+      minio-setup:
+        condition: service_completed_successfully
       pocketbase:
         condition: service_healthy
     command: sh -c "bun install && bun scripts/create-pocketbase-collections.ts && bun scripts/import-data.ts && bun scripts/seed-users.js"
@@ -66,8 +94,10 @@ services:
       - '${FRONTEND_PORT:-8080}:8080'
     environment:
       - PUBLIC_POCKETBASE_URL=${PUBLIC_POCKETBASE_URL:-http://localhost:8090}
-      - PUBLIC_ASSET_BASE_URL=${PUBLIC_ASSET_BASE_URL:-}
+      - PUBLIC_ASSET_BASE_URL=${PUBLIC_ASSET_BASE_URL:-http://localhost:9000/pure3d-assets}
     depends_on:
+      minio-setup:
+        condition: service_completed_successfully
       pocketbase:
         condition: service_healthy
       pocketbase-setup:

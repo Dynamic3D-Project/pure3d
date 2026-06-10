@@ -5,6 +5,7 @@
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
 	import MemberManager from '$lib/components/admin/MemberManager.svelte';
 	import CoverImageUpload from '$lib/components/uploads/CoverImageUpload.svelte';
+	import FloatingModal from '$lib/components/ui/FloatingModal.svelte';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { pb } from '$lib/database/client';
 	import {
@@ -36,6 +37,7 @@
 	let isCreating = $state(false);
 	let collectionRecord = $state<RecordModel | null>(null);
 	let descriptionExpanded = $state(false);
+	let manageButtonElement: HTMLButtonElement | undefined = $state();
 
 	const DESCRIPTION_CLAMP_LENGTH = 320;
 
@@ -65,7 +67,7 @@
 	let canManageUsers = $derived(hasPermission(permissionContext, Permission.CollectionManageUsers));
 	let canDelete = $derived(hasPermission(permissionContext, Permission.CollectionDelete));
 	let canCreateEdition = $derived(hasPermission(permissionContext, Permission.EditionCreate));
-	let canManagePage = $derived(canManageUsers || canDelete);
+	let canManagePage = $derived(canEdit || canManageUsers || canDelete);
 
 	// Group editions by status for version-aware display
 	let editionGroups = $derived.by(() => {
@@ -76,7 +78,7 @@
 			groups[key].push(edition);
 		}
 		// Sort groups: want "published" or "current" first, then others
-		const priority: Record<string, number> = { 'published': 0, 'current': 0, 'draft': 2, 'review': 1 };
+		const priority: Record<string, number> = { published: 0, current: 0, draft: 2, review: 1 };
 		const sortedKeys = Object.keys(groups).sort((a, b) => {
 			const pa = priority[a.toLowerCase()] ?? 3;
 			const pb = priority[b.toLowerCase()] ?? 3;
@@ -88,9 +90,7 @@
 	// Latest edition (highest pubNum)
 	let latestEdition = $derived(
 		editions.length > 0
-			? editions.reduce((a, b) =>
-				((a as any).pubNum || 0) > ((b as any).pubNum || 0) ? a : b
-			)
+			? editions.reduce((a, b) => (((a as any).pubNum || 0) > ((b as any).pubNum || 0) ? a : b))
 			: null
 	);
 
@@ -194,6 +194,22 @@
 			isCreating = false;
 		}
 	}
+
+	function openManageModal() {
+		if (manageTab === 'details' && !canEdit) {
+			manageTab = canManageUsers ? 'members' : 'danger';
+		} else if (manageTab === 'members' && !canManageUsers) {
+			manageTab = canEdit ? 'details' : 'danger';
+		} else if (manageTab === 'danger' && !canDelete) {
+			manageTab = canEdit ? 'details' : 'members';
+		}
+		manageOpen = true;
+	}
+
+	function closeManageModal() {
+		manageOpen = false;
+		deleteConfirmOpen = false;
+	}
 </script>
 
 <svelte:head>
@@ -218,7 +234,9 @@
 			</ul>
 		</nav>
 
-		<div class="relative grid gap-8 md:grid-cols-[minmax(0,320px)_1fr] md:items-start md:gap-10 lg:gap-14">
+		<div
+			class="relative grid gap-8 md:grid-cols-[minmax(0,320px)_1fr] md:items-start md:gap-10 lg:gap-14"
+		>
 			<!-- Cover -->
 			<figure
 				class="relative aspect-square w-full overflow-hidden rounded-2xl bg-base-200 shadow-lg ring-1 ring-base-300 md:sticky md:top-24"
@@ -232,8 +250,19 @@
 					/>
 				{:else}
 					<div class="flex h-full w-full items-center justify-center text-base-content/20">
-						<svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.25" d="M4.5 4.5h15v15h-15z M4.5 15l4-4 4 4 3-3 4 4" />
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-24 w-24"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="1.25"
+								d="M4.5 4.5h15v15h-15z M4.5 15l4-4 4 4 3-3 4 4"
+							/>
 						</svg>
 					</div>
 				{/if}
@@ -247,19 +276,18 @@
 					>
 						{#if canManagePage}
 							<button
-								class="btn btn-sm btn-ghost"
-								onclick={() => (manageOpen = !manageOpen)}
+								bind:this={manageButtonElement}
+								class="btn btn-ghost btn-sm"
+								onclick={() => (manageOpen ? closeManageModal() : openManageModal())}
 								aria-expanded={manageOpen}
+								aria-haspopup="dialog"
+								aria-controls="collection-manage-modal"
 							>
-								{manageOpen ? 'Close Manage' : 'Manage'}
+								Manage
 							</button>
 						{/if}
 						{#if canCreateEdition}
-							<button
-								class="btn btn-sm btn-primary"
-								onclick={createEdition}
-								disabled={isCreating}
-							>
+							<button class="btn btn-sm btn-primary" onclick={createEdition} disabled={isCreating}>
 								{#if isCreating}
 									<span class="loading loading-xs loading-spinner"></span>
 								{/if}
@@ -270,7 +298,7 @@
 				{/if}
 
 				<div class="mb-4 flex flex-wrap items-start gap-3">
-					<h1 class="text-3xl font-bold leading-tight md:text-4xl lg:text-5xl">
+					<h1 class="text-3xl leading-tight font-bold md:text-4xl lg:text-5xl">
 						{collection.title}
 					</h1>
 					{#if !collection.isVisible}
@@ -289,7 +317,8 @@
 				<!-- Meta chips -->
 				<div class="mb-5 flex flex-wrap items-center gap-2 text-sm">
 					<span class="badge badge-ghost">
-						{editions.length} {editions.length === 1 ? 'edition' : 'editions'}
+						{editions.length}
+						{editions.length === 1 ? 'edition' : 'editions'}
 					</span>
 					{#if collection.dcCoveragePeriod}
 						<span class="badge badge-outline">{collection.dcCoveragePeriod}</span>
@@ -324,7 +353,7 @@
 
 				{#if collection.dcInstitution.length > 0}
 					<p class="mt-4 text-sm text-base-content/60">
-						<span class="text-xs font-semibold tracking-wider uppercase text-base-content/50">
+						<span class="text-xs font-semibold tracking-wider text-base-content/50 uppercase">
 							Institutions
 						</span>
 						<br />
@@ -343,11 +372,97 @@
 		</div>
 	</div>
 
-	{#if manageOpen && canManagePage}
-		<div class="mx-auto mb-8 max-w-4xl rounded-box border border-base-300 bg-base-200 p-4">
-			<h2 class="mb-3 text-lg font-semibold">Manage Collection</h2>
+	<!-- Editions Section -->
+	<div class="mb-8">
+		<h2 class="mb-6 text-2xl font-semibold">Editions</h2>
 
-			<div role="tablist" class="tabs-bordered tabs mb-4">
+		{#if editions.length > 0}
+			<!-- Version summary -->
+			{#if latestEdition && (latestEdition as any).pubNum > 1}
+				<div class="mb-4 text-sm text-base-content/60">
+					{editions.length} editions · Latest: Ed. {String((latestEdition as any).pubNum).padStart(
+						2,
+						'0'
+					)} ·
+					<a
+						href="{base}/editions/{latestEdition.id}"
+						data-sveltekit-preload-data="hover"
+						class="link link-hover"
+					>
+						{latestEdition.title}
+					</a>
+				</div>
+			{/if}
+
+			<!-- Grouped by status -->
+			{#if editionGroups.length > 1}
+				{#each editionGroups as group}
+					<div class="mb-6">
+						<h3
+							class="mb-3 flex items-center gap-2 text-sm font-semibold tracking-wider text-base-content/50 uppercase"
+						>
+							{group.status}
+							<span class="badge badge-sm">{group.editions.length}</span>
+						</h3>
+						<div
+							class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+						>
+							{#each group.editions as edition (edition.id)}
+								<EditionCard edition={edition as any} />
+							{/each}
+						</div>
+					</div>
+				{/each}
+			{:else}
+				<div
+					class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+				>
+					{#each editions as edition (edition.id)}
+						<EditionCard edition={edition as any} />
+					{/each}
+				</div>
+			{/if}
+		{:else}
+			<div
+				class="rounded-lg border border-dashed border-base-300 bg-base-200/40 px-4 py-8 text-center text-sm text-base-content/60"
+			>
+				No editions available in this collection yet.
+			</div>
+		{/if}
+	</div>
+
+	<!-- Back Button -->
+	<div class="mt-12 flex justify-center">
+		<a href="{base}/collections" data-sveltekit-preload-data="hover" class="btn btn-outline btn-lg">
+			← Back to Collections
+		</a>
+	</div>
+</div>
+
+{#if canManagePage}
+	<FloatingModal
+		open={manageOpen}
+		referenceElement={manageButtonElement}
+		id="collection-manage-modal"
+		labelledby="collection-manage-title"
+		onclose={() => {
+			if (!deleteConfirmOpen) closeManageModal();
+		}}
+	>
+		{#snippet header()}
+			<div class="flex items-start justify-between gap-4">
+				<h2 id="collection-manage-title" class="text-lg font-semibold">Manage Collection</h2>
+				<button
+					type="button"
+					class="btn btn-ghost btn-xs"
+					onclick={closeManageModal}
+					aria-label="Close manage collection modal"
+				>
+					x
+				</button>
+			</div>
+
+			<div role="tablist" class="tabs-bordered mt-4 tabs">
 				{#if canEdit}
 					<button
 						role="tab"
@@ -379,147 +494,112 @@
 					</button>
 				{/if}
 			</div>
+		{/snippet}
 
-			{#if manageTab === 'details' && canEdit}
-				<form
-					class="space-y-4"
-					onsubmit={(e) => {
-						e.preventDefault();
-						saveDetails();
-					}}
-				>
-					{#if collectionRecord}
-						<div class="form-control">
-							<span class="label-text mb-2 block font-semibold">Cover Image</span>
-							<div class="w-full max-w-xs">
-								<CoverImageUpload
-									bind:record={collectionRecord}
-									collectionName="collections"
-									onuploaded={onCoverChanged}
-									onremoved={onCoverChanged}
-								/>
-							</div>
+		{#if manageTab === 'details' && canEdit}
+			<form
+				id="collection-details-form"
+				class="space-y-4"
+				onsubmit={(e) => {
+					e.preventDefault();
+					saveDetails();
+				}}
+			>
+				{#if collectionRecord}
+					<div class="form-control">
+						<span class="label-text mb-2 block font-semibold">Cover Image</span>
+						<div class="w-full max-w-xs">
+							<CoverImageUpload
+								bind:record={collectionRecord}
+								collectionName="collections"
+								onuploaded={onCoverChanged}
+								onremoved={onCoverChanged}
+							/>
 						</div>
-					{/if}
-					<div class="form-control">
-						<label class="label" for="collection-title">
-							<span class="label-text font-semibold">Title</span>
-						</label>
-						<input
-							id="collection-title"
-							type="text"
-							class="input-bordered input w-full"
-							bind:value={editTitle}
-							required
-						/>
 					</div>
-					<div class="form-control">
-						<label class="label" for="collection-description">
-							<span class="label-text font-semibold">Description</span>
-						</label>
-						<textarea
-							id="collection-description"
-							class="textarea-bordered textarea w-full"
-							rows="4"
-							bind:value={editDescription}
-						></textarea>
-						<p class="mt-1 text-xs text-base-content/60">
-							For rich-text editing, use the
-							<a href="{base}/collections/{collection.slug}/edit" class="link">full edit page</a>.
-						</p>
-					</div>
-					<div class="form-control">
-						<label class="label cursor-pointer justify-start gap-3">
-							<input type="checkbox" class="checkbox" bind:checked={editIsVisible} />
-							<span class="label-text">Visible on public site</span>
-						</label>
-					</div>
-					<button type="submit" class="btn btn-sm btn-primary" disabled={isSaving}>
+				{/if}
+				<div class="form-control">
+					<label class="label" for="collection-title">
+						<span class="label-text font-semibold">Title</span>
+					</label>
+					<input
+						id="collection-title"
+						type="text"
+						class="input-bordered input w-full"
+						bind:value={editTitle}
+						required
+					/>
+				</div>
+				<div class="form-control">
+					<label class="label" for="collection-description">
+						<span class="label-text font-semibold">Description</span>
+					</label>
+					<textarea
+						id="collection-description"
+						class="textarea-bordered textarea w-full"
+						rows="4"
+						bind:value={editDescription}
+					></textarea>
+					<p class="mt-1 text-xs text-base-content/60">
+						For rich-text editing, use the
+						<a href="{base}/collections/{collection.slug}/edit" class="link">full edit page</a>.
+					</p>
+				</div>
+				<div class="form-control">
+					<label class="label cursor-pointer justify-start gap-3">
+						<input type="checkbox" class="checkbox" bind:checked={editIsVisible} />
+						<span class="label-text">Visible on public site</span>
+					</label>
+				</div>
+			</form>
+		{:else if manageTab === 'members' && canManageUsers}
+			<MemberManager
+				membershipCollection="collectionUsers"
+				parentField="collection"
+				parentId={collection.id}
+				roleValues={collectionRoleValues}
+				roleLabels={COLLECTION_ROLE_LABELS}
+				defaultRole={CollectionRole.Viewer}
+				auditTargetType="collection"
+			/>
+		{:else if manageTab === 'danger' && canDelete}
+			<div class="space-y-3">
+				<p class="text-sm text-base-content/70">
+					Deleting this collection is permanent. Editions inside the collection must be removed or
+					reassigned first.
+				</p>
+			</div>
+		{/if}
+
+		{#snippet footer()}
+			<div class="flex justify-end gap-2">
+				<button type="button" class="btn btn-ghost btn-sm" onclick={closeManageModal}>Close</button>
+				{#if manageTab === 'details' && canEdit}
+					<button
+						type="submit"
+						form="collection-details-form"
+						class="btn btn-sm btn-primary"
+						disabled={isSaving}
+					>
 						{#if isSaving}
 							<span class="loading loading-xs loading-spinner"></span>
 						{/if}
 						Save Changes
 					</button>
-				</form>
-			{:else if manageTab === 'members' && canManageUsers}
-				<MemberManager
-					membershipCollection="collectionUsers"
-					parentField="collection"
-					parentId={collection.id}
-					roleValues={collectionRoleValues}
-					roleLabels={COLLECTION_ROLE_LABELS}
-					defaultRole={CollectionRole.Viewer}
-					auditTargetType="collection"
-				/>
-			{:else if manageTab === 'danger' && canDelete}
-				<div class="space-y-3">
-					<p class="text-sm text-base-content/70">
-						Deleting this collection is permanent. Editions inside the collection must be removed
-						or reassigned first.
-					</p>
+				{:else if manageTab === 'danger' && canDelete}
 					<button
+						type="button"
 						class="btn btn-sm btn-error"
 						onclick={() => (deleteConfirmOpen = true)}
 						disabled={isDeleting}
 					>
 						Delete Collection
 					</button>
-				</div>
-			{/if}
-		</div>
-	{/if}
-
-	<!-- Editions Section -->
-	<div class="mb-8">
-		<h2 class="mb-6 text-2xl font-semibold">Editions</h2>
-
-		{#if editions.length > 0}
-			<!-- Version summary -->
-			{#if latestEdition && ((latestEdition as any).pubNum > 1)}
-				<div class="mb-4 text-sm text-base-content/60">
-					{editions.length} editions · Latest: Ed. {String((latestEdition as any).pubNum).padStart(2, '0')} ·
-					<a href="{base}/editions/{latestEdition.id}" data-sveltekit-preload-data="hover" class="link link-hover">
-						{latestEdition.title}
-					</a>
-				</div>
-			{/if}
-
-			<!-- Grouped by status -->
-			{#if editionGroups.length > 1}
-				{#each editionGroups as group}
-					<div class="mb-6">
-						<h3 class="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-base-content/50">
-							{group.status}
-							<span class="badge badge-sm">{group.editions.length}</span>
-						</h3>
-						<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-							{#each group.editions as edition (edition.id)}
-								<EditionCard edition={edition as any} />
-							{/each}
-						</div>
-					</div>
-				{/each}
-			{:else}
-				<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-					{#each editions as edition (edition.id)}
-						<EditionCard edition={edition as any} />
-					{/each}
-				</div>
-			{/if}
-		{:else}
-			<div class="rounded-lg border border-dashed border-base-300 bg-base-200/40 px-4 py-8 text-center text-sm text-base-content/60">
-				No editions available in this collection yet.
+				{/if}
 			</div>
-		{/if}
-	</div>
-
-	<!-- Back Button -->
-	<div class="mt-12 flex justify-center">
-		<a href="{base}/collections" data-sveltekit-preload-data="hover" class="btn btn-outline btn-lg">
-			← Back to Collections
-		</a>
-	</div>
-</div>
+		{/snippet}
+	</FloatingModal>
+{/if}
 
 <!-- Delete confirmation modal -->
 {#if canDelete}

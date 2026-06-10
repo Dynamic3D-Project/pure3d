@@ -5,6 +5,7 @@
 	import { logAudit, type AuditTargetType } from '$lib/utils/audit';
 	import toast from 'svelte-french-toast';
 	import UserSearchSelect from '$lib/components/ui/UserSearchSelect.svelte';
+	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
 
 	type RoleString = string;
 
@@ -71,6 +72,13 @@
 		const existing = new Set(members.map((m) => m.userId));
 		return allUsers.filter((u) => !existing.has(u.id));
 	});
+
+	let roleOptions = $derived(
+		roleValues.map((role) => ({
+			value: role,
+			label: roleLabels[role] ?? role
+		}))
+	);
 
 	onMount(() => {
 		load();
@@ -227,20 +235,16 @@
 								<td class="text-base-content/70">{member.email}</td>
 								<td>
 									{#if isReadOnly}
-										<span class="badge badge-sm badge-ghost">{roleLabels[member.role] ?? member.role}</span>
-									{:else}
-										<select
-											class="select-bordered select w-36 select-sm"
-											value={member.role}
-											onchange={(e) => updateRole(member.id, e.currentTarget.value)}
-											disabled={savingMemberId === member.id}
+										<span class="badge badge-ghost badge-sm"
+											>{roleLabels[member.role] ?? member.role}</span
 										>
-											{#each roleValues as rv (rv)}
-												<option value={rv} selected={member.role === rv}>
-													{roleLabels[rv] ?? rv}
-												</option>
-											{/each}
-										</select>
+									{:else}
+										<FloatingSelect
+											value={member.role}
+											options={roleOptions}
+											disabled={savingMemberId === member.id}
+											onchange={(nextRole) => updateRole(member.id, nextRole)}
+										/>
 									{/if}
 								</td>
 								{#if !isReadOnly}
@@ -279,21 +283,13 @@
 					<label class="label" for="member-add-role-{parentId}">
 						<span class="label-text">Role</span>
 					</label>
-					<select
+					<FloatingSelect
 						id="member-add-role-{parentId}"
-						class="select-bordered select w-36 select-sm"
 						bind:value={addRole}
-					>
-						{#each roleValues as rv (rv)}
-							<option value={rv}>{roleLabels[rv] ?? rv}</option>
-						{/each}
-					</select>
+						options={roleOptions}
+					/>
 				</div>
-				<button
-					class="btn btn-sm btn-primary"
-					onclick={add}
-					disabled={!addUserId || isAdding}
-				>
+				<button class="btn btn-sm btn-primary" onclick={add} disabled={!addUserId || isAdding}>
 					{#if isAdding}
 						<span class="loading loading-xs loading-spinner"></span>
 					{/if}

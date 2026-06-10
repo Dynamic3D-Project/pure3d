@@ -7,6 +7,7 @@
 	import { CollectionRole, COLLECTION_ROLE_LABELS, GlobalRole } from '$lib/types/roles';
 	import toast from 'svelte-french-toast';
 	import MemberManager from '$lib/components/admin/MemberManager.svelte';
+	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
 
 	interface AdminCollection {
 		id: string;
@@ -19,14 +20,28 @@
 	let collections = $state<AdminCollection[]>([]);
 	let isLoading = $state(true);
 	let searchQuery = $state('');
+	let visibilityFilter = $state('');
 	let expandedId = $state<string | null>(null);
 	let filteredCollections = $derived(
-		searchQuery
-			? collections.filter((c) => c.title.toLowerCase().includes(searchQuery.toLowerCase()))
-			: collections
+		collections.filter((c) => {
+			const query = searchQuery.toLowerCase();
+			const matchesSearch = !query || c.title.toLowerCase().includes(query);
+			const matchesVisibility =
+				!visibilityFilter ||
+				(visibilityFilter === 'visible' && c.isVisible) ||
+				(visibilityFilter === 'hidden' && !c.isVisible);
+
+			return matchesSearch && matchesVisibility;
+		})
 	);
+	let hasActiveFilters = $derived(Boolean(searchQuery || visibilityFilter));
 
 	const collectionRoleValues = Object.values(CollectionRole) as string[];
+	const visibilityFilterOptions = [
+		{ value: '', label: 'All visibility' },
+		{ value: 'visible', label: 'Visible' },
+		{ value: 'hidden', label: 'Hidden' }
+	];
 
 	let canManageAllMembers = $derived(
 		authStore.globalRole === GlobalRole.Admin
@@ -117,13 +132,45 @@
 		</button>
 	</div>
 
-	<div class="mb-6">
-		<input
-			type="text"
-			placeholder="Search collections..."
-			class="input-bordered input w-full max-w-md"
-			bind:value={searchQuery}
-		/>
+	<div class="mb-6 rounded-box border border-base-300 bg-base-100 p-4 shadow-sm">
+		<div class="mb-3 flex items-center justify-between gap-3">
+			<div>
+				<h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/70">Filters</h2>
+				<p class="text-xs text-base-content/50">Filter collections by name and visibility.</p>
+			</div>
+			{#if hasActiveFilters}
+				<button
+					type="button"
+					class="btn btn-ghost btn-xs"
+					onclick={() => {
+						searchQuery = '';
+						visibilityFilter = '';
+					}}
+				>
+					Clear
+				</button>
+			{/if}
+		</div>
+		<div class="grid gap-3 md:grid-cols-[minmax(16rem,1fr)_13rem]">
+			<label class="form-control">
+				<span class="label pb-1 pt-0"><span class="label-text text-xs">Search</span></span>
+				<input
+					type="text"
+					placeholder="Collection title..."
+					class="input input-bordered w-full bg-base-200/40"
+					bind:value={searchQuery}
+				/>
+			</label>
+			<label class="form-control">
+				<span class="label pb-1 pt-0"><span class="label-text text-xs">Visibility</span></span>
+				<FloatingSelect
+					id="collection-visibility-filter"
+					bind:value={visibilityFilter}
+					options={visibilityFilterOptions}
+					class="w-full bg-base-200/40"
+				/>
+			</label>
+		</div>
 	</div>
 
 	{#if isLoading}
@@ -205,12 +252,18 @@
 
 		{#if filteredCollections.length === 0}
 			<div class="py-8 text-center text-base-content/60">
-				{#if searchQuery}
-					No collections match "{searchQuery}"
+				{#if hasActiveFilters}
+					No collections match the selected filters.
 				{:else}
 					No collections found.
 				{/if}
 			</div>
+		{/if}
+
+		{#if filteredCollections.length > 0 && hasActiveFilters}
+			<p class="mt-4 text-sm text-base-content/60">
+				Showing {filteredCollections.length} of {collections.length} collections
+			</p>
 		{/if}
 	{/if}
 </div>

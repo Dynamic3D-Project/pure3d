@@ -8,6 +8,7 @@
 	import { NotificationType } from '$lib/types/notifications';
 	import { base } from '$app/paths';
 	import UserSearchSelect from '$lib/components/ui/UserSearchSelect.svelte';
+	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
 	import toast from 'svelte-french-toast';
 
 	interface Props {
@@ -43,6 +44,7 @@
 
 	// Only show Author and Collaborator roles for adding
 	const addableRoles = [EditionRole.Author, EditionRole.Collaborator] as const;
+	const addableRoleOptions = addableRoles.map((role) => ({ value: role, label: role }));
 
 	onMount(loadMembers);
 
@@ -214,11 +216,12 @@
 						placeholder="Search user..."
 					/>
 				</div>
-				<select class="select-bordered select select-sm" bind:value={addRole}>
-					{#each addableRoles as role}
-						<option value={role}>{role}</option>
-					{/each}
-				</select>
+				<FloatingSelect
+					value={addRole}
+					options={addableRoleOptions}
+					class="w-36"
+					onchange={(role) => (addRole = role as EditionRole)}
+				/>
 				<button
 					class="btn btn-sm btn-primary"
 					onclick={addMember}

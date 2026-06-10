@@ -18,6 +18,7 @@
 	} from '$lib/utils/review-helpers';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
 	import WorkflowTimeline from '$lib/components/workflow/WorkflowTimeline.svelte';
+	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
 	import UserSearchSelect from '$lib/components/ui/UserSearchSelect.svelte';
 	import toast from 'svelte-french-toast';
 
@@ -25,6 +26,7 @@
 		id: string;
 		title: string;
 		status: EditionStatus;
+		collectionId: string;
 		collectionTitle: string;
 		created: string;
 		peerReviewRequested: boolean;
@@ -48,8 +50,35 @@
 	let activeTab = $state<'submissions' | 'editorial' | 'alpha' | 'final' | 'publish' | 'all'>(
 		'submissions'
 	);
+	let searchQuery = $state('');
+	let collectionFilter = $state('');
 	let expandedId = $state<string | null>(null);
 	let actionLoading = $state(false);
+	let filteredBaseEditions = $derived(
+		editions.filter((e) => {
+			const query = searchQuery.toLowerCase();
+			const matchesSearch =
+				!query ||
+				e.title.toLowerCase().includes(query) ||
+				e.collectionTitle.toLowerCase().includes(query);
+			const matchesCollection = !collectionFilter || e.collectionId === collectionFilter;
+
+			return matchesSearch && matchesCollection;
+		})
+	);
+	let hasActiveFilters = $derived(Boolean(searchQuery || collectionFilter));
+	let collectionFilterOptions = $derived([
+		{ value: '', label: 'All collections' },
+		...Array.from(
+			new Map(
+				editions
+					.filter((edition) => edition.collectionId && edition.collectionTitle)
+					.map((edition) => [edition.collectionId, edition.collectionTitle])
+			).entries()
+		)
+			.sort(([, a], [, b]) => a.localeCompare(b))
+			.map(([value, label]) => ({ value, label }))
+	]);
 
 	// Reviewer assignment form state
 	let assignUserId = $state('');
@@ -58,26 +87,28 @@
 	let publishModalEdition = $state<WfEdition | null>(null);
 
 	// Filtered editions per tab
-	let submissions = $derived(editions.filter((e) => e.status === EditionStatus.ConceptSubmitted));
+	let submissions = $derived(
+		filteredBaseEditions.filter((e) => e.status === EditionStatus.ConceptSubmitted)
+	);
 	let editorialEditions = $derived(
-		editions.filter((e) => e.status === EditionStatus.EditorialReview)
+		filteredBaseEditions.filter((e) => e.status === EditionStatus.EditorialReview)
 	);
 	let alphaEditions = $derived(
-		editions.filter(
+		filteredBaseEditions.filter(
 			(e) => e.status === EditionStatus.AlphaReview || e.status === EditionStatus.AlphaRevisions
 		)
 	);
 	let finalEditions = $derived(
-		editions.filter(
+		filteredBaseEditions.filter(
 			(e) => e.status === EditionStatus.FinalReview || e.status === EditionStatus.FinalRevisions
 		)
 	);
 	let publishEditions = $derived(
-		editions.filter(
+		filteredBaseEditions.filter(
 			(e) => e.status === EditionStatus.AlphaAccepted || e.status === EditionStatus.Published
 		)
 	);
-	let allNonDraft = $derived(editions.filter((e) => e.status !== EditionStatus.Draft));
+	let allNonDraft = $derived(filteredBaseEditions.filter((e) => e.status !== EditionStatus.Draft));
 
 	// Tab counts
 	let tabCounts = $derived({
@@ -119,6 +150,7 @@
 				id: r.id,
 				title: r.dcTitle || r.title,
 				status: (r.status as EditionStatus) || EditionStatus.Draft,
+				collectionId: r.collection || '',
 				collectionTitle: r.expand?.collection?.title || '',
 				created: r.created,
 				peerReviewRequested: r.peerReviewRequested || false,
@@ -519,6 +551,47 @@
 			</div>
 		</div>
 	{/if}
+
+	<div class="mb-6 rounded-box border border-base-300 bg-base-100 p-4 shadow-sm">
+		<div class="mb-3 flex items-center justify-between gap-3">
+			<div>
+				<h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/70">Filters</h2>
+				<p class="text-xs text-base-content/50">Filter pipeline tabs by edition title or collection.</p>
+			</div>
+			{#if hasActiveFilters}
+				<button
+					type="button"
+					class="btn btn-ghost btn-xs"
+					onclick={() => {
+						searchQuery = '';
+						collectionFilter = '';
+					}}
+				>
+					Clear
+				</button>
+			{/if}
+		</div>
+		<div class="grid gap-3 md:grid-cols-[minmax(16rem,1fr)_16rem]">
+			<label class="form-control">
+				<span class="label pb-1 pt-0"><span class="label-text text-xs">Search</span></span>
+				<input
+					type="text"
+					placeholder="Edition or collection..."
+					class="input input-bordered w-full bg-base-200/40"
+					bind:value={searchQuery}
+				/>
+			</label>
+			<label class="form-control">
+				<span class="label pb-1 pt-0"><span class="label-text text-xs">Collection</span></span>
+				<FloatingSelect
+					id="workflow-collection-filter"
+					bind:value={collectionFilter}
+					options={collectionFilterOptions}
+					class="w-full bg-base-200/40"
+				/>
+			</label>
+		</div>
+	</div>
 
 	<!-- Tabs -->
 	<div class="tabs-bordered mb-6 tabs">

@@ -4,12 +4,9 @@
 	import { base } from '$app/paths';
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
 	import FilterSidebar from '$lib/components/filters/FilterSidebar.svelte';
+	import FloatingDropdown from '$lib/components/ui/FloatingDropdown.svelte';
 	import type { FilterState } from '$lib/types/collection';
-	import {
-		editionsStore,
-		fetchEditions,
-		isStale
-	} from '$lib/stores/data.store';
+	import { editionsStore, fetchEditions, isStale } from '$lib/stores/data.store';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { pb } from '$lib/database/client';
 	import { EditionStatus, GlobalRole } from '$lib/types/roles';
@@ -43,7 +40,7 @@
 	let showSuggestions = $state(false);
 	let selectedIndex = $state(-1);
 	let inputElement: HTMLInputElement | undefined = $state();
-	let suggestionsElement: HTMLUListElement | undefined = $state();
+	let suggestionsElement: HTMLDivElement | undefined = $state();
 
 	// Initialize filter state
 	let filters = $state<FilterState>({
@@ -143,12 +140,14 @@
 
 	function scrollToSelected() {
 		requestAnimationFrame(() => {
-			const selected = suggestionsElement?.querySelector(`[data-index="${selectedIndex}"]`) as HTMLElement | null;
+			const selected = suggestionsElement?.querySelector(
+				`[data-index="${selectedIndex}"]`
+			) as HTMLElement | null;
 			selected?.scrollIntoView({ block: 'nearest' });
 		});
 	}
 
-	function navigateToEdition(edition: typeof editions[0]) {
+	function navigateToEdition(edition: (typeof editions)[0]) {
 		showSuggestions = false;
 		selectedIndex = -1;
 		searchQuery = '';
@@ -158,14 +157,6 @@
 	function handleFocus() {
 		if (searchQuery.trim() && suggestions.length > 0) {
 			showSuggestions = true;
-		}
-	}
-
-	function handleClickOutside(event: MouseEvent) {
-		const target = event.target as HTMLElement;
-		if (!target.closest('.search-container')) {
-			showSuggestions = false;
-			selectedIndex = -1;
 		}
 	}
 
@@ -222,8 +213,6 @@
 	}
 </script>
 
-<svelte:window onclick={handleClickOutside} />
-
 <svelte:head>
 	<title>All Editions | Pure 3D</title>
 	<meta
@@ -236,27 +225,20 @@
 
 <!-- Drawer wrapper for mobile -->
 <div class="drawer lg:drawer-open">
-	<input
-		id="filter-drawer"
-		type="checkbox"
-		class="drawer-toggle"
-		bind:checked={drawerOpen}
-	/>
+	<input id="filter-drawer" type="checkbox" class="drawer-toggle" bind:checked={drawerOpen} />
 
 	<!-- Main content -->
 	<div class="drawer-content">
-		<div class="container mx-auto px-4 py-8 max-w-7xl">
+		<div class="container mx-auto max-w-7xl px-4 py-8">
 			<!-- Header -->
 			<div class="mb-8 flex items-start justify-between gap-4">
 				<div>
-					<h1 class="text-3xl md:text-4xl font-bold mb-2">Editions</h1>
-					<p class="text-base-content/70">
-						Browse our collection of 3D scholarly editions
-					</p>
+					<h1 class="mb-2 text-3xl font-bold md:text-4xl">Editions</h1>
+					<p class="text-base-content/70">Browse our collection of 3D scholarly editions</p>
 				</div>
 				{#if authStore.globalRole === GlobalRole.Admin}
 					<button
-						class="btn btn-primary btn-sm flex-none"
+						class="btn flex-none btn-sm btn-primary"
 						onclick={createEdition}
 						disabled={isCreating}
 					>
@@ -269,11 +251,11 @@
 			</div>
 
 			<!-- Search and Filter Button (mobile) -->
-			<div class="flex gap-3 mb-6">
+			<div class="mb-6 flex gap-3">
 				<!-- Mobile filter button -->
 				<label
 					for="filter-drawer"
-					class="btn btn-outline lg:hidden flex-none"
+					class="btn flex-none btn-outline lg:hidden"
 					aria-label="Open filters"
 				>
 					<svg
@@ -292,15 +274,15 @@
 					</svg>
 					Filters
 					{#if activeFilterCount > 0}
-						<span class="badge badge-primary badge-sm">{activeFilterCount}</span>
+						<span class="badge badge-sm badge-primary">{activeFilterCount}</span>
 					{/if}
 				</label>
 
 				<!-- Search input with autocomplete -->
-				<div class="flex-1 search-container relative">
+				<div class="search-container flex-1">
 					<div class="relative">
 						<svg
-							class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-base-content/50"
+							class="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-base-content/50"
 							fill="none"
 							stroke="currentColor"
 							viewBox="0 0 24 24"
@@ -320,7 +302,7 @@
 							onfocus={handleFocus}
 							onkeydown={handleKeydown}
 							placeholder="Search editions..."
-							class="input input-bordered w-full pl-10 pr-10"
+							class="input-bordered input w-full pr-10 pl-10"
 							role="combobox"
 							aria-expanded={showSuggestions}
 							aria-haspopup="listbox"
@@ -331,74 +313,102 @@
 							<button
 								type="button"
 								onclick={clearSearch}
-								class="absolute right-3 top-1/2 -translate-y-1/2 btn btn-ghost btn-xs btn-circle"
+								class="btn absolute top-1/2 right-3 btn-circle -translate-y-1/2 btn-ghost btn-xs"
 								aria-label="Clear search"
 							>
 								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M6 18L18 6M6 6l12 12"
+									/>
 								</svg>
 							</button>
 						{/if}
 					</div>
 
 					<!-- Autocomplete Suggestions Dropdown -->
-					{#if showSuggestions && suggestions.length > 0}
-						<ul
-							bind:this={suggestionsElement}
-							id="edition-suggestions"
-							class="absolute z-50 w-full mt-1 bg-base-100 rounded-box shadow-xl border border-base-300 max-h-80 overflow-y-auto"
-							role="listbox"
-						>
-							{#each suggestions as suggestion, index (suggestion.id)}
-								{@const isSelected = selectedIndex === index}
-								<li role="option" aria-selected={isSelected}>
-									<button
-										type="button"
-										data-index={index}
-										class="w-full px-4 py-3 cursor-pointer transition-colors flex items-center gap-3 text-left {isSelected ? 'bg-primary text-primary-content' : 'hover:bg-base-200'}"
-										onclick={() => navigateToEdition(suggestion)}
-										onmouseenter={() => (selectedIndex = index)}
-									>
-										{#if suggestion.thumbnail}
-											<img
-												src={suggestion.thumbnail}
-												alt=""
-												class="w-10 h-10 rounded object-cover shrink-0"
-											/>
-										{:else}
-											<div class="w-10 h-10 rounded bg-base-300 flex items-center justify-center shrink-0">
-												<svg class="w-5 h-5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-												</svg>
+					<FloatingDropdown
+						open={showSuggestions && suggestions.length > 0}
+						referenceElement={inputElement}
+						bind:element={suggestionsElement}
+						role="listbox"
+						maxHeight={320}
+						class="shadow-xl"
+						onclose={() => {
+							showSuggestions = false;
+							selectedIndex = -1;
+						}}
+					>
+						{#each suggestions as suggestion, index (suggestion.id)}
+							{@const isSelected = selectedIndex === index}
+							<div role="option" aria-selected={isSelected}>
+								<button
+									type="button"
+									data-index={index}
+									class="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left text-base-content transition-colors hover:bg-base-200 hover:text-base-content"
+									class:bg-base-200={isSelected}
+									onclick={() => navigateToEdition(suggestion)}
+									onmouseenter={() => (selectedIndex = index)}
+								>
+									{#if suggestion.thumbnail}
+										<img
+											src={suggestion.thumbnail}
+											alt=""
+											class="h-10 w-10 shrink-0 rounded object-cover"
+										/>
+									{:else}
+										<div
+											class="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-base-300"
+										>
+											<svg
+												class="h-5 w-5 opacity-50"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+												/>
+											</svg>
+										</div>
+									{/if}
+									<div class="min-w-0 flex-1">
+										<div class="truncate font-medium">{suggestion.title}</div>
+										{#if suggestion.authors}
+											<div class="truncate text-sm opacity-60">{suggestion.authors}</div>
+										{:else if suggestion.description}
+											<div class="truncate text-sm opacity-60">
+												{suggestion.description.slice(0, 60)}{suggestion.description.length > 60
+													? '...'
+													: ''}
 											</div>
 										{/if}
-										<div class="min-w-0 flex-1">
-											<div class="font-medium truncate">{suggestion.title}</div>
-											{#if suggestion.authors}
-												<div class="text-sm opacity-60 truncate">{suggestion.authors}</div>
-											{:else if suggestion.description}
-												<div class="text-sm opacity-60 truncate">{suggestion.description.slice(0, 60)}{suggestion.description.length > 60 ? '...' : ''}</div>
-											{/if}
-										</div>
-										{#if suggestion.hasPeerReview}
-											<span class="badge badge-sm {isSelected ? 'badge-primary-content' : 'badge-success'}">Peer reviewed</span>
-										{/if}
-									</button>
-								</li>
-							{/each}
-							<li class="px-3 py-2 text-xs text-base-content/50 border-t border-base-200 flex items-center gap-4">
-								<span><kbd class="kbd kbd-xs">↑</kbd><kbd class="kbd kbd-xs">↓</kbd> navigate</span>
-								<span><kbd class="kbd kbd-xs">Enter</kbd> select</span>
-								<span><kbd class="kbd kbd-xs">Esc</kbd> close</span>
-							</li>
-						</ul>
-					{/if}
+									</div>
+									{#if suggestion.hasPeerReview}
+										<span class="badge badge-sm badge-success">Peer reviewed</span>
+									{/if}
+								</button>
+							</div>
+						{/each}
+						<div
+							class="flex items-center gap-4 border-t border-base-200 px-3 py-2 text-xs text-base-content/50"
+						>
+							<span><kbd class="kbd kbd-xs">↑</kbd><kbd class="kbd kbd-xs">↓</kbd> navigate</span>
+							<span><kbd class="kbd kbd-xs">Enter</kbd> select</span>
+							<span><kbd class="kbd kbd-xs">Esc</kbd> close</span>
+						</div>
+					</FloatingDropdown>
 				</div>
 			</div>
 
 			<!-- Results count -->
 			{#if !isLoading || hasCachedData}
-				<div class="text-sm text-base-content/70 mb-4">
+				<div class="mb-4 text-sm text-base-content/70">
 					Showing {filteredEditions.length} of {editions.length} editions
 				</div>
 			{/if}
@@ -406,7 +416,7 @@
 			<!-- Editions Grid -->
 			{#if isLoading && !hasCachedData}
 				<div
-					class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-4"
+					class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5"
 				>
 					{#each Array(15) as _}
 						<div class="h-64 skeleton rounded-xl"></div>
@@ -414,7 +424,7 @@
 				</div>
 			{:else if filteredEditions.length > 0}
 				<div
-					class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-4"
+					class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5"
 				>
 					{#each filteredEditions as edition (edition.id)}
 						<EditionCard {edition} />
@@ -424,7 +434,7 @@
 				<div class="flex flex-col items-center justify-center py-16 text-center">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
-						class="h-16 w-16 text-base-content/30 mb-4"
+						class="mb-4 h-16 w-16 text-base-content/30"
 						fill="none"
 						viewBox="0 0 24 24"
 						stroke="currentColor"
@@ -436,14 +446,14 @@
 							d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 						/>
 					</svg>
-					<h3 class="text-lg font-medium mb-2">No editions found</h3>
-					<p class="text-base-content/60 max-w-md">
+					<h3 class="mb-2 text-lg font-medium">No editions found</h3>
+					<p class="max-w-md text-base-content/60">
 						No editions match your current filters. Try adjusting your search or clearing some
 						filters.
 					</p>
 					{#if activeFilterCount > 0}
 						<button
-							class="btn btn-primary btn-sm mt-4"
+							class="btn mt-4 btn-sm btn-primary"
 							onclick={() => {
 								filters = {
 									dcSubject: [],
@@ -466,11 +476,15 @@
 	<!-- Sidebar drawer -->
 	<div class="drawer-side z-40">
 		<label for="filter-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
-		<div class="bg-base-100 min-h-full w-72 p-4 pt-20 lg:pt-4 border-r border-base-300">
+		<div class="min-h-full w-72 border-r border-base-300 bg-base-100 p-4 pt-20 lg:pt-4">
 			<!-- Close button for mobile -->
-			<div class="flex justify-between items-center mb-4 lg:hidden">
+			<div class="mb-4 flex items-center justify-between lg:hidden">
 				<span class="font-semibold">Filters</span>
-				<button class="btn btn-ghost btn-sm btn-circle" onclick={closeDrawer} aria-label="Close filters">
+				<button
+					class="btn btn-circle btn-ghost btn-sm"
+					onclick={closeDrawer}
+					aria-label="Close filters"
+				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						class="h-5 w-5"

@@ -1,11 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import FloatingDropdown from '$lib/components/ui/FloatingDropdown.svelte';
+
 	let searchValue = $state('');
 	let options: string[] = [];
 	let filteredOptions = $state<string[]>([]);
 	let selectedIndex = $state(-1);
 	let showDropdown = $state(false);
 	let timeoutId: ReturnType<typeof setTimeout> | null = null;
+	let inputElement: HTMLInputElement | undefined = $state();
 
 	function handleInput(event: Event) {
 		const target = event.target as HTMLInputElement;
@@ -68,6 +71,7 @@
 	</div>
 	<div class="relative">
 		<input
+			bind:this={inputElement}
 			class="input w-full rounded-md border-2 border-base-300"
 			type="text"
 			bind:value={searchValue}
@@ -77,19 +81,25 @@
 		/>
 	</div>
 
-	{#if showDropdown}
-		{#if searchValue}
-			<ul class="bg-base-200 max-h-60 overflow-auto">
-				{#each filteredOptions as option, i}
-					<li
-						class="hover:bg-secondary hover:text-secondary-content p-3"
-						class:bg-secondary={i === selectedIndex}
-						class:text-secondary-content={i === selectedIndex}
-					>
-						{option}
-					</li>
-				{/each}
-			</ul>
-		{/if}
-	{/if}
+	<FloatingDropdown
+		open={showDropdown && !!searchValue}
+		referenceElement={inputElement}
+		role="listbox"
+		maxHeight={240}
+		onclose={() => (showDropdown = false)}
+	>
+		{#each filteredOptions as option, i}
+			<button
+				type="button"
+				class="block w-full p-3 text-left text-base-content hover:bg-base-200 hover:text-base-content"
+				class:bg-base-200={i === selectedIndex}
+				onclick={() => {
+					searchValue = option;
+					showDropdown = false;
+				}}
+			>
+				{option}
+			</button>
+		{/each}
+	</FloatingDropdown>
 </div>
