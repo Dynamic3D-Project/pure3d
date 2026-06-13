@@ -63,21 +63,21 @@
 
 <style>
 	.rotate-icon {
-		@apply transform transition;
+		transition: transform 0.2s;
 	}
 	.rotate-icon:hover {
-		/* @apply translate-x-1 rotate-12; */
+		transform: rotate(0deg);
 	}
 	.rotate-icon:focus {
-		@apply scale-y-100;
+		transform: scaleY(1);
 	}
 	.scale-icon {
-		@apply transform transition;
+		transition: transform 0.2s;
 	}
 	.scale-icon:hover {
-		@apply scale-125;
+		transform: scale(1.25);
 	}
 	.scale-icon:focus {
-		@apply scale-90;
+		transform: scale(0.9);
 	}
 </style>

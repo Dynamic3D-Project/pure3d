@@ -13,7 +13,7 @@
 <div class="container mx-auto max-w-6xl px-4 py-8">
 	<div class="flex flex-col gap-8 lg:flex-row">
 		<!-- Sidebar -->
-		<nav class="shrink-0 lg:w-64">
+		<nav class="shrink-0 lg:sticky lg:top-16 lg:w-64 lg:self-start">
 			<!-- Mobile: horizontal scrollable tabs -->
 			<div class="flex gap-2 overflow-x-auto pb-2 lg:hidden">
 				<a

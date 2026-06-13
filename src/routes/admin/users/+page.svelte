@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { pb } from '$lib/database/client';
+	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
 	import { GlobalRole, GLOBAL_ROLE_LABELS } from '$lib/types/roles';
 	import { logAudit } from '$lib/utils/audit';
 	import toast from 'svelte-french-toast';
@@ -18,19 +19,29 @@
 	let users = $state<AppUser[]>([]);
 	let isLoading = $state(true);
 	let searchQuery = $state('');
+	let roleFilter = $state('');
 	let isSaving = $state(false);
 
 	let filteredUsers = $derived(
-		searchQuery
-			? users.filter(
-					(u) =>
-						(u.nickname || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-						(u.email || '').toLowerCase().includes(searchQuery.toLowerCase())
-				)
-			: users
+		users.filter((u) => {
+			const query = searchQuery.toLowerCase();
+			const matchesSearch =
+				!query ||
+				(u.nickname || '').toLowerCase().includes(query) ||
+				(u.email || '').toLowerCase().includes(query);
+			const matchesRole = !roleFilter || u.role === roleFilter;
+
+			return matchesSearch && matchesRole;
+		})
 	);
+	let hasActiveFilters = $derived(Boolean(searchQuery || roleFilter));
 
 	const globalRoleValues = Object.values(GlobalRole);
+	const globalRoleOptions = globalRoleValues.map((roleValue) => ({
+		value: roleValue,
+		label: GLOBAL_ROLE_LABELS[roleValue]
+	}));
+	const roleFilterOptions = [{ value: '', label: 'All roles' }, ...globalRoleOptions];
 
 	// Modal states
 	let showCreateModal = $state(false);
@@ -139,9 +150,7 @@
 		} catch (error: any) {
 			console.error('Error creating user:', error);
 			const msg =
-				error?.response?.data?.email?.message ||
-				error?.message ||
-				'Failed to create user';
+				error?.response?.data?.email?.message || error?.message || 'Failed to create user';
 			toast.error(msg);
 		} finally {
 			isSaving = false;
@@ -285,14 +294,45 @@
 		</button>
 	</div>
 
-	<!-- Search -->
-	<div class="mb-6">
-		<input
-			type="text"
-			placeholder="Search by name or email..."
-			class="input-bordered input w-full max-w-md"
-			bind:value={searchQuery}
-		/>
+	<div class="mb-6 rounded-box border border-base-300 bg-base-100 p-4 shadow-sm">
+		<div class="mb-3 flex items-center justify-between gap-3">
+			<div>
+				<h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/70">Filters</h2>
+				<p class="text-xs text-base-content/50">Find users by identity or role.</p>
+			</div>
+			{#if hasActiveFilters}
+				<button
+					type="button"
+					class="btn btn-ghost btn-xs"
+					onclick={() => {
+						searchQuery = '';
+						roleFilter = '';
+					}}
+				>
+					Clear
+				</button>
+			{/if}
+		</div>
+		<div class="grid gap-3 md:grid-cols-[minmax(16rem,1fr)_13rem]">
+			<label class="form-control">
+				<span class="label pb-1 pt-0"><span class="label-text text-xs">Search</span></span>
+				<input
+					type="text"
+					placeholder="Name or email..."
+					class="input input-bordered w-full bg-base-200/40"
+					bind:value={searchQuery}
+				/>
+			</label>
+			<label class="form-control">
+				<span class="label pb-1 pt-0"><span class="label-text text-xs">Role</span></span>
+				<FloatingSelect
+					id="user-role-filter"
+					bind:value={roleFilter}
+					options={roleFilterOptions}
+					class="w-full bg-base-200/40"
+				/>
+			</label>
+		</div>
 	</div>
 
 	{#if isLoading}
@@ -317,7 +357,7 @@
 							<td class="font-medium">
 								{user.nickname || '—'}
 								{#if isSelf(user)}
-									<span class="badge badge-xs badge-ghost ml-1">you</span>
+									<span class="ml-1 badge badge-ghost badge-xs">you</span>
 								{/if}
 							</td>
 							<td class="text-base-content/70">{user.email}</td>
@@ -326,7 +366,7 @@
 									{GLOBAL_ROLE_LABELS[user.role] || user.role}
 								</span>
 							</td>
-							<td class="text-base-content/50 text-sm">
+							<td class="text-sm text-base-content/50">
 								{formatDate(user.created)}
 							</td>
 							<td>
@@ -348,7 +388,7 @@
 										</svg>
 									</button>
 									<button
-										class="btn btn-ghost btn-sm text-error"
+										class="btn text-error btn-ghost btn-sm"
 										title="Delete user"
 										disabled={isSelf(user)}
 										onclick={() => openDeleteModal(user)}
@@ -375,8 +415,8 @@
 
 			{#if filteredUsers.length === 0}
 				<div class="py-8 text-center text-base-content/60">
-					{#if searchQuery}
-						No users match "{searchQuery}"
+					{#if hasActiveFilters}
+						No users match the selected filters.
 					{:else}
 						No users found
 					{/if}
@@ -392,7 +432,7 @@
 
 <!-- Create User Modal -->
 {#if showCreateModal}
-	<div id="create-user-modal" class="modal modal-open">
+	<div id="create-user-modal" class="modal-open modal">
 		<div class="modal-box">
 			<h3 class="text-lg font-bold">Create New User</h3>
 
@@ -446,17 +486,13 @@
 
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">Role</legend>
-						<select
+						<FloatingSelect
 							id="create-role"
-							class="select w-full"
-							bind:value={createRole}
-						>
-							{#each globalRoleValues as roleValue (roleValue)}
-								<option value={roleValue}
-									>{GLOBAL_ROLE_LABELS[roleValue]}</option
-								>
-							{/each}
-						</select>
+							value={createRole}
+							options={globalRoleOptions}
+							class="w-full"
+							onchange={(role) => (createRole = role as GlobalRole)}
+						/>
 					</fieldset>
 				</div>
 			</div>
@@ -479,7 +515,7 @@
 
 <!-- Edit User Modal -->
 {#if showEditModal && editingUser}
-	<div id="edit-user-modal" class="modal modal-open">
+	<div id="edit-user-modal" class="modal-open modal">
 		<div class="modal-box">
 			<h3 class="text-lg font-bold">Edit User</h3>
 			<p class="mt-1 text-sm text-base-content/60">{editingUser.email}</p>
@@ -487,30 +523,21 @@
 			<div class="mt-4 flex flex-col gap-3">
 				<fieldset class="fieldset">
 					<legend class="fieldset-legend">Nickname</legend>
-					<input
-						id="edit-nickname"
-						type="text"
-						class="input w-full"
-						bind:value={editNickname}
-					/>
+					<input id="edit-nickname" type="text" class="input w-full" bind:value={editNickname} />
 				</fieldset>
 
 				<fieldset class="fieldset">
 					<legend class="fieldset-legend">Role</legend>
-					<select
+					<FloatingSelect
 						id="edit-role"
-						class="select w-full"
-						bind:value={editRole}
+						value={editRole}
+						options={globalRoleOptions}
+						class="w-full"
 						disabled={isSelf(editingUser)}
-					>
-						{#each globalRoleValues as roleValue (roleValue)}
-							<option value={roleValue}>{GLOBAL_ROLE_LABELS[roleValue]}</option>
-						{/each}
-					</select>
+						onchange={(role) => (editRole = role as GlobalRole)}
+					/>
 					{#if isSelf(editingUser)}
-						<p class="mt-1 text-sm text-warning">
-							You cannot change your own role
-						</p>
+						<p class="mt-1 text-sm text-warning">You cannot change your own role</p>
 					{/if}
 				</fieldset>
 			</div>
@@ -533,7 +560,7 @@
 
 <!-- Delete User Modal -->
 {#if showDeleteModal && deletingUser}
-	<div id="delete-user-modal" class="modal modal-open">
+	<div id="delete-user-modal" class="modal-open modal">
 		<div class="modal-box">
 			<h3 class="text-lg font-bold">Delete User</h3>
 			<p class="mt-4">
@@ -541,8 +568,8 @@
 				<strong>{deletingUser.nickname || deletingUser.email}</strong>?
 			</p>
 			<p class="mt-2 text-sm text-base-content/60">
-				This will remove their account, profile, and all collection/edition assignments.
-				This action cannot be undone.
+				This will remove their account, profile, and all collection/edition assignments. This action
+				cannot be undone.
 			</p>
 
 			<div class="modal-action">

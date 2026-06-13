@@ -1,7 +1,9 @@
 #!/bin/sh
 set -eu
 
-apk add --no-cache curl unzip >/dev/null
+if command -v apk >/dev/null 2>&1; then
+	apk add --no-cache curl unzip >/dev/null
+fi
 
 # Resolve version: use VOYAGER_VERSION env var, or fetch latest from GitHub
 if [ -n "${VOYAGER_VERSION:-}" ] && [ "${VOYAGER_VERSION}" != "latest" ]; then
@@ -16,7 +18,7 @@ fi
 VOYAGER_RELEASE_URL="https://github.com/Smithsonian/dpo-voyager/releases/download/v${VOYAGER_VERSION}/voyager-tools-v${VOYAGER_VERSION}.zip"
 TARGET_DIR="${TARGET_DIR:-/app/static/voyager/${VOYAGER_VERSION}}"
 
-if [ -f "${TARGET_DIR}/js/voyager-explorer.min.js" ]; then
+if [ -f "${TARGET_DIR}/js/voyager-explorer.min.js" ] && [ -f "${TARGET_DIR}/voyager-story.html" ]; then
 	echo "Voyager runtime ${VOYAGER_VERSION} already installed at ${TARGET_DIR}"
 	exit 0
 fi
@@ -35,12 +37,23 @@ unzip -q "${ZIP_PATH}" \
 	'dist/3RD_PARTY_LICENSES.txt' \
 	'dist/ATTRIBUTIONS.md' \
 	'dist/LICENSE.md' \
+	'dist/voyager-story.html' \
+	'dist/voyager-story-dev.html' \
+	'dist/css/voyager-launcher.min.css' \
+	'dist/css/voyager-mini.min.css' \
+	'dist/css/voyager-story.min.css' \
 	'dist/fonts/*' \
 	'dist/images/*' \
 	'dist/js/basis/*' \
 	'dist/js/draco/*' \
 	'dist/js/voyager-explorer.min.js' \
 	'dist/js/voyager-explorer.min.js.LICENSE.txt' \
+	'dist/js/voyager-launcher.min.js' \
+	'dist/js/voyager-launcher.min.js.LICENSE.txt' \
+	'dist/js/voyager-mini.min.js' \
+	'dist/js/voyager-mini.min.js.LICENSE.txt' \
+	'dist/js/voyager-story.min.js' \
+	'dist/js/voyager-story.min.js.LICENSE.txt' \
 	'dist/language/*' \
 	-d "${EXTRACT_DIR}"
 

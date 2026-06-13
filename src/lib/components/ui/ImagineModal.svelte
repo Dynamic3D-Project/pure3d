@@ -1,11 +1,20 @@
 <script lang="ts">
 	import toast from 'svelte-french-toast';
+	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
 	import type { Edition } from '$lib/types/collection';
 
 	interface Props {
 		open: boolean;
 		edition: Edition;
 		onclose: () => void;
+	}
+
+	interface GalleryImage {
+		id: string;
+		editionKey: string;
+		url: string;
+		referenceUrl?: string | null;
+		createdAt: number;
 	}
 
 	let { open = $bindable(), edition, onclose }: Props = $props();
@@ -15,6 +24,7 @@
 		{ id: 'gemini-3-pro-image-preview', label: 'Gemini 3 Pro Image (higher quality)' },
 		{ id: 'gemini-3.1-flash-image-preview', label: 'Gemini 3.1 Flash Image (faster)' }
 	] as const;
+	const MODEL_OPTIONS = MODELS.map((model) => ({ value: model.id, label: model.label }));
 
 	// State
 	let additionalPrompt = $state('');
@@ -24,10 +34,13 @@
 	let apiKey = $state('');
 	let selectedModel = $state(localStorage.getItem('gemini-model') || MODELS[0].id);
 	let capturedImageDataUrl = $state<string | null>(null);
+	let selectedReferenceImageUrl = $state<string | null>(null);
+	let selectedGalleryImage = $state<GalleryImage | null>(null);
 	let errorMessage = $state<string | null>(null);
 	let sliderPosition = $state(50);
-	let isDragging = $state(false);
 	let comparisonContainer: HTMLDivElement | undefined = $state();
+	let galleryImages = $state<GalleryImage[]>([]);
+	const comparisonReferenceImageUrl = $derived(selectedReferenceImageUrl || capturedImageDataUrl);
 
 	// Load API key from localStorage on init
 	$effect(() => {
@@ -35,10 +48,71 @@
 			apiKey = localStorage.getItem('gemini-api-key') || '';
 			selectedModel = localStorage.getItem('gemini-model') || MODELS[0].id;
 			generatedImageUrl = null;
+			selectedReferenceImageUrl = null;
+			selectedGalleryImage = null;
 			errorMessage = null;
+			loadGalleryImages();
 			captureViewerScreenshot();
 		}
 	});
+
+	function getEditionGalleryKey() {
+		return edition.slug || edition.id || edition.title || 'imagine';
+	}
+
+	function openGalleryDb(): Promise<IDBDatabase> {
+		return new Promise((resolve, reject) => {
+			const request = indexedDB.open('pure3d-imagine-gallery', 1);
+
+			request.onupgradeneeded = () => {
+				const db = request.result;
+				if (!db.objectStoreNames.contains('images')) {
+					const store = db.createObjectStore('images', { keyPath: 'id' });
+					store.createIndex('editionKey', 'editionKey');
+				}
+			};
+
+			request.onsuccess = () => resolve(request.result);
+			request.onerror = () => reject(request.error);
+		});
+	}
+
+	async function loadGalleryImages() {
+		try {
+			const db = await openGalleryDb();
+			const transaction = db.transaction('images', 'readonly');
+			const index = transaction.objectStore('images').index('editionKey');
+			const request = index.getAll(getEditionGalleryKey());
+
+			request.onsuccess = () => {
+				galleryImages = request.result.sort((a, b) => b.createdAt - a.createdAt);
+			};
+		} catch {
+			galleryImages = [];
+		}
+	}
+
+	async function saveGalleryImage(url: string) {
+		try {
+			const image: GalleryImage = {
+				id: `${getEditionGalleryKey()}-${Date.now()}`,
+				editionKey: getEditionGalleryKey(),
+				url,
+				referenceUrl: capturedImageDataUrl,
+				createdAt: Date.now()
+			};
+
+			const db = await openGalleryDb();
+			const transaction = db.transaction('images', 'readwrite');
+			transaction.objectStore('images').put(image);
+
+			galleryImages = [image, ...galleryImages].slice(0, 24);
+			selectedGalleryImage = image;
+			selectedReferenceImageUrl = image.referenceUrl || null;
+		} catch {
+			toast.error('Generated image could not be saved locally');
+		}
+	}
 
 	function updateSlider(e: MouseEvent | TouchEvent) {
 		if (!comparisonContainer) return;
@@ -48,12 +122,10 @@
 	}
 
 	function startDrag(e: MouseEvent | TouchEvent) {
-		isDragging = true;
 		updateSlider(e);
 
 		const onMove = (ev: MouseEvent | TouchEvent) => updateSlider(ev);
 		const onUp = () => {
-			isDragging = false;
 			window.removeEventListener('mousemove', onMove);
 			window.removeEventListener('mouseup', onUp);
 			window.removeEventListener('touchmove', onMove);
@@ -113,7 +185,7 @@
 
 			// Check if the result has actual content (not all transparent/white)
 			const sample = ctx.getImageData(0, 0, copy.width, Math.min(copy.height, 10));
-			const hasContent = sample.data.some((v, i) => i % 4 !== 3 ? v !== 0 && v !== 255 : false);
+			const hasContent = sample.data.some((v, i) => (i % 4 !== 3 ? v !== 0 && v !== 255 : false));
 
 			if (hasContent) {
 				capturedImageDataUrl = copy.toDataURL('image/png');
@@ -129,7 +201,10 @@
 	 * Resize and compress an image data URL to fit within API limits.
 	 * Returns { data: base64string, mimeType: string }
 	 */
-	function resizeImage(dataUrl: string, maxDim = 1024): Promise<{ data: string; mimeType: string }> {
+	function resizeImage(
+		dataUrl: string,
+		maxDim = 1024
+	): Promise<{ data: string; mimeType: string }> {
 		return new Promise((resolve) => {
 			const img = new Image();
 			img.onload = () => {
@@ -231,6 +306,8 @@
 		isGenerating = true;
 		errorMessage = null;
 		generatedImageUrl = null;
+		selectedGalleryImage = null;
+		selectedReferenceImageUrl = null;
 		sliderPosition = 50;
 
 		const prompt = buildPrompt();
@@ -252,10 +329,7 @@
 					body: JSON.stringify({
 						contents: [
 							{
-								parts: [
-									{ text: prompt },
-									...(imagePart ? [imagePart] : [])
-								]
+								parts: [{ text: prompt }, ...(imagePart ? [imagePart] : [])]
 							}
 						],
 						generationConfig: {
@@ -292,33 +366,32 @@
 					'No image was generated. The model may not have produced an image for this prompt. Try adjusting your description.'
 				);
 			}
-		} catch (err: any) {
-			errorMessage = err.message || 'Failed to generate image';
+
+			await saveGalleryImage(generatedImageUrl);
+		} catch (err: unknown) {
+			errorMessage = err instanceof Error ? err.message : 'Failed to generate image';
 			toast.error('Image generation failed');
 		} finally {
 			isGenerating = false;
 		}
 	}
 
-	function downloadImage() {
-		if (!generatedImageUrl) return;
+	function downloadImage(url = generatedImageUrl) {
+		if (!url) return;
 		const slug = edition.slug || 'imagine';
-
-		// Download generated image
+		const ext = url.startsWith('data:image/jpeg') ? 'jpg' : 'png';
 		const a = document.createElement('a');
-		a.href = generatedImageUrl;
-		a.download = `${slug}-generated.png`;
+		a.href = url;
+		a.download = `${slug}-generated-${new Date().toISOString().slice(0, 10)}.${ext}`;
 		a.click();
+	}
 
-		// Download reference capture if available
-		if (capturedImageDataUrl) {
-			setTimeout(() => {
-				const b = document.createElement('a');
-				b.href = capturedImageDataUrl!;
-				b.download = `${slug}-reference.png`;
-				b.click();
-			}, 100);
-		}
+	function selectGalleryImage(image: GalleryImage) {
+		selectedGalleryImage = image;
+		generatedImageUrl = image.url;
+		selectedReferenceImageUrl = image.referenceUrl || null;
+		errorMessage = null;
+		sliderPosition = 50;
 	}
 
 	function handleClose() {
@@ -333,6 +406,30 @@
 		<div class="mb-4 flex items-center justify-between">
 			<h3 class="text-lg font-bold">Imagine — AI Image Generation</h3>
 			<div class="flex items-center gap-2">
+				{#if generatedImageUrl}
+					<button
+						type="button"
+						class="btn btn-circle btn-ghost btn-sm"
+						onclick={() => downloadImage()}
+						title="Download generated image"
+						aria-label="Download generated image"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke-width="2"
+							stroke="currentColor"
+							class="h-5 w-5"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
+							/>
+						</svg>
+					</button>
+				{/if}
 				<!-- Settings toggle -->
 				<button
 					type="button"
@@ -360,7 +457,13 @@
 						/>
 					</svg>
 				</button>
-				<button type="button" class="btn btn-circle btn-ghost btn-sm" onclick={handleClose}>
+				<button
+					type="button"
+					class="btn btn-circle btn-ghost btn-sm"
+					onclick={handleClose}
+					title="Close"
+					aria-label="Close"
+				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						fill="none"
@@ -391,37 +494,35 @@
 				<div class="flex gap-2">
 					<input
 						type="password"
-						class="input input-bordered flex-1 input-sm"
+						class="input-bordered input input-sm flex-1"
 						placeholder="Enter your Gemini API key..."
 						bind:value={apiKey}
 						onkeydown={(e) => e.key === 'Enter' && saveApiKey()}
 					/>
-					<button type="button" class="btn btn-primary btn-sm" onclick={saveApiKey}>Save</button>
+					<button type="button" class="btn btn-sm btn-primary" onclick={saveApiKey}>Save</button>
 					{#if apiKey}
-						<button type="button" class="btn btn-ghost btn-sm" onclick={clearApiKey}
-							>Clear</button
-						>
+						<button type="button" class="btn btn-ghost btn-sm" onclick={clearApiKey}>Clear</button>
 					{/if}
 				</div>
 				<!-- Model selector -->
 				<div class="mt-3">
 					<label for="model-select" class="mb-1 block text-xs font-semibold">Model</label>
-					<select
+					<FloatingSelect
 						id="model-select"
-						class="select select-bordered w-full select-sm"
-						bind:value={selectedModel}
-						onchange={() => localStorage.setItem('gemini-model', selectedModel)}
-					>
-						{#each MODELS as model (model.id)}
-							<option value={model.id}>{model.label}</option>
-						{/each}
-					</select>
+						value={selectedModel}
+						options={MODEL_OPTIONS}
+						class="w-full"
+						onchange={(model) => {
+							selectedModel = model;
+							localStorage.setItem('gemini-model', selectedModel);
+						}}
+					/>
 				</div>
 			</div>
 		{/if}
 
 		<!-- Comparison slider (when generated) or reference preview -->
-		{#if generatedImageUrl && capturedImageDataUrl}
+		{#if generatedImageUrl && comparisonReferenceImageUrl}
 			<div class="mb-4">
 				<div class="mb-1 flex items-center justify-between">
 					<span class="text-xs font-semibold text-base-content/60">3D Model</span>
@@ -430,7 +531,7 @@
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div
 					id="comparison-container"
-					class="relative cursor-col-resize select-none overflow-hidden rounded-lg border border-base-300 shadow-lg"
+					class="relative cursor-col-resize overflow-hidden rounded-lg border border-base-300 shadow-lg select-none"
 					bind:this={comparisonContainer}
 					onmousedown={startDrag}
 					ontouchstart={startDrag}
@@ -448,7 +549,7 @@
 						style="width: {sliderPosition}%"
 					>
 						<img
-							src={capturedImageDataUrl}
+							src={comparisonReferenceImageUrl}
 							alt="Current 3D viewer capture"
 							class="block h-full object-cover"
 							style="width: {comparisonContainer?.offsetWidth ?? 600}px; max-width: none;"
@@ -469,7 +570,14 @@
 								fill="currentColor"
 								class="h-4 w-4 text-base-content/60"
 							>
-								<path d="M8 5l-5 7 5 7M16 5l5 7-5 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+								<path
+									d="M8 5l-5 7 5 7M16 5l5 7-5 7"
+									stroke="currentColor"
+									stroke-width="2"
+									fill="none"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/>
 							</svg>
 						</div>
 					</div>
@@ -489,14 +597,16 @@
 			<div class="mb-4">
 				<p class="mb-1 text-xs font-semibold text-base-content/60">Current view (reference)</p>
 				{#if capturedImageDataUrl}
-					<img
-						src={capturedImageDataUrl}
-						alt="Current 3D viewer capture"
-						class="h-32 w-auto rounded-lg border border-base-300 object-contain"
-					/>
+					<div class="overflow-hidden rounded-lg border border-base-300 bg-base-200 shadow-lg">
+						<img
+							src={capturedImageDataUrl}
+							alt="Current 3D viewer capture"
+							class="max-h-[55vh] w-full object-contain"
+						/>
+					</div>
 				{:else}
 					<div
-						class="flex h-32 w-48 items-center justify-center rounded-lg border border-base-300 bg-base-200 text-xs text-base-content/40"
+						class="flex min-h-96 w-full items-center justify-center rounded-lg border border-base-300 bg-base-200 text-xs text-base-content/40"
 					>
 						No preview available
 					</div>
@@ -504,31 +614,89 @@
 			</div>
 		{/if}
 
+		{#if generatedImageUrl && selectedGalleryImage && !selectedGalleryImage.referenceUrl}
+			<div class="mb-4 alert py-2 text-xs alert-info">
+				<span>
+					This older gallery image was saved before reference pairing was available, so it uses the
+					current 3D reference. Newly generated images will switch both sides together.
+				</span>
+			</div>
+		{/if}
+
+		{#if galleryImages.length}
+			<div class="mb-4 rounded-lg bg-base-200 p-2.5">
+				<div class="mb-1.5 flex items-center justify-between gap-3">
+					<p class="text-xs font-semibold text-base-content/60">Generated gallery</p>
+					<p class="text-xs text-base-content/40">Stored locally in this browser</p>
+				</div>
+				<div class="flex gap-1.5 overflow-x-auto pb-1">
+					{#each galleryImages as image (image.id)}
+						<div class="group relative shrink-0">
+							<button
+								type="button"
+								class="block overflow-hidden rounded-md border bg-base-100 transition hover:border-primary"
+								class:border-primary={generatedImageUrl === image.url}
+								class:border-base-300={generatedImageUrl !== image.url}
+								onclick={() => selectGalleryImage(image)}
+								title="Show generated image"
+							>
+								<img
+									src={image.url}
+									alt="Generated thumbnail for {edition.title}"
+									class="h-14 w-20 object-cover"
+								/>
+							</button>
+							<button
+								type="button"
+								class="btn absolute right-1 bottom-1 btn-circle border-0 bg-base-100/90 opacity-0 shadow btn-xs group-hover:opacity-100 focus:opacity-100"
+								onclick={() => downloadImage(image.url)}
+								title="Download this image"
+								aria-label="Download this image"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke-width="2"
+									stroke="currentColor"
+									class="h-3.5 w-3.5"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
+									/>
+								</svg>
+							</button>
+						</div>
+					{/each}
+				</div>
+			</div>
+		{/if}
+
 		<!-- Metadata summary -->
 		<div class="mb-4 rounded-lg bg-base-200 p-3">
-			<p class="mb-1 text-xs font-semibold text-base-content/60">
-				Context from edition metadata
-			</p>
+			<p class="mb-1 text-xs font-semibold text-base-content/60">Context from edition metadata</p>
 			<div class="flex flex-wrap gap-1">
 				<span class="badge badge-sm badge-primary">{edition.title}</span>
 				{#if edition.dcCoveragePeriod?.length}
-					{#each edition.dcCoveragePeriod as period}
+					{#each edition.dcCoveragePeriod as period (period)}
 						<span class="badge badge-sm badge-secondary">{period}</span>
 					{/each}
 				{/if}
 				{#if edition.dcCoveragePlace}
 					<span class="badge badge-sm badge-accent">{edition.dcCoveragePlace}</span>
 				{/if}
-				{#each edition.tags as tag}
+				{#each edition.tags as tag (tag)}
 					<span class="badge badge-ghost badge-sm">{tag}</span>
 				{/each}
 				{#if edition.dcSubject?.length}
-					{#each edition.dcSubject.slice(0, 3) as subject}
+					{#each edition.dcSubject.slice(0, 3) as subject (subject)}
 						<span class="badge badge-ghost badge-sm">{subject}</span>
 					{/each}
 				{/if}
 				{#if edition.dcKeyword?.length}
-					{#each edition.dcKeyword.slice(0, 3) as kw}
+					{#each edition.dcKeyword.slice(0, 3) as kw (kw)}
 						<span class="badge badge-outline badge-sm">{kw}</span>
 					{/each}
 				{/if}
@@ -545,7 +713,7 @@
 			>
 			<textarea
 				id="additional-prompt"
-				class="textarea textarea-bordered w-full"
+				class="textarea-bordered textarea w-full"
 				rows="3"
 				placeholder="Add details to guide the image generation... e.g., 'Show it in a museum setting with dramatic lighting' or 'Recreate it being used in ancient times'"
 				bind:value={additionalPrompt}
@@ -554,7 +722,7 @@
 
 		<!-- Error message -->
 		{#if errorMessage}
-			<div class="alert alert-error mb-4">
+			<div class="mb-4 alert alert-error">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
 					class="h-5 w-5 shrink-0"
@@ -576,7 +744,7 @@
 		<!-- Loading state -->
 		{#if isGenerating}
 			<div class="mb-4 flex flex-col items-center gap-3 py-8">
-				<span class="loading loading-spinner loading-lg text-primary"></span>
+				<span class="loading loading-lg loading-spinner text-primary"></span>
 				<p class="text-sm text-base-content/60">
 					Generating a realistic visualization of <strong>{edition.title}</strong>...
 				</p>
@@ -587,7 +755,7 @@
 		<!-- Actions -->
 		<div class="modal-action">
 			{#if generatedImageUrl}
-				<button type="button" class="btn btn-outline btn-sm" onclick={downloadImage}>
+				<button type="button" class="btn btn-outline btn-sm" onclick={() => downloadImage()}>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						fill="none"
@@ -604,7 +772,7 @@
 					</svg>
 					Download
 				</button>
-				<button type="button" class="btn btn-primary btn-sm" onclick={generateImage}>
+				<button type="button" class="btn btn-sm btn-primary" onclick={generateImage}>
 					Regenerate
 				</button>
 			{:else}
@@ -616,7 +784,7 @@
 					disabled={isGenerating}
 				>
 					{#if isGenerating}
-						<span class="loading loading-spinner loading-sm"></span>
+						<span class="loading loading-sm loading-spinner"></span>
 						Generating...
 					{:else}
 						<svg
@@ -642,6 +810,6 @@
 
 	<!-- Backdrop -->
 	<form method="dialog" class="modal-backdrop">
-		<button type="button" onclick={handleClose}>close</button>
+		<button type="button" onclick={handleClose} aria-label="Close">close</button>
 	</form>
 </dialog>

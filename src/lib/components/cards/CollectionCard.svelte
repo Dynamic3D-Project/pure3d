@@ -37,7 +37,8 @@
 <a
 	href={`${base}/collections/${collection.slug}`}
 	data-sveltekit-preload-data="hover"
-	class="group card bg-base-100 shadow-md hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 overflow-hidden"
+	class="group ds-card overflow-hidden"
+	style="background: var(--ds-paper);"
 >
 	<figure class="relative overflow-hidden bg-base-200 aspect-[4/3]">
 		<!-- Placeholder: show on error -->
@@ -80,7 +81,12 @@
 		</h3>
 		<p class="text-sm text-base-content/70 line-clamp-2">{plainDescription}</p>
 		<div class="card-actions justify-end mt-2">
-			<div class="badge badge-outline text-xs">{collection.editionCount || collection.editionIds?.length || 0} editions</div>
+			<div
+				class="badge badge-outline text-xs"
+				style="border-color: var(--ds-vermillion); color: var(--ds-vermillion);"
+			>
+				{collection.editionCount || collection.editionIds?.length || 0} editions
+			</div>
 		</div>
 	</div>
 </a>

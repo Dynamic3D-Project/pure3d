@@ -4,19 +4,9 @@
 	import { debounce } from '$lib/utils/debounce';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import {
-		computePosition,
-		flip,
-		shift,
-		offset,
-		size,
-		autoUpdate
-	} from '@floating-ui/dom';
+	import { computePosition, flip, shift, offset, size, autoUpdate } from '@floating-ui/dom';
 
-	import {
-		getEditionThumbnailUrl,
-		getCollectionThumbnailUrl
-	} from '$lib/utils/asset-urls';
+	import { getEditionThumbnailUrl, getCollectionThumbnailUrl } from '$lib/utils/asset-urls';
 
 	type SearchResultType = 'edition' | 'collection';
 
@@ -38,7 +28,7 @@
 	let containerElement: HTMLDivElement | undefined = $state();
 	let searchInputElement: HTMLInputElement | undefined = $state();
 	let dropdownElement: HTMLDivElement | undefined = $state();
-	let resultsListElement: HTMLUListElement | undefined = $state();
+	let resultsListElement: HTMLElement | undefined = $state();
 	let cleanupAutoUpdate: (() => void) | undefined;
 
 	async function performSearch(query: string) {
@@ -116,9 +106,7 @@
 				const collectionPubNum = edition.expand?.collection?.pubNum || 0;
 				const editionPubNum = edition.pubNum || 1;
 				const thumbnail =
-					collectionPubNum > 0
-						? getEditionThumbnailUrl(collectionPubNum, editionPubNum)
-						: '';
+					collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, editionPubNum) : '';
 
 				return {
 					type: 'edition' as const,
@@ -133,10 +121,7 @@
 			});
 
 			const collectionResults: SearchResult[] = collections.items.map((collection: any) => {
-				const thumbnail =
-					collection.pubNum > 0
-						? getCollectionThumbnailUrl(collection.pubNum)
-						: '';
+				const thumbnail = collection.pubNum > 0 ? getCollectionThumbnailUrl(collection.pubNum) : '';
 
 				return {
 					type: 'collection' as const,
@@ -236,7 +221,18 @@
 
 		// Debug logging
 		if (['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) {
-			console.log('Key:', event.key, 'focused:', isSearchFocused, 'showResults:', showResults, 'results:', results.length, 'selectedIndex:', selectedIndex);
+			console.log(
+				'Key:',
+				event.key,
+				'focused:',
+				isSearchFocused,
+				'showResults:',
+				showResults,
+				'results:',
+				results.length,
+				'selectedIndex:',
+				selectedIndex
+			);
 		}
 
 		if (!isSearchFocused && !showResults) {
@@ -336,7 +332,10 @@
 
 	// Group results by type for display
 	let groupedResults = $derived.by(() => {
-		const groups: { type: SearchResultType; items: Array<SearchResult & { globalIndex: number }> }[] = [];
+		const groups: {
+			type: SearchResultType;
+			items: Array<SearchResult & { globalIndex: number }>;
+		}[] = [];
 		let currentType: SearchResultType | null = null;
 		let globalIndex = 0;
 
@@ -356,7 +355,7 @@
 <svelte:window onclick={handleClickOutside} />
 
 <div class="search-container relative" bind:this={containerElement}>
-	<label class="input input-bordered flex items-center gap-2">
+	<label class="input-bordered input flex items-center gap-2">
 		<svg class="h-5 w-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<path
 				stroke-linecap="round"
@@ -370,7 +369,7 @@
 			bind:this={searchInputElement}
 			bind:value={searchQuery}
 			placeholder="Search editions, collections..."
-			class="grow border-none outline-none focus:outline-none focus:ring-0"
+			class="grow border-none outline-none focus:ring-0 focus:outline-none"
 			onfocus={() => {
 				if (searchQuery.trim() && results.length > 0) showResults = true;
 			}}
@@ -380,21 +379,21 @@
 			aria-autocomplete="list"
 			aria-controls="search-results"
 		/>
-		<span class="loading loading-spinner loading-xs" class:invisible={!searching}></span>
+		<span class="loading loading-xs loading-spinner" class:invisible={!searching}></span>
 	</label>
 
 	{#if showResults && searchQuery.trim()}
 		<div
 			bind:this={dropdownElement}
 			id="search-results"
-			class="card card-compact fixed z-50 overflow-hidden bg-base-100 shadow-xl"
+			class="card-compact card fixed z-50 overflow-hidden bg-base-100 shadow-xl"
 			style="min-width: 300px; visibility: hidden;"
 			role="listbox"
 		>
 			<div class="card-body p-0">
 				{#if searching && results.length === 0}
 					<div class="flex items-center justify-center gap-2 p-4 text-sm opacity-70">
-						<span class="loading loading-spinner loading-sm"></span>
+						<span class="loading loading-sm loading-spinner"></span>
 						<span>Searching...</span>
 					</div>
 				{:else if results.length === 0}
@@ -404,7 +403,9 @@
 				{:else}
 					<div class="max-h-80 overflow-y-auto" bind:this={resultsListElement}>
 						{#each groupedResults as group}
-							<div class="px-3 py-1.5 text-xs font-semibold text-base-content/60 uppercase tracking-wide flex items-center gap-1.5 sticky top-0 bg-base-100 z-10 border-b border-base-200">
+							<div
+								class="sticky top-0 z-10 flex items-center gap-1.5 border-b border-base-200 bg-base-100 px-3 py-1.5 text-xs font-semibold tracking-wide text-base-content/60 uppercase"
+							>
 								<svg
 									class="h-3 w-3 {getTypeColor(group.type)}"
 									fill="none"
@@ -425,9 +426,8 @@
 								<button
 									type="button"
 									data-result-index={item.globalIndex}
-									class="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-base-200 transition-colors"
-									class:bg-primary={isSelected}
-									class:text-primary-content={isSelected}
+									class="flex w-full items-center gap-3 px-3 py-2 text-left text-base-content transition-colors hover:bg-base-200 hover:text-base-content"
+									class:bg-base-200={isSelected}
 									onclick={() => navigateToResult(item)}
 									onmouseenter={() => handleResultMouseEnter(item.globalIndex)}
 									role="option"
@@ -437,12 +437,14 @@
 										<img
 											src={item.thumbnail}
 											alt=""
-											class="w-10 h-10 rounded object-cover shrink-0"
+											class="h-10 w-10 shrink-0 rounded object-cover"
 										/>
 									{:else}
-										<div class="w-10 h-10 rounded bg-base-300 flex items-center justify-center shrink-0">
+										<div
+											class="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-base-300"
+										>
 											<svg
-												class="w-5 h-5 opacity-50 {isSelected ? 'text-primary-content' : getTypeColor(item.type)}"
+												class="h-5 w-5 opacity-50 {getTypeColor(item.type)}"
 												fill="none"
 												stroke="currentColor"
 												viewBox="0 0 24 24"
@@ -457,9 +459,11 @@
 										</div>
 									{/if}
 									<div class="min-w-0 flex-1 overflow-hidden">
-										<div class="font-medium leading-tight truncate">{item.title}</div>
+										<div class="truncate leading-tight font-medium">{item.title}</div>
 										{#if item.subtitle}
-											<div class="text-xs opacity-60 leading-tight mt-0.5 truncate">{item.subtitle}</div>
+											<div class="mt-0.5 truncate text-xs leading-tight opacity-60">
+												{item.subtitle}
+											</div>
 										{/if}
 									</div>
 								</button>
@@ -469,8 +473,8 @@
 					<div class="border-t border-base-200 px-3 py-2 text-xs opacity-50">
 						<kbd class="kbd kbd-xs">↑</kbd>
 						<kbd class="kbd kbd-xs">↓</kbd> navigate
-						<kbd class="kbd kbd-xs ml-2">Enter</kbd> select
-						<kbd class="kbd kbd-xs ml-2">Esc</kbd> close
+						<kbd class="ml-2 kbd kbd-xs">Enter</kbd> select
+						<kbd class="ml-2 kbd kbd-xs">Esc</kbd> close
 					</div>
 				{/if}
 			</div>

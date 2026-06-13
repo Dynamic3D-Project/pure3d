@@ -49,39 +49,17 @@
 
 	onMount(() => {
 		if (!authStore.isAuthenticated) {
-			goto(resolveRoute('/', {}));
+			goto(resolveRoute('/'));
 			return;
 		}
 		if (authStore.globalRole !== GlobalRole.Admin) {
-			goto(resolveRoute('/', {}));
+			goto(resolveRoute('/'));
 			return;
 		}
 	});
 </script>
 
 <div id="admin-layout" class="flex min-h-[calc(100vh-80px)]">
-	<!-- Mobile sidebar toggle -->
-	<button
-		class="btn fixed bottom-4 left-4 z-50 btn-ghost lg:hidden"
-		onclick={() => (sidebarOpen = !sidebarOpen)}
-		aria-label="Toggle sidebar"
-	>
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			fill="none"
-			viewBox="0 0 24 24"
-			stroke-width="1.5"
-			stroke="currentColor"
-			class="size-6"
-		>
-			<path
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
-			/>
-		</svg>
-	</button>
-
 	<!-- Sidebar -->
 	<aside
 		class="fixed inset-y-0 left-0 z-40 w-64 transform border-r border-base-300 bg-base-200 pt-20 transition-transform duration-200 lg:sticky lg:top-[60px] lg:h-[calc(100vh-60px)] lg:translate-x-0 lg:pt-0"
@@ -129,6 +107,27 @@
 
 	<!-- Main content -->
 	<main class="flex-1 p-4 lg:p-8">
+		<button
+			class="btn btn-outline mb-4 gap-2 lg:hidden"
+			onclick={() => (sidebarOpen = !sidebarOpen)}
+			aria-label="Toggle admin sidebar"
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke-width="1.5"
+				stroke="currentColor"
+				class="size-5"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+				/>
+			</svg>
+			Admin menu
+		</button>
 		{@render children?.()}
 	</main>
 </div>

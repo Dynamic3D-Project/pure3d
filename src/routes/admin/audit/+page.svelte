@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { pb } from '$lib/database/client';
+	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
 	import toast from 'svelte-french-toast';
 
 	interface AuditEntry {
@@ -15,10 +16,24 @@
 
 	let entries = $state<AuditEntry[]>([]);
 	let isLoading = $state(true);
+	let searchQuery = $state('');
 	let filterAction = $state('');
+	let filterTargetType = $state('');
 	let currentPage = $state(1);
 	let totalPages = $state(1);
 	const perPage = 50;
+	let filteredEntries = $derived(
+		entries.filter((entry) => {
+			const query = searchQuery.toLowerCase();
+			return (
+				!query ||
+				entry.performedBy.toLowerCase().includes(query) ||
+				entry.targetId.toLowerCase().includes(query) ||
+				formatDetails(entry.details).toLowerCase().includes(query)
+			);
+		})
+	);
+	let hasActiveFilters = $derived(Boolean(searchQuery || filterAction || filterTargetType));
 
 	const actionLabels: Record<string, string> = {
 		role_change: 'Role Change',
@@ -53,6 +68,18 @@
 		'doc_deleted'
 	];
 
+	const filterActionOptions = [
+		{ value: '', label: 'All actions' },
+		...actionOptions.map((action) => ({ value: action, label: actionLabels[action] }))
+	];
+	const targetTypeOptions = [
+		{ value: '', label: 'All targets' },
+		{ value: 'collection', label: 'Collections' },
+		{ value: 'edition', label: 'Editions' },
+		{ value: 'documentation', label: 'Documentation' },
+		{ value: 'user', label: 'Users' }
+	];
+
 	onMount(() => {
 		loadEntries();
 	});
@@ -60,10 +87,12 @@
 	async function loadEntries() {
 		isLoading = true;
 		try {
-			const filter = filterAction ? `action = "${filterAction}"` : '';
+			const filters = [];
+			if (filterAction) filters.push(`action = "${filterAction}"`);
+			if (filterTargetType) filters.push(`targetType = "${filterTargetType}"`);
 			const result = await pb.collection('auditLog').getList(currentPage, perPage, {
 				sort: '-created',
-				filter
+				filter: filters.join(' && ')
 			});
 			entries = result.items.map((r) => ({
 				id: r.id,
@@ -114,23 +143,63 @@
 		<p class="mt-2 text-base-content/60">Track all administrative actions.</p>
 	</div>
 
-	<!-- Filter -->
-	<div class="mb-6 flex items-end gap-3">
-		<div class="form-control">
-			<label class="label" for="filter-action">
-				<span class="label-text">Filter by action</span>
+	<div class="mb-6 rounded-box border border-base-300 bg-base-100 p-4 shadow-sm">
+		<div class="mb-3 flex items-center justify-between gap-3">
+			<div>
+				<h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/70">Filters</h2>
+				<p class="text-xs text-base-content/50">Inspect activity by action, target, or performer.</p>
+			</div>
+			{#if hasActiveFilters}
+				<button
+					type="button"
+					class="btn btn-ghost btn-xs"
+					onclick={() => {
+						searchQuery = '';
+						filterAction = '';
+						filterTargetType = '';
+						applyFilter();
+					}}
+				>
+					Clear
+				</button>
+			{/if}
+		</div>
+		<div class="grid gap-3 md:grid-cols-[minmax(16rem,1fr)_13rem_13rem]">
+			<label class="form-control">
+				<span class="label pb-1 pt-0"><span class="label-text text-xs">Search</span></span>
+				<input
+					type="text"
+					placeholder="Performer, target ID, or details..."
+					class="input input-bordered w-full bg-base-200/40"
+					bind:value={searchQuery}
+				/>
 			</label>
-			<select
-				id="filter-action"
-				class="select-bordered select w-48 select-sm"
-				bind:value={filterAction}
-				onchange={applyFilter}
-			>
-				<option value="">All actions</option>
-				{#each actionOptions as action (action)}
-					<option value={action}>{actionLabels[action]}</option>
-				{/each}
-			</select>
+			<label class="form-control">
+				<span class="label pb-1 pt-0"><span class="label-text text-xs">Action</span></span>
+				<FloatingSelect
+					id="filter-action"
+					value={filterAction}
+					options={filterActionOptions}
+					class="w-full bg-base-200/40"
+					onchange={(action) => {
+						filterAction = action;
+						applyFilter();
+					}}
+				/>
+			</label>
+			<label class="form-control">
+				<span class="label pb-1 pt-0"><span class="label-text text-xs">Target</span></span>
+				<FloatingSelect
+					id="filter-target"
+					value={filterTargetType}
+					options={targetTypeOptions}
+					class="w-full bg-base-200/40"
+					onchange={(targetType) => {
+						filterTargetType = targetType;
+						applyFilter();
+					}}
+				/>
+			</label>
 		</div>
 	</div>
 
@@ -140,7 +209,9 @@
 		</div>
 	{:else}
 		<!-- Desktop table -->
-		<div class="hidden overflow-x-auto rounded-lg border border-base-300 bg-base-100 shadow-md md:block">
+		<div
+			class="hidden overflow-x-auto rounded-lg border border-base-300 bg-base-100 shadow-md md:block"
+		>
 			<table class="table table-sm">
 				<thead>
 					<tr>
@@ -152,7 +223,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each entries as entry (entry.id)}
+					{#each filteredEntries as entry (entry.id)}
 						<tr>
 							<td class="text-sm whitespace-nowrap">{formatDate(entry.created)}</td>
 							<td>
@@ -180,7 +251,7 @@
 
 		<!-- Mobile cards -->
 		<div class="flex flex-col gap-3 md:hidden">
-			{#each entries as entry (entry.id)}
+			{#each filteredEntries as entry (entry.id)}
 				<div class="rounded-lg border border-base-300 bg-base-100 p-4 shadow-sm">
 					<div class="mb-2 flex items-center justify-between">
 						<span class="badge badge-sm {actionBadgeClass[entry.action] || 'badge-ghost'}">
@@ -190,7 +261,9 @@
 					</div>
 					<div class="text-sm">
 						<span class="font-medium">{entry.targetType}</span>
-						<span class="font-mono text-xs text-base-content/50">{entry.targetId.slice(0, 8)}...</span>
+						<span class="font-mono text-xs text-base-content/50"
+							>{entry.targetId.slice(0, 8)}...</span
+						>
 					</div>
 					<div class="mt-1 text-sm text-base-content/70">{entry.performedBy}</div>
 					{#if formatDetails(entry.details) !== '—'}
@@ -200,10 +273,10 @@
 			{/each}
 		</div>
 
-		{#if entries.length === 0}
+		{#if filteredEntries.length === 0}
 			<div class="py-8 text-center text-base-content/60">
-				{#if filterAction}
-					No entries for "{actionLabels[filterAction]}".
+				{#if hasActiveFilters}
+					No entries match the selected filters.
 				{:else}
 					No audit entries yet.
 				{/if}

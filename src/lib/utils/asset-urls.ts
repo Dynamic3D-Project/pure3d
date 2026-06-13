@@ -8,6 +8,7 @@
 import type { RecordModel } from 'pocketbase';
 import { PUBLIC_ASSET_BASE_URL } from '$env/static/public';
 import { base } from '$app/paths';
+import { dev } from '$app/environment';
 import { pb } from '$lib/database/client';
 
 const DEFAULT_ASSET_BASE_URL = 'https://pure3d-assets.ctwhome.com';
@@ -17,7 +18,14 @@ const DEFAULT_ASSET_BASE_URL = 'https://pure3d-assets.ctwhome.com';
  * Defaults to R2 CDN. Set PUBLIC_ASSET_BASE_URL="" to use local files.
  */
 export function getAssetBaseUrl(): string {
-	return PUBLIC_ASSET_BASE_URL || DEFAULT_ASSET_BASE_URL;
+	const configuredBaseUrl = PUBLIC_ASSET_BASE_URL || DEFAULT_ASSET_BASE_URL;
+	const isLocalAssetHost = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?\//.test(
+		configuredBaseUrl
+	);
+	if (dev && /^https?:\/\//.test(configuredBaseUrl) && !isLocalAssetHost) {
+		return `${base}/asset-proxy`;
+	}
+	return configuredBaseUrl;
 }
 
 /**

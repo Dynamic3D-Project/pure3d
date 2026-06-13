@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import FloatingDropdown from '$lib/components/ui/FloatingDropdown.svelte';
 
 	interface User {
 		id: string;
@@ -22,7 +22,6 @@
 	let inputEl: HTMLInputElement | undefined = $state();
 	let dropdownEl: HTMLDivElement | undefined = $state();
 	let containerEl: HTMLDivElement | undefined = $state();
-	let dropdownMaxHeight = $state(240);
 
 	let filtered = $derived(
 		query
@@ -44,7 +43,6 @@
 	function open() {
 		isOpen = true;
 		highlightedIndex = -1;
-		recalcMaxHeight();
 	}
 
 	function close() {
@@ -71,7 +69,6 @@
 	function handleInput() {
 		if (!isOpen) open();
 		highlightedIndex = 0;
-		recalcMaxHeight();
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -115,37 +112,9 @@
 		const item = dropdownEl.querySelector(`[data-index="${highlightedIndex}"]`);
 		item?.scrollIntoView({ block: 'nearest' });
 	}
-
-	function recalcMaxHeight() {
-		if (!containerEl) return;
-		const rect = containerEl.getBoundingClientRect();
-		const spaceBelow = window.innerHeight - rect.bottom - 12;
-		dropdownMaxHeight = Math.max(Math.min(spaceBelow, 240), 80);
-	}
-
-	function handleClickOutside(e: MouseEvent) {
-		if (containerEl && !containerEl.contains(e.target as Node)) {
-			close();
-		}
-	}
-
-	function handleScrollOrResize() {
-		if (isOpen) recalcMaxHeight();
-	}
-
-	onMount(() => {
-		document.addEventListener('mousedown', handleClickOutside);
-		window.addEventListener('scroll', handleScrollOrResize, true);
-		window.addEventListener('resize', handleScrollOrResize);
-		return () => {
-			document.removeEventListener('mousedown', handleClickOutside);
-			window.removeEventListener('scroll', handleScrollOrResize, true);
-			window.removeEventListener('resize', handleScrollOrResize);
-		};
-	});
 </script>
 
-<div id="user-search-select" class="relative" bind:this={containerEl}>
+<div id="user-search-select" bind:this={containerEl}>
 	{#if selectedUser}
 		<div class="input-bordered input input-sm flex w-64 items-center gap-2">
 			<span class="flex-1 truncate text-sm">{displayName(selectedUser)}</span>
@@ -182,41 +151,40 @@
 		/>
 	{/if}
 
-	{#if isOpen}
-		<div
-			bind:this={dropdownEl}
-			class="absolute top-full left-0 z-50 mt-1 w-full overflow-x-hidden overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-lg"
-			style="max-height: {dropdownMaxHeight}px"
-			role="listbox"
-		>
-			{#if filtered.length === 0}
-				<div class="px-3 py-2 text-sm text-base-content/50">No users found</div>
-			{:else}
-				{#each filtered as user, i (user.id)}
-					<button
-						type="button"
-						class="flex w-full min-w-0 cursor-pointer flex-col px-3 py-2 text-left text-sm hover:bg-base-200"
-						class:bg-primary={highlightedIndex === i}
-						class:text-primary-content={highlightedIndex === i}
-						data-index={i}
-						role="option"
-						aria-selected={highlightedIndex === i}
-						onmouseenter={() => (highlightedIndex = i)}
-						onclick={() => select(user)}
-					>
-						<span class="truncate font-medium">{user.nickname || user.email}</span>
-						{#if user.nickname && user.email}
-							<span
-								class="truncate text-xs {highlightedIndex === i
-									? 'opacity-70'
-									: 'text-base-content/50'}"
-							>
-								{user.email}
-							</span>
-						{/if}
-					</button>
-				{/each}
-			{/if}
-		</div>
-	{/if}
+	<FloatingDropdown
+		open={isOpen}
+		referenceElement={containerEl}
+		bind:element={dropdownEl}
+		role="listbox"
+		maxHeight={240}
+		onclose={close}
+	>
+		{#if filtered.length === 0}
+			<div class="px-3 py-2 text-sm text-base-content/50">No users found</div>
+		{:else}
+			{#each filtered as user, i (user.id)}
+				<button
+					type="button"
+					class="flex w-full min-w-0 cursor-pointer flex-col px-3 py-2 text-left text-sm text-base-content hover:bg-base-200 hover:text-base-content"
+					class:bg-base-200={highlightedIndex === i}
+					data-index={i}
+					role="option"
+					aria-selected={highlightedIndex === i}
+					onmouseenter={() => (highlightedIndex = i)}
+					onclick={() => select(user)}
+				>
+					<span class="truncate font-medium">{user.nickname || user.email}</span>
+					{#if user.nickname && user.email}
+						<span
+							class="truncate text-xs {highlightedIndex === i
+								? 'opacity-70'
+								: 'text-base-content/50'}"
+						>
+							{user.email}
+						</span>
+					{/if}
+				</button>
+			{/each}
+		{/if}
+	</FloatingDropdown>
 </div>

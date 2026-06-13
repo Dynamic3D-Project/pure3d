@@ -44,8 +44,8 @@ describe('rewriteSceneJson', () => {
 			'note.html': 'https://a/note_1.html'
 		};
 		const result = rewriteSceneJson(scene, fileMap) as typeof scene;
-		expect(result.scenes[0].nodes[0].model.uri).toBe('https://a/model_1.glb');
-		expect(result.scenes[0].nodes[1].annotations[0].uri).toBe('https://a/note_1.html');
+		expect(result.scenes![0].nodes[0].model!.uri).toBe('https://a/model_1.glb');
+		expect(result.scenes![0].nodes[1].annotations![0].uri).toBe('https://a/note_1.html');
 	});
 
 	test('does not mutate the input object', () => {

@@ -104,9 +104,9 @@
 	class="space-y-4"
 >
 	<div>
-		<label class="label">
+		<span class="label">
 			<span class="label-text font-semibold">Verdict</span>
-		</label>
+		</span>
 		<div class="grid gap-2 sm:grid-cols-{availableDecisions.length}">
 			{#each availableDecisions as d (d)}
 				<button

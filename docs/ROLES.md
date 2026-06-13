@@ -66,7 +66,6 @@ Actions marked with the role that can perform them. Global roles (A=Admin, EB=Ed
 |--------|:-:|:--:|:-:|
 | View admin panel | x | | |
 | Manage user global roles | x | | |
-| Manage platform settings | x | | |
 | View all users | x | | |
 
 ### Content Browsing
@@ -80,59 +79,44 @@ Actions marked with the role that can perform them. Global roles (A=Admin, EB=Ed
 
 ## Editorial Workflow
 
-Editions follow a review workflow with defined status transitions:
-
-```
-                    ┌──────────┐
-                    │  Draft   │
-                    └────┬─────┘
-                         │ submit
-                         ▼
-                    ┌──────────┐
-                    │Submitted │
-                    └────┬─────┘
-                         │ begin review
-                         ▼
-                    ┌──────────┐
-              ┌─────│In Review │─────┐
-              │     └──────────┘     │
-              │ approve              │ reject
-              ▼                      ▼
-        ┌──────────┐          ┌──────────┐
-        │ Approved │          │ Rejected │
-        └────┬─────┘          └────┬─────┘
-             │ publish              │ revise (→ Draft)
-             ▼                      │
-        ┌──────────┐               │
-        │Published │               │
-        └──────────┘               │
-                                    ▼
-                              ┌──────────┐
-                              │  Draft   │
-                              └──────────┘
-```
+Editions follow a multi-stage review workflow with defined status transitions.
 
 ### Status Definitions
 
 | Status | Description |
 |--------|-------------|
 | `draft` | Edition is being worked on. Only visible to assigned users. |
-| `submitted` | Author has submitted the edition for peer review. |
-| `in_review` | Editorial board / reviewers are actively reviewing. |
-| `approved` | Review passed. Ready to be published by collection owner or admin. |
-| `rejected` | Review failed. Author must revise and resubmit. Returns to draft. |
+| `concept_submitted` | Author has submitted the concept for review. |
+| `editorial_review` | Editorial board is reviewing the concept. |
+| `concept_accepted` | Concept approved. Ready for alpha stage. |
+| `concept_rejected` | Concept rejected. Author must revise and resubmit. |
+| `alpha_review` | Reviewers are evaluating the alpha version. |
+| `alpha_revisions` | Revisions requested during alpha review. |
+| `alpha_accepted` | Alpha accepted. Ready for final review. |
+| `alpha_rejected` | Alpha rejected. Returns to draft. |
+| `final_review` | Final review before publication. |
+| `final_revisions` | Revisions requested during final review. |
 | `published` | Edition is publicly visible to all users. |
 
 ### Valid Status Transitions
 
 | From | To | Who Can Trigger |
 |------|----|-----------------|
-| `draft` | `submitted` | Author, Collection Owner, Admin |
-| `submitted` | `in_review` | Editorial Board, Reviewer, Admin |
-| `in_review` | `approved` | Editorial Board, Reviewer, Admin |
-| `in_review` | `rejected` | Editorial Board, Reviewer, Admin |
-| `approved` | `published` | Collection Owner, Admin |
-| `rejected` | `draft` | Author, Collection Owner, Admin |
+| `draft` | `concept_submitted` | Author, Collection Owner, Admin |
+| `concept_submitted` | `editorial_review` | Editorial Board, Reviewer, Admin |
+| `editorial_review` | `concept_accepted` | Editorial Board, Reviewer, Admin |
+| `editorial_review` | `concept_rejected` | Editorial Board, Reviewer, Admin |
+| `concept_accepted` | `alpha_review` | Admin |
+| `concept_rejected` | `draft` | Author, Collection Owner, Admin |
+| `alpha_review` | `alpha_accepted` | Editorial Board, Reviewer, Admin |
+| `alpha_review` | `alpha_rejected` | Editorial Board, Reviewer, Admin |
+| `alpha_review` | `alpha_revisions` | Editorial Board, Reviewer, Admin |
+| `alpha_revisions` | `alpha_review` | Author, Collection Owner, Admin |
+| `alpha_accepted` | `final_review` | Admin |
+| `alpha_rejected` | `draft` | Author, Collection Owner, Admin |
+| `final_review` | `published` | Collection Owner, Admin |
+| `final_review` | `final_revisions` | Editorial Board, Reviewer, Admin |
+| `final_revisions` | `final_review` | Author, Collection Owner, Admin |
 | `published` | `draft` | Collection Owner, Admin |
 
 ## PocketBase Schema Mapping
@@ -142,7 +126,7 @@ Editions follow a review workflow with defined status transitions:
 ```
 admin       → Admin
 editorial_board → Editorial Board
-viewer      → Viewer (default for new registrations)
+viewer          → Viewer (default for new registrations)
 ```
 
 ### Collection Roles → `collectionUsers.role` (select field)
@@ -164,45 +148,11 @@ reviewer     → Reviewer
 ### Edition Status → `editions.status` (select field)
 
 ```
-draft | submitted | in_review | approved | rejected | published
+draft | concept_submitted | editorial_review | concept_accepted | concept_rejected |
+alpha_review | alpha_revisions | alpha_accepted | alpha_rejected |
+final_review | final_revisions | published
 ```
 
 ### Auth Linking → `users.pbAuthId` (text field, unique)
 
 The `users` collection (app data) stores a `pbAuthId` field that links to the PocketBase built-in auth user ID. This bridges the gap between PocketBase authentication and the application's user data model.
-
-## Gap Analysis: Current vs Target State
-
-### Current State
-
-| Area | Status |
-|------|--------|
-| `users.role` values | `root`, `admin`, `editor`, `viewer` — generic, doesn't match partner requirements |
-| `collectionUsers.role` values | `admin`, `editor`, `viewer` — no "owner" concept |
-| `editionUsers.role` values | `admin`, `editor`, `viewer` — no author/collaborator/reviewer distinction |
-| Edition status/workflow | No `status` field. Only `isPublished` boolean. No review workflow. |
-| Permission checking | None. No middleware or utility functions check roles before actions. |
-| Auth ↔ App user link | PB auth users and app `users` collection are separate, linked only by email (fragile). |
-| Admin UI | No admin page exists. Role management requires direct PocketBase admin access. |
-| Profile page | Hardcodes role as `'user'` regardless of actual role. |
-
-### Target State (This Implementation)
-
-| Area | Status |
-|------|--------|
-| `users.role` values | `admin`, `editorial_board`, `viewer` — matches partner diagram |
-| `collectionUsers.role` values | `owner`, `editor`, `viewer` — explicit ownership |
-| `editionUsers.role` values | `author`, `collaborator`, `reviewer` — clear responsibilities |
-| Edition status/workflow | `status` select field with 6 states and defined transitions |
-| Permission checking | `permissions.ts` utility with `hasPermission()`, `canTransitionStatus()`, etc. |
-| Auth ↔ App user link | `pbAuthId` field links PB auth to app user; auth store resolves role on login |
-| Admin UI | `/admin/users` page for viewing and managing user roles |
-| Profile page | Shows actual global role from auth store |
-
-### Future Work (Not in This Implementation)
-
-- Server-side middleware enforcing permissions on all data access
-- Collection-level and edition-level role assignment UIs
-- PocketBase API rules using role-based filters
-- Audit logging for role changes and status transitions
-- Email notifications for workflow events (submission, review, approval)

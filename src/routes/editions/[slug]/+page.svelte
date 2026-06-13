@@ -8,6 +8,7 @@
 	import VoyagerAPIDemo from '$lib/components/voyager/VoyagerAPIDemo.svelte';
 	import ReviewFeedbackList from '$lib/components/workflow/ReviewFeedbackList.svelte';
 	import ImagineModal from '$lib/components/ui/ImagineModal.svelte';
+	import FloatingModal from '$lib/components/ui/FloatingModal.svelte';
 	import StatusTransitionPanel from '$lib/components/workflow/StatusTransitionPanel.svelte';
 	import MemberManager from '$lib/components/admin/MemberManager.svelte';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
@@ -51,6 +52,7 @@
 
 	// Make these reactive so they update when data changes on navigation
 	let edition = $derived(data.edition);
+	let siblingEditions = $derived(data.siblingEditions ?? []);
 	let viewerHelp = $derived(data.viewerHelp);
 	let viewerHelpVideoUrl = $derived(data.viewerHelpVideoUrl);
 
@@ -106,6 +108,18 @@
 
 	// Parsed description segments
 	const descriptionSegments = $derived(parseDescription(edition.description || ''));
+	const creatorNames = $derived.by(() => {
+		const creators = ((edition as any).dcCreator as string[]) || [];
+		if (creators.length > 0) return creators;
+		return (edition.authors || '')
+			.split(',')
+			.map((author) => author.trim())
+			.filter(Boolean);
+	});
+
+	function authorEditionsHref(author: string): string {
+		return `${base}/editions?q=${encodeURIComponent(author)}`;
+	}
 
 	/**
 	 * Handle click on a view link - change camera position
@@ -142,12 +156,98 @@
 
 	const embedVideoUrl = $derived(getYouTubeEmbedUrl(viewerHelpVideoUrl || ''));
 
-	let activeTab = $state<'description' | 'metadata' | 'peer-review' | 'printables'>('description');
+	let activeTab = $state<'description' | 'metadata' | 'peer-review' | 'printables' | 'versions'>('description');
 	let isSidebarCollapsed = $state(false);
 	let helpModalOpen = $state(false);
 	let imagineModalOpen = $state(false);
 	let loadedModelSize = $state<number | null>(null);
 	let isFullWindow = $state(false);
+
+	// Version history & citation state
+	let citationCopied = $state(false);
+
+	// Get the primary DOI (first in array) or construct from pubNum
+	const primaryDoi = $derived(
+		((edition as any).dcDoi && (edition as any).dcDoi.length > 0)
+			? (edition as any).dcDoi[0]
+			: ((edition as any).pubNum ? `10.60131/p3d.${String((edition as any).collectionId || '0000').slice(-4)}.${String((edition as any).pubNum).padStart(2, '0')}` : '')
+	);
+
+	// Format citation (Chicago style)
+	const citationText = $derived.by(() => {
+		const creators = ((edition as any).dcCreator as string[]) || [];
+		const creatorStr = creators.length > 0
+			? creators.join(', ')
+			: edition.authors || 'Unknown';
+		const year = edition.created ? new Date(edition.created).getFullYear() : '';
+		const title = edition.title;
+		const pubNum = (edition as any).pubNum;
+		const doi = primaryDoi;
+		return `${creatorStr}. <em>${title}.</em> Pure 3D${pubNum ? `, ed. ${String(pubNum).padStart(2, '0')}` : ''}${year ? ` (${year})` : ''}.${doi ? ` doi:${doi}.` : ''}`;
+	});
+
+	// Build diff/changelog from dcAbstract comparison with previous edition
+	const changelog = $derived.by(() => {
+		if (!siblingEditions || siblingEditions.length === 0) return [];
+		const prevEdition = siblingEditions.find((s: any) => s.pubNum < ((edition as any).pubNum || 0));
+		if (!prevEdition) return [];
+
+		const diffs: Array<{ type: 'add' | 'mod' | 'del'; text: string }> = [];
+
+		// Compare model size
+		const currentModel = ((edition as any).modelSize) || '';
+		const prevModel = prevEdition.modelSize || '';
+		if (currentModel && prevModel && currentModel !== prevModel) {
+			diffs.push({ type: 'mod', text: `Model size: ${prevModel} → ${currentModel}` });
+		} else if (currentModel && !prevModel) {
+			diffs.push({ type: 'add', text: `Model data: ${currentModel}` });
+		}
+
+		// Compare description/abstract
+		const currentDesc = edition.description || '';
+		const prevDesc = prevEdition.dcAbstract || '';
+		if (currentDesc !== prevDesc) {
+			if (prevDesc && currentDesc) {
+				diffs.push({ type: 'mod', text: 'Description updated' });
+			} else if (currentDesc && !prevDesc) {
+				diffs.push({ type: 'add', text: 'Description added' });
+			}
+		}
+
+		// Provenance note
+		const provenance = (edition as any).dcProvenance || '';
+		if (provenance) {
+			diffs.push({ type: 'add', text: `Provenance: ${provenance}` });
+		}
+
+		if (diffs.length === 0) {
+			diffs.push({ type: 'mod', text: 'Minor updates and refinements' });
+		}
+		return diffs;
+	});
+
+	async function copyDoi() {
+		const doi = primaryDoi;
+		if (!doi) return;
+		try {
+			await navigator.clipboard.writeText(`https://doi.org/${doi}`);
+			citationCopied = true;
+			setTimeout(() => (citationCopied = false), 2000);
+		} catch {
+			// Fallback
+		}
+	}
+
+	async function copyCitation() {
+		const text = citationText.replace(/<[^>]*>/g, '');
+		try {
+			await navigator.clipboard.writeText(text);
+			citationCopied = true;
+			setTimeout(() => (citationCopied = false), 2000);
+		} catch {
+			// Fallback
+		}
+	}
 
 	// Determine if we have local assets available for direct mode
 	const useDirectMode = $derived(!!edition.voyagerRoot);
@@ -157,6 +257,12 @@
 		if (bytes < 1024) return `${bytes} B`;
 		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
 		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+	}
+
+	function formatDate(dateStr: string): string {
+		if (!dateStr) return '—';
+		const date = new Date(dateStr);
+		return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString();
 	}
 
 	function handleModelLoaded(totalBytes: number) {
@@ -198,7 +304,11 @@
 	let permissionContext = $state<UserRoleContext>({ globalRole: GlobalRole.Viewer });
 	let manageOpen = $state(false);
 	let manageTab = $state<'workflow' | 'members' | 'danger'>('workflow');
-	let currentStatus = $state<EditionStatus>(EditionStatus.Draft);
+	let manageButtonElement: HTMLButtonElement | undefined = $state();
+	let currentStatus = $state<EditionStatus>(
+		((data.edition as unknown as { status?: EditionStatus }).status as EditionStatus) ||
+			EditionStatus.Draft
+	);
 	let deleteConfirmOpen = $state(false);
 	let isDeleting = $state(false);
 
@@ -217,6 +327,8 @@
 		)
 	);
 
+	let showDraftBadge = $derived(edition.id !== 'demo' && currentStatus === EditionStatus.Draft);
+
 	let canManagePage = $derived(
 		hasPermission(permissionContext, Permission.EditionDelete) ||
 			canManageMembers ||
@@ -228,7 +340,8 @@
 
 	onMount(async () => {
 		if (edition.id === 'demo') return;
-		currentStatus = ((edition as unknown as { status?: EditionStatus }).status as EditionStatus) ||
+		currentStatus =
+			((edition as unknown as { status?: EditionStatus }).status as EditionStatus) ||
 			EditionStatus.Draft;
 
 		if (!authStore.isAuthenticated || !authStore.appUserId) {
@@ -246,6 +359,22 @@
 
 	function handleStatusChanged(newStatus: EditionStatus) {
 		currentStatus = newStatus;
+	}
+
+	function openManageModal() {
+		if (manageTab === 'workflow' && !hasActionableTransition) {
+			manageTab = canManageMembers ? 'members' : 'danger';
+		} else if (manageTab === 'members' && !canManageMembers) {
+			manageTab = hasActionableTransition ? 'workflow' : 'danger';
+		} else if (manageTab === 'danger' && !canDelete) {
+			manageTab = hasActionableTransition ? 'workflow' : 'members';
+		}
+		manageOpen = true;
+	}
+
+	function closeManageModal() {
+		manageOpen = false;
+		deleteConfirmOpen = false;
 	}
 
 	async function deleteEdition() {
@@ -272,11 +401,11 @@
 	<meta name="description" content={edition.description} />
 
 	<!-- Preconnect to Voyager API for faster loading -->
-	<link rel="preconnect" href="https://3d-api.si.edu" crossorigin />
+	<link rel="preconnect" href="https://3d-api.si.edu" crossorigin="anonymous" />
 	<link rel="dns-prefetch" href="https://3d-api.si.edu" />
 </svelte:head>
 
-<div class="bg-base-100">
+<div class="min-h-[calc(100vh-4rem)] bg-base-100">
 	<div class="container mx-auto max-w-7xl px-4 py-8">
 		<!-- Breadcrumbs -->
 		<nav class="breadcrumbs mb-6 text-sm">
@@ -305,18 +434,38 @@
 				</div>
 			{/if}
 			<div class="flex-1">
-				<h1 class="mb-1 text-3xl font-bold md:text-4xl">{edition.title}</h1>
-				<p class="text-base-content/70">{edition.authors}</p>
+				<div class="mb-1 flex flex-wrap items-center gap-3">
+					<h1 class="text-3xl font-bold md:text-4xl">{edition.title}</h1>
+					{#if showDraftBadge}
+						<StatusBadge status={EditionStatus.Draft} size="md" />
+					{/if}
+				</div>
+				<p class="text-base-content/70">
+					{#each creatorNames as author, index (author)}
+						<a href={authorEditionsHref(author)} class="link-hover link">{author}</a>{index < creatorNames.length - 1 ? ', ' : ''}
+					{/each}
+				</p>
+				<!-- Institution -->
+				{#if (edition as any).dcInstitution && (edition as any).dcInstitution.length > 0}
+					<p class="mt-1 text-xs text-base-content/50">
+						{((edition as any).dcInstitution as string[]).join(', ')}
+					</p>
+				{/if}
 			</div>
-			{#if canManagePage}
-				<button
-					class="btn btn-sm btn-primary"
-					onclick={() => (manageOpen = !manageOpen)}
-					aria-expanded={manageOpen}
-				>
-					{manageOpen ? 'Close Manage' : 'Manage'}
-				</button>
-			{/if}
+			<div class="flex flex-col gap-2">
+				{#if canManagePage}
+					<button
+						bind:this={manageButtonElement}
+						class="btn btn-sm btn-primary"
+						onclick={() => (manageOpen ? closeManageModal() : openManageModal())}
+						aria-expanded={manageOpen}
+						aria-haspopup="dialog"
+						aria-controls="edition-manage-modal"
+					>
+						Manage
+					</button>
+				{/if}
+			</div>
 			<!-- Sidebar toggle button -->
 			<button
 				onclick={toggleSidebar}
@@ -336,91 +485,6 @@
 				</svg>
 			</button>
 		</div>
-
-		{#if manageOpen && canManagePage}
-			<div class="mb-6 rounded-box border border-base-300 bg-base-200 p-4">
-				<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-					<div class="flex items-center gap-3">
-						<h2 class="text-lg font-semibold">Manage Edition</h2>
-						<StatusBadge status={currentStatus} />
-					</div>
-					<div class="flex gap-2">
-						{#if canEditMetadata}
-							<a
-								href="{base}/editions/{edition.id}/workflow"
-								class="btn btn-outline btn-sm"
-							>
-								Edit in Workflow
-							</a>
-						{/if}
-					</div>
-				</div>
-
-				<div role="tablist" class="tabs-bordered tabs mb-4">
-					<button
-						role="tab"
-						class="tab"
-						class:tab-active={manageTab === 'workflow'}
-						onclick={() => (manageTab = 'workflow')}
-					>
-						Workflow
-					</button>
-					{#if canManageMembers}
-						<button
-							role="tab"
-							class="tab"
-							class:tab-active={manageTab === 'members'}
-							onclick={() => (manageTab = 'members')}
-						>
-							Members
-						</button>
-					{/if}
-					{#if canDelete}
-						<button
-							role="tab"
-							class="tab"
-							class:tab-active={manageTab === 'danger'}
-							onclick={() => (manageTab = 'danger')}
-						>
-							Danger Zone
-						</button>
-					{/if}
-				</div>
-
-				{#if manageTab === 'workflow'}
-					<StatusTransitionPanel
-						editionId={edition.id}
-						title={edition.title}
-						status={currentStatus}
-						context={permissionContext}
-						onchanged={handleStatusChanged}
-					/>
-				{:else if manageTab === 'members' && canManageMembers}
-					<MemberManager
-						membershipCollection="editionUsers"
-						parentField="editionId"
-						parentId={edition.id}
-						roleValues={editionRoleValues}
-						roleLabels={EDITION_ROLE_LABELS}
-						defaultRole={EditionRole.Collaborator}
-						auditTargetType="edition"
-					/>
-				{:else if manageTab === 'danger' && canDelete}
-					<div class="space-y-3">
-						<p class="text-sm text-base-content/70">
-							Deleting this edition is permanent and cannot be undone.
-						</p>
-						<button
-							class="btn btn-sm btn-error"
-							onclick={() => (deleteConfirmOpen = true)}
-							disabled={isDeleting}
-						>
-							Delete Edition
-						</button>
-					</div>
-				{/if}
-			</div>
-		{/if}
 
 		<!-- Main Content Grid -->
 		<div
@@ -444,6 +508,8 @@
 							uiMode="menu|title|language"
 							onModelLoaded={handleModelLoaded}
 							onReady={handleViewerReady}
+							onFullWindowToggle={toggleFullWindow}
+							showEditorSwitch
 							{isFullWindow}
 							{showVoyagerMenu}
 						/>
@@ -725,10 +791,10 @@
 					>
 						<div class="card-body w-96 p-0">
 							<!-- Tabs -->
-							<div role="tablist" class="tabs-bordered tabs bg-base-300">
+							<div role="tablist" class="tabs-bordered tabs flex-nowrap overflow-x-auto bg-base-300">
 								<button
 									role="tab"
-									class="tab flex-1"
+									class="tab shrink-0 whitespace-nowrap"
 									class:tab-active={activeTab === 'description'}
 									onclick={() => (activeTab = 'description')}
 								>
@@ -736,7 +802,7 @@
 								</button>
 								<button
 									role="tab"
-									class="tab flex-1"
+									class="tab shrink-0 whitespace-nowrap"
 									class:tab-active={activeTab === 'metadata'}
 									onclick={() => (activeTab = 'metadata')}
 								>
@@ -744,15 +810,25 @@
 								</button>
 								<button
 									role="tab"
-									class="tab flex-1"
+									class="tab shrink-0 whitespace-nowrap"
 									class:tab-active={activeTab === 'peer-review'}
 									onclick={() => (activeTab = 'peer-review')}
 								>
 									Peer Review
 								</button>
+								{#if siblingEditions && siblingEditions.length > 0}
+									<button
+										role="tab"
+										class="tab shrink-0 whitespace-nowrap"
+										class:tab-active={activeTab === 'versions'}
+										onclick={() => (activeTab = 'versions')}
+									>
+										Versions
+									</button>
+								{/if}
 								<button
 									role="tab"
-									class="tab flex-1"
+									class="tab shrink-0 whitespace-nowrap"
 									class:tab-active={activeTab === 'printables'}
 									onclick={() => (activeTab = 'printables')}
 								>
@@ -803,14 +879,62 @@
 									</div>
 								{:else if activeTab === 'metadata'}
 									<div class="space-y-4">
+									{#if primaryDoi}
 										<div>
-											<h3 class="text-sm font-semibold text-base-content/60">Created</h3>
-											<p>{new Date(edition.created).toLocaleDateString()}</p>
+											<h3 class="text-sm font-semibold text-base-content/60">DOI</h3>
+											<div class="mt-1 flex flex-wrap items-center gap-2">
+												<p class="font-mono text-xs break-all">{primaryDoi}</p>
+												<button class="btn btn-outline btn-xs" onclick={copyDoi} title={`Copy DOI ${primaryDoi}`}>
+													{citationCopied ? 'Copied' : 'Copy DOI'}
+												</button>
+											</div>
 										</div>
-										<div>
-											<h3 class="text-sm font-semibold text-base-content/60">Authors</h3>
-											<p>{edition.authors}</p>
-										</div>
+									{/if}
+									<div>
+										<h3 class="text-sm font-semibold text-base-content/60">Created</h3>
+										<p>{formatDate(edition.created)}</p>
+									</div>
+									<div>
+										<h3 class="text-sm font-semibold text-base-content/60">Authors</h3>
+										<p>
+											{#each creatorNames as author, index (author)}
+												<a href={authorEditionsHref(author)} class="link-hover link">{author}</a>{index < creatorNames.length - 1 ? ', ' : ''}
+											{/each}
+										</p>
+									</div>
+										{#if (edition as any).dcInstitution && (edition as any).dcInstitution.length > 0}
+											<div>
+												<h3 class="text-sm font-semibold text-base-content/60">Institution</h3>
+												<p>{((edition as any).dcInstitution as string[]).join(', ')}</p>
+											</div>
+										{/if}
+										{#if (edition as any).pubNum}
+											<div>
+												<h3 class="text-sm font-semibold text-base-content/60">Edition Number</h3>
+												<p>Ed. {String((edition as any).pubNum).padStart(2, '0')}</p>
+											</div>
+										{/if}
+										{#if (edition as any).status}
+											<div>
+												<h3 class="text-sm font-semibold text-base-content/60">Status</h3>
+												<StatusBadge status={(edition as any).status} />
+											</div>
+										{/if}
+										{#if (edition as any).modelSize}
+											<div>
+												<h3 class="text-sm font-semibold text-base-content/60">Model Size</h3>
+												<p>{String((edition as any).modelSize)}</p>
+											</div>
+										{/if}
+										{#if (edition as any).settingsAuthorToolVersion}
+											<div>
+												<h3 class="text-sm font-semibold text-base-content/60">Tool Version</h3>
+												<p>
+													{(edition as any).settingsAuthorToolName || 'Voyager'}
+													v{(edition as any).settingsAuthorToolVersion}
+												</p>
+											</div>
+										{/if}
 										<div>
 											<h3 class="text-sm font-semibold text-base-content/60">License</h3>
 											<p>{edition.usageConditions}</p>
@@ -864,6 +988,103 @@
 									<div class="py-8 text-center text-base-content/60">
 										<p>Printable resources will be available here.</p>
 									</div>
+								{:else if activeTab === 'versions'}
+									<div class="space-y-4">
+										<!-- Citation Block -->
+										<div class="rounded-lg bg-base-300 p-4">
+											<h3 class="mb-2 text-sm font-semibold">Citation</h3>
+											<div class="text-sm leading-relaxed text-base-content/80">
+												{@html citationText}
+											</div>
+											<div class="mt-2 flex gap-2">
+												<button class="btn btn-xs btn-secondary" onclick={copyCitation}>
+													{#if citationCopied}
+														Copied!
+													{:else}
+														Copy citation
+													{/if}
+												</button>
+												{#if primaryDoi}
+													<button class="btn btn-xs btn-ghost" onclick={copyDoi}>
+														Copy DOI
+													</button>
+												{/if}
+											</div>
+										</div>
+
+										<!-- Diff / Changelog -->
+										{#if changelog.length > 0}
+											<div class="rounded-lg bg-base-300 p-4">
+												<h3 class="mb-2 text-sm font-semibold">Changes from previous edition</h3>
+												<div class="space-y-1">
+													{#each changelog as change}
+														<div
+															class="flex items-start gap-2 rounded px-2 py-1 text-xs {change.type === 'add' ? 'bg-success/10' : change.type === 'mod' ? 'bg-warning/10' : 'bg-error/10'}"
+														>
+															<span class="mt-px font-mono font-bold {change.type === 'add' ? 'text-success' : change.type === 'mod' ? 'text-warning' : 'text-error'}">
+																{change.type === 'add' ? '+' : change.type === 'mod' ? '~' : '−'}
+															</span>
+															<span>{change.text}</span>
+														</div>
+													{/each}
+												</div>
+											</div>
+										{/if}
+
+										<!-- Version History Timeline -->
+										<div>
+											<h3 class="mb-3 text-sm font-semibold">Version History</h3>
+											<div class="space-y-0">
+												<!-- Current edition -->
+												<article class="flex gap-3 rounded-lg bg-success/5 p-3">
+													<div class="flex flex-col items-center">
+														<div class="h-3 w-3 rounded-full bg-success"></div>
+														<div class="w-px flex-1 bg-base-300"></div>
+													</div>
+													<div class="flex-1 pb-2">
+														<div class="flex items-center gap-2">
+															<span class="font-mono text-xs font-semibold">Ed. {String((edition as any).pubNum || 1).padStart(2, '0')}</span>
+															<span class="badge badge-success badge-xs">Current</span>
+														</div>
+														<div class="text-sm font-medium">{edition.title}</div>
+														{#if primaryDoi}
+															<div class="font-mono text-[10px] text-base-content/50">{primaryDoi}</div>
+														{/if}
+													</div>
+												</article>
+												<!-- Sibling editions (version history) -->
+												{#each siblingEditions as sibling (sibling.id)}
+													<article class="flex gap-3 rounded-lg p-3 hover:bg-base-300/50 transition-colors">
+														<div class="flex flex-col items-center">
+															<div class="h-2.5 w-2.5 rounded-full bg-base-content/30"></div>
+															<div class="w-px flex-1 bg-base-300"></div>
+														</div>
+														<a
+															href="{base}/editions/{sibling.slug}"
+															data-sveltekit-preload-data="hover"
+															class="flex-1 pb-2 no-underline"
+														>
+															<div class="flex items-center gap-2">
+																<span class="font-mono text-xs font-semibold">Ed. {String(sibling.pubNum).padStart(2, '0')}</span>
+																{#if sibling.status}
+																	<span class="badge badge-ghost badge-xs">{sibling.status}</span>
+																{/if}
+															</div>
+															<div class="text-sm font-medium text-base-content/80 hover:text-primary transition-colors">
+																{sibling.title}
+															</div>
+															{#if (sibling as any).dcDoi && (sibling as any).dcDoi.length > 0}
+																<div class="font-mono text-[10px] text-base-content/50">{(sibling as any).dcDoi[0]}</div>
+															{/if}
+															{#if sibling.modelSize}
+																<div class="text-[10px] text-base-content/50">{sibling.modelSize}</div>
+															{/if}
+														</a>
+													</article>
+												{/each}
+											</div>
+										</div>
+									</div>
 								{/if}
 							</div>
 						</div>
@@ -916,7 +1137,118 @@
 {/if}
 
 <!-- Imagine AI Modal -->
-<ImagineModal bind:open={imagineModalOpen} {edition} onclose={() => (imagineModalOpen = false)} />
+<ImagineModal bind:open={imagineModalOpen} edition={edition as any} onclose={() => (imagineModalOpen = false)} />
+
+{#if canManagePage}
+	<FloatingModal
+		open={manageOpen}
+		referenceElement={manageButtonElement}
+		id="edition-manage-modal"
+		labelledby="edition-manage-title"
+		onclose={() => {
+			if (!deleteConfirmOpen) closeManageModal();
+		}}
+	>
+		{#snippet header()}
+			<div class="flex items-start justify-between gap-4">
+				<div class="flex flex-wrap items-center gap-3">
+					<h2 id="edition-manage-title" class="text-lg font-semibold">Manage Edition</h2>
+					<StatusBadge status={currentStatus} />
+				</div>
+				<button
+					type="button"
+					class="btn btn-ghost btn-xs"
+					onclick={closeManageModal}
+					aria-label="Close manage edition modal"
+				>
+					x
+				</button>
+			</div>
+
+			<div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+				<div role="tablist" class="tabs-bordered tabs">
+					{#if hasActionableTransition}
+						<button
+							role="tab"
+							class="tab"
+							class:tab-active={manageTab === 'workflow'}
+							onclick={() => (manageTab = 'workflow')}
+						>
+							Workflow
+						</button>
+					{/if}
+					{#if canManageMembers}
+						<button
+							role="tab"
+							class="tab"
+							class:tab-active={manageTab === 'members'}
+							onclick={() => (manageTab = 'members')}
+						>
+							Members
+						</button>
+					{/if}
+					{#if canDelete}
+						<button
+							role="tab"
+							class="tab"
+							class:tab-active={manageTab === 'danger'}
+							onclick={() => (manageTab = 'danger')}
+						>
+							Danger Zone
+						</button>
+					{/if}
+				</div>
+				{#if canEditMetadata}
+					<a href="{base}/editions/{edition.id}/workflow" class="btn btn-outline btn-sm">
+						Edit in Workflow
+					</a>
+				{/if}
+			</div>
+		{/snippet}
+
+		{#if manageTab === 'workflow' && hasActionableTransition}
+			<StatusTransitionPanel
+				editionId={edition.id}
+				title={edition.title}
+				status={currentStatus}
+				context={permissionContext}
+				onchanged={handleStatusChanged}
+			/>
+		{:else if manageTab === 'members' && canManageMembers}
+			<MemberManager
+				membershipCollection="editionUsers"
+				parentField="editionId"
+				parentId={edition.id}
+				roleValues={editionRoleValues}
+				roleLabels={EDITION_ROLE_LABELS}
+				defaultRole={EditionRole.Collaborator}
+				auditTargetType="edition"
+			/>
+		{:else if manageTab === 'danger' && canDelete}
+			<div class="space-y-3">
+				<p class="text-sm text-base-content/70">
+					Deleting this edition is permanent and cannot be undone.
+				</p>
+			</div>
+		{/if}
+
+		{#snippet footer()}
+			<div class="flex justify-end gap-2">
+				<button type="button" class="btn btn-ghost btn-sm" onclick={closeManageModal}>Close</button>
+				{#if manageTab === 'danger' && canDelete}
+					<button
+						type="button"
+						class="btn btn-sm btn-error"
+						onclick={() => (deleteConfirmOpen = true)}
+						disabled={isDeleting}
+					>
+						Delete Edition
+					</button>
+				{/if}
+			</div>
+		{/snippet}
+	</FloatingModal>
+{/if}
 
 <!-- Delete confirmation modal -->
 {#if canDelete}

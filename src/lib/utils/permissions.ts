@@ -116,7 +116,6 @@ export function hasPermission(context: UserRoleContext, permission: Permission):
 		// --- Admin actions ---
 		case Permission.AdminViewPanel:
 		case Permission.AdminManageUsers:
-		case Permission.AdminManagePlatform:
 			return false; // Only Admin (handled above)
 
 		default:

@@ -90,7 +90,8 @@
 	href={`${base}/editions/${edition.slug}`}
 	data-sveltekit-preload-data="hover"
 	onmouseenter={prefetch3DAssets}
-	class="group card bg-base-100 shadow-md hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 overflow-hidden"
+	class="group ds-card overflow-hidden"
+	style="background: var(--ds-paper);"
 >
 	<figure class="relative overflow-hidden aspect-square bg-base-200">
 		<!-- Peer Review Badge -->
@@ -103,9 +104,19 @@
 				/>
 			</div>
 		{/if}
+		<!-- Edition number badge -->
 		{#if edition.pubNum}
-			<div class="absolute top-2 left-2 z-10 rounded-md bg-black/55 px-1.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
-				#{edition.pubNum}
+			<div
+				class="absolute top-2 left-2 z-10 rounded-md px-1.5 py-0.5 text-xs font-medium backdrop-blur-sm"
+				style="background: var(--ds-vermillion); color: var(--ds-vermillion-ink);"
+			>
+				Ed. {String(edition.pubNum || 1).padStart(2, '0')}
+			</div>
+		{/if}
+		<!-- Mesh/Texture info chip -->
+		{#if (edition as any).modelSize}
+			<div class="absolute bottom-2 left-2 z-10 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+				{(edition as any).modelSize}
 			</div>
 		{/if}
 		<!-- Placeholder: show on error -->

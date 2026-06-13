@@ -4,11 +4,36 @@
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { logAudit } from '$lib/utils/audit';
 	import type { Documentation } from '$lib/types/documentation';
+	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
 	import RichTextEditor from '$lib/components/ui/RichTextEditor.svelte';
 	import toast from 'svelte-french-toast';
 
 	let docs = $state<Documentation[]>([]);
 	let isLoading = $state(true);
+	let searchQuery = $state('');
+	let statusFilter = $state('');
+	let filteredDocs = $derived(
+		docs.filter((doc) => {
+			const query = searchQuery.toLowerCase();
+			const matchesSearch =
+				!query ||
+				doc.title.toLowerCase().includes(query) ||
+				doc.slug.toLowerCase().includes(query) ||
+				doc.summary.toLowerCase().includes(query);
+			const matchesStatus =
+				!statusFilter ||
+				(statusFilter === 'published' && doc.isPublished) ||
+				(statusFilter === 'draft' && !doc.isPublished);
+
+			return matchesSearch && matchesStatus;
+		})
+	);
+	let hasActiveFilters = $derived(Boolean(searchQuery || statusFilter));
+	const statusFilterOptions = [
+		{ value: '', label: 'All statuses' },
+		{ value: 'published', label: 'Published' },
+		{ value: 'draft', label: 'Draft' }
+	];
 
 	let showForm = $state(false);
 	let editingId = $state<string | null>(null);
@@ -19,6 +44,9 @@
 	let formOrder = $state(0);
 	let formIsPublished = $state(false);
 	let isSaving = $state(false);
+	let isReordering = $state(false);
+	let draggedDocId = $state<string | null>(null);
+	let dragOverDocId = $state<string | null>(null);
 
 	let deletingId = $state<string | null>(null);
 
@@ -74,14 +102,14 @@
 		formSlug = '';
 		formSummary = '';
 		formContent = '';
-		formOrder = docs.length;
+		formOrder = docs.length + 1;
 		formIsPublished = false;
 		autoSlug = true;
 	}
 
 	function startCreate() {
 		resetForm();
-		formOrder = docs.length;
+		formOrder = docs.length + 1;
 		showForm = true;
 	}
 
@@ -163,12 +191,66 @@
 		}
 	}
 
-	async function updateOrder(doc: Documentation, newOrder: number) {
+	function handleDragStart(event: DragEvent, doc: Documentation) {
+		draggedDocId = doc.id;
+		event.dataTransfer?.setData('text/plain', doc.id);
+		if (event.dataTransfer) {
+			event.dataTransfer.effectAllowed = 'move';
+		}
+	}
+
+	function handleDragOver(event: DragEvent, doc: Documentation) {
+		if (!draggedDocId || draggedDocId === doc.id) return;
+		event.preventDefault();
+		dragOverDocId = doc.id;
+		if (event.dataTransfer) {
+			event.dataTransfer.dropEffect = 'move';
+		}
+	}
+
+	function clearDragState() {
+		draggedDocId = null;
+		dragOverDocId = null;
+	}
+
+	async function handleDrop(event: DragEvent, targetDoc: Documentation) {
+		event.preventDefault();
+		const sourceId = draggedDocId || event.dataTransfer?.getData('text/plain');
+		clearDragState();
+
+		if (!sourceId || sourceId === targetDoc.id) return;
+		await reorderDocs(sourceId, targetDoc.id);
+	}
+
+	async function reorderDocs(sourceId: string, targetId: string) {
+		const sourceIndex = docs.findIndex((doc) => doc.id === sourceId);
+		const targetIndex = docs.findIndex((doc) => doc.id === targetId);
+
+		if (sourceIndex === -1 || targetIndex === -1 || sourceIndex === targetIndex) return;
+
+		const previousDocs = docs;
+		const previousOrders = new Map(previousDocs.map((doc) => [doc.id, doc.order]));
+		const nextDocs = [...docs];
+		const [movedDoc] = nextDocs.splice(sourceIndex, 1);
+		nextDocs.splice(targetIndex, 0, movedDoc);
+		const orderedDocs = nextDocs.map((doc, index) => ({ ...doc, order: index + 1 }));
+
+		docs = orderedDocs;
+		isReordering = true;
+
 		try {
-			await pb.collection('documentation').update(doc.id, { order: newOrder });
-			await loadDocs();
+			await Promise.all(
+				orderedDocs
+					.filter((doc) => previousOrders.get(doc.id) !== doc.order)
+					.map((doc) => pb.collection('documentation').update(doc.id, { order: doc.order }))
+			);
+			toast.success('Documentation order updated');
 		} catch {
+			docs = previousDocs;
 			toast.error('Failed to update order');
+			await loadDocs();
+		} finally {
+			isReordering = false;
 		}
 	}
 
@@ -274,9 +356,9 @@
 				</div>
 
 				<div class="form-control">
-					<label class="label">
+					<span class="label">
 						<span class="label-text">Content</span>
-					</label>
+					</span>
 					<RichTextEditor
 						content={formContent}
 						placeholder="Write your documentation page content..."
@@ -297,18 +379,73 @@
 		</div>
 	{/if}
 
+	<div class="mb-6 rounded-box border border-base-300 bg-base-100 p-4 shadow-sm">
+		<div class="mb-3 flex items-center justify-between gap-3">
+			<div>
+				<h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/70">Filters</h2>
+				<p class="text-xs text-base-content/50">Find pages by title, slug, summary, or status.</p>
+			</div>
+			{#if hasActiveFilters}
+				<button
+					type="button"
+					class="btn btn-ghost btn-xs"
+					onclick={() => {
+						searchQuery = '';
+						statusFilter = '';
+					}}
+				>
+					Clear
+				</button>
+			{/if}
+		</div>
+		<div class="grid gap-3 md:grid-cols-[minmax(16rem,1fr)_13rem]">
+			<label class="form-control">
+				<span class="label pb-1 pt-0"><span class="label-text text-xs">Search</span></span>
+				<input
+					type="text"
+					placeholder="Title, slug, or summary..."
+					class="input input-bordered w-full bg-base-200/40"
+					bind:value={searchQuery}
+				/>
+			</label>
+			<label class="form-control">
+				<span class="label pb-1 pt-0"><span class="label-text text-xs">Status</span></span>
+				<FloatingSelect
+					id="documentation-status-filter"
+					bind:value={statusFilter}
+					options={statusFilterOptions}
+					class="w-full bg-base-200/40"
+				/>
+			</label>
+		</div>
+	</div>
+
 	{#if isLoading}
 		<div class="flex justify-center py-12">
 			<span class="loading loading-spinner loading-lg"></span>
 		</div>
 	{:else if docs.length === 0}
 		<p class="py-12 text-center text-base-content/60">No documentation pages yet.</p>
+	{:else if filteredDocs.length === 0}
+		<p class="py-12 text-center text-base-content/60">No documentation pages match the selected filters.</p>
 	{:else}
-		<div class="overflow-x-auto">
+		<div class="mb-3 flex items-center gap-3 text-sm text-base-content/60">
+			<span>Drag pages by the handle to reorder them.</span>
+			{#if hasActiveFilters}
+				<span>Showing {filteredDocs.length} of {docs.length} pages.</span>
+			{/if}
+			{#if isReordering}
+				<span class="inline-flex items-center gap-2 text-base-content">
+					<span class="loading loading-spinner loading-xs"></span>
+					Saving order...
+				</span>
+			{/if}
+		</div>
+		<div class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
 			<table class="table">
 				<thead>
 					<tr>
-						<th>Order</th>
+						<th class="w-24">Reorder</th>
 						<th>Title</th>
 						<th>Slug</th>
 						<th>Status</th>
@@ -316,16 +453,31 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each docs as doc (doc.id)}
-						<tr>
+					{#each filteredDocs as doc (doc.id)}
+						<tr
+							draggable={!isReordering}
+							class={`transition-colors ${dragOverDocId === doc.id ? 'bg-primary/10' : ''}`}
+							class:opacity-50={draggedDocId === doc.id}
+							ondragstart={(event) => handleDragStart(event, doc)}
+							ondragover={(event) => handleDragOver(event, doc)}
+							ondragleave={() => (dragOverDocId = dragOverDocId === doc.id ? null : dragOverDocId)}
+							ondrop={(event) => handleDrop(event, doc)}
+							ondragend={clearDragState}
+						>
 							<td>
-								<input
-									type="number"
-									class="input input-bordered input-xs w-16"
-									value={doc.order}
-									onchange={(e) => updateOrder(doc, parseInt(e.currentTarget.value) || 0)}
-									min="0"
-								/>
+								<button
+									type="button"
+									class="btn btn-ghost btn-sm cursor-grab gap-2 active:cursor-grabbing"
+									disabled={isReordering}
+									aria-label={`Drag to reorder ${doc.title}`}
+									title="Drag to reorder"
+								>
+									<span class="grid gap-0.5" aria-hidden="true">
+										<span class="h-0.5 w-4 rounded-full bg-current opacity-70"></span>
+										<span class="h-0.5 w-4 rounded-full bg-current opacity-70"></span>
+										<span class="h-0.5 w-4 rounded-full bg-current opacity-70"></span>
+									</span>
+								</button>
 							</td>
 							<td class="font-medium">{doc.title}</td>
 							<td class="font-mono text-sm text-base-content/60">{doc.slug}</td>

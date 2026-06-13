@@ -7,6 +7,7 @@
 	import { CollectionRole, COLLECTION_ROLE_LABELS, GlobalRole } from '$lib/types/roles';
 	import toast from 'svelte-french-toast';
 	import MemberManager from '$lib/components/admin/MemberManager.svelte';
+	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
 
 	interface AdminCollection {
 		id: string;
@@ -19,14 +20,28 @@
 	let collections = $state<AdminCollection[]>([]);
 	let isLoading = $state(true);
 	let searchQuery = $state('');
+	let visibilityFilter = $state('');
 	let expandedId = $state<string | null>(null);
 	let filteredCollections = $derived(
-		searchQuery
-			? collections.filter((c) => c.title.toLowerCase().includes(searchQuery.toLowerCase()))
-			: collections
+		collections.filter((c) => {
+			const query = searchQuery.toLowerCase();
+			const matchesSearch = !query || c.title.toLowerCase().includes(query);
+			const matchesVisibility =
+				!visibilityFilter ||
+				(visibilityFilter === 'visible' && c.isVisible) ||
+				(visibilityFilter === 'hidden' && !c.isVisible);
+
+			return matchesSearch && matchesVisibility;
+		})
 	);
+	let hasActiveFilters = $derived(Boolean(searchQuery || visibilityFilter));
 
 	const collectionRoleValues = Object.values(CollectionRole) as string[];
+	const visibilityFilterOptions = [
+		{ value: '', label: 'All visibility' },
+		{ value: 'visible', label: 'Visible' },
+		{ value: 'hidden', label: 'Hidden' }
+	];
 
 	let canManageAllMembers = $derived(
 		authStore.globalRole === GlobalRole.Admin
@@ -87,7 +102,7 @@
 				// Non-critical
 			}
 
-			goto(`${base}/collections/${record.id}`);
+			goto(`${base}/collections/${record.id}?manage=details`);
 		} catch (e: unknown) {
 			const message = e instanceof Error ? e.message : 'Failed to create collection';
 			toast.error(message);
@@ -117,13 +132,45 @@
 		</button>
 	</div>
 
-	<div class="mb-6">
-		<input
-			type="text"
-			placeholder="Search collections..."
-			class="input-bordered input w-full max-w-md"
-			bind:value={searchQuery}
-		/>
+	<div class="mb-6 rounded-box border border-base-300 bg-base-100 p-4 shadow-sm">
+		<div class="mb-3 flex items-center justify-between gap-3">
+			<div>
+				<h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/70">Filters</h2>
+				<p class="text-xs text-base-content/50">Filter collections by name and visibility.</p>
+			</div>
+			{#if hasActiveFilters}
+				<button
+					type="button"
+					class="btn btn-ghost btn-xs"
+					onclick={() => {
+						searchQuery = '';
+						visibilityFilter = '';
+					}}
+				>
+					Clear
+				</button>
+			{/if}
+		</div>
+		<div class="grid gap-3 md:grid-cols-[minmax(16rem,1fr)_13rem]">
+			<label class="form-control">
+				<span class="label pb-1 pt-0"><span class="label-text text-xs">Search</span></span>
+				<input
+					type="text"
+					placeholder="Collection title..."
+					class="input input-bordered w-full bg-base-200/40"
+					bind:value={searchQuery}
+				/>
+			</label>
+			<label class="form-control">
+				<span class="label pb-1 pt-0"><span class="label-text text-xs">Visibility</span></span>
+				<FloatingSelect
+					id="collection-visibility-filter"
+					bind:value={visibilityFilter}
+					options={visibilityFilterOptions}
+					class="w-full bg-base-200/40"
+				/>
+			</label>
+		</div>
 	</div>
 
 	{#if isLoading}
@@ -134,11 +181,12 @@
 		<div class="space-y-2">
 			{#each filteredCollections as collection (collection.id)}
 				<div class="rounded-box border border-base-300 bg-base-100">
-					<button
-						class="flex w-full cursor-pointer items-center justify-between p-4 font-medium"
-						onclick={() => toggleExpand(collection.id)}
-					>
-						<div class="flex items-center gap-3">
+					<div class="flex w-full items-center justify-between gap-3 p-4">
+						<button
+							class="flex min-w-0 flex-1 cursor-pointer items-center text-left font-medium"
+							onclick={() => toggleExpand(collection.id)}
+						>
+							<div class="flex flex-wrap items-center gap-3">
 							{#if collection.thumbnailUrl}
 								<img
 									src={collection.thumbnailUrl}
@@ -173,18 +221,28 @@
 								<span class="badge badge-ghost badge-xs">#{collection.pubNum}</span>
 							{/if}
 						</div>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke-width="1.5"
-							stroke="currentColor"
-							class="size-4 transition-transform duration-200"
-							class:rotate-180={expandedId === collection.id}
-						>
-							<path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-						</svg>
-					</button>
+						</button>
+						<div class="flex shrink-0 items-center gap-2">
+							<a href="{base}/collections/{collection.id}" class="btn btn-outline btn-sm">Open</a>
+							<button
+								class="btn btn-square btn-ghost btn-sm"
+								onclick={() => toggleExpand(collection.id)}
+								aria-label={expandedId === collection.id ? 'Collapse collection' : 'Expand collection'}
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke-width="1.5"
+									stroke="currentColor"
+									class="size-4 transition-transform duration-200"
+									class:rotate-180={expandedId === collection.id}
+								>
+									<path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+								</svg>
+							</button>
+						</div>
+					</div>
 					{#if expandedId === collection.id}
 						<div class="border-t border-base-300 px-4 pt-2 pb-4">
 							<MemberManager
@@ -205,12 +263,18 @@
 
 		{#if filteredCollections.length === 0}
 			<div class="py-8 text-center text-base-content/60">
-				{#if searchQuery}
-					No collections match "{searchQuery}"
+				{#if hasActiveFilters}
+					No collections match the selected filters.
 				{:else}
 					No collections found.
 				{/if}
 			</div>
+		{/if}
+
+		{#if filteredCollections.length > 0 && hasActiveFilters}
+			<p class="mt-4 text-sm text-base-content/60">
+				Showing {filteredCollections.length} of {collections.length} collections
+			</p>
 		{/if}
 	{/if}
 </div>

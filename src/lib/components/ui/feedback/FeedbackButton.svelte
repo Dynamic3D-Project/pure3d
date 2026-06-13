@@ -11,8 +11,8 @@
 
 	let { showButton = true }: Props = $props();
 
-	let textarea: HTMLTextAreaElement = $state();
-	let modal: HTMLDialogElement = $state();
+	let textarea: HTMLTextAreaElement | undefined = $state();
+	let modal: HTMLDialogElement | undefined = $state();
 	let browserInfo = $state({
 		browser: '',
 		platform: '',
@@ -45,12 +45,12 @@
 
 		openFeedbackModal.set(() => {
 			updateBrowserInfo();
-			modal.showModal();
+			modal!.showModal();
 		});
 	});
 
 	function closeModal() {
-		modal.close();
+		modal!.close();
 	}
 
 	function getBrowserInfo() {
@@ -76,7 +76,7 @@
 	}
 
 	async function sendFeedback() {
-		const feedback = textarea.value;
+		const feedback = textarea!.value;
 		const browserInfo = getBrowserInfo();
 		const currentUrl = window.location.href;
 		const userInfo = getUserInfo();
@@ -120,7 +120,7 @@
 			console.log('Feedback result:', result);
 			if (result.success) {
 				toastStore.success(result.message);
-				textarea.value = ''; // Clear the feedback input
+				textarea!.value = ''; // Clear the feedback input
 				closeModal();
 			} else {
 				toastStore.error(result.message);
@@ -137,7 +137,7 @@
 		class="btn btn-sm"
 		onclick={() => {
 			updateBrowserInfo();
-			modal.showModal();
+			modal!.showModal();
 		}}
 	>
 		Feedback
