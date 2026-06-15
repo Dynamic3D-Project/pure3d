@@ -3,10 +3,12 @@
 
 	let {
 		currentStatus,
-		hrefForStatus
+		hrefForStatus,
+		onselectStatus
 	}: {
 		currentStatus: EditionStatus;
 		hrefForStatus?: (status: EditionStatus) => string | null | undefined;
+		onselectStatus?: (status: EditionStatus, event: MouseEvent) => void;
 	} = $props();
 
 	// Main pipeline path
@@ -73,6 +75,10 @@
 	function getStageHref(status: EditionStatus): string | null {
 		return hrefForStatus?.(status) || null;
 	}
+
+	function handleStageClick(status: EditionStatus, event: MouseEvent) {
+		onselectStatus?.(status, event);
+	}
 </script>
 
 <div id="workflow-timeline" class="w-full">
@@ -89,9 +95,12 @@
 				></div>
 			{/if}
 			<svelte:element
-				this={href ? 'a' : 'div'}
+				this={href ? 'a' : 'button'}
 				href={href || undefined}
-				class="group flex flex-col items-center gap-1 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+				type={href ? undefined : 'button'}
+				role={href ? 'link' : 'button'}
+				onclick={(event: MouseEvent) => handleStageClick(stage.status, event)}
+				class="group flex flex-col items-center gap-1 rounded-md border-0 bg-transparent p-0 text-inherit focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
 				class:cursor-pointer={!!href}
 				title={href ? `Open ${stage.label}` : undefined}
 				aria-label={href ? `Open ${stage.label} workflow step` : undefined}

@@ -151,7 +151,7 @@
 				// Non-critical
 			}
 
-			goto(`${base}/collections/${record.id}/edit`);
+			goto(`${base}/collections/${record.id}/edit?new=1`);
 		} catch (e: unknown) {
 			const message = e instanceof Error ? e.message : 'Failed to create collection';
 			toast.error(message);

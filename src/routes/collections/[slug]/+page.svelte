@@ -8,17 +8,33 @@
 	import { EditionStatus, GlobalRole, Permission, type UserRoleContext } from '$lib/types/roles';
 	import { hasPermission } from '$lib/utils/permissions';
 	import { resolvePageContext } from '$lib/utils/page-permissions';
+	import { getEditionRoot, getEditionThumbnailUrl } from '$lib/utils/asset-urls';
 	import toast from 'svelte-french-toast';
+	import type { RecordModel } from 'pocketbase';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
 	let collection = $derived(data.collection);
-	let editions = $derived(data.editions);
+	let editions = $state(data.editions);
 
 	let permissionContext = $state<UserRoleContext>({ globalRole: GlobalRole.Viewer });
 	let isCreating = $state(false);
+	let isLoadingEditionManager = $state(false);
+	let isUpdatingEdition = $state(false);
+	let selectedEditionId = $state('');
+	let availableEditions = $state<EditionOption[]>([]);
+	let editionManagerLoaded = $state(false);
 	let descriptionExpanded = $state(false);
+
+	type EditionOption = {
+		id: string;
+		title: string;
+		pubNum: number;
+		status: string | null;
+		collectionId: string;
+		collectionTitle: string;
+	};
 
 	const DESCRIPTION_CLAMP_LENGTH = 320;
 
@@ -38,6 +54,7 @@
 
 	let canEdit = $derived(hasPermission(permissionContext, Permission.CollectionEdit));
 	let canCreateEdition = $derived(hasPermission(permissionContext, Permission.EditionCreate));
+	let canManageEditions = $derived(canEdit);
 
 	// Group editions by status for version-aware display
 	let editionGroups = $derived.by(() => {
@@ -76,6 +93,109 @@
 			collectionId: collection.id
 		});
 	});
+
+	$effect(() => {
+		if (canManageEditions && !editionManagerLoaded && !isLoadingEditionManager) {
+			void loadEditionManager();
+		}
+	});
+
+	function editionFromRecord(record: RecordModel) {
+		const expandedCollection = record.expand?.collection as RecordModel | undefined;
+		const collectionPubNum = expandedCollection?.pubNum || collection.pubNum || 0;
+		const editionPubNum = record.pubNum || 1;
+
+		return {
+			id: record.id,
+			slug: record.id,
+			title: record.dcTitle || record.title,
+			description: record.dcAbstract || '',
+			authors: Array.isArray(record.dcCreator) ? record.dcCreator.join(', ') : '',
+			thumbnail:
+				collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, editionPubNum) : '',
+			voyagerUrl: collectionPubNum > 0 ? getEditionRoot(collectionPubNum, editionPubNum) : '',
+			usageConditions: record.dcRightsLicense || '',
+			alternativeVersion: null,
+			tags: Array.isArray(record.dcKeyword) ? record.dcKeyword : [],
+			created: record.created,
+			hasPeerReview: !!record.peerReviewKind && record.peerReviewKind !== 'No peer review',
+			pubNum: editionPubNum,
+			modelSize: record.modelSize || null,
+			status: record.status || null,
+			dcDoi: Array.isArray(record.dcDoi) ? record.dcDoi : [],
+			coverImage: record.coverImage || ''
+		};
+	}
+
+	function editionOptionFromRecord(record: RecordModel): EditionOption {
+		const expandedCollection = record.expand?.collection as RecordModel | undefined;
+		return {
+			id: record.id,
+			title: record.dcTitle || record.title || 'Untitled Edition',
+			pubNum: record.pubNum || 0,
+			status: record.status || null,
+			collectionId: record.collection || '',
+			collectionTitle: expandedCollection?.title || ''
+		};
+	}
+
+	async function loadEditionManager() {
+		isLoadingEditionManager = true;
+		editionManagerLoaded = true;
+		try {
+			const [collectionEditionsResult, allEditionsResult] = await Promise.all([
+				pb.collection('editions').getList(1, 500, {
+					sort: 'pubNum,title',
+					filter: `collection = "${collection.id}"`,
+					expand: 'collection'
+				}),
+				pb.collection('editions').getList(1, 500, {
+					sort: 'pubNum,title',
+					expand: 'collection'
+				})
+			]);
+
+			editions = collectionEditionsResult.items.map(editionFromRecord) as typeof editions;
+			availableEditions = allEditionsResult.items
+				.filter((record) => record.collection !== collection.id)
+				.map(editionOptionFromRecord);
+		} catch (e: any) {
+			toast.error(e?.message || 'Failed to load editable editions');
+		} finally {
+			isLoadingEditionManager = false;
+		}
+	}
+
+	async function addEditionToCollection() {
+		if (!selectedEditionId) return;
+
+		isUpdatingEdition = true;
+		try {
+			await pb.collection('editions').update(selectedEditionId, { collection: collection.id });
+			selectedEditionId = '';
+			await loadEditionManager();
+			toast.success('Edition added to collection');
+		} catch (e: any) {
+			toast.error(e?.message || 'Failed to add edition');
+		} finally {
+			isUpdatingEdition = false;
+		}
+	}
+
+	async function removeEditionFromCollection(editionId: string) {
+		if (!confirm('Remove this edition from the collection?')) return;
+
+		isUpdatingEdition = true;
+		try {
+			await pb.collection('editions').update(editionId, { collection: null });
+			await loadEditionManager();
+			toast.success('Edition removed from collection');
+		} catch (e: any) {
+			toast.error(e?.message || 'Failed to remove edition');
+		} finally {
+			isUpdatingEdition = false;
+		}
+	}
 
 	async function createEdition() {
 		isCreating = true;
@@ -266,7 +386,67 @@
 
 	<!-- Editions Section -->
 	<div class="mb-8">
-		<h2 class="mb-6 text-2xl font-semibold">Editions</h2>
+		<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+			<h2 class="text-2xl font-semibold">Editions</h2>
+			{#if canManageEditions}
+				<button
+					type="button"
+					class="btn btn-ghost btn-sm"
+					onclick={loadEditionManager}
+					disabled={isLoadingEditionManager || isUpdatingEdition}
+				>
+					{#if isLoadingEditionManager}
+						<span class="loading loading-xs loading-spinner"></span>
+					{/if}
+					Refresh editions
+				</button>
+			{/if}
+		</div>
+
+		{#if canManageEditions}
+			<div class="mb-6 rounded-box border border-base-300 bg-base-100 p-4 shadow-sm">
+				<div class="flex flex-col gap-3 md:flex-row md:items-end">
+					<div class="form-control flex-1">
+						<label class="label pb-1" for="edition-to-add">
+							<span class="label-text font-medium">Add existing edition</span>
+						</label>
+						<select
+							id="edition-to-add"
+							class="select select-bordered w-full"
+							bind:value={selectedEditionId}
+							disabled={isLoadingEditionManager || isUpdatingEdition || availableEditions.length === 0}
+						>
+							<option value="">
+								{availableEditions.length === 0
+									? 'No editions available to add'
+									: 'Select an edition'}
+							</option>
+							{#each availableEditions as edition (edition.id)}
+								<option value={edition.id}>
+									{edition.pubNum ? `Ed. ${String(edition.pubNum).padStart(2, '0')} · ` : ''}{edition.title}{edition.collectionTitle
+										? ` · currently in ${edition.collectionTitle}`
+										: ' · unassigned'}
+								</option>
+							{/each}
+						</select>
+						<p class="mt-1 text-xs text-base-content/50">
+							Adding an edition that is already in another collection will move it here.
+						</p>
+					</div>
+					<button
+						type="button"
+						class="btn btn-primary"
+						onclick={addEditionToCollection}
+						disabled={!selectedEditionId || isUpdatingEdition}
+					>
+						{#if isUpdatingEdition}
+							<span class="loading loading-xs loading-spinner"></span>
+						{/if}
+						Add to Collection
+					</button>
+				</div>
+			</div>
+		{/if}
 
 		{#if editions.length > 0}
 			<!-- Version summary -->
@@ -300,7 +480,19 @@
 							class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
 						>
 							{#each group.editions as edition (edition.id)}
-								<EditionCard edition={edition as any} />
+								<div class="relative">
+									<EditionCard edition={edition as any} />
+									{#if canManageEditions}
+										<button
+											type="button"
+											class="btn btn-error btn-xs absolute top-2 right-2 z-20 shadow"
+											onclick={() => removeEditionFromCollection(edition.id)}
+											disabled={isUpdatingEdition}
+										>
+											Remove
+										</button>
+									{/if}
+								</div>
 							{/each}
 						</div>
 					</div>
@@ -310,7 +502,19 @@
 					class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
 				>
 					{#each editions as edition (edition.id)}
-						<EditionCard edition={edition as any} />
+						<div class="relative">
+							<EditionCard edition={edition as any} />
+							{#if canManageEditions}
+								<button
+									type="button"
+									class="btn btn-error btn-xs absolute top-2 right-2 z-20 shadow"
+									onclick={() => removeEditionFromCollection(edition.id)}
+									disabled={isUpdatingEdition}
+								>
+									Remove
+								</button>
+							{/if}
+						</div>
 					{/each}
 				</div>
 			{/if}

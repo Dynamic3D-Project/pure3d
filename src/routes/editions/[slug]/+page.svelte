@@ -2,31 +2,16 @@
 	import { base } from '$app/paths';
 	import { dev } from '$app/environment';
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
 	import type { PageData } from './$types';
 	import VoyagerViewer, { type VoyagerAPI } from '$lib/components/voyager/VoyagerViewer.svelte';
 	import VoyagerAPIDemo from '$lib/components/voyager/VoyagerAPIDemo.svelte';
 	import ReviewFeedbackList from '$lib/components/workflow/ReviewFeedbackList.svelte';
 	import ImagineModal from '$lib/components/ui/ImagineModal.svelte';
-	import FloatingModal from '$lib/components/ui/FloatingModal.svelte';
-	import StatusTransitionPanel from '$lib/components/workflow/StatusTransitionPanel.svelte';
-	import MemberManager from '$lib/components/admin/MemberManager.svelte';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
 	import { authStore } from '$lib/database/stores/auth.svelte';
-	import { pb } from '$lib/database/client';
-	import {
-		EditionRole,
-		EditionStatus,
-		EDITION_ROLE_LABELS,
-		EDITION_STATUS_TRANSITIONS,
-		GlobalRole,
-		Permission,
-		type UserRoleContext
-	} from '$lib/types/roles';
-	import { hasPermission, canUserTransitionStatus } from '$lib/utils/permissions';
+	import { EditionStatus, GlobalRole, Permission, type UserRoleContext } from '$lib/types/roles';
+	import { hasPermission } from '$lib/utils/permissions';
 	import { resolvePageContext } from '$lib/utils/page-permissions';
-	import { logAudit } from '$lib/utils/audit';
-	import toast from 'svelte-french-toast';
 
 	// View preset type for camera positions
 	interface ViewPreset {
@@ -156,7 +141,9 @@
 
 	const embedVideoUrl = $derived(getYouTubeEmbedUrl(viewerHelpVideoUrl || ''));
 
-	let activeTab = $state<'description' | 'metadata' | 'peer-review' | 'printables' | 'versions'>('description');
+	let activeTab = $state<'description' | 'metadata' | 'peer-review' | 'printables' | 'versions'>(
+		'description'
+	);
 	let isSidebarCollapsed = $state(false);
 	let helpModalOpen = $state(false);
 	let imagineModalOpen = $state(false);
@@ -168,17 +155,17 @@
 
 	// Get the primary DOI (first in array) or construct from pubNum
 	const primaryDoi = $derived(
-		((edition as any).dcDoi && (edition as any).dcDoi.length > 0)
+		(edition as any).dcDoi && (edition as any).dcDoi.length > 0
 			? (edition as any).dcDoi[0]
-			: ((edition as any).pubNum ? `10.60131/p3d.${String((edition as any).collectionId || '0000').slice(-4)}.${String((edition as any).pubNum).padStart(2, '0')}` : '')
+			: (edition as any).pubNum
+				? `10.60131/p3d.${String((edition as any).collectionId || '0000').slice(-4)}.${String((edition as any).pubNum).padStart(2, '0')}`
+				: ''
 	);
 
 	// Format citation (Chicago style)
 	const citationText = $derived.by(() => {
 		const creators = ((edition as any).dcCreator as string[]) || [];
-		const creatorStr = creators.length > 0
-			? creators.join(', ')
-			: edition.authors || 'Unknown';
+		const creatorStr = creators.length > 0 ? creators.join(', ') : edition.authors || 'Unknown';
 		const year = edition.created ? new Date(edition.created).getFullYear() : '';
 		const title = edition.title;
 		const pubNum = (edition as any).pubNum;
@@ -195,7 +182,7 @@
 		const diffs: Array<{ type: 'add' | 'mod' | 'del'; text: string }> = [];
 
 		// Compare model size
-		const currentModel = ((edition as any).modelSize) || '';
+		const currentModel = (edition as any).modelSize || '';
 		const prevModel = prevEdition.modelSize || '';
 		if (currentModel && prevModel && currentModel !== prevModel) {
 			diffs.push({ type: 'mod', text: `Model size: ${prevModel} → ${currentModel}` });
@@ -300,43 +287,15 @@
 		}
 	}
 
-	// --- Manage panel (permission-gated CRUD on this page) ---
+	// --- Manage link visibility ---
 	let permissionContext = $state<UserRoleContext>({ globalRole: GlobalRole.Viewer });
-	let manageOpen = $state(false);
-	let manageTab = $state<'workflow' | 'members' | 'danger'>('workflow');
-	let manageButtonElement: HTMLButtonElement | undefined = $state();
 	let currentStatus = $state<EditionStatus>(
 		((data.edition as unknown as { status?: EditionStatus }).status as EditionStatus) ||
 			EditionStatus.Draft
 	);
-	let deleteConfirmOpen = $state(false);
-	let isDeleting = $state(false);
-
-	const editionRoleValues = Object.values(EditionRole) as string[];
-
-	let canManageMembers = $derived(
-		hasPermission(permissionContext, Permission.EditionEdit) &&
-			(permissionContext.globalRole === GlobalRole.Admin ||
-				permissionContext.collectionRole === 'owner' ||
-				permissionContext.editionRole === EditionRole.Author)
-	);
-
-	let hasActionableTransition = $derived(
-		(EDITION_STATUS_TRANSITIONS[currentStatus] ?? []).some((target) =>
-			canUserTransitionStatus(permissionContext, currentStatus, target)
-		)
-	);
 
 	let showDraftBadge = $derived(edition.id !== 'demo' && currentStatus === EditionStatus.Draft);
-
-	let canManagePage = $derived(
-		hasPermission(permissionContext, Permission.EditionDelete) ||
-			canManageMembers ||
-			hasActionableTransition
-	);
-
-	let canDelete = $derived(hasPermission(permissionContext, Permission.EditionDelete));
-	let canEditMetadata = $derived(hasPermission(permissionContext, Permission.EditionEdit));
+	let canManagePage = $derived(hasPermission(permissionContext, Permission.EditionEdit));
 
 	onMount(async () => {
 		if (edition.id === 'demo') return;
@@ -356,42 +315,6 @@
 			editionId: edition.id
 		});
 	});
-
-	function handleStatusChanged(newStatus: EditionStatus) {
-		currentStatus = newStatus;
-	}
-
-	function openManageModal() {
-		if (manageTab === 'workflow' && !hasActionableTransition) {
-			manageTab = canManageMembers ? 'members' : 'danger';
-		} else if (manageTab === 'members' && !canManageMembers) {
-			manageTab = hasActionableTransition ? 'workflow' : 'danger';
-		} else if (manageTab === 'danger' && !canDelete) {
-			manageTab = hasActionableTransition ? 'workflow' : 'members';
-		}
-		manageOpen = true;
-	}
-
-	function closeManageModal() {
-		manageOpen = false;
-		deleteConfirmOpen = false;
-	}
-
-	async function deleteEdition() {
-		isDeleting = true;
-		try {
-			await pb.collection('editions').delete(edition.id);
-			await logAudit('user_deleted', 'edition', edition.id, authStore.user?.email || '', {
-				title: edition.title
-			});
-			toast.success('Edition deleted');
-			goto(`${base}/editions`);
-		} catch (error) {
-			console.error('Error deleting edition:', error);
-			toast.error('Failed to delete edition');
-			isDeleting = false;
-		}
-	}
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -442,7 +365,10 @@
 				</div>
 				<p class="text-base-content/70">
 					{#each creatorNames as author, index (author)}
-						<a href={authorEditionsHref(author)} class="link-hover link">{author}</a>{index < creatorNames.length - 1 ? ', ' : ''}
+						<a href={authorEditionsHref(author)} class="link link-hover">{author}</a>{index <
+						creatorNames.length - 1
+							? ', '
+							: ''}
 					{/each}
 				</p>
 				<!-- Institution -->
@@ -454,16 +380,9 @@
 			</div>
 			<div class="flex flex-col gap-2">
 				{#if canManagePage}
-					<button
-						bind:this={manageButtonElement}
-						class="btn btn-sm btn-primary"
-						onclick={() => (manageOpen ? closeManageModal() : openManageModal())}
-						aria-expanded={manageOpen}
-						aria-haspopup="dialog"
-						aria-controls="edition-manage-modal"
-					>
+					<a href="{base}/editions/{edition.id}/workflow" class="btn btn-sm btn-primary">
 						Manage
-					</button>
+					</a>
 				{/if}
 			</div>
 			<!-- Sidebar toggle button -->
@@ -791,7 +710,10 @@
 					>
 						<div class="card-body w-96 p-0">
 							<!-- Tabs -->
-							<div role="tablist" class="tabs-bordered tabs flex-nowrap overflow-x-auto bg-base-300">
+							<div
+								role="tablist"
+								class="tabs-bordered tabs flex-nowrap overflow-x-auto bg-base-300"
+							>
 								<button
 									role="tab"
 									class="tab shrink-0 whitespace-nowrap"
@@ -879,29 +801,34 @@
 									</div>
 								{:else if activeTab === 'metadata'}
 									<div class="space-y-4">
-									{#if primaryDoi}
-										<div>
-											<h3 class="text-sm font-semibold text-base-content/60">DOI</h3>
-											<div class="mt-1 flex flex-wrap items-center gap-2">
-												<p class="font-mono text-xs break-all">{primaryDoi}</p>
-												<button class="btn btn-outline btn-xs" onclick={copyDoi} title={`Copy DOI ${primaryDoi}`}>
-													{citationCopied ? 'Copied' : 'Copy DOI'}
-												</button>
+										{#if primaryDoi}
+											<div>
+												<h3 class="text-sm font-semibold text-base-content/60">DOI</h3>
+												<div class="mt-1 flex flex-wrap items-center gap-2">
+													<p class="font-mono text-xs break-all">{primaryDoi}</p>
+													<button
+														class="btn btn-outline btn-xs"
+														onclick={copyDoi}
+														title={`Copy DOI ${primaryDoi}`}
+													>
+														{citationCopied ? 'Copied' : 'Copy DOI'}
+													</button>
+												</div>
 											</div>
+										{/if}
+										<div>
+											<h3 class="text-sm font-semibold text-base-content/60">Created</h3>
+											<p>{formatDate(edition.created)}</p>
 										</div>
-									{/if}
-									<div>
-										<h3 class="text-sm font-semibold text-base-content/60">Created</h3>
-										<p>{formatDate(edition.created)}</p>
-									</div>
-									<div>
-										<h3 class="text-sm font-semibold text-base-content/60">Authors</h3>
-										<p>
-											{#each creatorNames as author, index (author)}
-												<a href={authorEditionsHref(author)} class="link-hover link">{author}</a>{index < creatorNames.length - 1 ? ', ' : ''}
-											{/each}
-										</p>
-									</div>
+										<div>
+											<h3 class="text-sm font-semibold text-base-content/60">Authors</h3>
+											<p>
+												{#each creatorNames as author, index (author)}
+													<a href={authorEditionsHref(author)} class="link link-hover">{author}</a
+													>{index < creatorNames.length - 1 ? ', ' : ''}
+												{/each}
+											</p>
+										</div>
 										{#if (edition as any).dcInstitution && (edition as any).dcInstitution.length > 0}
 											<div>
 												<h3 class="text-sm font-semibold text-base-content/60">Institution</h3>
@@ -1005,9 +932,7 @@
 													{/if}
 												</button>
 												{#if primaryDoi}
-													<button class="btn btn-xs btn-ghost" onclick={copyDoi}>
-														Copy DOI
-													</button>
+													<button class="btn btn-ghost btn-xs" onclick={copyDoi}> Copy DOI </button>
 												{/if}
 											</div>
 										</div>
@@ -1019,9 +944,20 @@
 												<div class="space-y-1">
 													{#each changelog as change}
 														<div
-															class="flex items-start gap-2 rounded px-2 py-1 text-xs {change.type === 'add' ? 'bg-success/10' : change.type === 'mod' ? 'bg-warning/10' : 'bg-error/10'}"
+															class="flex items-start gap-2 rounded px-2 py-1 text-xs {change.type ===
+															'add'
+																? 'bg-success/10'
+																: change.type === 'mod'
+																	? 'bg-warning/10'
+																	: 'bg-error/10'}"
 														>
-															<span class="mt-px font-mono font-bold {change.type === 'add' ? 'text-success' : change.type === 'mod' ? 'text-warning' : 'text-error'}">
+															<span
+																class="mt-px font-mono font-bold {change.type === 'add'
+																	? 'text-success'
+																	: change.type === 'mod'
+																		? 'text-warning'
+																		: 'text-error'}"
+															>
 																{change.type === 'add' ? '+' : change.type === 'mod' ? '~' : '−'}
 															</span>
 															<span>{change.text}</span>
@@ -1043,18 +979,24 @@
 													</div>
 													<div class="flex-1 pb-2">
 														<div class="flex items-center gap-2">
-															<span class="font-mono text-xs font-semibold">Ed. {String((edition as any).pubNum || 1).padStart(2, '0')}</span>
-															<span class="badge badge-success badge-xs">Current</span>
+															<span class="font-mono text-xs font-semibold"
+																>Ed. {String((edition as any).pubNum || 1).padStart(2, '0')}</span
+															>
+															<span class="badge badge-xs badge-success">Current</span>
 														</div>
 														<div class="text-sm font-medium">{edition.title}</div>
 														{#if primaryDoi}
-															<div class="font-mono text-[10px] text-base-content/50">{primaryDoi}</div>
+															<div class="font-mono text-[10px] text-base-content/50">
+																{primaryDoi}
+															</div>
 														{/if}
 													</div>
 												</article>
 												<!-- Sibling editions (version history) -->
 												{#each siblingEditions as sibling (sibling.id)}
-													<article class="flex gap-3 rounded-lg p-3 hover:bg-base-300/50 transition-colors">
+													<article
+														class="flex gap-3 rounded-lg p-3 transition-colors hover:bg-base-300/50"
+													>
 														<div class="flex flex-col items-center">
 															<div class="h-2.5 w-2.5 rounded-full bg-base-content/30"></div>
 															<div class="w-px flex-1 bg-base-300"></div>
@@ -1065,19 +1007,27 @@
 															class="flex-1 pb-2 no-underline"
 														>
 															<div class="flex items-center gap-2">
-																<span class="font-mono text-xs font-semibold">Ed. {String(sibling.pubNum).padStart(2, '0')}</span>
+																<span class="font-mono text-xs font-semibold"
+																	>Ed. {String(sibling.pubNum).padStart(2, '0')}</span
+																>
 																{#if sibling.status}
 																	<span class="badge badge-ghost badge-xs">{sibling.status}</span>
 																{/if}
 															</div>
-															<div class="text-sm font-medium text-base-content/80 hover:text-primary transition-colors">
+															<div
+																class="text-sm font-medium text-base-content/80 transition-colors hover:text-primary"
+															>
 																{sibling.title}
 															</div>
 															{#if (sibling as any).dcDoi && (sibling as any).dcDoi.length > 0}
-																<div class="font-mono text-[10px] text-base-content/50">{(sibling as any).dcDoi[0]}</div>
+																<div class="font-mono text-[10px] text-base-content/50">
+																	{(sibling as any).dcDoi[0]}
+																</div>
 															{/if}
 															{#if sibling.modelSize}
-																<div class="text-[10px] text-base-content/50">{sibling.modelSize}</div>
+																<div class="text-[10px] text-base-content/50">
+																	{sibling.modelSize}
+																</div>
 															{/if}
 														</a>
 													</article>
@@ -1137,149 +1087,11 @@
 {/if}
 
 <!-- Imagine AI Modal -->
-<ImagineModal bind:open={imagineModalOpen} edition={edition as any} onclose={() => (imagineModalOpen = false)} />
-
-{#if canManagePage}
-	<FloatingModal
-		open={manageOpen}
-		referenceElement={manageButtonElement}
-		id="edition-manage-modal"
-		labelledby="edition-manage-title"
-		onclose={() => {
-			if (!deleteConfirmOpen) closeManageModal();
-		}}
-	>
-		{#snippet header()}
-			<div class="flex items-start justify-between gap-4">
-				<div class="flex flex-wrap items-center gap-3">
-					<h2 id="edition-manage-title" class="text-lg font-semibold">Manage Edition</h2>
-					<StatusBadge status={currentStatus} />
-				</div>
-				<button
-					type="button"
-					class="btn btn-ghost btn-xs"
-					onclick={closeManageModal}
-					aria-label="Close manage edition modal"
-				>
-					x
-				</button>
-			</div>
-
-			<div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-				<div role="tablist" class="tabs-bordered tabs">
-					{#if hasActionableTransition}
-						<button
-							role="tab"
-							class="tab"
-							class:tab-active={manageTab === 'workflow'}
-							onclick={() => (manageTab = 'workflow')}
-						>
-							Workflow
-						</button>
-					{/if}
-					{#if canManageMembers}
-						<button
-							role="tab"
-							class="tab"
-							class:tab-active={manageTab === 'members'}
-							onclick={() => (manageTab = 'members')}
-						>
-							Members
-						</button>
-					{/if}
-					{#if canDelete}
-						<button
-							role="tab"
-							class="tab"
-							class:tab-active={manageTab === 'danger'}
-							onclick={() => (manageTab = 'danger')}
-						>
-							Danger Zone
-						</button>
-					{/if}
-				</div>
-				{#if canEditMetadata}
-					<a href="{base}/editions/{edition.id}/workflow" class="btn btn-outline btn-sm">
-						Edit in Workflow
-					</a>
-				{/if}
-			</div>
-		{/snippet}
-
-		{#if manageTab === 'workflow' && hasActionableTransition}
-			<StatusTransitionPanel
-				editionId={edition.id}
-				title={edition.title}
-				status={currentStatus}
-				context={permissionContext}
-				onchanged={handleStatusChanged}
-			/>
-		{:else if manageTab === 'members' && canManageMembers}
-			<MemberManager
-				membershipCollection="editionUsers"
-				parentField="editionId"
-				parentId={edition.id}
-				roleValues={editionRoleValues}
-				roleLabels={EDITION_ROLE_LABELS}
-				defaultRole={EditionRole.Collaborator}
-				auditTargetType="edition"
-			/>
-		{:else if manageTab === 'danger' && canDelete}
-			<div class="space-y-3">
-				<p class="text-sm text-base-content/70">
-					Deleting this edition is permanent and cannot be undone.
-				</p>
-			</div>
-		{/if}
-
-		{#snippet footer()}
-			<div class="flex justify-end gap-2">
-				<button type="button" class="btn btn-ghost btn-sm" onclick={closeManageModal}>Close</button>
-				{#if manageTab === 'danger' && canDelete}
-					<button
-						type="button"
-						class="btn btn-sm btn-error"
-						onclick={() => (deleteConfirmOpen = true)}
-						disabled={isDeleting}
-					>
-						Delete Edition
-					</button>
-				{/if}
-			</div>
-		{/snippet}
-	</FloatingModal>
-{/if}
-
-<!-- Delete confirmation modal -->
-{#if canDelete}
-	<dialog class="modal" class:modal-open={deleteConfirmOpen}>
-		<div class="modal-box">
-			<h3 class="text-lg font-bold">Delete this edition?</h3>
-			<p class="py-4 text-base-content/70">
-				"{edition.title}" will be permanently removed. This action cannot be undone.
-			</p>
-			<div class="modal-action">
-				<button
-					type="button"
-					class="btn btn-ghost"
-					onclick={() => (deleteConfirmOpen = false)}
-					disabled={isDeleting}
-				>
-					Cancel
-				</button>
-				<button type="button" class="btn btn-error" onclick={deleteEdition} disabled={isDeleting}>
-					{#if isDeleting}
-						<span class="loading loading-xs loading-spinner"></span>
-					{/if}
-					Delete
-				</button>
-			</div>
-		</div>
-		<form method="dialog" class="modal-backdrop">
-			<button type="button" onclick={() => (deleteConfirmOpen = false)}>close</button>
-		</form>
-	</dialog>
-{/if}
+<ImagineModal
+	bind:open={imagineModalOpen}
+	edition={edition as any}
+	onclose={() => (imagineModalOpen = false)}
+/>
 
 <style>
 	/* Full window mode for the 3D viewer */

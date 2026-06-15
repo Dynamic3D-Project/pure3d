@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { pb } from '$lib/database/client';
 	import { authStore } from '$lib/database/stores/auth.svelte';
@@ -28,6 +29,7 @@
 	let dcLanguage = $state('');
 	let isVisible = $state(false);
 	let isSaving = $state(false);
+	let isCancelling = $state(false);
 
 	let collectionRole = $state<CollectionRole | undefined>(undefined);
 	let roleContext = $derived<UserRoleContext>({
@@ -36,7 +38,10 @@
 	});
 	let canEdit = $derived(hasPermission(roleContext, Permission.CollectionEdit));
 	let authorized = $state<boolean | null>(null);
+	let isNewCollection = $derived($page.url.searchParams.get('new') === '1');
 	let fallbackCoverUrl = $derived(getCollectionCoverUrl(record, record.pubNum));
+	const inputClass =
+		'input-bordered input w-full bg-white shadow-sm focus:border-primary focus:bg-white focus:outline-none';
 
 	function jsonArrayToString(val: unknown): string {
 		if (Array.isArray(val)) return val.join(', ');
@@ -119,6 +124,38 @@
 		}
 	}
 
+	async function cancel() {
+		if (!isNewCollection) {
+			goto(`${base}/collections/${record.id}`);
+			return;
+		}
+
+		isCancelling = true;
+		try {
+			try {
+				const memberships = await pb.collection('collectionUsers').getList(1, 500, {
+					filter: `collection = "${record.id}"`,
+					$autoCancel: false
+				});
+
+				await Promise.all(
+					memberships.items.map((membership) =>
+						pb.collection('collectionUsers').delete(membership.id, { $autoCancel: false })
+					)
+				);
+			} catch {
+				// Collection deletion is the source of truth for this cleanup.
+			}
+
+			await pb.collection('collections').delete(record.id, { $autoCancel: false });
+			goto(`${base}/collections`);
+		} catch (e: any) {
+			toast.error(e?.message || 'Failed to remove empty collection');
+		} finally {
+			isCancelling = false;
+		}
+	}
+
 	function onCoverChanged(updatedRecord: typeof record) {
 		record = updatedRecord;
 	}
@@ -154,12 +191,22 @@
 		>
 			<h1 class="text-2xl font-bold">Edit Collection</h1>
 			<div class="flex items-center gap-3">
-				<a href="{base}/collections/{record.id}" class="btn btn-ghost btn-sm">Cancel</a>
+				<button
+					type="button"
+					class="btn btn-ghost btn-sm"
+					disabled={isSaving || isCancelling}
+					onclick={cancel}
+				>
+					{#if isCancelling}
+						<span class="loading loading-xs loading-spinner"></span>
+					{/if}
+					Cancel
+				</button>
 				<button
 					type="submit"
 					form="collection-edit-form"
 					class="btn btn-sm btn-primary"
-					disabled={isSaving}
+					disabled={isSaving || isCancelling}
 				>
 					{#if isSaving}
 						<span class="loading loading-xs loading-spinner"></span>
@@ -199,13 +246,7 @@
 							<label class="label" for="title">
 								<span class="label-text font-medium">Title *</span>
 							</label>
-							<input
-								id="title"
-								type="text"
-								class="input-bordered input"
-								bind:value={title}
-								required
-							/>
+							<input id="title" type="text" class={inputClass} bind:value={title} required />
 						</div>
 
 						<div class="form-control">
@@ -236,24 +277,14 @@
 							<label class="label pb-1" for="dcTitle">
 								<span class="label-text font-medium">Title</span>
 							</label>
-							<input
-								id="dcTitle"
-								type="text"
-								class="input-bordered input w-full"
-								bind:value={dcTitle}
-							/>
+							<input id="dcTitle" type="text" class={inputClass} bind:value={dcTitle} />
 						</div>
 
 						<div class="form-control">
 							<label class="label pb-1" for="dcSubtitle">
 								<span class="label-text font-medium">Subtitle</span>
 							</label>
-							<input
-								id="dcSubtitle"
-								type="text"
-								class="input-bordered input w-full"
-								bind:value={dcSubtitle}
-							/>
+							<input id="dcSubtitle" type="text" class={inputClass} bind:value={dcSubtitle} />
 						</div>
 					</div>
 
@@ -267,7 +298,7 @@
 								<input
 									id="dcCreator"
 									type="text"
-									class="input-bordered input w-full"
+									class={inputClass}
 									bind:value={dcCreator}
 									placeholder="Author A, Author B"
 								/>
@@ -283,7 +314,7 @@
 								<input
 									id="dcContributor"
 									type="text"
-									class="input-bordered input w-full"
+									class={inputClass}
 									bind:value={dcContributor}
 									placeholder="Contributor A, Contributor B"
 								/>
@@ -306,7 +337,7 @@
 								<input
 									id="dcInstitution"
 									type="text"
-									class="input-bordered input w-full"
+									class={inputClass}
 									bind:value={dcInstitution}
 									placeholder="University A, Museum B"
 								/>
@@ -322,7 +353,7 @@
 								<input
 									id="dcSubject"
 									type="text"
-									class="input-bordered input w-full"
+									class={inputClass}
 									bind:value={dcSubject}
 									placeholder="archaeology, 3D modeling"
 								/>
@@ -343,7 +374,7 @@
 								<input
 									id="dcCoveragePeriod"
 									type="text"
-									class="input-bordered input w-full"
+									class={inputClass}
 									bind:value={dcCoveragePeriod}
 									placeholder="e.g. 1500-1600 CE"
 								/>
@@ -356,7 +387,7 @@
 								<input
 									id="dcCoveragePlace"
 									type="text"
-									class="input-bordered input w-full"
+									class={inputClass}
 									bind:value={dcCoveragePlace}
 									placeholder="e.g. Rome, Italy"
 								/>
@@ -369,7 +400,7 @@
 								<input
 									id="dcLanguage"
 									type="text"
-									class="input-bordered input w-full"
+									class={inputClass}
 									bind:value={dcLanguage}
 									placeholder="en, nl, de"
 								/>
