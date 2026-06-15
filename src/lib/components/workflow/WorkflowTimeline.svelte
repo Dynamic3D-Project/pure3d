@@ -1,7 +1,13 @@
 <script lang="ts">
 	import { EditionStatus, STATUS_LABELS } from '$lib/types/roles';
 
-	let { currentStatus }: { currentStatus: EditionStatus } = $props();
+	let {
+		currentStatus,
+		hrefForStatus
+	}: {
+		currentStatus: EditionStatus;
+		hrefForStatus?: (status: EditionStatus) => string | null | undefined;
+	} = $props();
 
 	// Main pipeline path
 	const mainStages: { status: EditionStatus; label: string }[] = [
@@ -63,6 +69,10 @@
 	}
 
 	const isBranch = $derived(branchStatuses.includes(currentStatus));
+
+	function getStageHref(status: EditionStatus): string | null {
+		return hrefForStatus?.(status) || null;
+	}
 </script>
 
 <div id="workflow-timeline" class="w-full">
@@ -70,6 +80,7 @@
 	<div class="flex items-center gap-0">
 		{#each mainStages as stage, i (stage.status)}
 			{@const state = getStageState(stage.status)}
+			{@const href = getStageHref(stage.status)}
 			{#if i > 0}
 				<div
 					class="h-0.5 flex-1"
@@ -77,13 +88,21 @@
 					class:bg-base-300={state === 'future'}
 				></div>
 			{/if}
-			<div class="flex flex-col items-center gap-1">
+			<svelte:element
+				this={href ? 'a' : 'div'}
+				href={href || undefined}
+				class="group flex flex-col items-center gap-1 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+				class:cursor-pointer={!!href}
+				title={href ? `Open ${stage.label}` : undefined}
+				aria-label={href ? `Open ${stage.label} workflow step` : undefined}
+			>
 				<div
-					class="flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] {state ===
-					'completed'
+					class="flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] transition-transform {href
+						? 'group-hover:scale-110'
+						: ''} {state === 'completed'
 						? 'bg-success text-success-content'
 						: state === 'current'
-							? 'bg-primary text-primary-content font-semibold'
+							? 'bg-primary font-semibold text-primary-content'
 							: 'bg-base-300 text-base-content/40'}"
 				>
 					{#if state === 'completed'}
@@ -102,13 +121,14 @@
 					{/if}
 				</div>
 				<span
-					class="max-w-16 text-center text-[11px] {state === 'current'
+					class="max-w-16 text-center text-[11px] {href ? 'group-hover:underline' : ''} {state ===
+					'current'
 						? 'font-semibold'
 						: 'text-base-content/60'} {state === 'future' ? 'text-base-content/40' : ''}"
 				>
 					{stage.label}
 				</span>
-			</div>
+			</svelte:element>
 		{/each}
 	</div>
 

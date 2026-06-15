@@ -57,9 +57,7 @@
 	let isReviewer = $state(false);
 	let myAssignment = $state<ReviewAssignment | null>(null);
 	let myExistingReview = $state<EditionReview | null>(null);
-	let isAdmin = $derived(
-		authStore.globalRole === GlobalRole.Admin
-	);
+	let isAdmin = $derived(authStore.globalRole === GlobalRole.Admin);
 	let collectionRole = $state<CollectionRole | undefined>(undefined);
 	let roleContext = $derived<UserRoleContext>({
 		globalRole: authStore.globalRole,
@@ -101,7 +99,10 @@
 	}
 
 	function stringToJsonArray(val: string): string[] {
-		return val.split(',').map((s) => s.trim()).filter(Boolean);
+		return val
+			.split(',')
+			.map((s) => s.trim())
+			.filter(Boolean);
 	}
 
 	// Collections for concept form
@@ -491,9 +492,38 @@
 			year: 'numeric'
 		});
 	}
+
+	function workflowStepHref(status: EditionStatus): string | null {
+		if (!edition) return null;
+		const workflowPath = `${base}/editions/${edition.id}/workflow`;
+
+		switch (status) {
+			case EditionStatus.Draft:
+			case EditionStatus.ConceptSubmitted:
+			case EditionStatus.EditorialReview:
+			case EditionStatus.ConceptAccepted:
+				return `${workflowPath}#concept`;
+			case EditionStatus.AlphaReview:
+			case EditionStatus.AlphaRevisions:
+			case EditionStatus.AlphaAccepted:
+				return `${workflowPath}#alpha`;
+			case EditionStatus.FinalReview:
+			case EditionStatus.FinalRevisions:
+				return `${workflowPath}#final`;
+			case EditionStatus.Published:
+				return `${workflowPath}#published`;
+			default:
+				return workflowPath;
+		}
+	}
 </script>
 
-<div id="edition-workflow-page" class="mx-auto p-4 lg:p-8" class:max-w-7xl={edition && viewMode === 'concept-form'} class:max-w-4xl={!edition || viewMode !== 'concept-form'}>
+<div
+	id="edition-workflow-page"
+	class="mx-auto p-4 lg:p-8"
+	class:max-w-7xl={edition && viewMode === 'concept-form'}
+	class:max-w-4xl={!edition || viewMode !== 'concept-form'}
+>
 	{#if isLoading}
 		<div class="flex items-center justify-center py-12">
 			<span class="loading loading-lg loading-spinner"></span>
@@ -508,7 +538,7 @@
 					{#if canDelete}
 						<button
 							type="button"
-							class="btn btn-sm btn-error btn-outline ms-auto"
+							class="btn ms-auto btn-outline btn-sm btn-error"
 							onclick={() => (showDeleteModal = true)}
 						>
 							Delete Edition
@@ -535,11 +565,12 @@
 
 		<!-- Workflow Timeline (always visible) -->
 		<div class="mb-6">
-			<WorkflowTimeline currentStatus={edition.status} />
+			<WorkflowTimeline currentStatus={edition.status} hrefForStatus={workflowStepHref} />
 		</div>
 
 		<!-- Concept Proposal Form — mirrors viewer layout -->
 		{#if viewMode === 'concept-form'}
+			<div id="concept" class="scroll-mt-24"></div>
 			<!-- Show rejection feedback if resubmitting -->
 			{#if edition.status === EditionStatus.ConceptRejected && previousFeedback.length > 0}
 				<div class="mb-4 alert alert-warning">
@@ -554,7 +585,12 @@
 				</div>
 			{/if}
 
-			<form onsubmit={(e) => { e.preventDefault(); submitConcept(); }}>
+			<form
+				onsubmit={(e) => {
+					e.preventDefault();
+					submitConcept();
+				}}
+			>
 				<!-- Header: cover image + editable title + authors -->
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-stretch">
 					{#if editionRecord}
@@ -571,18 +607,18 @@
 						<input
 							id="concept-title"
 							type="text"
-							class="input input-bordered w-full text-2xl font-semibold placeholder:text-base-content/30"
+							class="input-bordered input w-full text-2xl font-semibold placeholder:text-base-content/30"
 							bind:value={conceptTitle}
 							required
 							placeholder="Edition title"
 						/>
-						<label for="concept-authors" class="mb-1 mt-3 block text-sm font-semibold">
+						<label for="concept-authors" class="mt-3 mb-1 block text-sm font-semibold">
 							Authors <span class="font-normal text-base-content/60">comma-separated</span>
 						</label>
 						<input
 							id="concept-authors"
 							type="text"
-							class="input input-bordered w-full text-base-content/70 placeholder:text-base-content/30"
+							class="input-bordered input w-full text-base-content/70 placeholder:text-base-content/30"
 							bind:value={conceptDcCreator}
 							placeholder="e.g. Jane Doe, John Smith"
 						/>
@@ -613,16 +649,40 @@
 								<div class="w-96 max-w-full p-0">
 									<!-- Tabs -->
 									<div role="tablist" class="tabs-bordered tabs bg-base-300">
-										<button type="button" role="tab" class="tab flex-1" class:tab-active={activeFormTab === 'description'} onclick={() => (activeFormTab = 'description')}>
+										<button
+											type="button"
+											role="tab"
+											class="tab flex-1"
+											class:tab-active={activeFormTab === 'description'}
+											onclick={() => (activeFormTab = 'description')}
+										>
 											Description
 										</button>
-										<button type="button" role="tab" class="tab flex-1" class:tab-active={activeFormTab === 'metadata'} onclick={() => (activeFormTab = 'metadata')}>
+										<button
+											type="button"
+											role="tab"
+											class="tab flex-1"
+											class:tab-active={activeFormTab === 'metadata'}
+											onclick={() => (activeFormTab = 'metadata')}
+										>
 											Metadata
 										</button>
-										<button type="button" role="tab" class="tab flex-1" class:tab-active={activeFormTab === 'peer-review'} onclick={() => (activeFormTab = 'peer-review')}>
+										<button
+											type="button"
+											role="tab"
+											class="tab flex-1"
+											class:tab-active={activeFormTab === 'peer-review'}
+											onclick={() => (activeFormTab = 'peer-review')}
+										>
 											Review
 										</button>
-										<button type="button" role="tab" class="tab flex-1" class:tab-active={activeFormTab === 'team'} onclick={() => (activeFormTab = 'team')}>
+										<button
+											type="button"
+											role="tab"
+											class="tab flex-1"
+											class:tab-active={activeFormTab === 'team'}
+											onclick={() => (activeFormTab = 'team')}
+										>
 											Team
 										</button>
 									</div>
@@ -633,55 +693,99 @@
 											<div class="space-y-4">
 												<div>
 													<span class="mb-2 block text-sm font-semibold">Abstract</span>
-													<RichTextEditor content={conceptDescription} onchange={(html) => (conceptDescription = html)} minHeight="200px" />
+													<RichTextEditor
+														content={conceptDescription}
+														onchange={(html) => (conceptDescription = html)}
+														minHeight="200px"
+													/>
 												</div>
 												<div class="form-control">
 													<label class="label py-0.5" for="concept-keyword">
 														<span class="label-text text-sm font-semibold">Tags / Keywords</span>
 														<span class="label-text-alt text-xs">comma-separated</span>
 													</label>
-													<input id="concept-keyword" type="text" class="input-bordered input input-sm" bind:value={conceptDcKeyword} placeholder="ceramic, sculpture, museum" />
+													<input
+														id="concept-keyword"
+														type="text"
+														class="input-bordered input input-sm"
+														bind:value={conceptDcKeyword}
+														placeholder="ceramic, sculpture, museum"
+													/>
 												</div>
 											</div>
-
 										{:else if activeFormTab === 'metadata'}
 											<div class="space-y-3">
 												<div class="form-control">
 													<label class="label py-0.5" for="concept-subtitle">
 														<span class="label-text text-sm">Subtitle</span>
 													</label>
-													<input id="concept-subtitle" type="text" class="input-bordered input input-sm" bind:value={conceptDcSubtitle} />
+													<input
+														id="concept-subtitle"
+														type="text"
+														class="input-bordered input input-sm"
+														bind:value={conceptDcSubtitle}
+													/>
 												</div>
 												<div class="form-control">
 													<label class="label py-0.5" for="concept-contributor">
 														<span class="label-text text-sm">Contributors</span>
 													</label>
-													<input id="concept-contributor" type="text" class="input-bordered input input-sm" bind:value={conceptDcContributor} placeholder="comma-separated" />
+													<input
+														id="concept-contributor"
+														type="text"
+														class="input-bordered input input-sm"
+														bind:value={conceptDcContributor}
+														placeholder="comma-separated"
+													/>
 												</div>
 												<div class="form-control">
 													<label class="label py-0.5" for="concept-institution">
 														<span class="label-text text-sm">Institutions</span>
 													</label>
-													<input id="concept-institution" type="text" class="input-bordered input input-sm" bind:value={conceptDcInstitution} placeholder="comma-separated" />
+													<input
+														id="concept-institution"
+														type="text"
+														class="input-bordered input input-sm"
+														bind:value={conceptDcInstitution}
+														placeholder="comma-separated"
+													/>
 												</div>
 												<div class="form-control">
 													<label class="label py-0.5" for="concept-subject">
 														<span class="label-text text-sm">Subjects</span>
 													</label>
-													<input id="concept-subject" type="text" class="input-bordered input input-sm" bind:value={conceptDcSubject} placeholder="comma-separated" />
+													<input
+														id="concept-subject"
+														type="text"
+														class="input-bordered input input-sm"
+														bind:value={conceptDcSubject}
+														placeholder="comma-separated"
+													/>
 												</div>
 												<div class="grid grid-cols-2 gap-3">
 													<div class="form-control">
 														<label class="label py-0.5" for="concept-place">
 															<span class="label-text text-sm">Place</span>
 														</label>
-														<input id="concept-place" type="text" class="input-bordered input input-sm" bind:value={conceptDcCoveragePlace} placeholder="Rome, Italy" />
+														<input
+															id="concept-place"
+															type="text"
+															class="input-bordered input input-sm"
+															bind:value={conceptDcCoveragePlace}
+															placeholder="Rome, Italy"
+														/>
 													</div>
 													<div class="form-control">
 														<label class="label py-0.5" for="concept-language">
 															<span class="label-text text-sm">Languages</span>
 														</label>
-														<input id="concept-language" type="text" class="input-bordered input input-sm" bind:value={conceptDcLanguage} placeholder="en, nl" />
+														<input
+															id="concept-language"
+															type="text"
+															class="input-bordered input input-sm"
+															bind:value={conceptDcLanguage}
+															placeholder="en, nl"
+														/>
 													</div>
 												</div>
 												<div class="grid grid-cols-2 gap-3">
@@ -689,25 +793,40 @@
 														<label class="label py-0.5" for="concept-rights-holder">
 															<span class="label-text text-sm">Rights Holder</span>
 														</label>
-														<input id="concept-rights-holder" type="text" class="input-bordered input input-sm" bind:value={conceptDcRightsHolder} />
+														<input
+															id="concept-rights-holder"
+															type="text"
+															class="input-bordered input input-sm"
+															bind:value={conceptDcRightsHolder}
+														/>
 													</div>
 													<div class="form-control">
 														<label class="label py-0.5" for="concept-license">
 															<span class="label-text text-sm">License</span>
 														</label>
-														<input id="concept-license" type="text" class="input-bordered input input-sm" bind:value={conceptDcRightsLicense} placeholder="CC BY 4.0" />
+														<input
+															id="concept-license"
+															type="text"
+															class="input-bordered input input-sm"
+															bind:value={conceptDcRightsLicense}
+															placeholder="CC BY 4.0"
+														/>
 													</div>
 												</div>
 											</div>
-
 										{:else if activeFormTab === 'peer-review'}
 											<div class="space-y-4">
 												<label class="flex cursor-pointer items-start gap-3">
-													<input type="checkbox" class="checkbox checkbox-sm mt-0.5" bind:checked={conceptPeerReview} />
+													<input
+														type="checkbox"
+														class="checkbox mt-0.5 checkbox-sm"
+														bind:checked={conceptPeerReview}
+													/>
 													<div>
 														<span class="text-sm font-semibold">Request peer review</span>
 														<p class="text-xs text-base-content/60">
-															If enabled, the edition will go through alpha and final review stages before publication.
+															If enabled, the edition will go through alpha and final review stages
+															before publication.
 														</p>
 													</div>
 												</label>
@@ -722,9 +841,11 @@
 													</div>
 												{/if}
 											</div>
-
 										{:else if activeFormTab === 'team'}
-											<CollaboratorManager editionId={edition.id} isReadOnly={!canManageCollaborators} />
+											<CollaboratorManager
+												editionId={edition.id}
+												isReadOnly={!canManageCollaborators}
+											/>
 										{/if}
 									</div>
 								</div>
@@ -734,11 +855,15 @@
 				</div>
 
 				<!-- Action bar -->
-				<div class="mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-base-300 pt-4">
-					<a href="{base}/editions/{edition.id}" class="link text-sm link-primary mr-auto">View Edition</a>
+				<div
+					class="mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-base-300 pt-4"
+				>
+					<a href="{base}/editions/{edition.id}" class="mr-auto link text-sm link-primary"
+						>View Edition</a
+					>
 					<button
 						type="button"
-						class="btn btn-primary btn-sm"
+						class="btn btn-sm btn-primary"
 						onclick={saveDraft}
 						disabled={isSaving || isSubmitting}
 					>
@@ -747,7 +872,11 @@
 						{/if}
 						Draft Proposal
 					</button>
-					<button type="submit" class="btn btn-outline btn-primary btn-sm" disabled={isSaving || isSubmitting}>
+					<button
+						type="submit"
+						class="btn btn-outline btn-sm btn-primary"
+						disabled={isSaving || isSubmitting}
+					>
 						{#if isSubmitting}
 							<span class="loading loading-xs loading-spinner"></span>
 						{/if}
@@ -760,7 +889,7 @@
 		<!-- Review Form (for assigned reviewers) -->
 		{#if viewMode === 'review-form' && myAssignment && edition}
 			<div class="space-y-6">
-				<div class="rounded-box border border-base-300 bg-base-100 p-6">
+				<div id="concept" class="scroll-mt-24 rounded-box border border-base-300 bg-base-100 p-6">
 					<h2 class="mb-2 text-xl font-semibold">Edition Details</h2>
 					<p class="text-base-content/70">{edition.description || 'No description provided.'}</p>
 					<a
@@ -785,7 +914,7 @@
 					</div>
 				{/if}
 
-				<div class="rounded-box border border-base-300 bg-base-100 p-6">
+				<div id="review" class="scroll-mt-24 rounded-box border border-base-300 bg-base-100 p-6">
 					<h2 class="mb-4 text-xl font-semibold">Submit Your Review</h2>
 					<ReviewForm
 						editionId={edition.id}
@@ -796,7 +925,7 @@
 				</div>
 
 				<!-- Granular feedback (reviewer) -->
-				<div class="rounded-box border border-base-300 bg-base-100 p-6">
+				<div id="feedback" class="scroll-mt-24 rounded-box border border-base-300 bg-base-100 p-6">
 					<h2 class="mb-4 text-lg font-semibold">Granular Feedback</h2>
 					<ReviewFeedbackForm
 						editionId={edition.id}
@@ -819,6 +948,50 @@
 		<!-- Status View (default for authors viewing progress) -->
 		{#if viewMode === 'status-view'}
 			<div class="space-y-6">
+				<div id="concept" class="scroll-mt-24 rounded-box border border-base-300 bg-base-100 p-6">
+					<h2 class="mb-2 text-lg font-semibold">Concept</h2>
+					<p class="text-base-content/70">{edition.description || 'No description provided.'}</p>
+					<a
+						href="{base}/editions/{edition.id}/workflow#concept"
+						class="mt-2 inline-block link text-sm link-primary"
+					>
+						Edit concept
+					</a>
+				</div>
+
+				<div id="alpha" class="scroll-mt-24 rounded-box border border-base-300 bg-base-100 p-6">
+					<h2 class="mb-2 text-lg font-semibold">Alpha</h2>
+					<p class="text-base-content/70">Review and revise the edition before final review.</p>
+					<a
+						href="{base}/editions/{edition.id}"
+						class="mt-2 inline-block link text-sm link-primary"
+					>
+						Edit Edition
+					</a>
+				</div>
+
+				<div id="final" class="scroll-mt-24 rounded-box border border-base-300 bg-base-100 p-6">
+					<h2 class="mb-2 text-lg font-semibold">Final</h2>
+					<p class="text-base-content/70">Resolve final review feedback before publication.</p>
+					<a
+						href="{base}/editions/{edition.id}"
+						class="mt-2 inline-block link text-sm link-primary"
+					>
+						Edit Edition
+					</a>
+				</div>
+
+				<div id="published" class="scroll-mt-24 rounded-box border border-base-300 bg-base-100 p-6">
+					<h2 class="mb-2 text-lg font-semibold">Published</h2>
+					<p class="text-base-content/70">Published editions are visible to public visitors.</p>
+					<a
+						href="{base}/editions/{edition.id}"
+						class="mt-2 inline-block link text-sm link-primary"
+					>
+						View Edition
+					</a>
+				</div>
+
 				<!-- Review feedback (if any) -->
 				{#if displayReviews.length > 0}
 					<div class="rounded-box border border-base-300 bg-base-100 p-6">
@@ -882,7 +1055,10 @@
 
 				<!-- Granular feedback list (author view) -->
 				{#if edition && (isAuthor || isAdmin)}
-					<div class="rounded-box border border-base-300 bg-base-100 p-6">
+					<div
+						id="feedback"
+						class="scroll-mt-24 rounded-box border border-base-300 bg-base-100 p-6"
+					>
 						<h2 class="mb-4 text-lg font-semibold">Detailed Feedback</h2>
 						<ReviewFeedbackList
 							editionId={edition.id}
@@ -895,7 +1071,10 @@
 
 				<!-- Collaborator Management (status view) -->
 				{#if edition && isAuthor}
-					<div class="rounded-box border border-base-300 bg-base-100 p-6">
+					<div
+						id="collaborators"
+						class="scroll-mt-24 rounded-box border border-base-300 bg-base-100 p-6"
+					>
 						<h2 class="mb-4 text-lg font-semibold">Collaborators</h2>
 						<CollaboratorManager editionId={edition.id} isReadOnly={!canManageCollaborators} />
 					</div>
@@ -903,7 +1082,10 @@
 
 				<!-- Resubmit button for authors with revisions -->
 				{#if canResubmit}
-					<div class="rounded-box border border-base-300 bg-base-100 p-6">
+					<div
+						id="revisions"
+						class="scroll-mt-24 rounded-box border border-base-300 bg-base-100 p-6"
+					>
 						<h2 class="mb-2 text-lg font-semibold">Revisions Requested</h2>
 						<p class="mb-4 text-base-content/70">
 							Please make the requested changes to your edition, then resubmit for review.
@@ -925,12 +1107,12 @@
 </div>
 
 {#if showDeleteModal && edition}
-	<div class="modal modal-open">
+	<div class="modal-open modal">
 		<div class="modal-box">
 			<h3 class="text-lg font-bold">Delete edition?</h3>
 			<p class="py-4">
-				This will permanently delete <strong>{edition.title || 'this edition'}</strong>. This
-				action cannot be undone.
+				This will permanently delete <strong>{edition.title || 'this edition'}</strong>. This action
+				cannot be undone.
 			</p>
 			<div class="modal-action">
 				<button
@@ -941,12 +1123,7 @@
 				>
 					Cancel
 				</button>
-				<button
-					type="button"
-					class="btn btn-error"
-					onclick={deleteEdition}
-					disabled={isDeleting}
-				>
+				<button type="button" class="btn btn-error" onclick={deleteEdition} disabled={isDeleting}>
 					{#if isDeleting}
 						<span class="loading loading-sm loading-spinner"></span>
 					{/if}

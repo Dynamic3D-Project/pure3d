@@ -14,6 +14,7 @@
 	import toast from 'svelte-french-toast';
 	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
+	import WorkflowTimeline from '$lib/components/workflow/WorkflowTimeline.svelte';
 	import StatusTransitionPanel from '$lib/components/workflow/StatusTransitionPanel.svelte';
 	import MemberManager from '$lib/components/admin/MemberManager.svelte';
 
@@ -112,6 +113,29 @@
 	}
 
 	let canManageAllMembers = $derived(authStore.globalRole === GlobalRole.Admin);
+
+	function workflowStepHref(editionId: string, status: EditionStatus): string {
+		const workflowPath = `${base}/editions/${editionId}/workflow`;
+
+		switch (status) {
+			case EditionStatus.Draft:
+			case EditionStatus.ConceptSubmitted:
+			case EditionStatus.EditorialReview:
+			case EditionStatus.ConceptAccepted:
+				return `${workflowPath}#concept`;
+			case EditionStatus.AlphaReview:
+			case EditionStatus.AlphaRevisions:
+			case EditionStatus.AlphaAccepted:
+				return `${workflowPath}#alpha`;
+			case EditionStatus.FinalReview:
+			case EditionStatus.FinalRevisions:
+				return `${workflowPath}#final`;
+			case EditionStatus.Published:
+				return `${workflowPath}#published`;
+			default:
+				return workflowPath;
+		}
+	}
 </script>
 
 <div id="admin-editions-page" class="mx-auto max-w-6xl">
@@ -125,8 +149,10 @@
 	<div class="mb-6 rounded-box border border-base-300 bg-base-100 p-4 shadow-sm">
 		<div class="mb-3 flex items-center justify-between gap-3">
 			<div>
-				<h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/70">Filters</h2>
-				<p class="text-xs text-base-content/50">Narrow editions by title, workflow, or collection.</p>
+				<h2 class="text-sm font-semibold tracking-wide text-base-content/70 uppercase">Filters</h2>
+				<p class="text-xs text-base-content/50">
+					Narrow editions by title, workflow, or collection.
+				</p>
 			</div>
 			{#if hasActiveFilters}
 				<button
@@ -144,16 +170,16 @@
 		</div>
 		<div class="grid gap-3 md:grid-cols-[minmax(16rem,1fr)_13rem_16rem]">
 			<label class="form-control">
-				<span class="label pb-1 pt-0"><span class="label-text text-xs">Search</span></span>
+				<span class="label pt-0 pb-1"><span class="label-text text-xs">Search</span></span>
 				<input
 					type="text"
 					placeholder="Title or collection..."
-					class="input input-bordered w-full bg-base-200/40"
+					class="input-bordered input w-full bg-base-200/40"
 					bind:value={searchQuery}
 				/>
 			</label>
 			<label class="form-control">
-				<span class="label pb-1 pt-0"><span class="label-text text-xs">Status</span></span>
+				<span class="label pt-0 pb-1"><span class="label-text text-xs">Status</span></span>
 				<FloatingSelect
 					id="edition-status-filter"
 					bind:value={statusFilter}
@@ -162,7 +188,7 @@
 				/>
 			</label>
 			<label class="form-control">
-				<span class="label pb-1 pt-0"><span class="label-text text-xs">Collection</span></span>
+				<span class="label pt-0 pb-1"><span class="label-text text-xs">Collection</span></span>
 				<FloatingSelect
 					id="edition-collection-filter"
 					bind:value={collectionFilter}
@@ -249,6 +275,19 @@
 					</div>
 					{#if expandedId === edition.id}
 						<div class="border-t border-base-300 px-4 pt-2 pb-4">
+							<div class="mb-4 border-b border-base-300 pb-4">
+								<div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+									<h3 class="text-sm font-semibold text-base-content/60 uppercase">Progress</h3>
+									<a href="{base}/editions/{edition.id}/workflow" class="link text-sm link-primary">
+										Open workflow editor
+									</a>
+								</div>
+								<WorkflowTimeline
+									currentStatus={edition.status}
+									hrefForStatus={(status) => workflowStepHref(edition.id, status)}
+								/>
+							</div>
+
 							<!-- Workflow transitions -->
 							<div class="mb-4 border-b border-base-300 pb-4">
 								<h3 class="mb-2 text-sm font-semibold text-base-content/60 uppercase">Workflow</h3>
