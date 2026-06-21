@@ -328,7 +328,16 @@
 	}
 </script>
 
-<div class="space-y-3">
+<div
+	class="space-y-3 rounded-lg transition-all {dragActive
+		? 'ring-2 ring-primary ring-offset-2 ring-offset-base-100'
+		: ''}"
+	ondragover={onDragOver}
+	ondragenter={onDragOver}
+	ondragleave={onDragLeave}
+	ondrop={onDrop}
+	role="presentation"
+>
 	<input
 		bind:this={inputEl}
 		type="file"
@@ -407,6 +416,26 @@
 				</div>
 			</div>
 		{/if}
+	{:else}
+		<div class="rounded-lg border border-dashed border-base-300 bg-base-200 p-3">
+			<p class="text-xs text-base-content/60">
+				No model file. Drop a GLB, GLTF, OBJ, or PLY file with any companion files here.
+			</p>
+			<button
+				type="button"
+				class="btn btn-outline btn-sm mt-3 w-full"
+				onclick={() => inputEl?.click()}
+				{disabled}
+			>
+				Choose files
+			</button>
+		</div>
+	{/if}
+
+	{#if dragActive}
+		<div class="pointer-events-none rounded-lg bg-primary/10 p-2 text-center text-xs font-medium text-primary">
+			Drop to upload
+		</div>
 	{/if}
 
 	{#if errorMsg}

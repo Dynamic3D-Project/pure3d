@@ -68,10 +68,6 @@
 			await buildSceneOverride(myRun, signal);
 			return;
 		}
-		if (modelFilename) {
-			setModelDirect();
-			return;
-		}
 		if (collectionPubNum && editionPubNum) {
 			previewRoot = getEditionRoot(collectionPubNum, editionPubNum);
 			previewDocument = 'scene.svx.json';
@@ -343,7 +339,11 @@
 				/>
 			</svg>
 			<p class="text-sm font-medium">3D Model Preview</p>
-			<p class="mt-1 text-xs">Drop a GLB, GLTF, OBJ, or PLY here, or choose a file below</p>
+			{#if modelFilename}
+				<p class="mt-1 text-xs">Model uploaded. Upload an SVX scene file to preview it.</p>
+			{:else}
+				<p class="mt-1 text-xs">Drop a GLB, GLTF, OBJ, or PLY here, or choose a file below</p>
+			{/if}
 		</div>
 	</div>
 {:else}

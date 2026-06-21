@@ -22,6 +22,13 @@ describe('rewriteSceneJson', () => {
 		expect(result.articles[0].uri).toBe('https://cdn.example/abc/intro_xyz.html');
 	});
 
+	test('matches PocketBase-normalized filenames with hyphens', () => {
+		const scene = { models: [{ uri: 'workshop-artifact.obj' }] };
+		const fileMap = { 'workshop_artifact.obj': 'https://cdn.example/abc/workshop_artifact_x.obj' };
+		const result = rewriteSceneJson(scene, fileMap) as typeof scene;
+		expect(result.models[0].uri).toBe('https://cdn.example/abc/workshop_artifact_x.obj');
+	});
+
 	test('leaves uri alone when no matching entry in fileMap', () => {
 		const scene = { models: [{ uri: 'missing.glb' }] };
 		const result = rewriteSceneJson(scene, {}) as typeof scene;

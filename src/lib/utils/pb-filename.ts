@@ -16,7 +16,7 @@ export function pbNormalize(name: string): string {
 			.replace(/([a-z0-9])([A-Z])/g, '$1_$2')
 			.replace(/([A-Z])([A-Z][a-z])/g, '$1_$2')
 			.toLowerCase()
-			.replace(/[^a-z0-9_-]+/g, '_')
+			.replace(/[^a-z0-9]+/g, '_')
 			.replace(/_+/g, '_')
 			.replace(/^_|_$/g, '') + ext.toLowerCase()
 	);

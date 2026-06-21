@@ -40,8 +40,8 @@
 		<h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">
 			3D Model Files
 		</h3>
-		<div class="grid grid-cols-1 gap-4 {edition.modelFile ? 'md:grid-cols-2' : ''}">
-			<div class={edition.modelFile ? '' : 'hidden'}>
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+			<div>
 				<div class="mb-1 text-xs text-base-content/60">
 					Model file(s)
 					<span class="text-base-content/40">— drop a GLTF/OBJ with its companions</span>

@@ -80,6 +80,12 @@
 	let conceptDcRightsLicense = $state('');
 	let isSaving = $state(false);
 	let isSubmitting = $state(false);
+	let formReady = $state(false);
+	let lastSavedSnapshot = $state('');
+	let saveStatus = $state<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
+	let saveError = $state('');
+	let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+	let pendingSaveAfterCurrent = false;
 
 	// Viewer-mirror layout state
 	let activeFormTab = $state<'description' | 'metadata' | 'peer-review' | 'team'>('description');
@@ -101,6 +107,36 @@
 			.map((s) => s.trim())
 			.filter(Boolean);
 	}
+
+	function formSnapshot(): string {
+		return JSON.stringify(buildEditionData());
+	}
+
+	let saveStatusText = $derived.by(() => {
+		if (saveStatus === 'saving') return 'Saving...';
+		if (saveStatus === 'unsaved') return 'Unsaved changes';
+		if (saveStatus === 'error') return saveError || 'Save failed';
+		return 'All changes saved';
+	});
+	let saveStatusClass = $derived.by(() => {
+		if (saveStatus === 'error') return 'text-error';
+		if (saveStatus === 'unsaved') return 'text-warning';
+		if (saveStatus === 'saving') return 'text-base-content/60';
+		return 'text-success';
+	});
+	let saveStatusBadgeClass = $derived.by(() => {
+		if (saveStatus === 'error') return 'border-error/30 bg-error/10 text-error';
+		if (saveStatus === 'unsaved') return 'border-warning/30 bg-warning/10 text-warning';
+		if (saveStatus === 'saving') return 'border-base-300 bg-base-200 text-base-content/70';
+		return 'border-success/30 bg-success/10 text-success';
+	});
+
+	$effect(() => {
+		if (!formReady || !edition || viewMode !== 'concept-form') return;
+		const snapshot = formSnapshot();
+		if (snapshot === lastSavedSnapshot) return;
+		scheduleAutosave();
+	});
 
 	// Determine the current review stage based on edition status
 	let currentStage = $derived.by<number | null>(() => {
@@ -252,6 +288,7 @@
 
 	async function loadData() {
 		isLoading = true;
+		formReady = false;
 		const slug = $page.params.slug || '';
 
 		try {
@@ -372,6 +409,12 @@
 			toast.error('Failed to load workflow data');
 			goto(`${base}/editions/${slug}`);
 		} finally {
+			if (edition) {
+				lastSavedSnapshot = formSnapshot();
+				saveStatus = 'saved';
+				saveError = '';
+				formReady = true;
+			}
 			isLoading = false;
 		}
 	}
@@ -397,21 +440,72 @@
 		};
 	}
 
-	async function saveDraft() {
+	function clearAutosaveTimer() {
+		if (autosaveTimer) {
+			clearTimeout(autosaveTimer);
+			autosaveTimer = null;
+		}
+	}
+
+	function scheduleAutosave() {
+		if (!edition || isSubmitting) return;
+		clearAutosaveTimer();
+		saveStatus = 'unsaved';
+		saveError = '';
+		autosaveTimer = setTimeout(() => {
+			autosaveTimer = null;
+			void persistDraft({ showToast: false });
+		}, 1200);
+	}
+
+	async function persistDraft({ showToast }: { showToast: boolean }) {
 		if (!edition) return;
+		if (!conceptTitle.trim()) {
+			saveStatus = 'unsaved';
+			return;
+		}
+		if (isSaving) {
+			pendingSaveAfterCurrent = true;
+			return;
+		}
+
+		clearAutosaveTimer();
 		isSaving = true;
+		saveStatus = 'saving';
+		saveError = '';
+		const savedSnapshot = formSnapshot();
+
 		try {
-			await pb.collection('editions').update(edition.id, buildEditionData());
+			const updated = await pb.collection('editions').update(edition.id, buildEditionData());
+			editionRecord = updated;
 			edition.title = conceptTitle;
 			edition.description = conceptDescription;
 			edition.peerReviewRequested = conceptPeerReview;
-			toast.success('Draft saved');
+			lastSavedSnapshot = savedSnapshot;
+
+			if (formSnapshot() === savedSnapshot) {
+				saveStatus = 'saved';
+			} else {
+				scheduleAutosave();
+			}
+
+			if (showToast) toast.success('Draft saved');
 		} catch (error) {
 			console.error('Error saving draft:', error);
-			toast.error('Failed to save draft');
+			saveStatus = 'error';
+			saveError = 'Save failed';
+			if (showToast) toast.error('Failed to save draft');
 		} finally {
 			isSaving = false;
+			if (pendingSaveAfterCurrent) {
+				pendingSaveAfterCurrent = false;
+				scheduleAutosave();
+			}
 		}
+	}
+
+	async function saveDraft() {
+		await persistDraft({ showToast: true });
 	}
 
 	async function deleteEdition() {
@@ -442,9 +536,12 @@
 			toast.error('Title is required');
 			return;
 		}
+		clearAutosaveTimer();
 		isSubmitting = true;
 		try {
 			await pb.collection('editions').update(edition.id, buildEditionData());
+			lastSavedSnapshot = formSnapshot();
+			saveStatus = 'saved';
 
 			await updateEditionStatus(edition.id, EditionStatus.ConceptSubmitted);
 
@@ -566,6 +663,19 @@
 								: 'Edition Workflow'}
 					</h1>
 					<StatusBadge status={edition.status} />
+					{#if viewMode === 'concept-form'}
+						<div
+							class="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium {saveStatusBadgeClass}"
+							aria-live="polite"
+						>
+							{#if saveStatus === 'saving'}
+								<span class="loading loading-xs loading-spinner"></span>
+							{:else}
+								<span class="size-2 rounded-full bg-current"></span>
+							{/if}
+							<span>{saveStatusText}</span>
+						</div>
+					{/if}
 				</div>
 				<p class="mt-1 text-base-content/70">{edition.title || 'Untitled Edition'}</p>
 				{#if edition.collectionTitle}
@@ -717,6 +827,15 @@
 									<div class="mt-5 rounded-lg bg-base-200 p-3 text-sm text-base-content/70">
 										<p class="font-medium text-base-content">Next action</p>
 										<p class="mt-1">{nextWorkflowAction}</p>
+									</div>
+
+									<div class="mt-3 flex items-center gap-2 text-xs {saveStatusClass}" aria-live="polite">
+										{#if saveStatus === 'saving'}
+											<span class="loading loading-xs loading-spinner"></span>
+										{:else}
+											<span class="size-2 rounded-full bg-current"></span>
+										{/if}
+										<span>{saveStatusText}</span>
 									</div>
 
 									<div class="mt-4 flex flex-wrap gap-2">
@@ -965,6 +1084,14 @@
 						<a href="{base}/editions/{edition.id}" class="mr-auto link text-sm link-primary"
 							>View Edition</a
 						>
+						<div class="flex items-center gap-2 text-xs {saveStatusClass}" aria-live="polite">
+							{#if saveStatus === 'saving'}
+								<span class="loading loading-xs loading-spinner"></span>
+							{:else}
+								<span class="size-2 rounded-full bg-current"></span>
+							{/if}
+							<span>{saveStatusText}</span>
+						</div>
 						<button
 							type="button"
 							class="btn btn-sm btn-primary"
