@@ -3,12 +3,15 @@
 	import type { Edition } from '$lib/types/collection';
 	import type { RecordModel } from 'pocketbase';
 	import { getEditionCoverUrl } from '$lib/utils/asset-urls';
+	import TrashIcon from '~icons/lucide/trash-2';
 
 	interface Props {
 		edition: Edition;
+		onRemove?: () => void;
+		removeDisabled?: boolean;
 	}
 
-	let { edition }: Props = $props();
+	let { edition, onRemove, removeDisabled = false }: Props = $props();
 	let imageError = $state(false);
 	let hasPrefetched = false;
 
@@ -16,6 +19,12 @@
 
 	function handleImageError() {
 		imageError = true;
+	}
+
+	function handleRemove(event: MouseEvent) {
+		event.preventDefault();
+		event.stopPropagation();
+		onRemove?.();
 	}
 
 	/**
@@ -86,10 +95,7 @@
 	}
 </script>
 
-<a
-	href={`${base}/editions/${edition.slug}`}
-	data-sveltekit-preload-data="hover"
-	onmouseenter={prefetch3DAssets}
+<div
 	class="group ds-card overflow-hidden"
 	style="background: var(--ds-paper);"
 >
@@ -126,6 +132,18 @@
 			>
 				Ed. {String(edition.pubNum || 1).padStart(2, '0')}
 			</div>
+		{/if}
+		{#if onRemove}
+			<button
+				type="button"
+				class="btn btn-square btn-neutral btn-xs absolute right-2 bottom-2 z-20 shadow"
+				title="Remove edition from this collection"
+				aria-label="Remove edition from this collection"
+				onclick={handleRemove}
+				disabled={removeDisabled}
+			>
+				<TrashIcon class="h-3.5 w-3.5" />
+			</button>
 		{/if}
 		<!-- Mesh/Texture info chip -->
 		{#if (edition as any).modelSize}
@@ -167,13 +185,26 @@
 				/>
 			{/if}
 		{/if}
+		<a
+			href={`${base}/editions/${edition.slug}`}
+			data-sveltekit-preload-data="hover"
+			onmouseenter={prefetch3DAssets}
+			class="absolute inset-0 z-[5]"
+			aria-label={`View ${edition.title}`}
+		></a>
 	</figure>
 	<div class="card-body gap-1 p-4">
-		<h3 class="card-title text-sm line-clamp-2 group-hover:text-primary transition-colors">
-			{edition.title}
-		</h3>
+		<a
+			href={`${base}/editions/${edition.slug}`}
+			data-sveltekit-preload-data="hover"
+			onmouseenter={prefetch3DAssets}
+		>
+			<h3 class="card-title text-sm line-clamp-2 transition-colors group-hover:text-primary">
+				{edition.title}
+			</h3>
+		</a>
 		{#if edition.authors}
 			<p class="text-xs text-base-content/60 line-clamp-1">{edition.authors}</p>
 		{/if}
 	</div>
-</a>
+</div>

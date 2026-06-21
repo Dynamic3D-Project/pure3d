@@ -32,15 +32,15 @@
 	let cleanupAutoUpdate: (() => void) | undefined;
 
 	async function performSearch(query: string) {
-		if (!query.trim()) {
+		const trimmedQuery = query.trim();
+
+		if (!trimmedQuery && !showResults) {
 			results = [];
-			showResults = false;
 			selectedIndex = -1;
 			return;
 		}
 
 		searching = true;
-		showResults = true;
 
 		try {
 			// Use fetch API directly to avoid PocketBase client issues
@@ -75,28 +75,32 @@
 			}
 
 			// Client-side filtering for more reliable search
-			const lowerQuery = query.toLowerCase();
+			const lowerQuery = trimmedQuery.toLowerCase();
 
-			const filteredEditions = editionsResult.items.filter((edition: any) => {
-				const title = (edition.dcTitle || edition.title || '').toLowerCase();
-				const abstract = (edition.dcAbstract || '').toLowerCase();
-				const description = (edition.dcDescription || '').toLowerCase();
-				const creators = Array.isArray(edition.dcCreator)
-					? edition.dcCreator.join(' ').toLowerCase()
-					: '';
-				return (
-					title.includes(lowerQuery) ||
-					abstract.includes(lowerQuery) ||
-					description.includes(lowerQuery) ||
-					creators.includes(lowerQuery)
-				);
-			});
+			const filteredEditions = trimmedQuery
+				? editionsResult.items.filter((edition: any) => {
+						const title = (edition.dcTitle || edition.title || '').toLowerCase();
+						const abstract = (edition.dcAbstract || '').toLowerCase();
+						const description = (edition.dcDescription || '').toLowerCase();
+						const creators = Array.isArray(edition.dcCreator)
+							? edition.dcCreator.join(' ').toLowerCase()
+							: '';
+						return (
+							title.includes(lowerQuery) ||
+							abstract.includes(lowerQuery) ||
+							description.includes(lowerQuery) ||
+							creators.includes(lowerQuery)
+						);
+					})
+				: editionsResult.items;
 
-			const filteredCollections = collectionsResult.items.filter((collection: any) => {
-				const title = (collection.dcTitle || collection.title || '').toLowerCase();
-				const abstract = (collection.dcAbstract || '').toLowerCase();
-				return title.includes(lowerQuery) || abstract.includes(lowerQuery);
-			});
+			const filteredCollections = trimmedQuery
+				? collectionsResult.items.filter((collection: any) => {
+						const title = (collection.dcTitle || collection.title || '').toLowerCase();
+						const abstract = (collection.dcAbstract || '').toLowerCase();
+						return title.includes(lowerQuery) || abstract.includes(lowerQuery);
+					})
+				: collectionsResult.items;
 
 			const editions = { items: filteredEditions.slice(0, 8) };
 			const collections = { items: filteredCollections.slice(0, 5) };
@@ -145,6 +149,11 @@
 	}
 
 	const debouncedSearch = debounce((query: string) => performSearch(query), 250);
+
+	function openSearchResults() {
+		showResults = true;
+		void performSearch(searchQuery);
+	}
 
 	$effect(() => {
 		debouncedSearch(searchQuery);
@@ -370,9 +379,8 @@
 			bind:value={searchQuery}
 			placeholder="Search editions, collections..."
 			class="grow border-none outline-none focus:ring-0 focus:outline-none"
-			onfocus={() => {
-				if (searchQuery.trim() && results.length > 0) showResults = true;
-			}}
+			onfocus={openSearchResults}
+			onclick={openSearchResults}
 			role="combobox"
 			aria-expanded={showResults}
 			aria-haspopup="listbox"
@@ -382,7 +390,7 @@
 		<span class="loading loading-xs loading-spinner" class:invisible={!searching}></span>
 	</label>
 
-	{#if showResults && searchQuery.trim()}
+	{#if showResults}
 		<div
 			bind:this={dropdownElement}
 			id="search-results"
@@ -398,7 +406,11 @@
 					</div>
 				{:else if results.length === 0}
 					<div class="p-4 text-center text-sm opacity-70">
-						No results found for "{searchQuery}"
+						{#if searchQuery.trim()}
+							No results found for "{searchQuery}"
+						{:else}
+							No editions or collections available
+						{/if}
 					</div>
 				{:else}
 					<div class="max-h-80 overflow-y-auto" bind:this={resultsListElement}>

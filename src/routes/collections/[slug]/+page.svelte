@@ -3,7 +3,6 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
-	import TrashIcon from '~icons/lucide/trash-2';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { pb } from '$lib/database/client';
 	import { EditionStatus, GlobalRole, Permission, type UserRoleContext } from '$lib/types/roles';
@@ -387,14 +386,6 @@
 		<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
 			<h2 class="text-2xl font-semibold">Editions</h2>
 			<div class="flex flex-wrap items-center gap-2">
-				{#if canCreateEdition}
-					<button class="btn btn-sm btn-primary" onclick={createEdition} disabled={isCreating}>
-						{#if isCreating}
-							<span class="loading loading-xs loading-spinner"></span>
-						{/if}
-						+ New Edition
-					</button>
-				{/if}
 				{#if canManageEditions}
 					<button
 						type="button"
@@ -407,7 +398,15 @@
 						{/if}
 						Refresh editions
 					</button>
-					{/if}
+				{/if}
+				{#if canCreateEdition}
+					<button class="btn btn-sm btn-primary" onclick={createEdition} disabled={isCreating}>
+						{#if isCreating}
+							<span class="loading loading-xs loading-spinner"></span>
+						{/if}
+						+ New Edition
+					</button>
+				{/if}
 			</div>
 		</div>
 
@@ -488,23 +487,13 @@
 							class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
 						>
 							{#each group.editions as edition (edition.id)}
-								<div class="relative">
-									<EditionCard edition={edition as any} />
-									{#if canManageEditions}
-										<button
-											type="button"
-											class="btn btn-square btn-neutral btn-xs absolute right-2 z-20 shadow"
-											class:top-12={(edition as any).isPublished === false}
-											class:top-2={(edition as any).isPublished !== false}
-											title="Remove edition from this collection"
-											aria-label="Remove edition from this collection"
-											onclick={() => removeEditionFromCollection(edition.id)}
-											disabled={isUpdatingEdition}
-										>
-											<TrashIcon class="h-3.5 w-3.5" />
-										</button>
-									{/if}
-								</div>
+								<EditionCard
+									edition={edition as any}
+									onRemove={canManageEditions
+										? () => removeEditionFromCollection(edition.id)
+										: undefined}
+									removeDisabled={isUpdatingEdition}
+								/>
 							{/each}
 						</div>
 					</div>
@@ -514,23 +503,11 @@
 					class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
 				>
 					{#each editions as edition (edition.id)}
-						<div class="relative">
-							<EditionCard edition={edition as any} />
-							{#if canManageEditions}
-								<button
-									type="button"
-									class="btn btn-square btn-neutral btn-xs absolute right-2 z-20 shadow"
-									class:top-12={(edition as any).isPublished === false}
-									class:top-2={(edition as any).isPublished !== false}
-									title="Remove edition from this collection"
-									aria-label="Remove edition from this collection"
-									onclick={() => removeEditionFromCollection(edition.id)}
-									disabled={isUpdatingEdition}
-								>
-									<TrashIcon class="h-3.5 w-3.5" />
-								</button>
-							{/if}
-						</div>
+						<EditionCard
+							edition={edition as any}
+							onRemove={canManageEditions ? () => removeEditionFromCollection(edition.id) : undefined}
+							removeDisabled={isUpdatingEdition}
+						/>
 					{/each}
 				</div>
 			{/if}
