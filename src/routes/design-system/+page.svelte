@@ -2459,6 +2459,9 @@
 		aspect-ratio: 16 / 10;
 		box-shadow: var(--shadow-2);
 	}
+	.viewer-wrap :where(div, span, h3, p, dt, dd) {
+		color: inherit;
+	}
 	.viewer-bg {
 		position: absolute;
 		inset: 0;

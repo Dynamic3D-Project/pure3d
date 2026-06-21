@@ -43,9 +43,7 @@
 		{ value: 'hidden', label: 'Hidden' }
 	];
 
-	let canManageAllMembers = $derived(
-		authStore.globalRole === GlobalRole.Admin
-	);
+	let canManageAllMembers = $derived(authStore.globalRole === GlobalRole.Admin);
 
 	onMount(() => {
 		loadCollections();
@@ -102,7 +100,7 @@
 				// Non-critical
 			}
 
-			goto(`${base}/collections/${record.id}?manage=details`);
+			goto(`${base}/collections/${record.id}/edit?new=1`);
 		} catch (e: unknown) {
 			const message = e instanceof Error ? e.message : 'Failed to create collection';
 			toast.error(message);
@@ -121,7 +119,7 @@
 			</p>
 		</div>
 		<button
-			class="btn btn-primary btn-sm flex-none"
+			class="btn flex-none btn-sm btn-primary"
 			onclick={createCollection}
 			disabled={isCreating}
 		>
@@ -135,7 +133,7 @@
 	<div class="mb-6 rounded-box border border-base-300 bg-base-100 p-4 shadow-sm">
 		<div class="mb-3 flex items-center justify-between gap-3">
 			<div>
-				<h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/70">Filters</h2>
+				<h2 class="text-sm font-semibold tracking-wide text-base-content/70 uppercase">Filters</h2>
 				<p class="text-xs text-base-content/50">Filter collections by name and visibility.</p>
 			</div>
 			{#if hasActiveFilters}
@@ -153,16 +151,16 @@
 		</div>
 		<div class="grid gap-3 md:grid-cols-[minmax(16rem,1fr)_13rem]">
 			<label class="form-control">
-				<span class="label pb-1 pt-0"><span class="label-text text-xs">Search</span></span>
+				<span class="label pt-0 pb-1"><span class="label-text text-xs">Search</span></span>
 				<input
 					type="text"
 					placeholder="Collection title..."
-					class="input input-bordered w-full bg-base-200/40"
+					class="input-bordered input w-full bg-base-200/40"
 					bind:value={searchQuery}
 				/>
 			</label>
 			<label class="form-control">
-				<span class="label pb-1 pt-0"><span class="label-text text-xs">Visibility</span></span>
+				<span class="label pt-0 pb-1"><span class="label-text text-xs">Visibility</span></span>
 				<FloatingSelect
 					id="collection-visibility-filter"
 					bind:value={visibilityFilter}
@@ -187,47 +185,51 @@
 							onclick={() => toggleExpand(collection.id)}
 						>
 							<div class="flex flex-wrap items-center gap-3">
-							{#if collection.thumbnailUrl}
-								<img
-									src={collection.thumbnailUrl}
-									alt={collection.title}
-									class="size-10 rounded object-cover"
-								/>
-							{:else}
-								<div
-									class="flex size-10 items-center justify-center rounded bg-base-300 text-base-content/40"
-								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke-width="1.5"
-										stroke="currentColor"
-										class="size-5"
+								{#if collection.thumbnailUrl}
+									<img
+										src={collection.thumbnailUrl}
+										alt={collection.title}
+										class="size-10 rounded object-cover"
+									/>
+								{:else}
+									<div
+										class="flex size-10 items-center justify-center rounded bg-base-300 text-base-content/40"
 									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"
-										/>
-									</svg>
-								</div>
-							{/if}
-							<span>{collection.title}</span>
-							{#if !collection.isVisible}
-								<span class="badge badge-xs badge-warning">Hidden</span>
-							{/if}
-							{#if collection.pubNum}
-								<span class="badge badge-ghost badge-xs">#{collection.pubNum}</span>
-							{/if}
-						</div>
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke-width="1.5"
+											stroke="currentColor"
+											class="size-5"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"
+											/>
+										</svg>
+									</div>
+								{/if}
+								<span>{collection.title}</span>
+								{#if !collection.isVisible}
+									<span class="badge badge-xs badge-warning">Hidden</span>
+								{/if}
+								{#if collection.pubNum}
+									<span class="badge badge-ghost badge-xs">#{collection.pubNum}</span>
+								{/if}
+							</div>
 						</button>
 						<div class="flex shrink-0 items-center gap-2">
 							<a href="{base}/collections/{collection.id}" class="btn btn-outline btn-sm">Open</a>
+							<a href="{base}/collections/{collection.id}/edit" class="btn btn-ghost btn-sm">Edit</a
+							>
 							<button
 								class="btn btn-square btn-ghost btn-sm"
 								onclick={() => toggleExpand(collection.id)}
-								aria-label={expandedId === collection.id ? 'Collapse collection' : 'Expand collection'}
+								aria-label={expandedId === collection.id
+									? 'Collapse collection'
+									: 'Expand collection'}
 							>
 								<svg
 									xmlns="http://www.w3.org/2000/svg"
@@ -238,7 +240,11 @@
 									class="size-4 transition-transform duration-200"
 									class:rotate-180={expandedId === collection.id}
 								>
-									<path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="m19.5 8.25-7.5 7.5-7.5-7.5"
+									/>
 								</svg>
 							</button>
 						</div>

@@ -154,9 +154,7 @@
 
 	async function deleteDraft(edition: DashEdition) {
 		if (edition.status !== EditionStatus.Draft) return;
-		const confirmed = confirm(
-			`Delete draft "${edition.title}"? This cannot be undone.`
-		);
+		const confirmed = confirm(`Delete draft "${edition.title}"? This cannot be undone.`);
 		if (!confirmed) return;
 
 		deletingId = edition.id;
@@ -182,6 +180,29 @@
 				return 'Final';
 			default:
 				return `Stage ${stage}`;
+		}
+	}
+
+	function workflowStepHref(editionId: string, status: EditionStatus): string {
+		const workflowPath = `${base}/editions/${editionId}/workflow`;
+
+		switch (status) {
+			case EditionStatus.Draft:
+			case EditionStatus.ConceptSubmitted:
+			case EditionStatus.EditorialReview:
+			case EditionStatus.ConceptAccepted:
+				return `${workflowPath}#concept`;
+			case EditionStatus.AlphaReview:
+			case EditionStatus.AlphaRevisions:
+			case EditionStatus.AlphaAccepted:
+				return `${workflowPath}#alpha`;
+			case EditionStatus.FinalReview:
+			case EditionStatus.FinalRevisions:
+				return `${workflowPath}#final`;
+			case EditionStatus.Published:
+				return `${workflowPath}#published`;
+			default:
+				return workflowPath;
 		}
 	}
 </script>
@@ -322,9 +343,22 @@
 										class="size-16 shrink-0 rounded-lg object-cover"
 									/>
 								{:else}
-									<div class="flex size-16 shrink-0 items-center justify-center rounded-lg bg-base-200 text-base-content/30">
-										<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-											<path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" />
+									<div
+										class="flex size-16 shrink-0 items-center justify-center rounded-lg bg-base-200 text-base-content/30"
+									>
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke-width="1.5"
+											stroke="currentColor"
+											class="size-6"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"
+											/>
 										</svg>
 									</div>
 								{/if}
@@ -338,7 +372,7 @@
 											{#if edition.status === EditionStatus.Draft}
 												<button
 													type="button"
-													class="btn btn-ghost btn-sm text-error"
+													class="btn text-error btn-ghost btn-sm"
 													disabled={deletingId === edition.id}
 													onclick={() => deleteDraft(edition)}
 													aria-label="Delete draft"
@@ -357,7 +391,10 @@
 								</div>
 							</div>
 							<div class="mt-3">
-								<WorkflowTimeline currentStatus={edition.status} />
+								<WorkflowTimeline
+									currentStatus={edition.status}
+									hrefForStatus={(status) => workflowStepHref(edition.id, status)}
+								/>
 							</div>
 						</div>
 					{/each}
