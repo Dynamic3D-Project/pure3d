@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
+	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
@@ -11,7 +11,6 @@
 		GlobalRole,
 		ReviewStage,
 		STATUS_LABELS,
-		EDITION_STATUS_TRANSITIONS,
 		type UserRoleContext
 	} from '$lib/types/roles';
 	import { canDeleteEdition } from '$lib/utils/permissions';
@@ -22,9 +21,7 @@
 	import { notifyMany } from '$lib/utils/notifications';
 	import { NotificationType } from '$lib/types/notifications';
 	import { anonymizeReviews, getAdminUserIds } from '$lib/utils/review-helpers';
-	import type { ReviewFeedback } from '$lib/types/reviews';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
-	import WorkflowTimeline from '$lib/components/workflow/WorkflowTimeline.svelte';
 	import ReviewForm from '$lib/components/workflow/ReviewForm.svelte';
 	import CollaboratorManager from '$lib/components/workflow/CollaboratorManager.svelte';
 	import ReviewFeedbackForm from '$lib/components/workflow/ReviewFeedbackForm.svelte';
@@ -86,7 +83,6 @@
 
 	// Viewer-mirror layout state
 	let activeFormTab = $state<'description' | 'metadata' | 'peer-review' | 'team'>('description');
-	let showConceptEditor = $state(false);
 
 	// Scene/viewer state
 	let editionPubNum = $state(0);
@@ -105,9 +101,6 @@
 			.map((s) => s.trim())
 			.filter(Boolean);
 	}
-
-	// Collections for concept form
-	let collections = $state<{ id: string; title: string }[]>([]);
 
 	// Determine the current review stage based on edition status
 	let currentStage = $derived.by<number | null>(() => {
@@ -130,13 +123,7 @@
 	// Which view to show
 	let viewMode = $derived.by<'concept-form' | 'review-form' | 'status-view'>(() => {
 		if (!edition) return 'status-view';
-		if (showConceptEditor && (isAuthor || isAdmin)) return 'concept-form';
-
-		// Authors see concept form for draft/rejected editions
-		if (
-			isAuthor &&
-			(edition.status === EditionStatus.Draft || edition.status === EditionStatus.ConceptRejected)
-		) {
+		if (isAuthor || isAdmin) {
 			return 'concept-form';
 		}
 
@@ -185,6 +172,57 @@
 		edition !== null &&
 			[EditionStatus.Draft, EditionStatus.ConceptRejected].includes(edition.status)
 	);
+
+	const workflowStages: Array<{ label: string; statuses: EditionStatus[] }> = [
+		{ label: 'Draft', statuses: [EditionStatus.Draft] },
+		{
+			label: 'Concept Review',
+			statuses: [
+				EditionStatus.ConceptSubmitted,
+				EditionStatus.EditorialReview,
+				EditionStatus.ConceptAccepted,
+				EditionStatus.ConceptRejected
+			]
+		},
+		{
+			label: 'Alpha Review',
+			statuses: [
+				EditionStatus.AlphaReview,
+				EditionStatus.AlphaAccepted,
+				EditionStatus.AlphaRevisions,
+				EditionStatus.AlphaRejected
+			]
+		},
+		{
+			label: 'Final Review',
+			statuses: [EditionStatus.FinalReview, EditionStatus.FinalRevisions]
+		},
+		{ label: 'Published', statuses: [EditionStatus.Published] }
+	];
+
+	const currentWorkflowStageIndex = $derived.by(() => {
+		const currentEdition = edition;
+		if (!currentEdition) return 0;
+		const index = workflowStages.findIndex((stage) =>
+			stage.statuses.includes(currentEdition.status)
+		);
+		return index === -1 ? 0 : index;
+	});
+
+	function workflowStageState(index: number): 'complete' | 'current' | 'future' {
+		if (index < currentWorkflowStageIndex) return 'complete';
+		if (index === currentWorkflowStageIndex) return 'current';
+		return 'future';
+	}
+
+	const nextWorkflowAction = $derived.by(() => {
+		if (!edition) return '';
+		if (canSubmitConcept) return 'Submit concept for review when the draft is ready.';
+		if (canResubmit) return 'Address feedback, then resubmit the edition for review.';
+		if (edition.status === EditionStatus.Published)
+			return 'This edition is published and visible publicly.';
+		return 'Monitor review progress and keep edition details up to date.';
+	});
 
 	// Reference to feedback list for reloading
 	let feedbackListRef: ReviewFeedbackList | undefined = $state();
@@ -329,25 +367,12 @@
 				goto(`${base}/editions/${slug}`);
 				return;
 			}
-
-			// Load collections for concept form
-			const colResult = await pb.collection('collections').getList(1, 500);
-			collections = colResult.items.map((r) => ({ id: r.id, title: r.title }));
-
-			if (['#draft', '#concept'].includes($page.url.hash) && (isAuthor || isAdmin)) {
-				showConceptEditor = true;
-				activeFormTab = 'description';
-			}
 		} catch (error) {
 			console.error('Error loading workflow data:', error);
 			toast.error('Failed to load workflow data');
 			goto(`${base}/editions/${slug}`);
 		} finally {
 			isLoading = false;
-			if (showConceptEditor && ['#draft', '#concept'].includes($page.url.hash)) {
-				await tick();
-				document.getElementById($page.url.hash.slice(1))?.scrollIntoView({ block: 'start' });
-			}
 		}
 	}
 
@@ -507,57 +532,6 @@
 			year: 'numeric'
 		});
 	}
-
-	function workflowStepHref(status: EditionStatus): string | null {
-		if (!edition) return null;
-		const workflowPath = `${base}/editions/${edition.id}/workflow`;
-
-		switch (status) {
-			case EditionStatus.Draft:
-				return `${workflowPath}#draft`;
-			case EditionStatus.ConceptSubmitted:
-			case EditionStatus.EditorialReview:
-			case EditionStatus.ConceptAccepted:
-				return `${workflowPath}#concept`;
-			case EditionStatus.AlphaReview:
-			case EditionStatus.AlphaRevisions:
-			case EditionStatus.AlphaAccepted:
-				return `${workflowPath}#alpha`;
-			case EditionStatus.FinalReview:
-			case EditionStatus.FinalRevisions:
-				return `${workflowPath}#final`;
-			case EditionStatus.Published:
-				return `${workflowPath}#published`;
-			default:
-				return workflowPath;
-		}
-	}
-
-	async function openConceptEditor(targetId: 'draft' | 'concept') {
-		showConceptEditor = true;
-		activeFormTab = 'description';
-		await tick();
-		document.getElementById(targetId)?.scrollIntoView({ block: 'start' });
-	}
-
-	function handleWorkflowStepSelected(status: EditionStatus, event: MouseEvent) {
-		const isConceptStep = [
-			EditionStatus.Draft,
-			EditionStatus.ConceptSubmitted,
-			EditionStatus.EditorialReview,
-			EditionStatus.ConceptAccepted
-		].includes(status);
-
-		if (isConceptStep && (isAuthor || isAdmin)) {
-			event.preventDefault();
-			const targetId = status === EditionStatus.Draft ? 'draft' : 'concept';
-			window.history.replaceState(null, '', `${workflowStepHref(status)}`);
-			void openConceptEditor(targetId);
-			return;
-		}
-
-		showConceptEditor = false;
-	}
 </script>
 
 <div
@@ -571,31 +545,6 @@
 			<span class="loading loading-lg loading-spinner"></span>
 		</div>
 	{:else if edition}
-		<!-- Header -->
-		{#if viewMode !== 'concept-form'}
-			<div class="mb-6">
-				<div class="flex flex-wrap items-center gap-3">
-					<h1 class="text-2xl font-bold">{edition.title || 'Untitled Edition'}</h1>
-					<StatusBadge status={edition.status} />
-					{#if canDelete}
-						<button
-							type="button"
-							class="btn ms-auto btn-outline btn-sm btn-error"
-							onclick={() => (showDeleteModal = true)}
-						>
-							Delete Edition
-						</button>
-					{/if}
-				</div>
-				{#if edition.collectionTitle}
-					<p class="mt-1 text-base-content/60">in {edition.collectionTitle}</p>
-				{/if}
-				<a href="{base}/editions/{edition.id}" class="mt-2 inline-block link text-sm link-primary">
-					View Edition
-				</a>
-			</div>
-		{/if}
-
 		<!-- Breadcrumbs -->
 		<nav class="breadcrumbs mb-4 text-sm">
 			<ul>
@@ -605,13 +554,36 @@
 			</ul>
 		</nav>
 
-		<!-- Workflow Timeline (always visible) -->
-		<div class="mb-6">
-			<WorkflowTimeline
-				currentStatus={edition.status}
-				hrefForStatus={workflowStepHref}
-				onselectStatus={handleWorkflowStepSelected}
-			/>
+		<!-- Header -->
+		<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+			<div>
+				<div class="flex flex-wrap items-center gap-3">
+					<h1 class="text-2xl font-bold">
+						{viewMode === 'concept-form'
+							? 'Edit Edition'
+							: viewMode === 'review-form'
+								? 'Review Edition'
+								: 'Edition Workflow'}
+					</h1>
+					<StatusBadge status={edition.status} />
+				</div>
+				<p class="mt-1 text-base-content/70">{edition.title || 'Untitled Edition'}</p>
+				{#if edition.collectionTitle}
+					<p class="text-sm text-base-content/50">in {edition.collectionTitle}</p>
+				{/if}
+			</div>
+			<div class="flex flex-wrap items-center gap-2">
+				<a href="{base}/editions/{edition.id}" class="btn btn-ghost btn-sm">View Edition</a>
+				{#if canDelete}
+					<button
+						type="button"
+						class="btn btn-outline btn-sm btn-error"
+						onclick={() => (showDeleteModal = true)}
+					>
+						Delete
+					</button>
+				{/if}
+			</div>
 		</div>
 
 		<!-- Concept Proposal Form — mirrors viewer layout -->
@@ -696,7 +668,87 @@
 
 						<!-- Right Column: Tabbed Sidebar -->
 						<div class="shrink-0 lg:w-96">
-							<div class="lg:sticky lg:top-4">
+							<div class="space-y-4 lg:sticky lg:top-4">
+								<div class="rounded-xl border border-base-300 bg-base-100 p-5 shadow-sm">
+									<div class="mb-4 flex items-start justify-between gap-3">
+										<div>
+											<h2 class="font-semibold">Workflow Status</h2>
+											<p class="mt-1 text-sm text-base-content/60">
+												{STATUS_LABELS[edition.status] || edition.status}
+											</p>
+										</div>
+										<StatusBadge status={edition.status} />
+									</div>
+
+									<ol class="space-y-3">
+										{#each workflowStages as stage, index (stage.label)}
+											{@const state = workflowStageState(index)}
+											<li class="flex gap-3">
+												<div
+													class="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold"
+													class:bg-success={state === 'complete'}
+													class:text-success-content={state === 'complete'}
+													class:bg-primary={state === 'current'}
+													class:text-primary-content={state === 'current'}
+													class:bg-base-300={state === 'future'}
+													class:text-base-content={state === 'future'}
+													class:opacity-50={state === 'future'}
+												>
+													{#if state === 'complete'}
+														✓
+													{:else}
+														{index + 1}
+													{/if}
+												</div>
+												<div>
+													<p class="text-sm font-medium" class:opacity-50={state === 'future'}>
+														{stage.label}
+													</p>
+													{#if state === 'current'}
+														<p class="text-xs text-base-content/60">
+															{STATUS_LABELS[edition.status] || edition.status}
+														</p>
+													{/if}
+												</div>
+											</li>
+										{/each}
+									</ol>
+
+									<div class="mt-5 rounded-lg bg-base-200 p-3 text-sm text-base-content/70">
+										<p class="font-medium text-base-content">Next action</p>
+										<p class="mt-1">{nextWorkflowAction}</p>
+									</div>
+
+									<div class="mt-4 flex flex-wrap gap-2">
+										{#if canSubmitConcept}
+											<button
+												type="submit"
+												class="btn btn-sm btn-primary"
+												disabled={isSaving || isSubmitting}
+											>
+												Submit for Review
+											</button>
+										{:else if canResubmit}
+											<button
+												type="button"
+												class="btn btn-sm btn-primary"
+												onclick={resubmit}
+												disabled={isSubmitting}
+											>
+												Resubmit
+											</button>
+										{/if}
+										<button
+											type="button"
+											class="btn btn-outline btn-sm"
+											onclick={saveDraft}
+											disabled={isSaving || isSubmitting}
+										>
+											Save Changes
+										</button>
+									</div>
+								</div>
+
 								<div class="overflow-hidden rounded-xl border border-base-300 bg-base-200">
 									<div class="w-96 max-w-full p-0">
 										<!-- Tabs -->
