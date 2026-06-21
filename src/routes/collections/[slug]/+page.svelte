@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
+	import TrashIcon from '~icons/lucide/trash-2';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { pb } from '$lib/database/client';
 	import { EditionStatus, GlobalRole, Permission, type UserRoleContext } from '$lib/types/roles';
@@ -122,6 +123,7 @@
 			pubNum: editionPubNum,
 			modelSize: record.modelSize || null,
 			status: record.status || null,
+			isPublished: !!record.isPublished,
 			dcDoi: Array.isArray(record.dcDoi) ? record.dcDoi : [],
 			coverImage: record.coverImage || ''
 		};
@@ -285,37 +287,33 @@
 						</svg>
 					</div>
 				{/if}
+				{#if collection.isVisible === false}
+					<div
+						class="absolute top-3 right-3 rounded-md border border-red-800 bg-red-700 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm"
+						style="color: white;"
+						title="This collection is hidden and not visible to public visitors"
+					>
+						Not public
+					</div>
+				{/if}
 			</figure>
 
 			<!-- Info column -->
 			<div class="flex min-w-0 flex-col">
-				{#if canEdit || canCreateEdition}
+				{#if canEdit}
 					<div
 						class="mb-3 flex flex-wrap justify-end gap-2 md:absolute md:top-0 md:right-0 md:z-10 md:mb-0"
 					>
-						{#if canEdit}
-							<a href="{base}/collections/{collection.id}/edit" class="btn btn-ghost btn-sm">
-								Manage
-							</a>
-						{/if}
-						{#if canCreateEdition}
-							<button class="btn btn-sm btn-primary" onclick={createEdition} disabled={isCreating}>
-								{#if isCreating}
-									<span class="loading loading-xs loading-spinner"></span>
-								{/if}
-								+ New Edition
-							</button>
-						{/if}
+						<a href="{base}/collections/{collection.id}/edit" class="btn btn-neutral btn-sm">
+							Manage
+						</a>
 					</div>
 				{/if}
 
-				<div class="mb-4 flex flex-wrap items-start gap-3">
+				<div class="mb-4 flex flex-wrap items-start gap-3 md:pr-24">
 					<h1 class="text-3xl leading-tight font-bold md:text-4xl lg:text-5xl">
 						{collection.title}
 					</h1>
-					{#if !collection.isVisible}
-						<span class="mt-2 badge badge-warning">Hidden</span>
-					{/if}
 				</div>
 
 				<!-- Creators byline -->
@@ -388,19 +386,29 @@
 	<div class="mb-8">
 		<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
 			<h2 class="text-2xl font-semibold">Editions</h2>
-			{#if canManageEditions}
-				<button
-					type="button"
-					class="btn btn-ghost btn-sm"
-					onclick={loadEditionManager}
-					disabled={isLoadingEditionManager || isUpdatingEdition}
-				>
-					{#if isLoadingEditionManager}
-						<span class="loading loading-xs loading-spinner"></span>
+			<div class="flex flex-wrap items-center gap-2">
+				{#if canCreateEdition}
+					<button class="btn btn-sm btn-primary" onclick={createEdition} disabled={isCreating}>
+						{#if isCreating}
+							<span class="loading loading-xs loading-spinner"></span>
+						{/if}
+						+ New Edition
+					</button>
+				{/if}
+				{#if canManageEditions}
+					<button
+						type="button"
+						class="btn btn-ghost btn-sm"
+						onclick={loadEditionManager}
+						disabled={isLoadingEditionManager || isUpdatingEdition}
+					>
+						{#if isLoadingEditionManager}
+							<span class="loading loading-xs loading-spinner"></span>
+						{/if}
+						Refresh editions
+					</button>
 					{/if}
-					Refresh editions
-				</button>
-			{/if}
+			</div>
 		</div>
 
 		{#if canManageEditions}
@@ -485,11 +493,15 @@
 									{#if canManageEditions}
 										<button
 											type="button"
-											class="btn btn-error btn-xs absolute top-2 right-2 z-20 shadow"
+											class="btn btn-square btn-neutral btn-xs absolute right-2 z-20 shadow"
+											class:top-12={(edition as any).isPublished === false}
+											class:top-2={(edition as any).isPublished !== false}
+											title="Remove edition from this collection"
+											aria-label="Remove edition from this collection"
 											onclick={() => removeEditionFromCollection(edition.id)}
 											disabled={isUpdatingEdition}
 										>
-											Remove
+											<TrashIcon class="h-3.5 w-3.5" />
 										</button>
 									{/if}
 								</div>
@@ -507,11 +519,15 @@
 							{#if canManageEditions}
 								<button
 									type="button"
-									class="btn btn-error btn-xs absolute top-2 right-2 z-20 shadow"
+									class="btn btn-square btn-neutral btn-xs absolute right-2 z-20 shadow"
+									class:top-12={(edition as any).isPublished === false}
+									class:top-2={(edition as any).isPublished !== false}
+									title="Remove edition from this collection"
+									aria-label="Remove edition from this collection"
 									onclick={() => removeEditionFromCollection(edition.id)}
 									disabled={isUpdatingEdition}
 								>
-									Remove
+									<TrashIcon class="h-3.5 w-3.5" />
 								</button>
 							{/if}
 						</div>

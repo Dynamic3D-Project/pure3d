@@ -9,6 +9,7 @@
 		thumbnail: string;
 		editionIds?: string[];
 		editionCount?: number;
+		isVisible?: boolean;
 	}
 
 	interface Props {
@@ -41,6 +42,15 @@
 	style="background: var(--ds-paper);"
 >
 	<figure class="relative overflow-hidden bg-base-200 aspect-[4/3]">
+		{#if collection.isVisible === false}
+			<div
+				class="absolute top-2 right-2 z-10 rounded-md border border-red-800 bg-red-700 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm"
+				style="color: white;"
+				title="This collection is hidden and not visible to public visitors"
+			>
+				Not public
+			</div>
+		{/if}
 		<!-- Placeholder: show on error -->
 		<div
 			class="absolute inset-0 flex items-center justify-center text-base-content/30"

@@ -11,13 +11,17 @@
 	import toast from 'svelte-french-toast';
 
 	// Reactive data from persisted store
-	let collections = $derived($collectionsStore.items ?? []);
+	let collections = $derived(
+		authStore.isAuthenticated
+			? ($collectionsStore.items ?? [])
+			: ($collectionsStore.items ?? []).filter((collection) => collection.isVisible)
+	);
 	let hasCachedData = $derived(($collectionsStore.items ?? []).length > 0);
 	let isLoading = $state(true);
 
 	onMount(async () => {
 		// If we have fresh cached data, skip loading
-		if (hasCachedData && !isStale($collectionsStore.lastFetched)) {
+		if (!authStore.isAuthenticated && hasCachedData && !isStale($collectionsStore.lastFetched)) {
 			isLoading = false;
 			return;
 		}
@@ -296,6 +300,9 @@
 									</div>
 								{/if}
 							</div>
+							{#if suggestion.isVisible === false}
+								<span class="badge badge-sm border-red-800 bg-red-700 text-white">Not public</span>
+							{/if}
 							{#if suggestion.editionCount !== undefined}
 								<span class="badge badge-ghost badge-sm">{suggestion.editionCount} editions</span>
 							{/if}

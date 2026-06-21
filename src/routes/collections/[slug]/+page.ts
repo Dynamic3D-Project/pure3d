@@ -9,6 +9,7 @@ import {
 
 export const load: PageLoad = async ({ params }) => {
 	try {
+		const canRequestHidden = pb.authStore.isValid;
 		const collectionRecord = await pb.collection('collections').getOne(params.slug);
 
 		const thumbnail = getCollectionCoverUrl(collectionRecord, collectionRecord.pubNum) || '';
@@ -36,7 +37,9 @@ export const load: PageLoad = async ({ params }) => {
 		// Get editions for this collection
 		const editionsResult = await pb.collection('editions').getList(1, 500, {
 			sort: 'pubNum',
-			filter: `collection = "${params.slug}" && isPublished = true`,
+			filter: canRequestHidden
+				? `collection = "${params.slug}"`
+				: `collection = "${params.slug}" && isPublished = true`,
 			expand: 'collection'
 		});
 
@@ -67,6 +70,7 @@ export const load: PageLoad = async ({ params }) => {
 				pubNum: editionPubNum,
 				modelSize: record.modelSize || null,
 				status: record.status || null,
+				isPublished: !!record.isPublished,
 				dcDoi: Array.isArray(record.dcDoi) ? record.dcDoi : []
 			};
 		});

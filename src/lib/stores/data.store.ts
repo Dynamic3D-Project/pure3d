@@ -12,7 +12,7 @@
  */
 
 import { persisted } from 'svelte-persisted-store';
-import { pb } from '$lib/database';
+import { pb } from '$lib/database/client';
 import type { Edition, Collection } from '$lib/types/collection';
 import { EditionStatus } from '$lib/types/roles';
 import {
@@ -52,8 +52,9 @@ export const collectionsStore = persisted<CollectionsData>('pure3d:collections',
  * Returns the mapped editions array.
  */
 export async function fetchEditions(): Promise<Edition[]> {
+	const canRequestHidden = pb.authStore.isValid;
 	const result = await pb.collection('editions').getList(1, 500, {
-		filter: 'isPublished = true',
+		filter: canRequestHidden ? undefined : 'isPublished = true',
 		expand: 'collection',
 		$autoCancel: false // Prevent auto-cancellation when fetching in parallel with other requests
 	});
@@ -144,14 +145,15 @@ export async function fetchEditions(): Promise<Edition[]> {
  * Returns the mapped collections array.
  */
 export async function fetchCollections(): Promise<(Collection & { editionCount?: number })[]> {
+	const canRequestHidden = pb.authStore.isValid;
 	const [collectionsResult, editionsResult] = await Promise.all([
 		pb.collection('collections').getList(1, 500, {
 			sort: 'pubNum',
-			filter: 'isVisible = true',
+			filter: canRequestHidden ? undefined : 'isVisible = true',
 			$autoCancel: false
 		}),
 		pb.collection('editions').getList(1, 500, {
-			filter: 'isPublished = true',
+			filter: canRequestHidden ? undefined : 'isPublished = true',
 			fields: 'id,collection',
 			$autoCancel: false
 		})

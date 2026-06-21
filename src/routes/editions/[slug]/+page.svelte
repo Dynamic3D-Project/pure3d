@@ -359,6 +359,14 @@
 			<div class="flex-1">
 				<div class="mb-1 flex flex-wrap items-center gap-3">
 					<h1 class="text-3xl font-bold md:text-4xl">{edition.title}</h1>
+					{#if (edition as any).isPublished === false}
+						<span
+							class="badge border-error/40 bg-error text-error-content"
+							title="This edition is hidden and not visible to public visitors"
+						>
+							Not public
+						</span>
+					{/if}
 					{#if showDraftBadge}
 						<StatusBadge status={EditionStatus.Draft} size="md" />
 					{/if}

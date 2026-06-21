@@ -13,7 +13,11 @@
 	import toast from 'svelte-french-toast';
 
 	// Reactive data from persisted store
-	let editions = $derived($editionsStore.items);
+	let editions = $derived(
+		authStore.isAuthenticated
+			? $editionsStore.items
+			: $editionsStore.items.filter((edition) => edition.isPublished)
+	);
 	let hasCachedData = $derived($editionsStore.items.length > 0);
 	let isLoading = $state(true);
 
@@ -22,7 +26,7 @@
 		if (query) searchQuery = query;
 
 		// If we have fresh cached data, skip loading
-		if (hasCachedData && !isStale($editionsStore.lastFetched)) {
+		if (!authStore.isAuthenticated && hasCachedData && !isStale($editionsStore.lastFetched)) {
 			isLoading = false;
 			return;
 		}
@@ -392,6 +396,9 @@
 											</div>
 										{/if}
 									</div>
+									{#if suggestion.isPublished === false}
+										<span class="badge badge-sm border-red-800 bg-red-700 text-white">Not public</span>
+									{/if}
 									{#if suggestion.hasPeerReview}
 										<span class="badge badge-sm badge-success">Peer reviewed</span>
 									{/if}

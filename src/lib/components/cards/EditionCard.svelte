@@ -94,9 +94,23 @@
 	style="background: var(--ds-paper);"
 >
 	<figure class="relative overflow-hidden aspect-square bg-base-200">
+		{#if edition.isPublished === false}
+			<div
+				class="absolute top-2 right-2 z-10 rounded-md border border-red-800 bg-red-700 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm"
+				style="color: white;"
+				title="This edition is hidden and not visible to public visitors"
+			>
+				Not public
+			</div>
+		{/if}
 		<!-- Peer Review Badge -->
 		{#if edition.hasPeerReview}
-			<div class="absolute top-2 right-2 z-10" title="Peer Reviewed">
+			<div
+				class="absolute right-2 z-10"
+				class:top-12={edition.isPublished === false}
+				class:top-2={edition.isPublished !== false}
+				title="Peer Reviewed"
+			>
 				<img
 					src="{base}/images/peer-reviewed-badge.svg"
 					alt="Peer Reviewed"
