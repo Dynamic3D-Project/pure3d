@@ -83,11 +83,6 @@
 			isLoading = false;
 		}
 	});
-
-	const today = new Date().toLocaleDateString('en-GB', {
-		month: 'long',
-		year: 'numeric'
-	});
 </script>
 
 <svelte:head>
@@ -105,8 +100,6 @@
 			<div class="eyebrow">
 				<span class="dot" aria-hidden="true"></span>
 				<span>Pure 3D · scholarly publishing platform</span>
-				<span class="sep" aria-hidden="true">———</span>
-				<span>{today}</span>
 			</div>
 
 			<h1 class="hero-h1">
@@ -413,10 +406,6 @@
 		border-radius: 50%;
 		background: var(--color-vermillion);
 	}
-	.eyebrow .sep {
-		opacity: 0.35;
-	}
-
 	/* ---------- HERO ---------- */
 	.hero-sec {
 		padding: 128px 0 96px;
@@ -484,6 +473,7 @@
 		overflow-x: auto;
 		overflow-y: hidden;
 		padding: 4px 2px 10px;
+		perspective: 900px;
 		scroll-snap-type: x proximity;
 		-webkit-overflow-scrolling: touch;
 	}
