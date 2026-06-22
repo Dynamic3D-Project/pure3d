@@ -94,8 +94,9 @@
 
 	async function saveGalleryImage(url: string) {
 		try {
+			const idSuffix = crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 			const image: GalleryImage = {
-				id: `${getEditionGalleryKey()}-${Date.now()}`,
+				id: `${getEditionGalleryKey()}-${idSuffix}`,
 				editionKey: getEditionGalleryKey(),
 				url,
 				referenceUrl: capturedImageDataUrl,
@@ -630,7 +631,7 @@
 					<p class="text-xs text-base-content/40">Stored locally in this browser</p>
 				</div>
 				<div class="flex gap-1.5 overflow-x-auto pb-1">
-					{#each galleryImages as image (image.id)}
+					{#each galleryImages as image, index (`${image.id}-${image.createdAt}-${index}`)}
 						<div class="group relative shrink-0">
 							<button
 								type="button"
@@ -680,23 +681,23 @@
 			<div class="flex flex-wrap gap-1">
 				<span class="badge badge-sm badge-primary">{edition.title}</span>
 				{#if edition.dcCoveragePeriod?.length}
-					{#each edition.dcCoveragePeriod as period (period)}
+					{#each edition.dcCoveragePeriod as period, index (`${period}-${index}`)}
 						<span class="badge badge-sm badge-secondary">{period}</span>
 					{/each}
 				{/if}
 				{#if edition.dcCoveragePlace}
 					<span class="badge badge-sm badge-accent">{edition.dcCoveragePlace}</span>
 				{/if}
-				{#each edition.tags as tag (tag)}
+				{#each edition.tags as tag, index (`${tag}-${index}`)}
 					<span class="badge badge-ghost badge-sm">{tag}</span>
 				{/each}
 				{#if edition.dcSubject?.length}
-					{#each edition.dcSubject.slice(0, 3) as subject (subject)}
+					{#each edition.dcSubject.slice(0, 3) as subject, index (`${subject}-${index}`)}
 						<span class="badge badge-ghost badge-sm">{subject}</span>
 					{/each}
 				{/if}
 				{#if edition.dcKeyword?.length}
-					{#each edition.dcKeyword.slice(0, 3) as kw (kw)}
+					{#each edition.dcKeyword.slice(0, 3) as kw, index (`${kw}-${index}`)}
 						<span class="badge badge-outline badge-sm">{kw}</span>
 					{/each}
 				{/if}

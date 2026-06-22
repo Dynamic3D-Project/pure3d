@@ -1,10 +1,8 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import { dev } from '$app/environment';
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 	import VoyagerViewer, { type VoyagerAPI } from '$lib/components/voyager/VoyagerViewer.svelte';
-	import VoyagerAPIDemo from '$lib/components/voyager/VoyagerAPIDemo.svelte';
 	import ReviewFeedbackList from '$lib/components/workflow/ReviewFeedbackList.svelte';
 	import ImagineModal from '$lib/components/ui/ImagineModal.svelte';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
@@ -30,7 +28,7 @@
 		viewName?: string;
 	}
 
-	let { data }: { data: PageData } = $props();
+	let { data, embedded = false }: { data: PageData; embedded?: boolean } = $props();
 
 	// Voyager API reference for controlling the viewer
 	let voyagerAPI = $state<VoyagerAPI | null>(null);
@@ -281,6 +279,8 @@
 	}
 
 	const formattedPeerReview = $derived(formatPeerReviewContent(edition.peerReviewContent));
+	const demoReviewFeedback = $derived((edition as any).demoReviewFeedback || []);
+	const printables = $derived((edition as any).printables || []);
 
 	// Handle escape key to exit full window mode
 	function handleKeydown(event: KeyboardEvent) {
@@ -332,20 +332,22 @@
 
 <div class="min-h-[calc(100vh-4rem)] bg-base-100">
 	<div class="container mx-auto max-w-7xl px-4 py-8">
-		<!-- Breadcrumbs -->
-		<nav class="breadcrumbs mb-6 text-sm">
-			<ul>
-				<li>
-					<a href="{base}/" data-sveltekit-preload-data="hover" class="link link-hover">Home</a>
-				</li>
-				<li>
-					<a href="{base}/editions" data-sveltekit-preload-data="hover" class="link link-hover"
-						>Editions</a
-					>
-				</li>
-				<li class="text-base-content/70">{edition.title}</li>
-			</ul>
-		</nav>
+		{#if !embedded}
+			<!-- Breadcrumbs -->
+			<nav class="breadcrumbs mb-6 text-sm">
+				<ul>
+					<li>
+						<a href="{base}/" data-sveltekit-preload-data="hover" class="link link-hover">Home</a>
+					</li>
+					<li>
+						<a href="{base}/editions" data-sveltekit-preload-data="hover" class="link link-hover"
+							>Editions</a
+						>
+					</li>
+					<li class="text-base-content/70">{edition.title}</li>
+				</ul>
+			</nav>
+		{/if}
 
 		<!-- Title and Authors -->
 		<div class="mb-6 flex items-start gap-4">
@@ -910,21 +912,100 @@
 										</div>
 
 										<!-- Detailed feedback items -->
-										{#if edition.id}
+										{#if demoReviewFeedback.length > 0}
+											<div class="mt-4">
+												<h3 class="mb-2 text-sm font-semibold">Detailed Feedback</h3>
+												<div class="not-prose space-y-2">
+													{#each demoReviewFeedback as item (item.id)}
+														<div class="rounded-lg border border-base-300 p-3">
+															<div class="flex flex-wrap items-center gap-2">
+																<span class="badge badge-sm badge-info capitalize">{item.category}</span>
+																<span class="text-xs font-medium text-base-content/60">{item.targetLabel}</span>
+																<span class="ml-auto text-xs text-base-content/40">
+																	{item.reviewer} · {formatDate(item.created)}
+																</span>
+															</div>
+															<p class="mt-1 text-sm">{item.comment}</p>
+															{#if item.resolved}
+																<span class="mt-2 badge inline-block badge-sm badge-success">Resolved</span>
+															{/if}
+														</div>
+													{/each}
+												</div>
+											</div>
+										{:else if edition.id}
 											<div class="mt-4">
 												<h3 class="mb-2 text-sm font-semibold">Detailed Feedback</h3>
 												<ReviewFeedbackList editionId={edition.id} />
 											</div>
 										{/if}
 									{:else}
-										<div class="py-8 text-center text-base-content/60">
-											<p>This edition has not been peer reviewed.</p>
+										<div class="not-prose rounded-lg border border-dashed border-base-300 bg-base-100 p-5 text-sm">
+											<div class="mb-2 flex items-center gap-2">
+												<span class="badge badge-outline badge-sm">Status</span>
+												<h3 class="font-semibold">
+													{(edition as any).peerReviewRequested
+														? 'Peer review requested'
+														: 'Not peer reviewed yet'}
+												</h3>
+											</div>
+											<p class="text-base-content/70">
+												{#if (edition as any).peerReviewRequested}
+													This edition is marked for peer review. Review details and feedback will appear
+													here when they are available.
+												{:else}
+													Peer review is an optional trust signal for Pure 3D editions. If requested for
+													this edition, review information will appear here.
+												{/if}
+											</p>
+											{#if canManagePage && !(edition as any).peerReviewRequested}
+												<a class="btn btn-outline btn-xs mt-4" href="{base}/editions/{edition.id}/workflow">
+													Request peer review
+												</a>
+											{/if}
 										</div>
 									{/if}
 								{:else if activeTab === 'printables'}
-									<div class="py-8 text-center text-base-content/60">
-										<p>Printable resources will be available here.</p>
-									</div>
+									{#if printables.length > 0}
+										<div class="not-prose space-y-3">
+											{#each printables as item (item.title)}
+												<article class="rounded-lg border border-base-300 bg-base-100 p-4">
+													<div class="flex items-start justify-between gap-3">
+														<div>
+															<h3 class="font-semibold">{item.title}</h3>
+															<p class="mt-1 text-sm text-base-content/70">{item.description}</p>
+														</div>
+														<span class="badge badge-outline shrink-0">{item.type}</span>
+													</div>
+													<div class="mt-3 flex items-center justify-between gap-3">
+														<p class="text-xs text-base-content/50">{item.size}</p>
+														{#if item.url}
+															<a class="btn btn-outline btn-xs" href={item.url} download={item.filename || true}>
+																Download
+															</a>
+														{/if}
+													</div>
+												</article>
+											{/each}
+										</div>
+									{:else}
+										<div class="not-prose rounded-lg border border-dashed border-base-300 bg-base-100 p-5 text-sm">
+											<div class="mb-2 flex items-center gap-2">
+												<span class="badge badge-outline badge-sm">Not provided</span>
+												<h3 class="font-semibold">No printables uploaded</h3>
+											</div>
+											<p class="text-base-content/70">
+												Contributors can upload downloadable worksheets, fabrication files, lesson
+												materials, or reference sheets for an edition. None have been provided for this
+												edition.
+											</p>
+											{#if canManagePage}
+												<a class="btn btn-outline btn-xs mt-4" href="{base}/editions/{edition.id}/workflow">
+													Manage edition assets
+												</a>
+											{/if}
+										</div>
+									{/if}
 								{:else if activeTab === 'versions'}
 									<div class="space-y-4">
 										<!-- Citation Block -->
@@ -1054,10 +1135,6 @@
 		</div>
 	</div>
 </div>
-
-{#if dev && edition.id === 'demo'}
-	<VoyagerAPIDemo />
-{/if}
 
 <!-- Viewer Help Modal -->
 {#if viewerHelp || viewerHelpVideoUrl}

@@ -75,8 +75,8 @@
 				{#if dev}
 					<a
 						class="btn text-warning btn-ghost"
-						class:btn-active={isActive('/editions/demo')}
-						href="{base}/editions/demo"
+						class:btn-active={isActive('/demo')}
+						href="{base}/demo"
 						data-sveltekit-preload-data="hover"
 						title="Development only"
 					>
