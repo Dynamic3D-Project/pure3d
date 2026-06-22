@@ -119,7 +119,9 @@
 				pitch: preset.pitch,
 				offsetX: preset.offsetX,
 				offsetY: preset.offsetY,
-				offsetZ: preset.offsetZ
+				offsetZ: preset.offsetZ,
+				animate: true,
+				durationMs: 2200
 			});
 		}
 	}

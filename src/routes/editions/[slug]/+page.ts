@@ -32,13 +32,13 @@ async function loadDemoEdition() {
 
 	// Define view presets for this edition
 	const viewPresets: ViewPreset[] = [
-		{ name: 'front', yaw: 0, pitch: -25 },
-		{ name: 'right', yaw: 90, pitch: -25 },
-		{ name: 'back', yaw: 180, pitch: -25 },
-		{ name: 'left', yaw: -90, pitch: -25 },
-		{ name: 'top', yaw: 0, pitch: -89 },
-		{ name: 'corner', yaw: 45, pitch: -35 },
-		{ name: 'street-level', yaw: 15, pitch: -5, offsetY: -1 }
+		{ name: 'front', yaw: 0, pitch: -25, offsetX: 0, offsetY: 0, offsetZ: 0 },
+		{ name: 'right', yaw: 90, pitch: -25, offsetX: 1.6, offsetY: 0, offsetZ: 0 },
+		{ name: 'back', yaw: 180, pitch: -25, offsetX: 0, offsetY: 0, offsetZ: -1.4 },
+		{ name: 'left', yaw: -90, pitch: -25, offsetX: -1.6, offsetY: 0, offsetZ: 0 },
+		{ name: 'top', yaw: 0, pitch: -89, offsetX: 0, offsetY: 0.5, offsetZ: 0 },
+		{ name: 'corner', yaw: 45, pitch: -35, offsetX: 1.2, offsetY: 0, offsetZ: 1.2 },
+		{ name: 'street-level', yaw: 15, pitch: -5, offsetX: 0, offsetY: -1, offsetZ: 1.1 }
 	];
 
 	return {
@@ -52,7 +52,8 @@ async function loadDemoEdition() {
 				'From [[view:top|above]], you can see the full layout of the street and surrounding area. ' +
 				'The [[view:front|front entrance]] faced the main road, while the [[view:back|rear]] provided an escape route. ' +
 				'Try the [[view:corner|corner view]] for a dramatic perspective, or [[view:street-level|street level]] to see it as the soldiers did.',
-			authors: 'Susan Schreibman, Kelly Gillikin Schoueri, John Kaulakis, Luca Moine, Sandra Martinez Böhme',
+			authors:
+				'Susan Schreibman, Kelly Gillikin Schoueri, John Kaulakis, Luca Moine, Sandra Martinez Böhme',
 			thumbnail: '/project/demo/edition/1/icon.png',
 			voyagerUrl: '',
 			voyagerRoot,
@@ -192,9 +193,8 @@ export const load: PageLoad = async ({ params }) => {
 						dcAbstract: r.dcAbstract || '',
 						created: r.created,
 						hasPeerReview: !!r.peerReviewKind && r.peerReviewKind !== 'No peer review',
-						thumbnail: collectionPubNum > 0
-							? getEditionThumbnailUrl(collectionPubNum, r.pubNum || 1)
-							: ''
+						thumbnail:
+							collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, r.pubNum || 1) : ''
 					}));
 			} catch {
 				// Non-critical — sibling editions are bonus data

@@ -96,6 +96,8 @@
 			offsetX?: number;
 			offsetY?: number;
 			offsetZ?: number;
+			animate?: boolean;
+			durationMs?: number;
 		}) => void;
 	}
 
@@ -153,6 +155,7 @@
 	let cameraOffsetX = $state(0);
 	let cameraOffsetY = $state(0);
 	let cameraOffsetZ = $state(0);
+	let cameraAnimationFrame: number | null = null;
 
 	// Language state
 	let selectedLanguage = $state('EN');
@@ -569,15 +572,90 @@
 	// API Methods - Camera Control
 	function setCameraOrbitInternal() {
 		if (!voyagerElement) return;
+		cancelCameraAnimation();
 		(voyagerElement as any).setCameraOrbit?.(cameraYaw, cameraPitch);
 	}
 
 	/** Set camera orbit with explicit yaw/pitch values (for external API) */
 	function setCameraOrbitValues(yaw: number, pitch: number) {
 		if (!voyagerElement) return;
+		cancelCameraAnimation();
 		cameraYaw = yaw;
 		cameraPitch = pitch;
 		(voyagerElement as any).setCameraOrbit?.(yaw, pitch);
+	}
+
+	function cancelCameraAnimation() {
+		if (cameraAnimationFrame === null) return;
+		cancelAnimationFrame(cameraAnimationFrame);
+		cameraAnimationFrame = null;
+	}
+
+	function readCameraPair(value: unknown, fallbackA: number, fallbackB: number): [number, number] {
+		if (Array.isArray(value)) {
+			const first = Number(value[0]);
+			const second = Number(value[1]);
+
+			return [
+				Number.isFinite(first) ? first : fallbackA,
+				Number.isFinite(second) ? second : fallbackB
+			];
+		}
+
+		if (value && typeof value === 'object') {
+			const cameraValue = value as Record<string, unknown>;
+			const first = Number(cameraValue.yaw ?? cameraValue.x);
+			const second = Number(cameraValue.pitch ?? cameraValue.y);
+
+			return [
+				Number.isFinite(first) ? first : fallbackA,
+				Number.isFinite(second) ? second : fallbackB
+			];
+		}
+
+		return [fallbackA, fallbackB];
+	}
+
+	function readCameraTriple(
+		value: unknown,
+		fallbackX: number,
+		fallbackY: number,
+		fallbackZ: number
+	): [number, number, number] {
+		if (Array.isArray(value)) {
+			const x = Number(value[0]);
+			const y = Number(value[1]);
+			const z = Number(value[2]);
+
+			return [
+				Number.isFinite(x) ? x : fallbackX,
+				Number.isFinite(y) ? y : fallbackY,
+				Number.isFinite(z) ? z : fallbackZ
+			];
+		}
+
+		if (value && typeof value === 'object') {
+			const cameraValue = value as Record<string, unknown>;
+			const x = Number(cameraValue.x);
+			const y = Number(cameraValue.y);
+			const z = Number(cameraValue.z);
+
+			return [
+				Number.isFinite(x) ? x : fallbackX,
+				Number.isFinite(y) ? y : fallbackY,
+				Number.isFinite(z) ? z : fallbackZ
+			];
+		}
+
+		return [fallbackX, fallbackY, fallbackZ];
+	}
+
+	function easeInOutCubic(value: number) {
+		return value < 0.5 ? 4 * value * value * value : 1 - Math.pow(-2 * value + 2, 3) / 2;
+	}
+
+	function interpolate(start: number, end: number, progress: number) {
+		return start + (end - start) * progress;
 	}
 
 	/** Set camera to a view with optional yaw, pitch, and offset (for external API) */
@@ -587,17 +665,74 @@
 		offsetX?: number;
 		offsetY?: number;
 		offsetZ?: number;
+		animate?: boolean;
+		durationMs?: number;
 	}) {
 		if (!voyagerElement) return;
 
-		if (options.yaw !== undefined) cameraYaw = options.yaw;
-		if (options.pitch !== undefined) cameraPitch = options.pitch;
-		if (options.offsetX !== undefined) cameraOffsetX = options.offsetX;
-		if (options.offsetY !== undefined) cameraOffsetY = options.offsetY;
-		if (options.offsetZ !== undefined) cameraOffsetZ = options.offsetZ;
+		cancelCameraAnimation();
 
-		(voyagerElement as any).setCameraOrbit?.(cameraYaw, cameraPitch);
-		(voyagerElement as any).setCameraOffset?.(cameraOffsetX, cameraOffsetY, cameraOffsetZ);
+		const [currentYaw, currentPitch] = readCameraPair(
+			getCameraOrbit('active'),
+			cameraYaw,
+			cameraPitch
+		);
+		const [currentOffsetX, currentOffsetY, currentOffsetZ] = readCameraTriple(
+			getCameraOffset('active'),
+			cameraOffsetX,
+			cameraOffsetY,
+			cameraOffsetZ
+		);
+
+		const targetYaw = options.yaw ?? currentYaw;
+		const targetPitch = options.pitch ?? currentPitch;
+		const targetOffsetX = options.offsetX ?? currentOffsetX;
+		const targetOffsetY = options.offsetY ?? currentOffsetY;
+		const targetOffsetZ = options.offsetZ ?? currentOffsetZ;
+
+		if (!options.animate) {
+			cameraYaw = targetYaw;
+			cameraPitch = targetPitch;
+			cameraOffsetX = targetOffsetX;
+			cameraOffsetY = targetOffsetY;
+			cameraOffsetZ = targetOffsetZ;
+
+			(voyagerElement as any).setCameraOrbit?.(cameraYaw, cameraPitch);
+			(voyagerElement as any).setCameraOffset?.(cameraOffsetX, cameraOffsetY, cameraOffsetZ);
+			return;
+		}
+
+		const durationMs = Math.max(options.durationMs ?? 1200, 0);
+		const startedAt = performance.now();
+
+		const updateCamera = (progress: number) => {
+			cameraYaw = interpolate(currentYaw, targetYaw, progress);
+			cameraPitch = interpolate(currentPitch, targetPitch, progress);
+			cameraOffsetX = interpolate(currentOffsetX, targetOffsetX, progress);
+			cameraOffsetY = interpolate(currentOffsetY, targetOffsetY, progress);
+			cameraOffsetZ = interpolate(currentOffsetZ, targetOffsetZ, progress);
+
+			(voyagerElement as any).setCameraOrbit?.(cameraYaw, cameraPitch);
+			(voyagerElement as any).setCameraOffset?.(cameraOffsetX, cameraOffsetY, cameraOffsetZ);
+		};
+
+		if (durationMs === 0) {
+			updateCamera(1);
+			return;
+		}
+
+		const tick = (now: number) => {
+			const progress = Math.min((now - startedAt) / durationMs, 1);
+			updateCamera(easeInOutCubic(progress));
+
+			if (progress < 1) {
+				cameraAnimationFrame = requestAnimationFrame(tick);
+			} else {
+				cameraAnimationFrame = null;
+			}
+		};
+
+		cameraAnimationFrame = requestAnimationFrame(tick);
 	}
 
 	function getCameraOrbit(type?: string) {
@@ -607,6 +742,7 @@
 
 	function setCameraOffset(x: number, y: number, z: number) {
 		if (!voyagerElement) return;
+		cancelCameraAnimation();
 		cameraOffsetX = x;
 		cameraOffsetY = y;
 		cameraOffsetZ = z;
@@ -623,6 +759,7 @@
 	}
 
 	function resetCamera() {
+		cancelCameraAnimation();
 		cameraYaw = 0;
 		cameraPitch = -25;
 		cameraOffsetX = 0;
