@@ -7,6 +7,9 @@
 
 	// Reactive data from persisted stores - shows cached data immediately
 	let featuredEditions = $derived($editionsStore.items.slice(0, 8));
+	let heroEditions = $derived(
+		$editionsStore.items.filter((edition) => edition.thumbnail).slice(0, 5)
+	);
 	let collections = $derived($collectionsStore.items);
 	let totalEditions = $derived($editionsStore.total);
 	let totalCollections = $derived($collectionsStore.total);
@@ -117,12 +120,49 @@
 					long-lived records. The interface recedes, paper, ink, and precise chrome framing the
 					model itself.
 				</p>
-				<div class="hero-actions">
-					<a href="{base}/editions" class="btn btn-primary">
-						Browse editions
-						<span class="arrow" aria-hidden="true">→</span>
-					</a>
-					<a href="{base}/collections" class="btn btn-secondary">View collections</a>
+				<div class="hero-side">
+					<div class="hero-editions" aria-label="Recent editions">
+						<div class="hero-editions-label">Recent editions</div>
+						<div class="hero-cover-row">
+							{#if isLoading && !hasCachedData}
+								{#each Array(5) as _, i (i)}
+									<div
+										class="hero-cover hero-cover-skeleton skeleton"
+										class:hero-cover-raised={i % 2 === 1}
+									></div>
+								{/each}
+							{:else}
+								{#each heroEditions as edition, i (edition.id)}
+									<a
+										href={`${base}/editions/${edition.slug}`}
+										class="hero-cover"
+										class:hero-cover-raised={i % 2 === 1}
+										aria-label={`View ${edition.title}`}
+									>
+										<img
+											src={edition.thumbnail}
+											alt={edition.title}
+											loading={i < 2 ? 'eager' : 'lazy'}
+										/>
+										<span class="hero-cover-meta">
+											{#if edition.pubNum}
+												<span>Ed. {String(edition.pubNum).padStart(2, '0')}</span>
+											{/if}
+											<span>{edition.title}</span>
+										</span>
+									</a>
+								{/each}
+							{/if}
+						</div>
+					</div>
+
+					<div class="hero-actions">
+						<a href="{base}/editions" class="btn btn-primary">
+							Browse editions
+							<span class="arrow" aria-hidden="true">→</span>
+						</a>
+						<a href="{base}/collections" class="btn btn-secondary">View collections</a>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -136,7 +176,7 @@
 					<dt>3D Editions</dt>
 					<dd>
 						{#if isLoading && !hasCachedData}
-							<span class="loading loading-spinner loading-sm text-primary"></span>
+							<span class="loading loading-sm loading-spinner text-primary"></span>
 						{:else}
 							{totalEditions}
 						{/if}
@@ -146,7 +186,7 @@
 					<dt>Collections</dt>
 					<dd>
 						{#if isLoading && !hasCachedData}
-							<span class="loading loading-spinner loading-sm text-primary"></span>
+							<span class="loading loading-sm loading-spinner text-primary"></span>
 						{:else}
 							{totalCollections}
 						{/if}
@@ -170,10 +210,10 @@
 			<div class="sec-head">
 				<div class="sec-num">§ 01 — Editions</div>
 				<div class="sec-head-body">
-					<h2 class="sec-title">Fresh from the <em>studio.</em></h2>
+					<h2 class="sec-title">Recent <em>scholarly editions.</em></h2>
 					<p class="sec-sub">
-						Each edition is a citable, permalinked record of an object at a moment in time — scan,
-						annotation, provenance note. Browse the most recent.
+						Each edition is a citable, permalinked record of a 3D object, including model data,
+						descriptive metadata, annotations, and provenance information.
 					</p>
 				</div>
 				<div class="sec-actions">
@@ -183,7 +223,13 @@
 						aria-label="Scroll editions left"
 					>
 						<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-							<path d="M10 3 L5 8 L10 13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+							<path
+								d="M10 3 L5 8 L10 13"
+								stroke="currentColor"
+								stroke-width="1.4"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
 						</svg>
 					</button>
 					<button
@@ -192,7 +238,13 @@
 						aria-label="Scroll editions right"
 					>
 						<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-							<path d="M6 3 L11 8 L6 13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+							<path
+								d="M6 3 L11 8 L6 13"
+								stroke="currentColor"
+								stroke-width="1.4"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
 						</svg>
 					</button>
 				</div>
@@ -201,13 +253,13 @@
 			{#if isLoading && !hasCachedData}
 				<div class="carousel">
 					{#each Array(4) as _, i (i)}
-						<div class="w-64 h-80 flex-none skeleton"></div>
+						<div class="h-80 w-64 flex-none skeleton"></div>
 					{/each}
 				</div>
 			{:else if featuredEditions.length > 0}
 				<div
 					bind:this={carouselContainer}
-					class="carousel scrollbar-hide"
+					class="scrollbar-hide carousel"
 					style="scroll-behavior: smooth; -webkit-overflow-scrolling: touch;"
 				>
 					{#each featuredEditions as edition (edition.id)}
@@ -235,10 +287,10 @@
 			<div class="sec-head">
 				<div class="sec-num">§ 02 — Collections</div>
 				<div class="sec-head-body">
-					<h2 class="sec-title">Objects <em>gathered</em> by a curator's hand.</h2>
+					<h2 class="sec-title">Collections as <em>scholarly contexts.</em></h2>
 					<p class="sec-sub">
-						A collection is not a folder — it is an argument. Each gathers a set of editions around
-						a question, a period, or a material history.
+						Collections organize related 3D editions by research question, object group, period,
+						provenance, institution, or material context.
 					</p>
 				</div>
 			</div>
@@ -246,7 +298,7 @@
 			{#if isLoading && !hasCachedData}
 				<div class="projects-grid">
 					{#each Array(4) as _, i (i)}
-						<div class="skeleton h-96"></div>
+						<div class="h-96 skeleton"></div>
 					{/each}
 				</div>
 			{:else if collections.length > 0}
@@ -293,7 +345,7 @@
 							Submission guidelines
 							<span class="arrow" aria-hidden="true">→</span>
 						</a>
-						<a href="{base}/documentation" class="btn btn-on-ink-ghost">Read the documentation</a>
+						<a href="{base}/documentation" class="btn-on-ink-ghost btn">Read the documentation</a>
 					</div>
 				</div>
 			</div>
@@ -383,8 +435,8 @@
 		display: grid;
 		grid-template-columns: 1.3fr 1fr;
 		gap: 96px;
-		align-items: end;
-		margin-top: 64px;
+		align-items: start;
+		margin-top: 48px;
 	}
 	@media (max-width: 900px) {
 		.hero-grid {
@@ -407,6 +459,136 @@
 		flex-wrap: wrap;
 		gap: 12px;
 		justify-self: start;
+	}
+	.hero-side {
+		display: grid;
+		gap: 22px;
+		justify-items: start;
+	}
+	.hero-editions {
+		width: min(100%, 520px);
+	}
+	.hero-editions-label {
+		font-family: var(--font-mono);
+		font-size: 10.5px;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--color-ink-4);
+		margin-bottom: 10px;
+	}
+	.hero-cover-row {
+		display: flex;
+		align-items: flex-end;
+		gap: 8px;
+		min-height: 112px;
+		overflow-x: auto;
+		overflow-y: hidden;
+		padding: 4px 2px 10px;
+		scroll-snap-type: x proximity;
+		-webkit-overflow-scrolling: touch;
+	}
+	.hero-cover-row::-webkit-scrollbar {
+		display: none;
+	}
+	.hero-cover-row {
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+	}
+	.hero-cover {
+		position: relative;
+		flex: 0 0 86px;
+		height: 108px;
+		display: block;
+		overflow: hidden;
+		border: 1px solid var(--rule-strong);
+		border-radius: 3px;
+		background: var(--color-paper-2);
+		box-shadow: 0 12px 28px rgba(16, 16, 15, 0.08);
+		transform: translateY(0);
+		transition:
+			transform 0.16s ease,
+			border-color 0.16s ease,
+			box-shadow 0.16s ease;
+		scroll-snap-align: start;
+	}
+	.hero-cover:hover {
+		border-color: var(--color-ink);
+		box-shadow: 0 16px 34px rgba(16, 16, 15, 0.12);
+		transform: translateY(-3px);
+	}
+	.hero-cover-raised {
+		transform: translateY(-10px);
+	}
+	.hero-cover-raised:hover {
+		transform: translateY(-13px);
+	}
+	.hero-cover img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+	}
+	.hero-cover::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(to top, rgba(16, 16, 15, 0.72), transparent 48%);
+		opacity: 0;
+		transition: opacity 0.16s ease;
+	}
+	.hero-cover:hover::after,
+	.hero-cover:focus-visible::after {
+		opacity: 1;
+	}
+	.hero-cover-meta {
+		position: absolute;
+		left: 8px;
+		right: 8px;
+		bottom: 8px;
+		z-index: 1;
+		display: grid;
+		gap: 3px;
+		font-family: var(--font-sans);
+		font-size: 10px;
+		line-height: 1.15;
+		color: var(--color-paper);
+		opacity: 0;
+		transform: translateY(4px);
+		transition:
+			opacity 0.16s ease,
+			transform 0.16s ease;
+	}
+	.hero-cover-meta span:first-child {
+		font-family: var(--font-mono);
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: rgba(244, 241, 235, 0.72);
+	}
+	.hero-cover:hover .hero-cover-meta,
+	.hero-cover:focus-visible .hero-cover-meta {
+		opacity: 1;
+		transform: translateY(0);
+	}
+	@media (max-width: 900px) {
+		.hero-grid {
+			margin-top: 40px;
+		}
+		.hero-side {
+			gap: 24px;
+		}
+		.hero-editions {
+			width: 100%;
+		}
+		.hero-cover {
+			flex-basis: 84px;
+			height: 106px;
+		}
+	}
+	@media (max-width: 520px) {
+		.hero-cover-row {
+			margin-right: -24px;
+			padding-right: 24px;
+		}
 	}
 
 	/* ---------- BUTTONS (design-system flavor, paired with DaisyUI class names) ---------- */
