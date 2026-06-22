@@ -16,8 +16,10 @@
 	 */
 
 	import { onMount } from 'svelte';
+	import { base } from '$app/paths';
 	import toast from 'svelte-french-toast';
 	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
+	import { DEFAULT_VOYAGER_VERSION, getVoyagerResourceRoot } from '$lib/utils/asset-urls';
 
 	interface Props {
 		/** URL for iframe mode OR root path for direct mode */
@@ -115,7 +117,7 @@
 		enableControls = true,
 		showPrompt = false,
 		showReader = false,
-		voyagerVersion = '0.56.2',
+		voyagerVersion = DEFAULT_VOYAGER_VERSION,
 		resourceRoot,
 		onModelLoaded,
 		isFullWindow = false,
@@ -163,13 +165,14 @@
 	// UI visibility toggle
 	let showVoyagerUI = $state(false);
 	let activeMode = $state<'viewer' | 'editor'>('viewer');
+	const resolvedResourceRoot = $derived(resourceRoot || getVoyagerResourceRoot(voyagerVersion));
 	const resolvedEditorUrl = $derived.by(() => {
 		if (editorUrl) return editorUrl;
 
 		const params = new URLSearchParams();
 		params.set('version', voyagerVersion);
 		params.set('root', url);
-		params.set('resourceRoot', resourceRoot || `/voyager/${voyagerVersion}/`);
+		params.set('resourceRoot', resolvedResourceRoot);
 
 		if (geometry) {
 			params.set('geometry', geometry);
@@ -179,7 +182,7 @@
 			params.set('document', documentPath || 'scene.svx.json');
 		}
 
-		return `/voyager/story.html?${params.toString()}`;
+		return `${base}/voyager/story.html?${params.toString()}`;
 	});
 
 	// Format bytes to human readable string
@@ -336,9 +339,7 @@
 			cleanupFetchInterceptor = installFetchInterceptor();
 
 			// Compute script URL based on resourceRoot or voyagerVersion
-			const scriptUrl = resourceRoot
-				? `${resourceRoot}js/voyager-explorer.min.js`
-				: `/voyager/${voyagerVersion}/js/voyager-explorer.min.js`;
+			const scriptUrl = `${resolvedResourceRoot}js/voyager-explorer.min.js`;
 
 			// If Voyager is already registered (user navigated to this view previously),
 			// re-loading the script would bundle another Three.js copy and re-register
@@ -968,7 +969,7 @@
 									id="voyager"
 									class="absolute top-0 left-0 h-full w-full"
 									root={url}
-									resourceroot={resourceRoot || `/voyager/${voyagerVersion}/`}
+									resourceroot={resolvedResourceRoot}
 									document={model || geometry ? undefined : documentPath || 'scene.svx.json'}
 									model={geometry ? undefined : model}
 									{geometry}
@@ -1324,7 +1325,7 @@
 							id="voyager"
 							class="absolute top-0 left-0 h-full w-full"
 							root={url}
-							resourceroot={resourceRoot || `/voyager/${voyagerVersion}/`}
+							resourceroot={resolvedResourceRoot}
 							document={model || geometry ? undefined : documentPath || 'scene.svx.json'}
 							model={geometry ? undefined : model}
 							{geometry}

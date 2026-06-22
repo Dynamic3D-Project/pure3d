@@ -1,6 +1,7 @@
 import type { PageLoad } from './$types';
 import {
 	getEditionRoot,
+	getEditionThumbnailUrl,
 	getVoyagerResourceRoot,
 	DEFAULT_VOYAGER_VERSION
 } from '$lib/utils/asset-urls';
@@ -39,9 +40,9 @@ export const load: PageLoad = async () => {
 		dcCoveragePlace: '25 Northumberland Road, Dublin, Ireland',
 		dcProvenance:
 			'Demo record assembled from static project assets to show publication metadata, peer review, reusable teaching resources, and versioning without requiring PocketBase data.',
-		thumbnail: '/project/demo/edition/1/icon.png',
+		thumbnail: getEditionThumbnailUrl(showcaseEditionPubNum, 1),
 		voyagerUrl: '',
-		voyagerRoot: '/project/demo/edition/1/',
+		voyagerRoot: getEditionRoot(showcaseEditionPubNum, 1),
 		voyagerResourceRoot,
 		voyagerVersion,
 		sceneFile: 'scene.svx.json',
@@ -171,7 +172,7 @@ export const load: PageLoad = async () => {
 			dcAbstract: 'Earlier demo draft with fewer annotations and no printable resources.',
 			created: '2024-11-15T00:00:00Z',
 			hasPeerReview: false,
-			thumbnail: '/project/demo/edition/1/icon.png'
+			thumbnail: getEditionThumbnailUrl(showcaseEditionPubNum, 1)
 		}
 	];
 

@@ -23,7 +23,7 @@
 		<script>
 			const params = new URLSearchParams(window.location.search);
 			const version = params.get('version') || '0.59.0';
-			const versionRoot = `/voyager/${version}/`;
+			const versionRoot = params.get('resourceRoot') || `./${version}/`;
 
 			const fontLink = document.createElement('link');
 			fontLink.rel = 'stylesheet';
