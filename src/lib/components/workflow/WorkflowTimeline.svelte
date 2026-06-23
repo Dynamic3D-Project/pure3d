@@ -11,66 +11,51 @@
 		onselectStatus?: (status: EditionStatus, event: MouseEvent) => void;
 	} = $props();
 
-	// Main pipeline path
-	const mainStages: { status: EditionStatus; label: string }[] = [
-		{ status: EditionStatus.Draft, label: 'Draft' },
-		{ status: EditionStatus.ConceptSubmitted, label: 'Concept' },
-		{ status: EditionStatus.EditorialReview, label: 'Editorial' },
-		{ status: EditionStatus.ConceptAccepted, label: 'Accepted' },
-		{ status: EditionStatus.AlphaReview, label: 'Alpha' },
-		{ status: EditionStatus.AlphaAccepted, label: 'Approved' },
-		{ status: EditionStatus.FinalReview, label: 'Final' },
-		{ status: EditionStatus.Published, label: 'Published' }
-	];
+	const workflowStages: { label: string; statuses: EditionStatus[]; hrefStatus: EditionStatus }[] =
+		[
+			{ label: 'Draft', statuses: [EditionStatus.Draft], hrefStatus: EditionStatus.Draft },
+			{
+				label: 'Concept Review',
+				statuses: [
+					EditionStatus.ConceptSubmitted,
+					EditionStatus.EditorialReview,
+					EditionStatus.ConceptAccepted,
+					EditionStatus.ConceptRejected
+				],
+				hrefStatus: EditionStatus.ConceptSubmitted
+			},
+			{
+				label: 'Alpha Review',
+				statuses: [
+					EditionStatus.AlphaReview,
+					EditionStatus.AlphaAccepted,
+					EditionStatus.AlphaRevisions,
+					EditionStatus.AlphaRejected
+				],
+				hrefStatus: EditionStatus.AlphaReview
+			},
+			{
+				label: 'Final Review',
+				statuses: [EditionStatus.FinalReview, EditionStatus.FinalRevisions],
+				hrefStatus: EditionStatus.FinalReview
+			},
+			{
+				label: 'Published',
+				statuses: [EditionStatus.Published],
+				hrefStatus: EditionStatus.Published
+			}
+		];
 
-	// Branch statuses that sit off the main path
-	const branchStatuses: EditionStatus[] = [
-		EditionStatus.ConceptRejected,
-		EditionStatus.AlphaRejected,
-		EditionStatus.AlphaRevisions,
-		EditionStatus.FinalRevisions
-	];
+	const currentStageIndex = $derived.by(() => {
+		const index = workflowStages.findIndex((stage) => stage.statuses.includes(currentStatus));
+		return index === -1 ? 0 : index;
+	});
 
-	// Ordered status index for determining completed/current/future
-	const statusOrder: EditionStatus[] = [
-		EditionStatus.Draft,
-		EditionStatus.ConceptSubmitted,
-		EditionStatus.EditorialReview,
-		EditionStatus.ConceptAccepted,
-		EditionStatus.AlphaReview,
-		EditionStatus.AlphaAccepted,
-		EditionStatus.FinalReview,
-		EditionStatus.Published
-	];
-
-	function getStageState(
-		stageStatus: EditionStatus
-	): 'completed' | 'current' | 'future' | 'branch' {
-		// If current status is a branch status, map it to the main path equivalent
-		const effectiveStatus = mapBranchToMain(currentStatus);
-		const currentIdx = statusOrder.indexOf(effectiveStatus);
-		const stageIdx = statusOrder.indexOf(stageStatus);
-
-		if (stageIdx < currentIdx) return 'completed';
-		if (stageIdx === currentIdx) return 'current';
+	function getStageState(stageIndex: number): 'completed' | 'current' | 'future' {
+		if (stageIndex < currentStageIndex) return 'completed';
+		if (stageIndex === currentStageIndex) return 'current';
 		return 'future';
 	}
-
-	function mapBranchToMain(status: EditionStatus): EditionStatus {
-		switch (status) {
-			case EditionStatus.ConceptRejected:
-				return EditionStatus.EditorialReview;
-			case EditionStatus.AlphaRejected:
-			case EditionStatus.AlphaRevisions:
-				return EditionStatus.AlphaReview;
-			case EditionStatus.FinalRevisions:
-				return EditionStatus.FinalReview;
-			default:
-				return status;
-		}
-	}
-
-	const isBranch = $derived(branchStatuses.includes(currentStatus));
 
 	function getStageHref(status: EditionStatus): string | null {
 		return hrefForStatus?.(status) || null;
@@ -84,9 +69,9 @@
 <div id="workflow-timeline" class="w-full">
 	<!-- Main timeline -->
 	<div class="flex items-center gap-0">
-		{#each mainStages as stage, i (stage.status)}
-			{@const state = getStageState(stage.status)}
-			{@const href = getStageHref(stage.status)}
+		{#each workflowStages as stage, i (stage.label)}
+			{@const state = getStageState(i)}
+			{@const href = getStageHref(stage.hrefStatus)}
 			{#if i > 0}
 				<div
 					class="h-0.5 flex-1"
@@ -99,7 +84,7 @@
 				href={href || undefined}
 				type={href ? undefined : 'button'}
 				role={href ? 'link' : 'button'}
-				onclick={(event: MouseEvent) => handleStageClick(stage.status, event)}
+				onclick={(event: MouseEvent) => handleStageClick(stage.hrefStatus, event)}
 				class="group flex flex-col items-center gap-1 rounded-md border-0 bg-transparent p-0 text-inherit focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
 				class:cursor-pointer={!!href}
 				title={href ? `Open ${stage.label}` : undefined}
@@ -130,7 +115,7 @@
 					{/if}
 				</div>
 				<span
-					class="max-w-16 text-center text-[11px] {href ? 'group-hover:underline' : ''} {state ===
+					class="max-w-24 text-center text-[11px] {href ? 'group-hover:underline' : ''} {state ===
 					'current'
 						? 'font-semibold'
 						: 'text-base-content/60'} {state === 'future' ? 'text-base-content/40' : ''}"
@@ -141,17 +126,24 @@
 		{/each}
 	</div>
 
-	<!-- Branch status indicator -->
-	{#if isBranch}
+	{#if STATUS_LABELS[currentStatus] !== workflowStages[currentStageIndex]?.label}
 		<div class="mt-3 flex items-center gap-2">
 			<span class="badge badge-sm badge-warning">{STATUS_LABELS[currentStatus]}</span>
 			<span class="text-xs text-base-content/60">
 				{#if currentStatus === EditionStatus.ConceptRejected}
 					Concept was rejected. Author can revise and resubmit.
+				{:else if currentStatus === EditionStatus.ConceptSubmitted}
+					Concept has been submitted and is awaiting editorial review.
+				{:else if currentStatus === EditionStatus.EditorialReview}
+					Concept is under editorial review.
+				{:else if currentStatus === EditionStatus.ConceptAccepted}
+					Concept was accepted and is ready for alpha review.
 				{:else if currentStatus === EditionStatus.AlphaRejected}
 					Alpha review rejected. Author can revise and resubmit from draft.
 				{:else if currentStatus === EditionStatus.AlphaRevisions}
 					Revisions requested. Author can edit and resubmit.
+				{:else if currentStatus === EditionStatus.AlphaAccepted}
+					Alpha review approved and is ready for final review.
 				{:else if currentStatus === EditionStatus.FinalRevisions}
 					Final revisions requested. Author can edit and resubmit.
 				{/if}

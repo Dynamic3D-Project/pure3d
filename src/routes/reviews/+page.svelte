@@ -191,10 +191,12 @@
 			case EditionStatus.ConceptSubmitted:
 			case EditionStatus.EditorialReview:
 			case EditionStatus.ConceptAccepted:
+			case EditionStatus.ConceptRejected:
 				return `${workflowPath}#concept`;
 			case EditionStatus.AlphaReview:
 			case EditionStatus.AlphaRevisions:
 			case EditionStatus.AlphaAccepted:
+			case EditionStatus.AlphaRejected:
 				return `${workflowPath}#alpha`;
 			case EditionStatus.FinalReview:
 			case EditionStatus.FinalRevisions:
