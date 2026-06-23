@@ -13,11 +13,7 @@
 	import toast from 'svelte-french-toast';
 
 	// Reactive data from persisted store
-	let editions = $derived(
-		authStore.isAuthenticated
-			? $editionsStore.items
-			: $editionsStore.items.filter((edition) => edition.isPublished)
-	);
+	let editions = $derived($editionsStore.items.filter((edition) => edition.isPublished));
 	let hasCachedData = $derived($editionsStore.items.length > 0);
 	let isLoading = $state(true);
 

@@ -12,9 +12,7 @@
 
 	// Reactive data from persisted store
 	let collections = $derived(
-		authStore.isAuthenticated
-			? ($collectionsStore.items ?? [])
-			: ($collectionsStore.items ?? []).filter((collection) => collection.isVisible)
+		($collectionsStore.items ?? []).filter((collection) => collection.isVisible)
 	);
 	let hasCachedData = $derived(($collectionsStore.items ?? []).length > 0);
 	let isLoading = $state(true);
