@@ -312,6 +312,12 @@
 		selectedIndex = index;
 	}
 
+	function handleDropdownWheel(event: WheelEvent) {
+		if (!resultsListElement) return;
+		event.preventDefault();
+		resultsListElement.scrollTop += event.deltaY;
+	}
+
 	function getTypeLabel(type: SearchResultType): string {
 		switch (type) {
 			case 'edition':
@@ -397,6 +403,7 @@
 			class="card-compact card fixed z-50 overflow-hidden bg-base-100 shadow-xl"
 			style="min-width: 300px; visibility: hidden;"
 			role="listbox"
+			onwheel={handleDropdownWheel}
 		>
 			<div class="card-body p-0">
 				{#if searching && results.length === 0}
@@ -413,7 +420,7 @@
 						{/if}
 					</div>
 				{:else}
-					<div class="max-h-80 overflow-y-auto" bind:this={resultsListElement}>
+					<div class="max-h-80 overflow-y-auto overscroll-contain" bind:this={resultsListElement}>
 						{#each groupedResults as group}
 							<div
 								class="sticky top-0 z-10 flex items-center gap-1.5 border-b border-base-200 bg-base-100 px-3 py-1.5 text-xs font-semibold tracking-wide text-base-content/60 uppercase"
