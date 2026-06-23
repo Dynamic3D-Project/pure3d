@@ -131,7 +131,7 @@
 
 {#if !isFeedbackPage}
 	<button type="button" class="feedback-pill btn btn-primary shadow-lg" onclick={openFeedback}>
-		Full Feedback
+		Send Feedback
 	</button>
 {/if}
 
@@ -140,7 +140,7 @@
 		<div class="border-b border-base-300 bg-base-200/60 px-5 py-4">
 			<div class="flex items-start justify-between gap-4">
 				<div>
-					<p class="text-xs font-semibold uppercase tracking-wide text-primary">Full Feedback</p>
+					<p class="text-xs font-semibold uppercase tracking-wide text-primary">Send Feedback</p>
 					<h2 class="text-xl font-bold">What did you notice?</h2>
 					<p class="mt-1 text-sm text-base-content/60">
 						Bugs, confusion, screenshots, slow moments, and ideas are all useful.
@@ -211,7 +211,7 @@
 				</div>
 
 				<div class="flex items-center justify-between gap-3 border-t border-base-300 pt-4">
-					<a class="link text-sm link-primary" href="{base}/feedback">Open Full Feedback page</a>
+					<a class="link text-sm link-primary" href="{base}/feedback">Open feedback page</a>
 					<div class="flex gap-2">
 						<button type="button" class="btn btn-ghost btn-sm" onclick={closeFeedback}>Cancel</button>
 						<button class="btn btn-primary btn-sm" disabled={isSubmitting}>

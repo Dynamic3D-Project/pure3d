@@ -234,13 +234,13 @@
 </script>
 
 <svelte:head>
-	<title>Full Feedback | Admin | Pure3D</title>
+	<title>Send Feedback | Admin | Pure3D</title>
 </svelte:head>
 
 <div id="admin-feedback-page" class="mx-auto max-w-6xl">
 	<div class="mb-8 flex flex-wrap items-start justify-between gap-4">
 		<div>
-			<h1 class="text-3xl font-bold">Full Feedback</h1>
+			<h1 class="text-3xl font-bold">Send Feedback</h1>
 			<p class="mt-2 text-base-content/60">
 				Review submitted feedback from participants and visitors.
 			</p>
