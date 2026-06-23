@@ -1,4 +1,4 @@
-.PHONY: help install db db-logs db-stop dev seed-assets stack stack-stop
+.PHONY: help install db db-logs db-stop dev bun-dev seed-assets stack stack-stop
 
 help:
 	@echo "Pure3D commands"
@@ -7,6 +7,7 @@ help:
 	@echo "  make db-logs     Follow PocketBase logs"
 	@echo "  make db-stop     Stop local database/storage services"
 	@echo "  make dev         Run full local dev app in Docker/OrbStack"
+	@echo "  make bun-dev     Run local services, then native Bun frontend"
 	@echo "  make seed-assets Mirror static/project into local MinIO bucket"
 	@echo "  make stack       Start full Docker stack"
 	@echo "  make stack-stop  Stop full Docker stack"
@@ -34,6 +35,11 @@ db-stop:
 
 dev:
 	docker compose up frontend
+
+bun-dev:
+	@docker compose up -d minio minio-setup pocketbase pocketbase-setup voyager-setup
+	@set -a; [ ! -f .env ] || . ./.env; set +a; \
+		bun install && bun run dev --host 0.0.0.0 --port "$${FRONTEND_PORT:-8080}"
 
 seed-assets:
 	@docker compose up -d minio minio-setup
