@@ -10,9 +10,18 @@
 	import { CollectionRole, GlobalRole } from '$lib/types/roles';
 	import toast from 'svelte-french-toast';
 
+	let showHiddenCollections = $state(false);
+	let canShowHiddenCollections = $derived(authStore.globalRole === GlobalRole.Admin);
+	let allCollections = $derived($collectionsStore.items ?? []);
+	let hiddenCollectionCount = $derived(
+		allCollections.filter((collection) => !collection.isVisible).length
+	);
+
 	// Reactive data from persisted store
 	let collections = $derived(
-		($collectionsStore.items ?? []).filter((collection) => collection.isVisible)
+		canShowHiddenCollections && showHiddenCollections
+			? allCollections
+			: allCollections.filter((collection) => collection.isVisible)
 	);
 	let hasCachedData = $derived(($collectionsStore.items ?? []).length > 0);
 	let isLoading = $state(true);
@@ -179,12 +188,25 @@
 			A Virtual Research Environment for 3D Digital Humanities And Heritage
 		</p>
 		{#if authStore.globalRole === GlobalRole.Admin}
-			<button class="btn mt-6 btn-sm btn-primary" onclick={createCollection} disabled={isCreating}>
-				{#if isCreating}
-					<span class="loading loading-xs loading-spinner"></span>
-				{/if}
-				+ New Collection
-			</button>
+			<div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+				<button class="btn btn-sm btn-primary" onclick={createCollection} disabled={isCreating}>
+					{#if isCreating}
+						<span class="loading loading-xs loading-spinner"></span>
+					{/if}
+					+ New Collection
+				</button>
+				<label class="flex cursor-pointer items-center gap-2 rounded-full border border-base-300 bg-base-100 px-4 py-2 text-sm shadow-sm">
+					<input
+						type="checkbox"
+						class="toggle toggle-sm toggle-primary"
+						bind:checked={showHiddenCollections}
+					/>
+					<span>Show non-public</span>
+					{#if hiddenCollectionCount > 0}
+						<span class="badge badge-sm badge-ghost">{hiddenCollectionCount}</span>
+					{/if}
+				</label>
+			</div>
 		{/if}
 	</div>
 

@@ -12,8 +12,17 @@
 	import { EditionStatus, GlobalRole } from '$lib/types/roles';
 	import toast from 'svelte-french-toast';
 
+	let showHiddenEditions = $state(false);
+	let canShowHiddenEditions = $derived(authStore.globalRole === GlobalRole.Admin);
+	let allEditions = $derived($editionsStore.items);
+	let hiddenEditionCount = $derived(allEditions.filter((edition) => !edition.isPublished).length);
+
 	// Reactive data from persisted store
-	let editions = $derived($editionsStore.items.filter((edition) => edition.isPublished));
+	let editions = $derived(
+		canShowHiddenEditions && showHiddenEditions
+			? allEditions
+			: allEditions.filter((edition) => edition.isPublished)
+	);
 	let hasCachedData = $derived($editionsStore.items.length > 0);
 	let isLoading = $state(true);
 
@@ -240,16 +249,25 @@
 					<p class="text-base-content/70">Browse our collection of 3D scholarly editions</p>
 				</div>
 				{#if authStore.globalRole === GlobalRole.Admin}
-					<button
-						class="btn flex-none btn-sm btn-primary"
-						onclick={createEdition}
-						disabled={isCreating}
-					>
-						{#if isCreating}
-							<span class="loading loading-xs loading-spinner"></span>
-						{/if}
-						+ New Edition
-					</button>
+					<div class="flex flex-none flex-wrap items-center justify-end gap-3">
+						<label class="flex cursor-pointer items-center gap-2 rounded-full border border-base-300 bg-base-100 px-4 py-2 text-sm shadow-sm">
+							<input
+								type="checkbox"
+								class="toggle toggle-sm toggle-primary"
+								bind:checked={showHiddenEditions}
+							/>
+							<span>Show non-public</span>
+							{#if hiddenEditionCount > 0}
+								<span class="badge badge-sm badge-ghost">{hiddenEditionCount}</span>
+							{/if}
+						</label>
+						<button class="btn btn-sm btn-primary" onclick={createEdition} disabled={isCreating}>
+							{#if isCreating}
+								<span class="loading loading-xs loading-spinner"></span>
+							{/if}
+							+ New Edition
+						</button>
+					</div>
 				{/if}
 			</div>
 
