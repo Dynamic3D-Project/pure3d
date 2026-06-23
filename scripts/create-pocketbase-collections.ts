@@ -56,6 +56,17 @@ const notificationTypes = [
 	'collaborator_removed',
 	'feedback_received'
 ];
+const workshopFeedbackCategories = [
+	'bug',
+	'confusing',
+	'upload_issue',
+	'viewer_issue',
+	'metadata_workflow',
+	'missing_feature',
+	'other'
+];
+const workshopFeedbackSeverities = ['minor', 'important', 'blocking', 'suggestion'];
+const workshopFeedbackStatuses = ['draft', 'submitted', 'reviewed', 'resolved'];
 
 type FieldDef = Record<string, unknown> & { name: string };
 type CollectionType = 'base' | 'auth';
@@ -594,6 +605,51 @@ async function main() {
 		]
 	});
 
+	collectionIds['workshopFeedback'] = await ensureCollection({
+		name: 'workshopFeedback',
+		type: 'base',
+		fields: [
+			{ name: 'participantName', type: 'text', required: false },
+			{ name: 'participantEmail', type: 'email', required: false },
+			relationField('edition', collectionIds['editions'], { cascadeDelete: false }),
+			{ name: 'editionUrl', type: 'text', required: false },
+			{
+				name: 'category',
+				type: 'select',
+				required: true,
+				maxSelect: 1,
+				values: workshopFeedbackCategories
+			},
+			{
+				name: 'severity',
+				type: 'select',
+				required: true,
+				maxSelect: 1,
+				values: workshopFeedbackSeverities
+			},
+			{ name: 'feedbackHtml', type: 'editor', required: false },
+			{
+				name: 'images',
+				type: 'file',
+				required: false,
+				maxSelect: 20,
+				maxSize: 20 * 1024 * 1024,
+				mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+				thumbs: ['400x300']
+			},
+			{ name: 'pageUrl', type: 'text', required: false },
+			{ name: 'browserInfo', type: 'json', required: false },
+			{
+				name: 'status',
+				type: 'select',
+				required: true,
+				maxSelect: 1,
+				values: workshopFeedbackStatuses
+			},
+			relationField('createdBy', collectionIds['users'])
+		]
+	});
+
 	console.log('\nPhase 4: Dropping legacy userProfiles (if present)...\n');
 	await dropLegacyUserProfiles();
 
@@ -611,7 +667,8 @@ async function main() {
 		'editionReviews',
 		'reviewAssignments',
 		'reviewFeedback',
-		'notifications'
+		'notifications',
+		'workshopFeedback'
 	]) {
 		await setOpenRules(name);
 	}

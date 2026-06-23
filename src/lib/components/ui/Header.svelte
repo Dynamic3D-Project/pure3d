@@ -2,7 +2,6 @@
 	import { base } from '$app/paths';
 	import { dev } from '$app/environment';
 	import Logo from '$lib/assets/icons/Logo.svelte';
-	import FeedbackButton from '$lib/components/ui/feedback/FeedbackButton.svelte';
 	import Login from '$lib/components/ui/Login/LoginButton.svelte';
 	import Search from '$lib/components/Search.svelte';
 	import { toggleMenu } from '$lib/stores/menu.store';
@@ -32,6 +31,10 @@
 
 		return false;
 	}
+
+	let feedbackHref = $derived(
+		`${base}/feedback?from=${encodeURIComponent($page.url.pathname + $page.url.search)}`
+	);
 </script>
 
 <nav class="bien-nav mb-10">
@@ -85,7 +88,9 @@
 				{/if}
 			</div>
 
-			<!-- <FeedbackButton class="hidden sm:block" /> -->
+			{#if !$page.url.pathname.startsWith(`${base}/feedback`) && $page.url.pathname !== '/feedback'}
+				<a class="btn btn-outline btn-sm" href={feedbackHref}>Feedback</a>
+			{/if}
 
 			<Login />
 		</header>

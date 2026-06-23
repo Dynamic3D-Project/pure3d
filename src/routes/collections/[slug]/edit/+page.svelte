@@ -30,6 +30,7 @@
 	let isVisible = $state(false);
 	let isSaving = $state(false);
 	let isCancelling = $state(false);
+	let isDeleting = $state(false);
 
 	let collectionRole = $state<CollectionRole | undefined>(undefined);
 	let roleContext = $derived<UserRoleContext>({
@@ -37,6 +38,7 @@
 		collectionRole
 	});
 	let canEdit = $derived(hasPermission(roleContext, Permission.CollectionEdit));
+	let canDelete = $derived(hasPermission(roleContext, Permission.CollectionDelete));
 	let authorized = $state<boolean | null>(null);
 	let isNewCollection = $derived($page.url.searchParams.get('new') === '1');
 	let fallbackCoverUrl = $derived(getCollectionCoverUrl(record, record.pubNum));
@@ -124,6 +126,69 @@
 		}
 	}
 
+	async function removeCollectionMemberships() {
+		const memberships = await pb.collection('collectionUsers').getList(1, 500, {
+			filter: `collection = "${record.id}"`,
+			$autoCancel: false
+		});
+
+		await Promise.all(
+			memberships.items.map((membership) =>
+				pb.collection('collectionUsers').delete(membership.id, { $autoCancel: false })
+			)
+		);
+	}
+
+	async function unlinkCollectionEditions() {
+		const collectionEditions = await pb.collection('editions').getList(1, 500, {
+			filter: `collection = "${record.id}"`,
+			$autoCancel: false
+		});
+
+		await Promise.all(
+			collectionEditions.items.map((edition) =>
+				pb.collection('editions').update(edition.id, { collection: null }, { $autoCancel: false })
+			)
+		);
+
+		return collectionEditions.totalItems;
+	}
+
+	async function deleteCollection() {
+		if (!canDelete) {
+			toast.error("You don't have permission to delete this collection");
+			return;
+		}
+
+		const confirmed = confirm(
+			`Permanently delete "${title || record.title || 'this collection'}"? Editions in this collection will be kept and unassigned. This action cannot be undone.`
+		);
+		if (!confirmed) return;
+
+		isDeleting = true;
+		try {
+			const unlinkedEditionCount = await unlinkCollectionEditions();
+
+			try {
+				await removeCollectionMemberships();
+			} catch {
+				// Memberships should cascade with the collection if explicit cleanup is blocked.
+			}
+
+			await pb.collection('collections').delete(record.id, { $autoCancel: false });
+			toast.success(
+				unlinkedEditionCount > 0
+					? `Collection deleted; ${unlinkedEditionCount} edition${unlinkedEditionCount === 1 ? '' : 's'} unassigned`
+					: 'Collection deleted'
+			);
+			goto(`${base}/collections`);
+		} catch (e: any) {
+			toast.error(e?.message || 'Failed to delete collection');
+		} finally {
+			isDeleting = false;
+		}
+	}
+
 	async function cancel() {
 		if (!isNewCollection) {
 			goto(`${base}/collections/${record.id}`);
@@ -133,16 +198,7 @@
 		isCancelling = true;
 		try {
 			try {
-				const memberships = await pb.collection('collectionUsers').getList(1, 500, {
-					filter: `collection = "${record.id}"`,
-					$autoCancel: false
-				});
-
-				await Promise.all(
-					memberships.items.map((membership) =>
-						pb.collection('collectionUsers').delete(membership.id, { $autoCancel: false })
-					)
-				);
+				await removeCollectionMemberships();
 			} catch {
 				// Collection deletion is the source of truth for this cleanup.
 			}
@@ -194,7 +250,7 @@
 				<button
 					type="button"
 					class="btn btn-ghost btn-sm"
-					disabled={isSaving || isCancelling}
+					disabled={isSaving || isCancelling || isDeleting}
 					onclick={cancel}
 				>
 					{#if isCancelling}
@@ -206,7 +262,7 @@
 					type="submit"
 					form="collection-edit-form"
 					class="btn btn-sm btn-primary"
-					disabled={isSaving || isCancelling}
+					disabled={isSaving || isCancelling || isDeleting}
 				>
 					{#if isSaving}
 						<span class="loading loading-xs loading-spinner"></span>
@@ -422,5 +478,30 @@
 				</div>
 			</div>
 		</form>
+
+		{#if canDelete && !isNewCollection}
+			<section class="mt-6 rounded-box border border-error/30 bg-error/5 p-6">
+				<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+					<div>
+						<h2 class="text-lg font-semibold text-error">Delete Collection</h2>
+						<p class="mt-1 text-sm text-base-content/70">
+							Permanently remove this collection. Editions currently in it will be kept and
+							unassigned.
+						</p>
+					</div>
+					<button
+						type="button"
+						class="btn btn-error"
+						disabled={isSaving || isCancelling || isDeleting}
+						onclick={deleteCollection}
+					>
+						{#if isDeleting}
+							<span class="loading loading-xs loading-spinner"></span>
+						{/if}
+						Delete Collection
+					</button>
+				</div>
+			</section>
+		{/if}
 	{/if}
 </div>

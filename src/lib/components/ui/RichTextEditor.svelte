@@ -15,13 +15,23 @@
 		content?: string;
 		placeholder?: string;
 		minHeight?: string;
+		enableImagePaste?: boolean;
+		uploadImage?: (file: File) => Promise<string>;
 		onchange?: (html: string) => void;
 	}
 
-	let { content = '', placeholder = 'Start writing...', minHeight = '200px', onchange }: Props = $props();
+	let {
+		content = '',
+		placeholder = 'Start writing...',
+		minHeight = '200px',
+		enableImagePaste = false,
+		uploadImage,
+		onchange
+	}: Props = $props();
 
 	let element: HTMLDivElement;
 	let editor: Editor | null = $state(null);
+	let isUploadingImage = $state(false);
 
 	onMount(() => {
 		editor = new Editor({
@@ -75,6 +85,25 @@
 		const url = window.prompt('Image URL');
 		if (url) {
 			editor.chain().focus().setImage({ src: url }).run();
+		}
+	}
+
+	async function handlePaste(event: ClipboardEvent) {
+		if (!enableImagePaste || !uploadImage || !editor) return;
+		const files = Array.from(event.clipboardData?.files ?? []).filter((file) =>
+			file.type.startsWith('image/')
+		);
+		if (files.length === 0) return;
+
+		event.preventDefault();
+		isUploadingImage = true;
+		try {
+			for (const file of files) {
+				const url = await uploadImage(file);
+				editor.chain().focus().setImage({ src: url, alt: file.name || 'Pasted image' }).run();
+			}
+		} finally {
+			isUploadingImage = false;
 		}
 	}
 </script>
@@ -145,7 +174,22 @@
 	</div>
 
 	<!-- Editor content -->
-	<div bind:this={element} class="editor-wrapper prose prose-sm max-w-none p-4 focus-within:outline-none" style:--editor-min-h={minHeight}></div>
+	<div class="relative">
+		{#if isUploadingImage}
+			<div
+				class="absolute top-2 right-2 z-10 inline-flex items-center gap-2 rounded bg-base-100 px-3 py-1 text-xs shadow"
+			>
+				<span class="loading loading-spinner loading-xs"></span>
+				Uploading image...
+			</div>
+		{/if}
+		<div
+			bind:this={element}
+			class="editor-wrapper prose prose-sm max-w-none p-4 focus-within:outline-none"
+			style:--editor-min-h={minHeight}
+			onpaste={handlePaste}
+		></div>
+	</div>
 </div>
 
 <style>
