@@ -67,7 +67,7 @@
 
 	async function ensureFeedbackRecord() {
 		if (feedbackRecord) return feedbackRecord;
-		const record = await pb.collection('workshopFeedback').create({
+		const record = await pb.collection('feedback').create({
 			participantName,
 			participantEmail,
 			editionUrl: relatedUrl,
@@ -87,7 +87,7 @@
 		const record = await ensureFeedbackRecord();
 		const form = new FormData();
 		form.append('images+', file);
-		const updated = await pb.collection('workshopFeedback').update(record.id, form);
+		const updated = await pb.collection('feedback').update(record.id, form);
 		feedbackRecord = updated;
 		const filenames = Array.isArray(updated.images) ? updated.images : [];
 		const filename = filenames.at(-1);
@@ -104,7 +104,7 @@
 		isSubmitting = true;
 		try {
 			const record = await ensureFeedbackRecord();
-			await pb.collection('workshopFeedback').update(record.id, {
+			await pb.collection('feedback').update(record.id, {
 				participantName,
 				participantEmail,
 				editionUrl: relatedUrl,
@@ -131,7 +131,7 @@
 
 {#if !isFeedbackPage}
 	<button type="button" class="feedback-pill btn btn-primary shadow-lg" onclick={openFeedback}>
-		Feedback
+		Full Feedback
 	</button>
 {/if}
 
@@ -140,7 +140,7 @@
 		<div class="border-b border-base-300 bg-base-200/60 px-5 py-4">
 			<div class="flex items-start justify-between gap-4">
 				<div>
-					<p class="text-xs font-semibold uppercase tracking-wide text-primary">Feedback</p>
+					<p class="text-xs font-semibold uppercase tracking-wide text-primary">Full Feedback</p>
 					<h2 class="text-xl font-bold">What did you notice?</h2>
 					<p class="mt-1 text-sm text-base-content/60">
 						Bugs, confusion, screenshots, slow moments, and ideas are all useful.
@@ -211,7 +211,7 @@
 				</div>
 
 				<div class="flex items-center justify-between gap-3 border-t border-base-300 pt-4">
-					<a class="link text-sm link-primary" href="{base}/feedback">Open full feedback page</a>
+					<a class="link text-sm link-primary" href="{base}/feedback">Open Full Feedback page</a>
 					<div class="flex gap-2">
 						<button type="button" class="btn btn-ghost btn-sm" onclick={closeFeedback}>Cancel</button>
 						<button class="btn btn-primary btn-sm" disabled={isSubmitting}>

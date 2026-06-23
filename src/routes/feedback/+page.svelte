@@ -51,7 +51,7 @@
 
 	async function ensureFeedbackRecord() {
 		if (feedbackRecord) return feedbackRecord;
-		const record = await pb.collection('workshopFeedback').create({
+		const record = await pb.collection('feedback').create({
 			participantName,
 			participantEmail,
 			editionUrl: relatedUrl,
@@ -71,7 +71,7 @@
 		const record = await ensureFeedbackRecord();
 		const form = new FormData();
 		form.append('images+', file);
-		const updated = await pb.collection('workshopFeedback').update(record.id, form);
+		const updated = await pb.collection('feedback').update(record.id, form);
 		feedbackRecord = updated;
 		const filenames = Array.isArray(updated.images) ? updated.images : [];
 		const filename = filenames.at(-1);
@@ -88,7 +88,7 @@
 		isSubmitting = true;
 		try {
 			const record = await ensureFeedbackRecord();
-			feedbackRecord = await pb.collection('workshopFeedback').update(record.id, {
+			feedbackRecord = await pb.collection('feedback').update(record.id, {
 				participantName,
 				participantEmail,
 				editionUrl: relatedUrl,

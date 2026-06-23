@@ -56,7 +56,7 @@ const notificationTypes = [
 	'collaborator_removed',
 	'feedback_received'
 ];
-const workshopFeedbackCategories = [
+const feedbackCategories = [
 	'bug',
 	'confusing',
 	'upload_issue',
@@ -65,8 +65,8 @@ const workshopFeedbackCategories = [
 	'missing_feature',
 	'other'
 ];
-const workshopFeedbackSeverities = ['minor', 'important', 'blocking', 'suggestion'];
-const workshopFeedbackStatuses = ['draft', 'submitted', 'reviewed', 'resolved'];
+const feedbackSeverities = ['minor', 'important', 'blocking', 'suggestion'];
+const feedbackStatuses = ['draft', 'submitted', 'reviewed', 'resolved'];
 
 type FieldDef = Record<string, unknown> & { name: string };
 type CollectionType = 'base' | 'auth';
@@ -221,6 +221,18 @@ async function ensureCollection(definition: CollectionDef) {
 
 	console.log(`   ${definition.name}: ensured`);
 	return existing.id;
+}
+
+async function renameCollectionIfNeeded(from: string, to: string) {
+	const existing = await getCollection(to);
+	if (existing) return existing.id;
+
+	const legacy = await getCollection(from);
+	if (!legacy) return null;
+
+	await pb.collections.update(legacy.id, { name: to });
+	console.log(`   ${from}: renamed to ${to}`);
+	return legacy.id;
 }
 
 function relationField(
@@ -605,8 +617,9 @@ async function main() {
 		]
 	});
 
-	collectionIds['workshopFeedback'] = await ensureCollection({
-		name: 'workshopFeedback',
+	await renameCollectionIfNeeded('workshopFeedback', 'feedback');
+	collectionIds['feedback'] = await ensureCollection({
+		name: 'feedback',
 		type: 'base',
 		fields: [
 			{ name: 'participantName', type: 'text', required: false },
@@ -618,14 +631,14 @@ async function main() {
 				type: 'select',
 				required: true,
 				maxSelect: 1,
-				values: workshopFeedbackCategories
+				values: feedbackCategories
 			},
 			{
 				name: 'severity',
 				type: 'select',
 				required: true,
 				maxSelect: 1,
-				values: workshopFeedbackSeverities
+				values: feedbackSeverities
 			},
 			{ name: 'feedbackHtml', type: 'editor', required: false },
 			{
@@ -644,7 +657,7 @@ async function main() {
 				type: 'select',
 				required: true,
 				maxSelect: 1,
-				values: workshopFeedbackStatuses
+				values: feedbackStatuses
 			},
 			relationField('createdBy', collectionIds['users'])
 		]
@@ -668,7 +681,7 @@ async function main() {
 		'reviewAssignments',
 		'reviewFeedback',
 		'notifications',
-		'workshopFeedback'
+		'feedback'
 	]) {
 		await setOpenRules(name);
 	}

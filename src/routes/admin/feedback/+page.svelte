@@ -6,7 +6,7 @@
 	import toast from 'svelte-french-toast';
 	import type { RecordModel } from 'pocketbase';
 
-	interface WorkshopFeedback {
+	interface FeedbackEntry {
 		id: string;
 		participantName: string;
 		participantEmail: string;
@@ -66,48 +66,73 @@
 		...Object.entries(severityLabels).map(([value, label]) => ({ value, label }))
 	];
 
-	let feedback = $state<WorkshopFeedback[]>([]);
+	let feedback = $state<FeedbackEntry[]>([]);
 	let isLoading = $state(true);
 	let searchQuery = $state('');
 	let statusFilter = $state('submitted');
 	let categoryFilter = $state('');
 	let severityFilter = $state('');
 	let expandedId = $state<string | null>(null);
-	let currentPage = $state(1);
-	let totalPages = $state(1);
-	const perPage = 50;
+	const perPage = 500;
 
 	let hasActiveFilters = $derived(Boolean(searchQuery || statusFilter || categoryFilter || severityFilter));
-
+	let statusCounts = $derived(
+		feedback.reduce(
+			(counts, item) => {
+				counts[item.status] = (counts[item.status] || 0) + 1;
+				return counts;
+			},
+			{} as Record<string, number>
+		)
+	);
 	onMount(() => {
 		loadFeedback();
+
+		let unsubscribe: (() => void) | null = null;
+		pb.collection('feedback')
+			.subscribe('*', async (event) => {
+				if (event.action === 'delete') {
+					feedback = feedback.filter((item) => item.id !== event.record.id);
+					return;
+				}
+
+				try {
+					const record = await pb.collection('feedback').getOne(event.record.id, { expand: 'edition' });
+					upsertFeedback(mapFeedback(record));
+				} catch (error) {
+					console.error('Failed to apply realtime feedback update:', error);
+				}
+			})
+			.then((fn) => {
+				unsubscribe = fn;
+			})
+			.catch((error) => {
+				console.error('Failed to subscribe to feedback updates:', error);
+			});
+
+		return () => {
+			unsubscribe?.();
+		};
 	});
 
 	async function loadFeedback() {
 		isLoading = true;
 		try {
-			const filters = [];
-			if (statusFilter) filters.push(`status = "${statusFilter}"`);
-			if (categoryFilter) filters.push(`category = "${categoryFilter}"`);
-			if (severityFilter) filters.push(`severity = "${severityFilter}"`);
-
-			const result = await pb.collection('workshopFeedback').getList(currentPage, perPage, {
-				sort: '-created',
-				filter: filters.join(' && '),
+			const result = await pb.collection('feedback').getList(1, perPage, {
+				sort: '-@rowid',
 				expand: 'edition'
 			});
 
 			feedback = result.items.map(mapFeedback);
-			totalPages = result.totalPages;
 		} catch (error) {
-			console.error('Failed to load workshop feedback:', error);
-			toast.error('Failed to load workshop feedback');
+			console.error('Failed to load full feedback:', error);
+			toast.error('Failed to load full feedback');
 		} finally {
 			isLoading = false;
 		}
 	}
 
-	function mapFeedback(record: RecordModel): WorkshopFeedback {
+	function mapFeedback(record: RecordModel): FeedbackEntry {
 		const edition = record.expand?.edition as RecordModel | undefined;
 		return {
 			id: record.id,
@@ -128,8 +153,22 @@
 		};
 	}
 
+	function upsertFeedback(item: FeedbackEntry) {
+		const existingIndex = feedback.findIndex((entry) => entry.id === item.id);
+		if (existingIndex === -1) {
+			feedback = [item, ...feedback].slice(0, perPage);
+			return;
+		}
+
+		feedback = feedback.map((entry) => (entry.id === item.id ? item : entry));
+	}
+
 	let visibleFeedback = $derived(
 		feedback.filter((item) => {
+			if (statusFilter && item.status !== statusFilter) return false;
+			if (categoryFilter && item.category !== categoryFilter) return false;
+			if (severityFilter && item.severity !== severityFilter) return false;
+
 			const query = searchQuery.trim().toLowerCase();
 			if (!query) return true;
 			return [
@@ -145,10 +184,10 @@
 				.some((value) => String(value).toLowerCase().includes(query));
 		})
 	);
+	let visibleCount = $derived(visibleFeedback.length);
 
 	function applyFilters() {
-		currentPage = 1;
-		loadFeedback();
+		// Filters are applied client-side to avoid PocketBase sort/filter quirks on this collection.
 	}
 
 	function clearFilters() {
@@ -156,12 +195,15 @@
 		statusFilter = '';
 		categoryFilter = '';
 		severityFilter = '';
-		applyFilters();
 	}
 
-	async function updateStatus(item: WorkshopFeedback, status: string) {
+	function filterByStatus(status: string) {
+		statusFilter = status;
+	}
+
+	async function updateStatus(item: FeedbackEntry, status: string) {
 		try {
-			const updated = await pb.collection('workshopFeedback').update(item.id, { status });
+			const updated = await pb.collection('feedback').update(item.id, { status });
 			feedback = feedback.map((entry) => (entry.id === item.id ? mapFeedback(updated) : entry));
 			toast.success(`Marked ${statusLabels[status].toLowerCase()}`);
 		} catch (error) {
@@ -175,25 +217,32 @@
 		return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
 	}
 
-	function imageUrl(item: WorkshopFeedback, filename: string) {
+	function imageUrl(item: FeedbackEntry, filename: string) {
 		return pb.files.getURL(item.record, filename, { thumb: '400x300' });
 	}
 
-	function fullImageUrl(item: WorkshopFeedback, filename: string) {
+	function fullImageUrl(item: FeedbackEntry, filename: string) {
 		return pb.files.getURL(item.record, filename);
+	}
+
+	function statusBadgeClass(status: string) {
+		if (status === 'submitted') return 'badge-warning';
+		if (status === 'reviewed') return 'badge-info';
+		if (status === 'resolved') return 'badge-success';
+		return 'badge-ghost';
 	}
 </script>
 
 <svelte:head>
-	<title>Workshop Feedback | Admin | Pure3D</title>
+	<title>Full Feedback | Admin | Pure3D</title>
 </svelte:head>
 
 <div id="admin-feedback-page" class="mx-auto max-w-6xl">
 	<div class="mb-8 flex flex-wrap items-start justify-between gap-4">
 		<div>
-			<h1 class="text-3xl font-bold">Workshop Feedback</h1>
+			<h1 class="text-3xl font-bold">Full Feedback</h1>
 			<p class="mt-2 text-base-content/60">
-				Review submitted feedback from workshop participants.
+				Review submitted feedback from participants and visitors.
 			</p>
 		</div>
 		<button class="btn btn-outline btn-sm" onclick={loadFeedback} disabled={isLoading}>
@@ -255,12 +304,41 @@
 		</div>
 	</div>
 
+	<div class="mb-6 flex flex-wrap gap-2">
+		<button
+			type="button"
+			class={`btn btn-xs h-auto min-h-0 gap-2 rounded-full px-3 py-2 ${statusFilter === '' ? 'btn-primary' : 'btn-outline'}`}
+			onclick={() => filterByStatus('')}
+		>
+			<span class="font-medium">Total</span>
+			<span class="font-mono text-sm">{feedback.length}</span>
+		</button>
+		<button
+			type="button"
+			class="btn btn-outline btn-xs h-auto min-h-0 gap-2 rounded-full px-3 py-2 opacity-75"
+			onclick={clearFilters}
+		>
+			<span class="font-medium">Visible</span>
+			<span class="font-mono text-sm">{visibleCount}</span>
+		</button>
+		{#each statusOptions.filter((option) => option.value) as option}
+			<button
+				type="button"
+				class={`btn btn-xs h-auto min-h-0 gap-2 rounded-full px-3 py-2 ${statusFilter === option.value ? 'btn-primary' : 'btn-outline opacity-75'}`}
+				onclick={() => filterByStatus(option.value)}
+			>
+				<span class="font-medium">{option.label}</span>
+				<span class="font-mono text-sm">{statusCounts[option.value] || 0}</span>
+			</button>
+		{/each}
+	</div>
+
 	{#if isLoading}
 		<div class="flex justify-center py-12">
 			<span class="loading loading-spinner loading-lg"></span>
 		</div>
 	{:else if feedback.length === 0}
-		<p class="py-12 text-center text-base-content/60">No workshop feedback yet.</p>
+		<p class="py-12 text-center text-base-content/60">No full feedback yet.</p>
 	{:else if visibleFeedback.length === 0}
 		<p class="py-12 text-center text-base-content/60">No feedback matches the current search.</p>
 	{:else}
@@ -277,7 +355,7 @@
 								<h2 class="font-semibold">{item.participantName}</h2>
 								<span class="badge badge-outline">{categoryLabels[item.category] || item.category}</span>
 								<span class="badge badge-outline">{severityLabels[item.severity] || item.severity}</span>
-								<span class="badge badge-primary badge-outline">
+								<span class={`badge ${statusBadgeClass(item.status)}`}>
 									{statusLabels[item.status] || item.status}
 								</span>
 							</div>
@@ -362,30 +440,10 @@
 			{/each}
 		</div>
 
-		{#if totalPages > 1}
-			<div class="mt-6 flex justify-center gap-2">
-				<button
-					class="btn btn-outline btn-sm"
-					disabled={currentPage <= 1}
-					onclick={() => {
-						currentPage -= 1;
-						loadFeedback();
-					}}
-				>
-					Previous
-				</button>
-				<span class="flex items-center px-3 text-sm">Page {currentPage} of {totalPages}</span>
-				<button
-					class="btn btn-outline btn-sm"
-					disabled={currentPage >= totalPages}
-					onclick={() => {
-						currentPage += 1;
-						loadFeedback();
-					}}
-				>
-					Next
-				</button>
-			</div>
+		{#if feedback.length >= perPage}
+			<p class="mt-6 text-center text-sm text-base-content/60">
+				Showing the latest {perPage} feedback entries.
+			</p>
 		{/if}
 	{/if}
 </div>
