@@ -168,6 +168,7 @@
 
 			computePosition(containerElement, dropdownElement, {
 				placement: 'bottom-start',
+				strategy: 'fixed',
 				middleware: [
 					offset(8),
 					flip({ fallbackPlacements: ['top-start'] }),
@@ -196,12 +197,11 @@
 	$effect(() => {
 		if (showResults && containerElement && dropdownElement) {
 			cleanupAutoUpdate?.();
-			// Position once, don't follow scroll - keeps dropdown fixed in viewport
 			cleanupAutoUpdate = autoUpdate(containerElement, dropdownElement, updatePosition, {
-				ancestorScroll: false,
+				ancestorScroll: true,
 				ancestorResize: true,
 				elementResize: true,
-				layoutShift: false
+				layoutShift: true
 			});
 		} else {
 			cleanupAutoUpdate?.();
