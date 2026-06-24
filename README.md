@@ -1,4 +1,4 @@
-![](https://github.com/NLeSC/.github/blob/main/profile/escience.png)
+![](https://raw.githubusercontent.com/NLeSC/.github/24b2ff028f19395c636c2aea9fb9570f6fa35e59/profile/escience.png)
 
 # Pure3D
 
