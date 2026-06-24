@@ -32,9 +32,6 @@
 		return false;
 	}
 
-	let feedbackHref = $derived(
-		`${base}/feedback?from=${encodeURIComponent($page.url.pathname + $page.url.search)}`
-	);
 </script>
 
 <nav class="bien-nav mb-10">
@@ -87,10 +84,6 @@
 					</a>
 				{/if}
 			</div>
-
-			{#if !$page.url.pathname.startsWith(`${base}/feedback`) && $page.url.pathname !== '/feedback'}
-				<a class="btn btn-outline btn-sm" href={feedbackHref}>Feedback</a>
-			{/if}
 
 			<Login />
 		</header>

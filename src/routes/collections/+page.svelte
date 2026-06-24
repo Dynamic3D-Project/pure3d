@@ -49,13 +49,77 @@
 	let inputElement: HTMLInputElement | undefined = $state();
 	let suggestionsElement: HTMLDivElement | undefined = $state();
 
+	function normalizeSearchValue(value: string) {
+		return value
+			.normalize('NFD')
+			.replace(/[\u0300-\u036f]/g, '')
+			.toLowerCase();
+	}
+
+	function getSearchValues(value: unknown): string[] {
+		if (value === null || value === undefined) return [];
+		if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+			return [normalizeSearchValue(String(value))];
+		}
+		if (Array.isArray(value)) return value.flatMap(getSearchValues);
+		if (typeof value === 'object') {
+			return Object.values(value as Record<string, unknown>).flatMap(getSearchValues);
+		}
+		return [];
+	}
+
+	function editDistanceWithinLimit(left: string, right: string, limit: number) {
+		if (Math.abs(left.length - right.length) > limit) return false;
+
+		let previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+		for (let leftIndex = 0; leftIndex < left.length; leftIndex += 1) {
+			const current = [leftIndex + 1];
+			let rowMinimum = current[0];
+
+			for (let rightIndex = 0; rightIndex < right.length; rightIndex += 1) {
+				const cost = left[leftIndex] === right[rightIndex] ? 0 : 1;
+				const distance = Math.min(
+					previous[rightIndex + 1] + 1,
+					current[rightIndex] + 1,
+					previous[rightIndex] + cost
+				);
+				current.push(distance);
+				rowMinimum = Math.min(rowMinimum, distance);
+			}
+
+			if (rowMinimum > limit) return false;
+			previous = current;
+		}
+
+		return previous[right.length] <= limit;
+	}
+
+	function wordMatchesQuery(word: string, query: string) {
+		if (word.includes(query)) return true;
+		if (query.length < 4 || word.length < 4) return false;
+
+		const limit = query.length >= 8 ? 2 : 1;
+		return editDistanceWithinLimit(word, query, limit);
+	}
+
+	function matchesSearch(collection: (typeof collections)[number], query: string) {
+		const values = getSearchValues(collection);
+		const combined = values.join(' ');
+
+		if (combined.includes(query)) return true;
+
+		const words = combined.match(/[a-z0-9]+/g) ?? [];
+		return query
+			.split(/\s+/)
+			.filter(Boolean)
+			.every((queryPart) => words.some((word) => wordMatchesQuery(word, queryPart)));
+	}
+
 	// Filter collections based on search query
 	const filteredCollections = $derived.by(() => {
 		if (!searchQuery.trim()) return collections;
-		const query = searchQuery.toLowerCase();
-		return collections.filter(
-			(c) => c.title.toLowerCase().includes(query) || c.description.toLowerCase().includes(query)
-		);
+		const query = normalizeSearchValue(searchQuery.trim());
+		return collections.filter((collection) => matchesSearch(collection, query));
 	});
 
 	// Suggestions for autocomplete (max 6)
