@@ -24,6 +24,7 @@
 	let results = $state<SearchResult[]>([]);
 	let showResults = $state(false);
 	let selectedIndex = $state(-1);
+	let keyboardSelected = $state(false);
 
 	let containerElement: HTMLDivElement | undefined = $state();
 	let searchInputElement: HTMLInputElement | undefined = $state();
@@ -139,10 +140,12 @@
 
 			// Prioritize editions, then collections
 			results = [...editionResults, ...collectionResults];
-			selectedIndex = results.length > 0 ? 0 : -1;
+			selectedIndex = -1;
+			keyboardSelected = false;
 		} catch (err) {
 			console.error('Search error:', err);
 			results = [];
+			keyboardSelected = false;
 		} finally {
 			searching = false;
 		}
@@ -222,27 +225,12 @@
 		if (!target.closest('.search-container')) {
 			showResults = false;
 			selectedIndex = -1;
+			keyboardSelected = false;
 		}
 	}
 
 	function handleKeyDown(event: KeyboardEvent) {
 		const isSearchFocused = document.activeElement === searchInputElement;
-
-		// Debug logging
-		if (['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) {
-			console.log(
-				'Key:',
-				event.key,
-				'focused:',
-				isSearchFocused,
-				'showResults:',
-				showResults,
-				'results:',
-				results.length,
-				'selectedIndex:',
-				selectedIndex
-			);
-		}
 
 		if (!isSearchFocused && !showResults) {
 			return;
@@ -253,7 +241,7 @@
 				if (!showResults || results.length === 0) return;
 				event.preventDefault();
 				selectedIndex = selectedIndex < results.length - 1 ? selectedIndex + 1 : 0;
-				console.log('ArrowDown -> selectedIndex:', selectedIndex);
+				keyboardSelected = true;
 				scrollToSelected();
 				break;
 
@@ -261,15 +249,18 @@
 				if (!showResults || results.length === 0) return;
 				event.preventDefault();
 				selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : results.length - 1;
-				console.log('ArrowUp -> selectedIndex:', selectedIndex);
+				keyboardSelected = true;
 				scrollToSelected();
 				break;
 
 			case 'Enter':
-				if (!showResults || results.length === 0 || selectedIndex === -1) return;
+				if (!showResults) return;
 				event.preventDefault();
-				console.log('Enter -> navigating to:', results[selectedIndex]);
-				navigateToResult(results[selectedIndex]);
+				if (keyboardSelected && selectedIndex >= 0 && selectedIndex < results.length) {
+					navigateToResult(results[selectedIndex]);
+				} else {
+					navigateToSearchPage();
+				}
 				break;
 
 			case 'Escape':
@@ -277,6 +268,7 @@
 				event.preventDefault();
 				showResults = false;
 				selectedIndex = -1;
+				keyboardSelected = false;
 				searchInputElement?.blur();
 				break;
 
@@ -284,6 +276,7 @@
 				if (showResults) {
 					showResults = false;
 					selectedIndex = -1;
+					keyboardSelected = false;
 				}
 				break;
 		}
@@ -304,12 +297,24 @@
 	async function navigateToResult(result: SearchResult) {
 		showResults = false;
 		selectedIndex = -1;
+		keyboardSelected = false;
 		searchQuery = '';
 		await goto(result.url, { invalidateAll: true });
 	}
 
+	async function navigateToSearchPage() {
+		const query = searchQuery.trim();
+		showResults = false;
+		selectedIndex = -1;
+		keyboardSelected = false;
+		await goto(query ? `${base}/editions?q=${encodeURIComponent(query)}` : `${base}/editions`, {
+			invalidateAll: true
+		});
+	}
+
 	function handleResultMouseEnter(index: number) {
 		selectedIndex = index;
+		keyboardSelected = false;
 	}
 
 	function handleDropdownWheel(event: WheelEvent) {
