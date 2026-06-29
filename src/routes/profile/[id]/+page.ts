@@ -120,12 +120,14 @@ export const load: PageLoad = async ({ params }) => {
 			.filter((record) => record?.isVisible)
 			.map((record) => mapCollection(record, editionCounts.get(record.id) || 0));
 
+		const profilePicture = user.profilePicture || user.avatar || '';
+
 		return {
 			profile: {
 				id: user.id,
 				name: user.nickname || user.username || 'User',
-				profilePictureUrl: user.profilePicture
-					? pb.files.getURL(user, user.profilePicture, { thumb: '200x200' })
+				profilePictureUrl: profilePicture
+					? pb.files.getURL(user, profilePicture, { thumb: '200x200' })
 					: '',
 				orcid: user.orcid || '',
 				affiliation: user.affiliation || '',

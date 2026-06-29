@@ -3,7 +3,7 @@
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { pb } from '$lib/database/client';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { ROLE_LABELS } from '$lib/types/roles';
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
 	import CollectionCard from '$lib/components/cards/CollectionCard.svelte';
@@ -82,6 +82,7 @@
 		socials: ''
 	});
 	let profilePictureFile = $state<File | null>(null);
+	let profilePicturePreviewUrl = $state('');
 
 	// Load user profile data
 	onMount(async () => {
@@ -93,30 +94,53 @@
 		await loadProfile();
 	});
 
+	onDestroy(() => {
+		clearProfilePictureFile();
+	});
+
+	function clearProfilePictureFile() {
+		profilePictureFile = null;
+		if (profilePicturePreviewUrl) URL.revokeObjectURL(profilePicturePreviewUrl);
+		profilePicturePreviewUrl = '';
+	}
+
+	function selectProfilePicture(event: Event) {
+		const file = (event.currentTarget as HTMLInputElement).files?.[0] ?? null;
+		clearProfilePictureFile();
+		if (!file) return;
+
+		profilePictureFile = file;
+		profilePicturePreviewUrl = URL.createObjectURL(file);
+	}
+
 	async function loadProfile() {
 		try {
 			isLoading = true;
-			const user = authStore.user;
+			const currentUser = authStore.user;
 
-			if (!user) {
+			if (!currentUser) {
 				goto('/');
 				return;
 			}
+
+			const user = await pb.collection('users').getOne(currentUser.id);
+			pb.authStore.save(pb.authStore.token, user);
+			const profilePicture = user.profilePicture || user.avatar || '';
 
 			profileData = {
 				displayName: user.nickname || user.username || user.email || 'User',
 				username: user.nickname || user.username || '',
 				email: user.email,
-				profilePicture: user.profilePicture || '',
-				profilePictureUrl: user.profilePicture
-					? pb.files.getURL(user as any, user.profilePicture, { thumb: '200x200' })
+				profilePicture,
+				profilePictureUrl: profilePicture
+					? pb.files.getURL(user as any, profilePicture, { thumb: '200x200' })
 					: '',
 				orcid: user.orcid || '',
 				affiliation: user.affiliation || '',
 				titleRole: user.titleRole || '',
 				bio: user.bio || '',
 				socials: user.socials || '',
-				role: authStore.globalRole,
+				role: user.role || authStore.globalRole,
 				verified: user.verified,
 				joinDate: new Date(user.created).toLocaleDateString('en-US', {
 					year: 'numeric',
@@ -320,7 +344,7 @@
 			bio: profileData.bio,
 			socials: profileData.socials
 		};
-		profilePictureFile = null;
+		clearProfilePictureFile();
 		saveMessage = '';
 		errorMessage = '';
 	}
@@ -336,7 +360,7 @@
 			bio: profileData?.bio || '',
 			socials: profileData?.socials || ''
 		};
-		profilePictureFile = null;
+		clearProfilePictureFile();
 		errorMessage = '';
 	}
 
@@ -354,17 +378,22 @@
 			formData.set('titleRole', tempData.titleRole);
 			formData.set('bio', tempData.bio);
 			formData.set('socials', tempData.socials);
-			if (profilePictureFile) formData.set('profilePicture', profilePictureFile);
+			if (profilePictureFile) {
+				formData.append('profilePicture', profilePictureFile);
+				formData.append('avatar', profilePictureFile);
+			}
 
 			const updatedUser = await pb.collection('users').update(authStore.user.id, formData);
-			pb.authStore.save(pb.authStore.token, updatedUser);
+			const freshUser = await pb.collection('users').getOne(authStore.user.id);
+			pb.authStore.save(pb.authStore.token, freshUser);
+			const profilePicture = freshUser.profilePicture || freshUser.avatar || updatedUser.profilePicture || updatedUser.avatar || '';
 
 			if (profileData) {
 				profileData.displayName = tempData.username || tempData.displayName;
 				profileData.username = tempData.username;
-				profileData.profilePicture = updatedUser.profilePicture || '';
-				profileData.profilePictureUrl = updatedUser.profilePicture
-					? pb.files.getURL(updatedUser, updatedUser.profilePicture, { thumb: '200x200' })
+				profileData.profilePicture = profilePicture;
+				profileData.profilePictureUrl = profilePicture
+					? pb.files.getURL(freshUser, profilePicture, { thumb: '200x200' })
 					: '';
 				profileData.orcid = tempData.orcid;
 				profileData.affiliation = tempData.affiliation;
@@ -373,6 +402,7 @@
 				profileData.socials = tempData.socials;
 			}
 
+			clearProfilePictureFile();
 			isEditing = false;
 			saveMessage = '✓ Profile updated successfully!';
 			setTimeout(() => {
@@ -481,28 +511,42 @@
 		<section class="overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm">
 			<div class="h-24 bg-gradient-to-r from-base-300 via-base-200 to-base-100"></div>
 			<div class="flex flex-col gap-6 p-6 pt-0 sm:flex-row sm:items-end">
-				<div class="avatar placeholder -mt-12 shrink-0">
-					{#if profileData.profilePictureUrl}
-						<div class="w-32 rounded-full ring-4 ring-base-100">
-							<img src={profileData.profilePictureUrl} alt="{profileData.displayName} profile" />
-						</div>
-					{:else}
-						<div class="w-32 rounded-full bg-neutral text-neutral-content ring-4 ring-base-100">
-							<span class="text-4xl">{profileData.displayName.charAt(0).toUpperCase()}</span>
-						</div>
+				<div class="-mt-12 shrink-0">
+					<div class="avatar placeholder block">
+						{#if profilePicturePreviewUrl || profileData.profilePictureUrl}
+							<div class="w-32 rounded-full ring-4 ring-base-100">
+								<img src={profilePicturePreviewUrl || profileData.profilePictureUrl} alt="{profileData.displayName} profile" />
+							</div>
+						{:else}
+							<div class="w-32 rounded-full bg-neutral text-neutral-content ring-4 ring-base-100">
+								<span class="text-4xl">{profileData.displayName.charAt(0).toUpperCase()}</span>
+							</div>
+						{/if}
+					</div>
+					{#if isEditing}
+						<label class="btn btn-outline btn-xs mt-3 w-32 overflow-hidden">
+							{profilePictureFile ? 'Photo selected' : 'Photo'}
+							<input type="file" accept="image/png,image/jpeg,image/webp,image/avif" class="hidden" onchange={selectProfilePicture} />
+						</label>
 					{/if}
 				</div>
 
 				<div class="min-w-0 flex-1">
 					{#if isEditing}
-						<div class="grid gap-3 sm:grid-cols-2">
-							<div class="sm:col-span-2">
+						<div class="max-w-2xl">
+							<div class="flex flex-wrap items-center gap-2">
 								<label for="username" class="sr-only">Username</label>
-								<input id="username" type="text" bind:value={tempData.username} class="input-bordered input input-lg w-full text-2xl font-bold" placeholder="Display name" />
+								<input id="username" type="text" bind:value={tempData.username} class="input input-bordered h-auto min-h-0 w-auto max-w-full bg-base-100 px-3 py-1 text-3xl font-bold leading-tight" placeholder="Display name" />
+								<span class="badge badge-neutral">{ROLE_LABELS[profileData.role] || profileData.role}</span>
+								{#if profileData.verified}
+									<span class="badge badge-success">Verified</span>
+								{/if}
 							</div>
-							<input id="title-role" type="text" bind:value={tempData.titleRole} class="input-bordered input w-full" placeholder="Title / role position" />
-							<input id="affiliation" type="text" bind:value={tempData.affiliation} class="input-bordered input w-full" placeholder="Affiliation" />
-							<input id="profile-picture" type="file" accept="image/png,image/jpeg,image/webp,image/avif" class="file-input-bordered file-input w-full sm:col-span-2" onchange={(event) => { profilePictureFile = event.currentTarget.files?.[0] ?? null; }} />
+							<div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-base text-base-content/70">
+								<input id="title-role" type="text" bind:value={tempData.titleRole} class="input input-bordered h-9 min-h-0 w-48 bg-base-100 px-3 py-1" placeholder="Title / role position" />
+								<span class="text-base-content/30">at</span>
+								<input id="affiliation" type="text" bind:value={tempData.affiliation} class="input input-bordered h-9 min-h-0 w-48 bg-base-100 px-3 py-1" placeholder="Affiliation" />
+							</div>
 						</div>
 					{:else}
 						<div class="flex flex-wrap items-center gap-2">

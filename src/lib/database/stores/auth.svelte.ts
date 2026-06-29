@@ -9,6 +9,7 @@ interface User {
 	username?: string;
 	verified: boolean;
 	nickname?: string;
+	avatar?: string;
 	profilePicture?: string;
 	orcid?: string;
 	affiliation?: string;
