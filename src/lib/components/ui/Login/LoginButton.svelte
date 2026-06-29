@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import { authStore } from '$lib/database';
+	import { authStore, pb } from '$lib/database';
 	import { GlobalRole } from '$lib/types/roles';
 	import FloatingDropdown from '$lib/components/ui/FloatingDropdown.svelte';
 	import LoginForm from './LoginForm.svelte';
@@ -8,6 +8,11 @@
 
 	let accountMenuOpen = $state(false);
 	let accountButtonElement: HTMLButtonElement | undefined = $state();
+	let avatarUrl = $derived.by(() => {
+		const user = authStore.user;
+		const image = user?.profilePicture || user?.avatar;
+		return user && image ? pb.files.getURL(user as any, image, { thumb: '80x80' }) : '';
+	});
 </script>
 
 <div id="login-button">
@@ -21,11 +26,15 @@
 				class="flex h-12 w-12 items-center justify-center rounded-full transition hover:bg-base-200 active:scale-95"
 				onclick={() => (accountMenuOpen = !accountMenuOpen)}
 			>
-				<div
-					class="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white ring-primary ring-offset-2 ring-offset-base-100"
-				>
-					{authStore.user?.email?.charAt(0).toUpperCase() || 'U'}
-				</div>
+				{#if avatarUrl}
+					<img src={avatarUrl} alt="Account" class="size-8 rounded-full object-cover" />
+				{:else}
+					<div
+						class="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white ring-primary ring-offset-2 ring-offset-base-100"
+					>
+						{authStore.user?.email?.charAt(0).toUpperCase() || 'U'}
+					</div>
+				{/if}
 			</button>
 			<FloatingDropdown
 				open={accountMenuOpen}
