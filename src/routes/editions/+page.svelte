@@ -12,6 +12,17 @@
 	import { EditionStatus, GlobalRole } from '$lib/types/roles';
 	import toast from 'svelte-french-toast';
 
+	interface UserProfileSummary {
+		id: string;
+		name: string;
+		profilePictureUrl: string;
+		titleRole: string;
+		affiliation: string;
+		orcid: string;
+		bio: string;
+		verified: boolean;
+	}
+
 	let showHiddenEditions = $state(false);
 	let canShowHiddenEditions = $derived(authStore.globalRole === GlobalRole.Admin);
 	let allEditions = $derived($editionsStore.items);
@@ -25,10 +36,15 @@
 	);
 	let hasCachedData = $derived($editionsStore.items.length > 0);
 	let isLoading = $state(true);
+	let selectedUserProfile = $state<UserProfileSummary | null>(null);
+	let selectedUserQuery = $state('');
 
 	onMount(async () => {
 		const query = new URLSearchParams(window.location.search).get('q');
-		if (query) searchQuery = query;
+		if (query) {
+			searchQuery = query;
+			await loadUserProfileForQuery(query);
+		}
 
 		// If we have fresh cached data, skip loading
 		if (!authStore.isAuthenticated && hasCachedData && !isStale($editionsStore.lastFetched)) {
@@ -47,6 +63,9 @@
 
 	let searchQuery = $state('');
 	let drawerOpen = $state(false);
+	let showSelectedUserProfile = $derived(
+		!!selectedUserProfile && normalize(searchQuery) === normalize(selectedUserQuery)
+	);
 
 	// Autocomplete state
 	let showSuggestions = $state(false);
@@ -112,6 +131,59 @@
 		selectedIndex = -1;
 	}
 
+	function normalize(value: string) {
+		return value.trim().toLowerCase();
+	}
+
+	function profileNames(user: any) {
+		const names = [user.nickname, user.name, user.username, user.email].filter(Boolean).map(String);
+		return names.flatMap((name) => {
+			const clean = name.replace(/\s*\([^)]*\)\s*$/g, '').trim();
+			const comma = clean.match(/^([^,]+),\s+(.+)$/);
+			return comma ? [name, clean, `${comma[2]} ${comma[1]}`] : [name, clean];
+		});
+	}
+
+	function plainText(value: string) {
+		return value
+			.replace(/&nbsp;/g, ' ')
+			.replace(/<[^>]*>/g, '')
+			.replace(/\s+/g, ' ')
+			.trim();
+	}
+
+	async function loadUserProfileForQuery(query: string) {
+		const normalizedQuery = normalize(query);
+		if (!normalizedQuery) return;
+
+		try {
+			const result = await pb.collection('users').getList(1, 500, { $autoCancel: false });
+			const user = result.items.find((record) =>
+				profileNames(record).some((name) => normalize(name) === normalizedQuery)
+			);
+
+			if (!user) return;
+
+			const profilePicture = user.profilePicture || user.avatar || '';
+			selectedUserProfile = {
+				id: user.id,
+				name: user.nickname || user.name || user.username || user.email || 'User',
+				profilePictureUrl: profilePicture
+					? pb.files.getURL(user, profilePicture, { thumb: '200x200' })
+					: '',
+				titleRole: user.titleRole || '',
+				affiliation: user.affiliation || '',
+				orcid: user.orcid || '',
+				bio: plainText(user.bio || ''),
+				verified: !!user.verified
+			};
+			selectedUserQuery = query;
+		} catch {
+			selectedUserProfile = null;
+			selectedUserQuery = '';
+		}
+	}
+
 	function handleKeydown(event: KeyboardEvent) {
 		if (!showSuggestions || suggestions.length === 0) {
 			if (event.key === 'Escape') {
@@ -174,6 +246,8 @@
 
 	function clearSearch() {
 		searchQuery = '';
+		selectedUserProfile = null;
+		selectedUserQuery = '';
 		showSuggestions = false;
 		selectedIndex = -1;
 		inputElement?.focus();
@@ -429,6 +503,43 @@
 					</FloatingDropdown>
 				</div>
 			</div>
+
+			{#if showSelectedUserProfile && selectedUserProfile}
+				<section class="mb-6 rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
+					<div class="flex min-w-0 gap-4">
+						<div class="avatar placeholder shrink-0">
+								{#if selectedUserProfile.profilePictureUrl}
+									<div class="h-28 w-20 overflow-hidden rounded-xl">
+										<img class="h-full w-full object-cover object-top" src={selectedUserProfile.profilePictureUrl} alt="{selectedUserProfile.name} profile" />
+									</div>
+								{:else}
+									<div class="h-28 w-20 rounded-xl bg-neutral text-neutral-content">
+										<span class="text-2xl">{selectedUserProfile.name.charAt(0).toUpperCase()}</span>
+									</div>
+								{/if}
+							</div>
+
+						<div class="min-w-0 pt-1">
+							<h2 class="text-2xl font-semibold leading-tight">{selectedUserProfile.name}</h2>
+								{#if selectedUserProfile.titleRole || selectedUserProfile.affiliation}
+									<p class="mt-1 text-sm text-base-content/70">
+										{#if selectedUserProfile.titleRole}{selectedUserProfile.titleRole}{/if}{#if selectedUserProfile.titleRole && selectedUserProfile.affiliation} at {/if}{#if selectedUserProfile.affiliation}{selectedUserProfile.affiliation}{/if}
+									</p>
+								{/if}
+								{#if selectedUserProfile.orcid}
+									<a class="link mt-1 block text-sm" href={selectedUserProfile.orcid} target="_blank" rel="noreferrer">
+										ORCID
+									</a>
+								{/if}
+								{#if selectedUserProfile.bio}
+									<p class="mt-3 line-clamp-2 max-w-3xl text-sm text-base-content/70">
+										{selectedUserProfile.bio}
+									</p>
+								{/if}
+							</div>
+					</div>
+				</section>
+			{/if}
 
 			<!-- Results count -->
 			{#if !isLoading || hasCachedData}
