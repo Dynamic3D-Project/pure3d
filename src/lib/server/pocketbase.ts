@@ -82,7 +82,7 @@ export async function getUsers() {
 			userHash: record.userHash,
 			email: record.email || null,
 			nickname: record.nickname || null,
-			role: (record.role as GlobalRole) || GlobalRole.Viewer
+			role: (record.role as GlobalRole) || GlobalRole.User
 		}));
 	} catch (error) {
 		console.error('Error fetching users:', error);

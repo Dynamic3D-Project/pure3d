@@ -53,12 +53,12 @@
 	let createPassword = $state('');
 	let createPasswordConfirm = $state('');
 	let createNickname = $state('');
-	let createRole = $state<GlobalRole>(GlobalRole.Viewer);
+	let createRole = $state<GlobalRole>(GlobalRole.User);
 
 	// Edit form
 	let editingUser = $state<AppUser | null>(null);
 	let editNickname = $state('');
-	let editRole = $state<GlobalRole>(GlobalRole.Viewer);
+	let editRole = $state<GlobalRole>(GlobalRole.User);
 
 	// Delete state
 	let deletingUser = $state<AppUser | null>(null);
@@ -75,7 +75,7 @@
 				id: record.id,
 				email: record.email || '',
 				nickname: record.nickname || '',
-				role: (record.role as GlobalRole) || GlobalRole.Viewer,
+				role: (record.role as GlobalRole) || GlobalRole.User,
 				pbAuthId: record.pbAuthId || '',
 				created: record.created || ''
 			}));
@@ -104,7 +104,7 @@
 		createPassword = '';
 		createPasswordConfirm = '';
 		createNickname = '';
-		createRole = GlobalRole.Viewer;
+		createRole = GlobalRole.User;
 		showCreateModal = true;
 	}
 

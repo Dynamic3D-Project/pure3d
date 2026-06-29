@@ -290,7 +290,7 @@
 	}
 
 	// --- Manage link visibility ---
-	let permissionContext = $state<UserRoleContext>({ globalRole: GlobalRole.Viewer });
+	let permissionContext = $state<UserRoleContext>({ globalRole: GlobalRole.User });
 	let currentStatus = $state<EditionStatus>(
 		((data.edition as unknown as { status?: EditionStatus }).status as EditionStatus) ||
 			EditionStatus.Draft

@@ -2,7 +2,7 @@
 export enum GlobalRole {
 	Admin = 'admin',
 	EditorialBoard = 'editorial_board',
-	Viewer = 'viewer'
+	User = 'user'
 }
 
 // Collection-level roles assigned per-collection in `collectionUsers`
@@ -119,7 +119,7 @@ export const EDITION_STATUS_TRANSITIONS: Record<EditionStatus, EditionStatus[]> 
 
 // Global role hierarchy (higher index = more privilege)
 export const GLOBAL_ROLE_HIERARCHY: GlobalRole[] = [
-	GlobalRole.Viewer,
+	GlobalRole.User,
 	GlobalRole.EditorialBoard,
 	GlobalRole.Admin
 ];
@@ -136,7 +136,7 @@ export interface UserRoleContext {
 export const GLOBAL_ROLE_LABELS: Record<GlobalRole, string> = {
 	[GlobalRole.Admin]: 'Admin',
 	[GlobalRole.EditorialBoard]: 'Editorial Board',
-	[GlobalRole.Viewer]: 'Viewer'
+	[GlobalRole.User]: 'User'
 };
 
 // Display-friendly labels for collection roles
@@ -153,8 +153,7 @@ export const EDITION_ROLE_LABELS: Record<EditionRole, string> = {
 	[EditionRole.Reviewer]: 'Reviewer'
 };
 
-// Combined labels lookup (collection-level "viewer" and "editor" overlap with global,
-// so this map resolves to the most common label for each string value)
+// Combined labels lookup. Later spreads win if string values overlap.
 export const ROLE_LABELS: Record<string, string> = {
 	...EDITION_ROLE_LABELS,
 	...COLLECTION_ROLE_LABELS,

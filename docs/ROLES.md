@@ -12,7 +12,7 @@ These roles are assigned system-wide in the `users` collection.
 |------|-----|-------|
 | **Admin** | Platform maintainers, KNAW/HuC staff, trusted managers | Full system access. Can manage all users, collections, editions, and platform settings. |
 | **Editorial Board** | Appointed reviewers for peer review | Can review submitted editions across all collections. Cannot create or edit content. |
-| **Viewer** | Default role for registered users | Can browse published content. No editing or management permissions. |
+| **User** | Default role for registered users | Can browse published content. No editing or management permissions. |
 
 ### Collection-Level Roles
 
@@ -36,11 +36,11 @@ These roles are assigned per-edition in the `editionUsers` join table.
 
 ## Permission Matrix
 
-Actions marked with the role that can perform them. Global roles (A=Admin, EB=Editorial Board, V=Viewer) and scoped roles (CO=Collection Owner, E=Editor, Au=Author, Cl=Collaborator, R=Reviewer).
+Actions marked with the role that can perform them. Global roles (A=Admin, EB=Editorial Board, U=User) and scoped roles (CO=Collection Owner, E=Editor, Au=Author, Cl=Collaborator, R=Reviewer).
 
 ### Edition Lifecycle
 
-| Action | A | EB | V | CO | E | Au | Cl | R |
+| Action | A | EB | U | CO | E | Au | Cl | R |
 |--------|:-:|:--:|:-:|:--:|:-:|:--:|:--:|:-:|
 | Create edition | x | | | x | | | | |
 | Edit edition content | x | | | x | x | x | x | |
@@ -53,7 +53,7 @@ Actions marked with the role that can perform them. Global roles (A=Admin, EB=Ed
 
 ### Collection Management
 
-| Action | A | EB | V | CO | E |
+| Action | A | EB | U | CO | E |
 |--------|:-:|:--:|:-:|:--:|:-:|
 | Create collection | x | | | | |
 | Edit collection metadata | x | | | x | x |
@@ -62,7 +62,7 @@ Actions marked with the role that can perform them. Global roles (A=Admin, EB=Ed
 
 ### User & Platform Management
 
-| Action | A | EB | V |
+| Action | A | EB | U |
 |--------|:-:|:--:|:-:|
 | View admin panel | x | | |
 | Manage user global roles | x | | |
@@ -70,7 +70,7 @@ Actions marked with the role that can perform them. Global roles (A=Admin, EB=Ed
 
 ### Content Browsing
 
-| Action | A | EB | V |
+| Action | A | EB | U |
 |--------|:-:|:--:|:-:|
 | Browse published editions | x | x | x |
 | Browse published collections | x | x | x |
@@ -126,7 +126,7 @@ Editions follow a multi-stage review workflow with defined status transitions.
 ```
 admin       → Admin
 editorial_board → Editorial Board
-viewer          → Viewer (default for new registrations)
+viewer          → User (default for new registrations)
 ```
 
 ### Collection Roles → `collectionUsers.role` (select field)

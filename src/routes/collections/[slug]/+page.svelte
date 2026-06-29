@@ -18,7 +18,7 @@
 	let collection = $derived(data.collection);
 	let editions = $state(data.editions);
 
-	let permissionContext = $state<UserRoleContext>({ globalRole: GlobalRole.Viewer });
+	let permissionContext = $state<UserRoleContext>({ globalRole: GlobalRole.User });
 	let isCreating = $state(false);
 	let isLoadingEditionManager = $state(false);
 	let isUpdatingEdition = $state(false);

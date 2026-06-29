@@ -18,7 +18,7 @@ class AuthStore {
 	user = $state<User | null>(null);
 	isAuthenticated = $derived(!!this.user);
 	appUserId = $derived(this.user?.id ?? null);
-	globalRole = $derived<GlobalRole>(this.user?.role ?? GlobalRole.Viewer);
+	globalRole = $derived<GlobalRole>(this.user?.role ?? GlobalRole.User);
 
 	constructor() {
 		if (browser) {
@@ -51,7 +51,7 @@ class AuthStore {
 			password,
 			passwordConfirm,
 			nickname: email.split('@')[0],
-			role: GlobalRole.Viewer
+			role: GlobalRole.User
 		});
 		await this.login(email, password);
 	}

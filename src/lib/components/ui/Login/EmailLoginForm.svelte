@@ -13,7 +13,7 @@
 	const demoAccounts = [
 		{ label: 'Admin', email: 'admin@pure3d.eu', role: 'admin' },
 		{ label: 'Editorial Board', email: 'editor@pure3d.eu', role: 'editorial_board' },
-		{ label: 'Viewer', email: 'viewer@pure3d.eu', role: 'viewer' }
+		{ label: 'User', email: 'viewer@pure3d.eu', role: 'user' }
 	];
 	const showDemoAccounts = dev || PUBLIC_SHOW_DEMO_ACCOUNTS === 'true';
 
