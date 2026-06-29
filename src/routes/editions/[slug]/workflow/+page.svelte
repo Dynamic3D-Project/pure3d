@@ -210,9 +210,9 @@
 	);
 
 	const workflowStages: Array<{ label: string; statuses: EditionStatus[] }> = [
-		{ label: 'Draft', statuses: [EditionStatus.Draft] },
+		{ label: 'Proposal', statuses: [EditionStatus.Draft] },
 		{
-			label: 'Concept Review',
+			label: 'Proposal review',
 			statuses: [
 				EditionStatus.ConceptSubmitted,
 				EditionStatus.EditorialReview,
@@ -253,7 +253,7 @@
 
 	const nextWorkflowAction = $derived.by(() => {
 		if (!edition) return '';
-		if (canSubmitConcept) return 'Submit concept for review when the draft is ready.';
+		if (canSubmitConcept) return 'Submit proposal for review when it is ready.';
 		if (canResubmit) return 'Address feedback, then resubmit the edition for review.';
 		if (edition.status === EditionStatus.Published)
 			return 'This edition is published and visible publicly.';
@@ -556,7 +556,7 @@
 			await notifyMany(
 				adminIds,
 				NotificationType.ConceptSubmitted,
-				'New concept submitted',
+				'New proposal submitted',
 				`"${conceptTitle}" has been submitted for review.`,
 				edition.id,
 				`${base}/admin/workflow`
@@ -565,10 +565,10 @@
 			edition.status = EditionStatus.ConceptSubmitted;
 			edition.title = conceptTitle;
 			edition.description = conceptDescription;
-			toast.success('Concept submitted for review');
+			toast.success('Proposal submitted for review');
 		} catch (error) {
 			console.error('Error submitting concept:', error);
-			toast.error('Failed to submit concept');
+			toast.error('Failed to submit proposal');
 		} finally {
 			isSubmitting = false;
 		}
@@ -696,7 +696,7 @@
 			</div>
 		</div>
 
-		<!-- Concept Proposal Form — mirrors viewer layout -->
+		<!-- Proposal Form — mirrors viewer layout -->
 		{#if viewMode === 'concept-form'}
 			<div id="draft" class="scroll-mt-24">
 				<!-- Show rejection feedback if resubmitting -->
@@ -1101,7 +1101,7 @@
 							{#if isSaving}
 								<span class="loading loading-xs loading-spinner"></span>
 							{/if}
-							{canSubmitConcept ? 'Draft Proposal' : 'Save Changes'}
+							{canSubmitConcept ? 'Save Proposal' : 'Save Changes'}
 						</button>
 						{#if canSubmitConcept}
 							<button

@@ -12,9 +12,9 @@
     "role": "editorial_board"
   },
   {
-    "email": "viewer@pure3d.eu",
+    "email": "user@pure3d.eu",
     "password": "1234567890",
-    "nickname": "Viewer",
-    "role": "viewer"
+    "nickname": "User",
+    "role": "user"
   }
 ]

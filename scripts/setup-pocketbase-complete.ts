@@ -39,7 +39,7 @@ const COLLECTIONS = {
       { name: 'user', type: 'text', required: true },
       { name: 'email', type: 'email', required: true },
       { name: 'nickname', type: 'text', required: true },
-      { name: 'role', type: 'select', required: true, options: { values: ['root', 'admin', 'editor', 'viewer'], maxSelect: 1 }}
+      { name: 'role', type: 'select', required: true, options: { values: ['root', 'admin', 'editor', 'user'], maxSelect: 1 }}
     ]
   },
   keywords: {

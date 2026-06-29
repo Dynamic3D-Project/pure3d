@@ -28,7 +28,7 @@ These are created automatically for local development:
 
 - `admin@pure3d.eu` / `1234567890`
 - `editor@pure3d.eu` / `1234567890`
-- `viewer@pure3d.eu` / `1234567890`
+- `user@pure3d.eu` / `1234567890`
 
 If no content data is available yet, the application still starts correctly. You will get an empty database plus working login, demo users, and role-based access.
 

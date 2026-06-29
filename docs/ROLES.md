@@ -126,7 +126,7 @@ Editions follow a multi-stage review workflow with defined status transitions.
 ```
 admin       → Admin
 editorial_board → Editorial Board
-viewer          → User (default for new registrations)
+user            → User (default for new registrations)
 ```
 
 ### Collection Roles → `collectionUsers.role` (select field)

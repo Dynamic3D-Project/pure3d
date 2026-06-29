@@ -13,9 +13,9 @@
 
 	const workflowStages: { label: string; statuses: EditionStatus[]; hrefStatus: EditionStatus }[] =
 		[
-			{ label: 'Draft', statuses: [EditionStatus.Draft], hrefStatus: EditionStatus.Draft },
+			{ label: 'Proposal', statuses: [EditionStatus.Draft], hrefStatus: EditionStatus.Draft },
 			{
-				label: 'Concept Review',
+				label: 'Proposal review',
 				statuses: [
 					EditionStatus.ConceptSubmitted,
 					EditionStatus.EditorialReview,
@@ -131,13 +131,13 @@
 			<span class="badge badge-sm badge-warning">{STATUS_LABELS[currentStatus]}</span>
 			<span class="text-xs text-base-content/60">
 				{#if currentStatus === EditionStatus.ConceptRejected}
-					Concept was rejected. Author can revise and resubmit.
+					Proposal was rejected. Author can revise and resubmit.
 				{:else if currentStatus === EditionStatus.ConceptSubmitted}
-					Concept has been submitted and is awaiting editorial review.
+					Proposal has been submitted and is awaiting editorial review.
 				{:else if currentStatus === EditionStatus.EditorialReview}
-					Concept is under editorial review.
+					Proposal is under editorial review.
 				{:else if currentStatus === EditionStatus.ConceptAccepted}
-					Concept was accepted and is ready for alpha review.
+					Proposal was accepted and is ready for alpha review.
 				{:else if currentStatus === EditionStatus.AlphaRejected}
 					Alpha review rejected. Author can revise and resubmit from draft.
 				{:else if currentStatus === EditionStatus.AlphaRevisions}

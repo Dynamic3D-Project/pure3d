@@ -22,11 +22,10 @@ function mapGlobalRole(role?: string) {
 			return 'admin';
 		case 'editorial_board':
 			return 'editorial_board';
-		case 'viewer':
-			return 'viewer';
 		case 'user':
+		case 'viewer':
 		default:
-			return 'viewer';
+			return 'user';
 	}
 }
 

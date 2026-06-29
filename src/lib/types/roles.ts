@@ -162,11 +162,11 @@ export const ROLE_LABELS: Record<string, string> = {
 
 // Edition status display labels
 export const STATUS_LABELS: Record<EditionStatus, string> = {
-	[EditionStatus.Draft]: 'Draft',
-	[EditionStatus.ConceptSubmitted]: 'Concept Submitted',
+	[EditionStatus.Draft]: 'Proposal',
+	[EditionStatus.ConceptSubmitted]: 'Proposal Submitted',
 	[EditionStatus.EditorialReview]: 'Editorial Review',
-	[EditionStatus.ConceptAccepted]: 'Concept Accepted',
-	[EditionStatus.ConceptRejected]: 'Concept Rejected',
+	[EditionStatus.ConceptAccepted]: 'Proposal Accepted',
+	[EditionStatus.ConceptRejected]: 'Proposal Rejected',
 	[EditionStatus.AlphaReview]: 'Alpha Review',
 	[EditionStatus.AlphaRevisions]: 'Alpha Revisions',
 	[EditionStatus.AlphaAccepted]: 'Alpha Accepted',
