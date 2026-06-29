@@ -99,9 +99,15 @@
 			.map((author) => author.trim())
 			.filter(Boolean);
 	});
+	const creatorProfiles = $derived(data.creatorProfiles ?? []);
 
 	function authorEditionsHref(author: string): string {
-		return `${base}/editions?q=${encodeURIComponent(author)}`;
+		const profile = creatorProfiles.find(
+			(item) => item.name.toLowerCase() === author.toLowerCase()
+		);
+		return profile
+			? `${base}/profile/${profile.id}`
+			: `${base}/editions?q=${encodeURIComponent(author)}`;
 	}
 
 	/**
@@ -940,7 +946,7 @@
 											</div>
 										{/if}
 									{:else}
-										<div class="not-prose rounded-lg border border-dashed border-base-300 bg-base-100 p-5 text-sm">
+												<div class="not-prose rounded-lg border border-dashed border-base-300 bg-base-100 p-5 text-sm">
 											<div class="mb-2 flex items-center gap-2">
 												<span class="badge badge-outline badge-sm">Status</span>
 												<h3 class="font-semibold">
@@ -951,15 +957,15 @@
 											</div>
 											<p class="text-base-content/70">
 												{#if (edition as any).peerReviewRequested}
-													This edition is marked for peer review. Review details and feedback will appear
-													here when they are available.
+														This edition is marked for peer review. Review details and feedback will appear
+														here when they are available.
 												{:else}
-													Peer review is an optional trust signal for Pure 3D editions. If requested for
-													this edition, review information will appear here.
+														Peer review is an optional trust signal for Pure 3D editions. If requested for
+														this edition, review information will appear here.
 												{/if}
 											</p>
 											{#if canManagePage && !(edition as any).peerReviewRequested}
-												<a class="btn btn-outline btn-xs mt-4" href="{base}/editions/{edition.id}/workflow">
+													<a class="btn btn-outline btn-xs mt-4" href="{base}/editions/{edition.id}/workflow">
 													Request peer review
 												</a>
 											{/if}
@@ -975,12 +981,12 @@
 															<h3 class="font-semibold">{item.title}</h3>
 															<p class="mt-1 text-sm text-base-content/70">{item.description}</p>
 														</div>
-														<span class="badge badge-outline shrink-0">{item.type}</span>
+																<span class="badge badge-outline shrink-0">{item.type}</span>
 													</div>
 													<div class="mt-3 flex items-center justify-between gap-3">
 														<p class="text-xs text-base-content/50">{item.size}</p>
 														{#if item.url}
-															<a class="btn btn-outline btn-xs" href={item.url} download={item.filename || true}>
+																	<a class="btn btn-outline btn-xs" href={item.url} download={item.filename || true}>
 																Download
 															</a>
 														{/if}
@@ -989,18 +995,18 @@
 											{/each}
 										</div>
 									{:else}
-										<div class="not-prose rounded-lg border border-dashed border-base-300 bg-base-100 p-5 text-sm">
+												<div class="not-prose rounded-lg border border-dashed border-base-300 bg-base-100 p-5 text-sm">
 											<div class="mb-2 flex items-center gap-2">
 												<span class="badge badge-outline badge-sm">Not provided</span>
 												<h3 class="font-semibold">No printables uploaded</h3>
 											</div>
 											<p class="text-base-content/70">
-												Contributors can upload downloadable worksheets, fabrication files, lesson
-												materials, or reference sheets for an edition. None have been provided for this
-												edition.
+													Contributors can upload downloadable worksheets, fabrication files, lesson
+													materials, or reference sheets for an edition. None have been provided for this
+													edition.
 											</p>
 											{#if canManagePage}
-												<a class="btn btn-outline btn-xs mt-4" href="{base}/editions/{edition.id}/workflow">
+													<a class="btn btn-outline btn-xs mt-4" href="{base}/editions/{edition.id}/workflow">
 													Manage edition assets
 												</a>
 											{/if}

@@ -10,7 +10,6 @@
 		EditionStatus,
 		GlobalRole,
 		ReviewStage,
-		STATUS_LABELS,
 		type UserRoleContext
 	} from '$lib/types/roles';
 	import { canDeleteEdition } from '$lib/utils/permissions';
@@ -643,56 +642,96 @@
 		</div>
 	{:else if edition}
 		<!-- Breadcrumbs -->
-		<nav class="breadcrumbs mb-4 text-sm">
-			<ul>
-				<li><a href="{base}/" class="link link-hover">Home</a></li>
-				<li><a href="{base}/editions" class="link link-hover">Editions</a></li>
-				<li class="text-base-content/70">{edition.title || 'Untitled Edition'}</li>
-			</ul>
-		</nav>
+		<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+			<nav class="breadcrumbs text-sm">
+				<ul>
+					<li><a href="{base}/" class="link link-hover">Home</a></li>
+					<li><a href="{base}/editions" class="link link-hover">Editions</a></li>
+					<li class="text-base-content/70">{edition.title || 'Untitled Edition'}</li>
+				</ul>
+			</nav>
+			{#if viewMode === 'concept-form'}
+				<div
+					class="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium {saveStatusBadgeClass}"
+					aria-live="polite"
+				>
+					{#if saveStatus === 'saving'}
+						<span class="loading loading-xs loading-spinner"></span>
+					{:else}
+						<span class="size-2 rounded-full bg-current"></span>
+					{/if}
+					<span>{saveStatusText}</span>
+				</div>
+			{/if}
+		</div>
 
 		<!-- Header -->
-		<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
-			<div>
-				<div class="flex flex-wrap items-center gap-3">
-					<h1 class="text-2xl font-bold">
-						{viewMode === 'concept-form'
-							? 'Edit Edition'
-							: viewMode === 'review-form'
-								? 'Review Edition'
-								: 'Edition Workflow'}
-					</h1>
-					<StatusBadge status={edition.status} />
-					{#if viewMode === 'concept-form'}
-						<div
-							class="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium {saveStatusBadgeClass}"
-							aria-live="polite"
-						>
-							{#if saveStatus === 'saving'}
-								<span class="loading loading-xs loading-spinner"></span>
-							{:else}
-								<span class="size-2 rounded-full bg-current"></span>
-							{/if}
-							<span>{saveStatusText}</span>
-						</div>
+		<div class="mb-6 flex flex-wrap items-start gap-4">
+			{#if viewMode !== 'concept-form'}
+				<div class="min-w-64">
+					<div class="flex flex-wrap items-center gap-3">
+						<h1 class="text-2xl font-bold">
+							{viewMode === 'review-form' ? 'Review Edition' : 'Edition Workflow'}
+						</h1>
+						<StatusBadge status={edition.status} />
+					</div>
+					<p class="mt-1 text-base-content/70">{edition.title || 'Untitled Edition'}</p>
+					{#if edition.collectionTitle}
+						<p class="text-sm text-base-content/50">in {edition.collectionTitle}</p>
 					{/if}
 				</div>
-				<p class="mt-1 text-base-content/70">{edition.title || 'Untitled Edition'}</p>
-				{#if edition.collectionTitle}
-					<p class="text-sm text-base-content/50">in {edition.collectionTitle}</p>
-				{/if}
-			</div>
-			<div class="flex flex-wrap items-center gap-2">
-				<a href="{base}/editions/{edition.id}" class="btn btn-ghost btn-sm">View Edition</a>
-				{#if canDelete}
-					<button
-						type="button"
-						class="btn btn-outline btn-sm btn-error"
-						onclick={() => (showDeleteModal = true)}
-					>
-						Delete
-					</button>
-				{/if}
+			{/if}
+
+			{#if viewMode === 'concept-form'}
+				<div class="min-w-72 flex-1 rounded-box border border-base-300 bg-base-100 px-4 py-3">
+					<div class="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
+						<div>
+							<span class="font-semibold">Workflow</span>
+							<span class="ml-2 text-base-content/60">{nextWorkflowAction}</span>
+						</div>
+						<StatusBadge status={edition.status} />
+					</div>
+					<ol class="flex items-center gap-2 overflow-x-auto pb-1">
+						{#each workflowStages as stage, index (stage.label)}
+							{@const state = workflowStageState(index)}
+							<li class="flex shrink-0 items-center gap-2">
+								<div
+									class="flex size-5 items-center justify-center rounded-full text-[10px] font-semibold"
+									class:bg-success={state === 'complete'}
+									class:text-success-content={state === 'complete'}
+									class:bg-primary={state === 'current'}
+									class:text-primary-content={state === 'current'}
+									class:bg-base-300={state === 'future'}
+									class:text-base-content={state === 'future'}
+									class:opacity-50={state === 'future'}
+								>
+									{#if state === 'complete'}✓{:else}{index + 1}{/if}
+								</div>
+								<span class="text-xs whitespace-nowrap" class:opacity-50={state === 'future'}>
+									{stage.label}
+								</span>
+								{#if index < workflowStages.length - 1}
+									<span class="h-px w-6 bg-base-300"></span>
+								{/if}
+							</li>
+						{/each}
+					</ol>
+				</div>
+			{/if}
+
+			<div class="ml-auto flex flex-col items-end gap-2">
+				<div class="flex flex-wrap items-center justify-end gap-2">
+					<a href="{base}/editions/{edition.id}" class="btn btn-ghost btn-sm">View Edition</a>
+					{#if canDelete}
+						<button
+							type="button"
+							class="btn btn-outline btn-sm btn-error"
+							onclick={() => (showDeleteModal = true)}
+						>
+							Delete
+						</button>
+					{/if}
+				</div>
 			</div>
 		</div>
 
@@ -778,96 +817,7 @@
 
 						<!-- Right Column: Tabbed Sidebar -->
 						<div class="shrink-0 lg:w-96">
-							<div class="space-y-4 lg:sticky lg:top-4">
-								<div class="rounded-xl border border-base-300 bg-base-100 p-5 shadow-sm">
-									<div class="mb-4 flex items-start justify-between gap-3">
-										<div>
-											<h2 class="font-semibold">Workflow Status</h2>
-											<p class="mt-1 text-sm text-base-content/60">
-												{STATUS_LABELS[edition.status] || edition.status}
-											</p>
-										</div>
-										<StatusBadge status={edition.status} />
-									</div>
-
-									<ol class="space-y-3">
-										{#each workflowStages as stage, index (stage.label)}
-											{@const state = workflowStageState(index)}
-											<li class="flex gap-3">
-												<div
-													class="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold"
-													class:bg-success={state === 'complete'}
-													class:text-success-content={state === 'complete'}
-													class:bg-primary={state === 'current'}
-													class:text-primary-content={state === 'current'}
-													class:bg-base-300={state === 'future'}
-													class:text-base-content={state === 'future'}
-													class:opacity-50={state === 'future'}
-												>
-													{#if state === 'complete'}
-														✓
-													{:else}
-														{index + 1}
-													{/if}
-												</div>
-												<div>
-													<p class="text-sm font-medium" class:opacity-50={state === 'future'}>
-														{stage.label}
-													</p>
-													{#if state === 'current'}
-														<p class="text-xs text-base-content/60">
-															{STATUS_LABELS[edition.status] || edition.status}
-														</p>
-													{/if}
-												</div>
-											</li>
-										{/each}
-									</ol>
-
-									<div class="mt-5 rounded-lg bg-base-200 p-3 text-sm text-base-content/70">
-										<p class="font-medium text-base-content">Next action</p>
-										<p class="mt-1">{nextWorkflowAction}</p>
-									</div>
-
-									<div class="mt-3 flex items-center gap-2 text-xs {saveStatusClass}" aria-live="polite">
-										{#if saveStatus === 'saving'}
-											<span class="loading loading-xs loading-spinner"></span>
-										{:else}
-											<span class="size-2 rounded-full bg-current"></span>
-										{/if}
-										<span>{saveStatusText}</span>
-									</div>
-
-									<div class="mt-4 flex flex-wrap gap-2">
-										{#if canSubmitConcept}
-											<button
-												type="submit"
-												class="btn btn-sm btn-primary"
-												disabled={isSaving || isSubmitting}
-											>
-												Submit for Review
-											</button>
-										{:else if canResubmit}
-											<button
-												type="button"
-												class="btn btn-sm btn-primary"
-												onclick={resubmit}
-												disabled={isSubmitting}
-											>
-												Resubmit
-											</button>
-										{/if}
-										<button
-											type="button"
-											class="btn btn-outline btn-sm"
-											onclick={saveDraft}
-											disabled={isSaving || isSubmitting}
-										>
-											Save Changes
-										</button>
-									</div>
-								</div>
-
+							<div class="lg:sticky lg:top-4">
 								<div class="overflow-hidden rounded-xl border border-base-300 bg-base-200">
 									<div class="w-96 max-w-full p-0">
 										<!-- Tabs -->
@@ -1113,6 +1063,18 @@
 									<span class="loading loading-xs loading-spinner"></span>
 								{/if}
 								Submit for Review
+							</button>
+						{:else if canResubmit}
+							<button
+								type="button"
+								class="btn btn-outline btn-sm btn-primary"
+								onclick={resubmit}
+								disabled={isSaving || isSubmitting}
+							>
+								{#if isSubmitting}
+									<span class="loading loading-xs loading-spinner"></span>
+								{/if}
+								Resubmit for Review
 							</button>
 						{/if}
 					</div>

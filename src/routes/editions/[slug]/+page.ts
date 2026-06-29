@@ -105,6 +105,23 @@ export const load: PageLoad = async ({ params }) => {
 			collectionTitle: collection?.title || ''
 		};
 
+		let creatorProfiles: Array<{ id: string; name: string }> = [];
+		try {
+			const authorResult = await pb.collection('editionUsers').getList(1, 50, {
+				filter: `editionId = "${record.id}" && role = "author"`,
+				expand: 'userId'
+			});
+			creatorProfiles = authorResult.items
+				.map((author) => author.expand?.userId)
+				.filter(Boolean)
+				.map((user) => ({
+					id: user.id,
+					name: user.nickname || user.username || user.email || 'User'
+				}));
+		} catch {
+			creatorProfiles = [];
+		}
+
 		// Fetch sibling editions (version history) for the same collection
 		let siblingEditions: Array<Record<string, unknown>> = [];
 		if (collectionId) {
@@ -136,6 +153,7 @@ export const load: PageLoad = async ({ params }) => {
 
 		return {
 			edition,
+			creatorProfiles,
 			siblingEditions,
 			viewerHelp: site?.viewerHelp || null,
 			viewerHelpVideoUrl: site?.viewerHelpVideoUrl || null
