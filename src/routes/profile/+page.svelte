@@ -573,59 +573,45 @@
 				</div>
 			{/if}
 
-			<div class="grid gap-6 border-t border-base-300 p-6 lg:grid-cols-[1fr_18rem]">
+			<div class="grid gap-8 border-t border-base-300 p-6 lg:grid-cols-[1fr_20rem]">
 				<div class="space-y-6">
 					<div>
-						<h3 class="text-sm font-semibold uppercase tracking-wide text-base-content/50">BIO note</h3>
+						<h3 class="text-sm font-semibold uppercase tracking-wide text-base-content/50">Bio</h3>
 						{#if isEditing}
 							<textarea id="bio" bind:value={tempData.bio} class="textarea-bordered textarea mt-2 min-h-40 w-full" placeholder="Short public biography"></textarea>
 						{:else if profileData.bio}
 							<div class="prose mt-2 max-w-none text-base-content/80">{@html profileData.bio}</div>
 						{:else}
-							<p class="mt-2 text-base-content/50">No biography added yet.</p>
-						{/if}
-					</div>
-
-					<div>
-						<h3 class="text-sm font-semibold uppercase tracking-wide text-base-content/50">Socials</h3>
-						{#if isEditing}
-							<textarea id="socials" bind:value={tempData.socials} class="textarea-bordered textarea mt-2 min-h-28 w-full" placeholder="One link per line"></textarea>
-						{:else if profileData.socials}
-							<div class="mt-3 flex flex-wrap gap-2">
-								{#each socialLinks(profileData.socials) as social}
-									<a class="btn btn-outline btn-sm" href={socialHref(social)} target="_blank" rel="noreferrer">
-										{socialLabel(social)}
-									</a>
-								{/each}
-							</div>
-						{:else}
-							<p class="mt-2 text-base-content/50">No socials added yet.</p>
+							<p class="mt-2 text-base-content/50">Add a short bio.</p>
 						{/if}
 					</div>
 				</div>
 
 				<aside class="space-y-3">
 					<div class="rounded-xl bg-base-200 p-4">
-						<div class="text-xs font-semibold uppercase tracking-wide text-base-content/50">Username</div>
-						<p class="mt-1 font-medium">{isEditing ? tempData.username || 'Not set' : profileData.username || 'Not set'}</p>
-					</div>
-					<div class="rounded-xl bg-base-200 p-4">
-						<div class="text-xs font-semibold uppercase tracking-wide text-base-content/50">ORCID</div>
+						<div class="text-xs font-semibold uppercase tracking-wide text-base-content/50">Profile links</div>
 						{#if isEditing}
-							<input id="orcid" type="url" bind:value={tempData.orcid} class="input-bordered input mt-2 w-full" placeholder="https://orcid.org/0000-0000-0000-0000" />
-						{:else if profileData.orcid}
-							<a class="link mt-1 block break-all" href={profileData.orcid} target="_blank" rel="noreferrer">
-								{socialLabel(profileData.orcid)}
-							</a>
+							<label for="orcid" class="mt-3 block text-xs font-medium text-base-content/60">ORCID</label>
+							<input id="orcid" type="url" bind:value={tempData.orcid} class="input-bordered input mt-1 w-full" placeholder="https://orcid.org/0000-0000-0000-0000" />
+							<label for="socials" class="mt-4 block text-xs font-medium text-base-content/60">Links</label>
+							<textarea id="socials" bind:value={tempData.socials} class="textarea-bordered textarea mt-1 min-h-28 w-full" placeholder="One link per line"></textarea>
 						{:else}
-							<p class="mt-1 text-base-content/50">Not set</p>
-						{/if}
-					</div>
-					<div class="rounded-xl bg-base-200 p-4">
-						<div class="text-xs font-semibold uppercase tracking-wide text-base-content/50">Account</div>
-						<p class="mt-1 break-all">{profileData.email}</p>
-						{#if !profileData.verified}
-							<span class="badge badge-warning mt-3">Not verified</span>
+							{#if profileData.orcid || profileData.socials}
+								<div class="mt-3 flex flex-col gap-2">
+									{#if profileData.orcid}
+										<a class="btn btn-outline btn-sm justify-start" href={profileData.orcid} target="_blank" rel="noreferrer">
+											ORCID: {socialLabel(profileData.orcid)}
+										</a>
+									{/if}
+									{#each socialLinks(profileData.socials) as social}
+										<a class="btn btn-outline btn-sm justify-start" href={socialHref(social)} target="_blank" rel="noreferrer">
+											{socialLabel(social)}
+										</a>
+									{/each}
+								</div>
+							{:else}
+								<p class="mt-3 text-base-content/50">Add ORCID or social links.</p>
+							{/if}
 						{/if}
 					</div>
 				</aside>
