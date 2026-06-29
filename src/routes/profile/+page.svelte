@@ -5,11 +5,21 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { ROLE_LABELS } from '$lib/types/roles';
+	import EditionCard from '$lib/components/cards/EditionCard.svelte';
+	import CollectionCard from '$lib/components/cards/CollectionCard.svelte';
+	import { getCollectionThumbnailUrl, getEditionRoot, getEditionThumbnailUrl } from '$lib/utils/asset-urls';
 
 	interface ProfileData {
 		displayName: string;
 		username: string;
 		email: string;
+		profilePicture: string;
+		profilePictureUrl: string;
+		orcid: string;
+		affiliation: string;
+		titleRole: string;
+		bio: string;
+		socials: string;
 		role: string;
 		verified: boolean;
 		joinDate: string;
@@ -21,11 +31,19 @@
 	let errorMessage = $state('');
 	let isLoading = $state(true);
 	let isSaving = $state(false);
+	let editions = $state<any[]>([]);
+	let collections = $state<any[]>([]);
 
 	let tempData = $state({
 		displayName: '',
-		username: ''
+		username: '',
+		orcid: '',
+		affiliation: '',
+		titleRole: '',
+		bio: '',
+		socials: ''
 	});
+	let profilePictureFile = $state<File | null>(null);
 
 	// Load user profile data
 	onMount(async () => {
@@ -48,9 +66,18 @@
 			}
 
 			profileData = {
-				displayName: user.username || user.email || 'User',
-				username: user.username || '',
+				displayName: user.nickname || user.username || user.email || 'User',
+				username: user.nickname || user.username || '',
 				email: user.email,
+				profilePicture: user.profilePicture || '',
+				profilePictureUrl: user.profilePicture
+					? pb.files.getURL(user as any, user.profilePicture, { thumb: '200x200' })
+					: '',
+				orcid: user.orcid || '',
+				affiliation: user.affiliation || '',
+				titleRole: user.titleRole || '',
+				bio: user.bio || '',
+				socials: user.socials || '',
 				role: authStore.globalRole,
 				verified: user.verified,
 				joinDate: new Date(user.created).toLocaleDateString('en-US', {
@@ -58,6 +85,7 @@
 					month: 'long'
 				})
 			};
+			await loadProfileContent(user.id);
 		} catch (error) {
 			console.error('Error loading profile:', error);
 			errorMessage = 'Failed to load profile data';
@@ -66,14 +94,126 @@
 		}
 	}
 
+	const toArray = (value: unknown): string[] =>
+		Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+
+	function mapEdition(record: any) {
+		const collection = record.expand?.collection;
+		const collectionPubNum = collection?.pubNum || 0;
+		const editionPubNum = record.pubNum || 1;
+
+		return {
+			id: record.id,
+			slug: record.id,
+			title: record.dcTitle || record.title,
+			description: record.dcAbstract || '',
+			authors: toArray(record.dcCreator).join(', '),
+			thumbnail: collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, editionPubNum) : '',
+			voyagerUrl: collectionPubNum > 0 ? getEditionRoot(collectionPubNum, editionPubNum) : '',
+			usageConditions: record.dcRightsLicense || '',
+			alternativeVersion: null,
+			tags: toArray(record.dcKeyword),
+			created: record.created,
+			isPublished: record.isPublished,
+			pubNum: record.pubNum,
+			collectionId: record.collection,
+			collection,
+			dcTitle: record.dcTitle || null,
+			dcSubtitle: record.dcSubtitle || null,
+			dcAbstract: record.dcAbstract || null,
+			dcDescription: record.dcDescription || null,
+			dcCreator: toArray(record.dcCreator),
+			dcContributor: toArray(record.dcContributor),
+			dcInstitution: toArray(record.dcInstitution),
+			dcContact: record.dcContact || null,
+			dcSubject: toArray(record.dcSubject),
+			dcKeyword: toArray(record.dcKeyword),
+			dcAudience: toArray(record.dcAudience),
+			dcLanguage: toArray(record.dcLanguage),
+			dcSource: toArray(record.dcSource),
+			dcCoveragePeriod: toArray(record.dcCoveragePeriod),
+			dcCoveragePlace: record.dcCoveragePlace || null,
+			dcCoverageCountry: toArray(record.dcCoverageCountry),
+			dcCoverageTemporal: record.dcCoverageTemporal || null,
+			dcCoverageGeo: record.dcCoverageGeo || null,
+			dcRightsHolder: record.dcRightsHolder || null,
+			dcRightsLicense: record.dcRightsLicense || null,
+			dcDatePublished: record.dcDatePublished || null,
+			dcDateUnPublished: record.dcDateUnPublished || null,
+			dcDateCreated: record.dcDateCreated || null,
+			dcDateModified: record.dcDateModified || null,
+			dcFunder: toArray(record.dcFunder),
+			dcProvenance: record.dcProvenance || null,
+			dcDoi: toArray(record.dcDoi),
+			peerReviewKind: record.peerReviewKind || null,
+			peerReviewContent: record.peerReviewContent || null,
+			hasPeerReview: !!record.peerReviewKind && record.peerReviewKind !== 'No peer review',
+			peerReviewRequested: record.peerReviewRequested || false,
+			reviewStage: record.reviewStage ?? null,
+			peerReviewStamp: record.peerReviewStamp || false,
+			publishedAt: record.publishedAt || null,
+			publishedBy: record.publishedBy || null,
+			settingsAuthorToolName: record.settingsAuthorToolName || null,
+			settingsAuthorToolVersion: record.settingsAuthorToolVersion || null,
+			settingsSceneFile: record.settingsSceneFile || null
+		};
+	}
+
+	function mapCollection(record: any, editionCount = 0) {
+		return {
+			id: record.id,
+			slug: record.id,
+			title: record.dcTitle || record.title,
+			description: record.dcAbstract || '',
+			thumbnail: record.pubNum > 0 ? getCollectionThumbnailUrl(record.pubNum) : '',
+			editionIds: [],
+			editionCount,
+			isVisible: record.isVisible
+		};
+	}
+
+	async function loadProfileContent(userId: string) {
+		const [editionUsers, collectionUsers] = await Promise.all([
+			pb.collection('editionUsers').getList(1, 100, {
+				filter: `userId = "${userId}" && role = "author"`,
+				expand: 'editionId,editionId.collection'
+			}),
+			pb.collection('collectionUsers').getList(1, 100, {
+				filter: `userId = "${userId}"`,
+				expand: 'collection'
+			})
+		]);
+
+		editions = editionUsers.items
+			.map((item) => item.expand?.editionId)
+			.filter((record) => record?.isPublished)
+			.map(mapEdition);
+
+		const editionCounts = new Map<string, number>();
+		for (const edition of editions) {
+			editionCounts.set(edition.collectionId, (editionCounts.get(edition.collectionId) || 0) + 1);
+		}
+
+		collections = collectionUsers.items
+			.map((item) => item.expand?.collection)
+			.filter((record) => record?.isVisible)
+			.map((record) => mapCollection(record, editionCounts.get(record.id) || 0));
+	}
+
 	function startEdit() {
 		if (!profileData) return;
 
 		isEditing = true;
 		tempData = {
 			displayName: profileData.displayName,
-			username: profileData.username
+			username: profileData.username,
+			orcid: profileData.orcid,
+			affiliation: profileData.affiliation,
+			titleRole: profileData.titleRole,
+			bio: profileData.bio,
+			socials: profileData.socials
 		};
+		profilePictureFile = null;
 		saveMessage = '';
 		errorMessage = '';
 	}
@@ -82,8 +222,14 @@
 		isEditing = false;
 		tempData = {
 			displayName: profileData?.displayName || '',
-			username: profileData?.username || ''
+			username: profileData?.username || '',
+			orcid: profileData?.orcid || '',
+			affiliation: profileData?.affiliation || '',
+			titleRole: profileData?.titleRole || '',
+			bio: profileData?.bio || '',
+			socials: profileData?.socials || ''
 		};
+		profilePictureFile = null;
 		errorMessage = '';
 	}
 
@@ -94,13 +240,30 @@
 			isSaving = true;
 			errorMessage = '';
 
-			await pb.collection('users').update(authStore.user.id, {
-				username: tempData.username || undefined
-			});
+			const formData = new FormData();
+			formData.set('nickname', tempData.username);
+			formData.set('orcid', tempData.orcid);
+			formData.set('affiliation', tempData.affiliation);
+			formData.set('titleRole', tempData.titleRole);
+			formData.set('bio', tempData.bio);
+			formData.set('socials', tempData.socials);
+			if (profilePictureFile) formData.set('profilePicture', profilePictureFile);
+
+			const updatedUser = await pb.collection('users').update(authStore.user.id, formData);
+			pb.authStore.save(pb.authStore.token, updatedUser);
 
 			if (profileData) {
 				profileData.displayName = tempData.username || tempData.displayName;
 				profileData.username = tempData.username;
+				profileData.profilePicture = updatedUser.profilePicture || '';
+				profileData.profilePictureUrl = updatedUser.profilePicture
+					? pb.files.getURL(updatedUser, updatedUser.profilePicture, { thumb: '200x200' })
+					: '';
+				profileData.orcid = tempData.orcid;
+				profileData.affiliation = tempData.affiliation;
+				profileData.titleRole = tempData.titleRole;
+				profileData.bio = tempData.bio;
+				profileData.socials = tempData.socials;
 			}
 
 			isEditing = false;
@@ -115,6 +278,21 @@
 			isSaving = false;
 		}
 	}
+
+	function socialHref(value: string) {
+		return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+	}
+
+	function socialLabel(value: string) {
+		return value.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+	}
+
+	function socialLinks(value: string) {
+		return value
+			.split(/\n+/)
+			.map((item) => item.trim())
+			.filter(Boolean);
+	}
 </script>
 
 {#if isLoading}
@@ -125,42 +303,66 @@
 		</div>
 	</div>
 {:else if authStore.isAuthenticated && profileData}
-	<div class="container mx-auto max-w-4xl px-4 py-8">
-		<!-- Profile Header -->
-		<div class="mb-8 rounded-lg border border-base-300 bg-base-100 p-6 shadow-md">
-			<div class="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
-				<!-- Avatar -->
-				<div class="placeholder avatar">
-					<div class="w-24 rounded-full bg-primary text-primary-content">
-						<span class="text-3xl">{profileData.displayName.charAt(0).toUpperCase()}</span>
-					</div>
+	<div class="container mx-auto max-w-5xl px-4 py-8">
+		<section class="overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm">
+			<div class="h-24 bg-gradient-to-r from-base-300 via-base-200 to-base-100"></div>
+			<div class="flex flex-col gap-6 p-6 pt-0 sm:flex-row sm:items-end">
+				<div class="avatar placeholder -mt-12 shrink-0">
+					{#if profileData.profilePictureUrl}
+						<div class="w-32 rounded-full ring-4 ring-base-100">
+							<img src={profileData.profilePictureUrl} alt="{profileData.displayName} profile" />
+						</div>
+					{:else}
+						<div class="w-32 rounded-full bg-neutral text-neutral-content ring-4 ring-base-100">
+							<span class="text-4xl">{profileData.displayName.charAt(0).toUpperCase()}</span>
+						</div>
+					{/if}
 				</div>
 
-				<!-- User Info -->
-				<div class="flex-1">
-					<div class="flex items-center gap-2">
-						<h1 class="text-3xl font-bold">{profileData.displayName}</h1>
-						{#if profileData.verified}
-							<span class="badge badge-sm badge-success">Verified</span>
+				<div class="min-w-0 flex-1">
+					{#if isEditing}
+						<div class="grid gap-3 sm:grid-cols-2">
+							<div class="sm:col-span-2">
+								<label for="username" class="sr-only">Username</label>
+								<input id="username" type="text" bind:value={tempData.username} class="input-bordered input input-lg w-full text-2xl font-bold" placeholder="Display name" />
+							</div>
+							<input id="title-role" type="text" bind:value={tempData.titleRole} class="input-bordered input w-full" placeholder="Title / role position" />
+							<input id="affiliation" type="text" bind:value={tempData.affiliation} class="input-bordered input w-full" placeholder="Affiliation" />
+							<input id="profile-picture" type="file" accept="image/png,image/jpeg,image/webp,image/avif" class="file-input-bordered file-input w-full sm:col-span-2" onchange={(event) => { profilePictureFile = event.currentTarget.files?.[0] ?? null; }} />
+						</div>
+					{:else}
+						<div class="flex flex-wrap items-center gap-2">
+							<h1 class="text-3xl font-bold leading-tight">{profileData.displayName}</h1>
+							<span class="badge badge-neutral">{ROLE_LABELS[profileData.role] || profileData.role}</span>
+							{#if profileData.verified}
+								<span class="badge badge-success">Verified</span>
+							{/if}
+						</div>
+						{#if profileData.titleRole || profileData.affiliation}
+							<p class="mt-2 text-base text-base-content/70">
+								{#if profileData.titleRole}{profileData.titleRole}{/if}{#if profileData.titleRole && profileData.affiliation} at {/if}{#if profileData.affiliation}{profileData.affiliation}{/if}
+							</p>
 						{/if}
-					</div>
-					<p class="text-base-content/70">{profileData.email}</p>
-					<p class="mt-2 text-sm text-base-content/60">Member since {profileData.joinDate}</p>
+					{/if}
+					<p class="mt-1 text-sm text-base-content/50">
+						{profileData.email} · Member since {profileData.joinDate}
+					</p>
 				</div>
 
-				<!-- Edit Button -->
-				{#if !isEditing}
-					<button onclick={startEdit} class="btn btn-sm btn-primary"> Edit Profile </button>
-				{/if}
+				<div class="flex shrink-0 gap-2">
+					{#if isEditing}
+						<button class="btn btn-primary btn-sm" onclick={saveProfile} disabled={isSaving}>
+							{isSaving ? 'Saving...' : 'Save'}
+						</button>
+						<button class="btn btn-ghost btn-sm" onclick={cancelEdit} disabled={isSaving}>Cancel</button>
+					{:else}
+						<button onclick={startEdit} class="btn btn-primary btn-sm">Edit Profile</button>
+					{/if}
+				</div>
 			</div>
-		</div>
-
-		<!-- Profile Details / Edit Form -->
-		<div class="rounded-lg border border-base-300 bg-base-100 p-6 shadow-md">
-			<h2 class="mb-4 text-2xl font-semibold">Profile Details</h2>
 
 			{#if saveMessage}
-				<div class="mb-4 alert alert-success">
+				<div class="mx-6 mb-4 alert alert-success">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						class="h-6 w-6 shrink-0 stroke-current"
@@ -179,7 +381,7 @@
 			{/if}
 
 			{#if errorMessage}
-				<div class="mb-4 alert alert-error">
+				<div class="mx-6 mb-4 alert alert-error">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						class="h-6 w-6 shrink-0 stroke-current"
@@ -197,99 +399,100 @@
 				</div>
 			{/if}
 
-			{#if isEditing}
-				<!-- Edit Form -->
-				<form
-					onsubmit={(e) => {
-						e.preventDefault();
-						saveProfile();
-					}}
-					class="space-y-4"
-				>
+			<div class="grid gap-6 border-t border-base-300 p-6 lg:grid-cols-[1fr_18rem]">
+				<div class="space-y-6">
 					<div>
-						<label for="username" class="mb-1 block text-sm font-medium"> Username </label>
-						<input
-							id="username"
-							type="text"
-							bind:value={tempData.username}
-							class="input-bordered input w-full"
-							placeholder="Choose a username"
-						/>
-						<p class="mt-1 text-xs text-base-content/60">
-							This will be your display name throughout the site
-						</p>
+						<h3 class="text-sm font-semibold uppercase tracking-wide text-base-content/50">BIO note</h3>
+						{#if isEditing}
+							<textarea id="bio" bind:value={tempData.bio} class="textarea-bordered textarea mt-2 min-h-40 w-full" placeholder="Short public biography"></textarea>
+						{:else if profileData.bio}
+							<div class="prose mt-2 max-w-none text-base-content/80">{@html profileData.bio}</div>
+						{:else}
+							<p class="mt-2 text-base-content/50">No biography added yet.</p>
+						{/if}
 					</div>
 
 					<div>
-						<label for="email-readonly" class="mb-1 block text-sm font-medium">
-							Email (Read-only)
-						</label>
-						<input
-							id="email-readonly"
-							type="email"
-							value={profileData.email}
-							class="input-bordered input w-full"
-							disabled
-						/>
-						<p class="mt-1 text-xs text-base-content/60">
-							Email cannot be changed here. Contact support if needed.
-						</p>
-					</div>
-
-					<div class="flex gap-3">
-						<button type="submit" class="btn btn-primary" disabled={isSaving}>
-							{#if isSaving}
-								<span class="loading loading-sm loading-spinner"></span>
-								Saving...
-							{:else}
-								Save Changes
-							{/if}
-						</button>
-						<button type="button" onclick={cancelEdit} class="btn btn-ghost" disabled={isSaving}>
-							Cancel
-						</button>
-					</div>
-				</form>
-			{:else}
-				<!-- View Mode -->
-				<div class="space-y-4">
-					<div>
-						<div class="text-sm font-medium text-base-content/60">Username</div>
-						<p class="mt-1">{profileData.username || 'Not set'}</p>
-					</div>
-
-					<div>
-						<div class="text-sm font-medium text-base-content/60">Email</div>
-						<p class="mt-1">{profileData.email}</p>
-					</div>
-
-					<div>
-						<div class="text-sm font-medium text-base-content/60">Role</div>
-						<p class="mt-1">
-							<span class="badge badge-neutral"
-								>{ROLE_LABELS[profileData.role] || profileData.role}</span
-							>
-						</p>
-					</div>
-
-					<div>
-						<div class="text-sm font-medium text-base-content/60">Account Status</div>
-						<p class="mt-1">
-							{#if profileData.verified}
-								<span class="badge badge-success">Verified</span>
-							{:else}
-								<span class="badge badge-warning">Not Verified</span>
-							{/if}
-						</p>
-					</div>
-
-					<div>
-						<div class="text-sm font-medium text-base-content/60">Member Since</div>
-						<p class="mt-1">{profileData.joinDate}</p>
+						<h3 class="text-sm font-semibold uppercase tracking-wide text-base-content/50">Socials</h3>
+						{#if isEditing}
+							<textarea id="socials" bind:value={tempData.socials} class="textarea-bordered textarea mt-2 min-h-28 w-full" placeholder="One link per line"></textarea>
+						{:else if profileData.socials}
+							<div class="mt-3 flex flex-wrap gap-2">
+								{#each socialLinks(profileData.socials) as social}
+									<a class="btn btn-outline btn-sm" href={socialHref(social)} target="_blank" rel="noreferrer">
+										{socialLabel(social)}
+									</a>
+								{/each}
+							</div>
+						{:else}
+							<p class="mt-2 text-base-content/50">No socials added yet.</p>
+						{/if}
 					</div>
 				</div>
+
+				<aside class="space-y-3">
+					<div class="rounded-xl bg-base-200 p-4">
+						<div class="text-xs font-semibold uppercase tracking-wide text-base-content/50">Username</div>
+						<p class="mt-1 font-medium">{isEditing ? tempData.username || 'Not set' : profileData.username || 'Not set'}</p>
+					</div>
+					<div class="rounded-xl bg-base-200 p-4">
+						<div class="text-xs font-semibold uppercase tracking-wide text-base-content/50">ORCID</div>
+						{#if isEditing}
+							<input id="orcid" type="url" bind:value={tempData.orcid} class="input-bordered input mt-2 w-full" placeholder="https://orcid.org/0000-0000-0000-0000" />
+						{:else if profileData.orcid}
+							<a class="link mt-1 block break-all" href={profileData.orcid} target="_blank" rel="noreferrer">
+								{socialLabel(profileData.orcid)}
+							</a>
+						{:else}
+							<p class="mt-1 text-base-content/50">Not set</p>
+						{/if}
+					</div>
+					<div class="rounded-xl bg-base-200 p-4">
+						<div class="text-xs font-semibold uppercase tracking-wide text-base-content/50">Account</div>
+						<p class="mt-1 break-all">{profileData.email}</p>
+						{#if !profileData.verified}
+							<span class="badge badge-warning mt-3">Not verified</span>
+						{/if}
+					</div>
+				</aside>
+			</div>
+		</section>
+
+		<section class="mt-10">
+			<div class="mb-4 flex items-center justify-between">
+				<h2 class="text-2xl font-semibold">Editions</h2>
+				<span class="text-sm text-base-content/60">{editions.length} public</span>
+			</div>
+			{#if editions.length}
+				<div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+					{#each editions as edition (edition.id)}
+						<EditionCard {edition} />
+					{/each}
+				</div>
+			{:else}
+				<p class="rounded-2xl border border-base-300 bg-base-100 p-6 text-base-content/60 shadow-sm">
+					No public editions yet.
+				</p>
 			{/if}
-		</div>
+		</section>
+
+		<section class="mt-10">
+			<div class="mb-4 flex items-center justify-between">
+				<h2 class="text-2xl font-semibold">Collections</h2>
+				<span class="text-sm text-base-content/60">{collections.length} public</span>
+			</div>
+			{#if collections.length}
+				<div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+					{#each collections as collection (collection.id)}
+						<CollectionCard {collection} />
+					{/each}
+				</div>
+			{:else}
+				<p class="rounded-2xl border border-base-300 bg-base-100 p-6 text-base-content/60 shadow-sm">
+					No public collections yet.
+				</p>
+			{/if}
+		</section>
 	</div>
 {:else}
 	<div class="flex min-h-screen items-center justify-center">

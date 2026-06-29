@@ -9,6 +9,12 @@ interface User {
 	username?: string;
 	verified: boolean;
 	nickname?: string;
+	profilePicture?: string;
+	orcid?: string;
+	affiliation?: string;
+	titleRole?: string;
+	bio?: string;
+	socials?: string;
 	role?: GlobalRole;
 	created: string;
 	updated: string;

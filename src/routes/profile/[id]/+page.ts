@@ -124,6 +124,14 @@ export const load: PageLoad = async ({ params }) => {
 			profile: {
 				id: user.id,
 				name: user.nickname || user.username || 'User',
+				profilePictureUrl: user.profilePicture
+					? pb.files.getURL(user, user.profilePicture, { thumb: '200x200' })
+					: '',
+				orcid: user.orcid || '',
+				affiliation: user.affiliation || '',
+				titleRole: user.titleRole || '',
+				bio: user.bio || '',
+				socials: user.socials || '',
 				role: user.role || null,
 				verified: !!user.verified,
 				created: user.created

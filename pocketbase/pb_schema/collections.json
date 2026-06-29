@@ -9,6 +9,48 @@
 				"required": false
 			},
 			{
+				"name": "profilePicture",
+				"type": "file",
+				"required": false,
+				"maxSelect": 1,
+				"maxSize": 5242880,
+				"mimeTypes": [
+					"image/jpeg",
+					"image/png",
+					"image/webp",
+					"image/avif"
+				],
+				"thumbs": [
+					"200x200",
+					"80x80"
+				]
+			},
+			{
+				"name": "orcid",
+				"type": "url",
+				"required": false
+			},
+			{
+				"name": "affiliation",
+				"type": "text",
+				"required": false
+			},
+			{
+				"name": "titleRole",
+				"type": "text",
+				"required": false
+			},
+			{
+				"name": "bio",
+				"type": "editor",
+				"required": false
+			},
+			{
+				"name": "socials",
+				"type": "text",
+				"required": false
+			},
+			{
 				"name": "role",
 				"type": "select",
 				"required": false,
