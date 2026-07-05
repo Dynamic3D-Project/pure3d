@@ -5,19 +5,39 @@
 	import CollectionCard from '$lib/components/cards/CollectionCard.svelte';
 	import { editionsStore, collectionsStore, fetchAllData, isStale } from '$lib/stores/data.store';
 
-	// Reactive data from persisted stores - shows cached data immediately
+	const storySteps = [
+		{
+			kicker: '01 · Capture',
+			title: 'Start with the object.',
+			text: 'A scan, mesh, point cloud, or reconstruction becomes the primary scholarly surface — not an illustration after the article.'
+		},
+		{
+			kicker: '02 · Annotate',
+			title: 'Attach arguments to form.',
+			text: 'Hotspots, layers, provenance, uncertainty, bibliography, and interpretation stay close to the part of the model they describe.'
+		},
+		{
+			kicker: '03 · Review',
+			title: 'Make it citable and durable.',
+			text: 'Editors and reviewers can evaluate both scholarship and 3D evidence before publication, preservation, and reuse.'
+		}
+	];
+
+	const workflow = ['Proposal', 'Draft edition', 'Editorial review', 'Revision', 'Publication', 'Preservation'];
+	const filters = ['All editions', 'Archaeology', 'Heritage', 'Architecture', 'Dynamic3D'];
+
 	let featuredEditions = $derived($editionsStore.items.slice(0, 8));
-	let heroEditions = $derived(
-		$editionsStore.items.filter((edition) => edition.thumbnail).slice(0, 5)
-	);
 	let collections = $derived($collectionsStore.items);
 	let totalEditions = $derived($editionsStore.total);
 	let totalCollections = $derived($collectionsStore.total);
-
-	let hasCachedData = $derived(
-		$editionsStore.items.length > 0 || $collectionsStore.items.length > 0
-	);
+	let hasCachedData = $derived($editionsStore.items.length > 0 || $collectionsStore.items.length > 0);
 	let isLoading = $state(true);
+	let carouselContainer: HTMLDivElement | undefined = $state();
+	let activeFilter = $state(filters[0]);
+	let pointerX = $state(0);
+	let pointerY = $state(0);
+
+	let heroStyle = $derived(`--mx: ${pointerX.toFixed(3)}; --my: ${pointerY.toFixed(3)};`);
 
 	function preloadImages(urls: string[]) {
 		const validUrls = urls.filter(Boolean);
@@ -25,34 +45,31 @@
 
 		const loadNext = (index: number) => {
 			if (index >= validUrls.length) return;
-
 			const img = new Image();
 			img.onload = img.onerror = () => {
-				if ('requestIdleCallback' in window) {
-					requestIdleCallback(() => loadNext(index + 1), { timeout: 1000 });
-				} else {
-					setTimeout(() => loadNext(index + 1), 50);
-				}
+				if ('requestIdleCallback' in window) requestIdleCallback(() => loadNext(index + 1), { timeout: 1000 });
+				else setTimeout(() => loadNext(index + 1), 50);
 			};
 			img.src = validUrls[index];
 		};
 
-		if ('requestIdleCallback' in window) {
-			requestIdleCallback(() => loadNext(0), { timeout: 2000 });
-		} else {
-			setTimeout(() => loadNext(0), 500);
-		}
+		if ('requestIdleCallback' in window) requestIdleCallback(() => loadNext(0), { timeout: 2000 });
+		else setTimeout(() => loadNext(0), 500);
 	}
 
-	let carouselContainer: HTMLDivElement | undefined = $state();
-
 	function scrollCarousel(direction: 'left' | 'right') {
-		if (!carouselContainer) return;
-		const scrollAmount = 320;
-		carouselContainer.scrollBy({
-			left: direction === 'left' ? -scrollAmount : scrollAmount,
-			behavior: 'smooth'
-		});
+		carouselContainer?.scrollBy({ left: direction === 'left' ? -360 : 360, behavior: 'smooth' });
+	}
+
+	function trackPointer(event: PointerEvent) {
+		const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+		pointerX = (event.clientX - rect.left) / rect.width - 0.5;
+		pointerY = (event.clientY - rect.top) / rect.height - 0.5;
+	}
+
+	function resetPointer() {
+		pointerX = 0;
+		pointerY = 0;
 	}
 
 	onMount(async () => {
@@ -61,22 +78,19 @@
 
 		if (hasCachedData && !editionsStale && !collectionsStale) {
 			isLoading = false;
-			const firstFoldThumbnails = [
+			preloadImages([
 				...$editionsStore.items.slice(0, 15).map((e) => e.thumbnail),
 				...$collectionsStore.items.slice(0, 15).map((c) => c.thumbnail)
-			];
-			preloadImages(firstFoldThumbnails);
+			]);
 			return;
 		}
 
 		try {
 			const { editions, collections: cols } = await fetchAllData();
-
-			const firstFoldThumbnails = [
+			preloadImages([
 				...editions.slice(0, 15).map((e) => e.thumbnail),
 				...cols.slice(0, 15).map((c) => c.thumbnail)
-			];
-			preloadImages(firstFoldThumbnails);
+			]);
 		} catch (error) {
 			console.error('Error loading data:', error);
 		} finally {
@@ -86,866 +100,305 @@
 </script>
 
 <svelte:head>
-	<title>Pure 3D | Explore 3D Scholarly Editions</title>
+	<title>Pure 3D | Interactive 3D Scholarly Editions</title>
 	<meta
 		name="description"
-		content="Explore our 3D Scholarly Editions and create your own. Pure3D is a platform for digital humanities and heritage 3D collections."
+		content="Pure3D publishes interactive, citable 3D scholarly editions for cultural heritage, science, and digital humanities collections."
 	/>
 </svelte:head>
 
-<div class="p3d">
-	<!-- ============== HERO ============== -->
-	<section class="hero-sec">
-		<div class="shell">
-			<div class="eyebrow">
-				<span class="dot" aria-hidden="true"></span>
-				<span>Pure 3D · scholarly publishing platform</span>
-			</div>
-
-			<h1 class="hero-h1">
-				Dimensional <em>scholarship</em>,<br />
-				published for the long read.
-			</h1>
-
-			<div class="hero-grid">
-				<p class="hero-lede">
-					Pure 3D publishes cultural-heritage and scientific objects as interactive, citable,
-					long-lived records. The interface recedes, paper, ink, and precise chrome framing the
-					model itself.
+<div class="p3d-landing">
+	<section class="hero" style={heroStyle} onpointermove={trackPointer} onpointerleave={resetPointer}>
+		<div class="ambient ambient-a"></div>
+		<div class="ambient ambient-b"></div>
+		<div class="shell hero-shell">
+			<div class="hero-copy">
+				<p class="eyebrow"><span></span> Pure3D editions · interactive scholarly objects</p>
+				<h1>Publish 3D scholarship as an experience people can explore.</h1>
+				<p class="lede">
+					Pure3D turns scans, reconstructions, annotations, and curatorial context into durable,
+					citable editions — immersive enough to invite attention, rigorous enough to earn trust.
 				</p>
-				<div class="hero-side">
-					<div class="hero-editions" aria-label="Recent editions">
-						<div class="hero-editions-label">Recent editions</div>
-						<div class="hero-cover-row">
-							{#if isLoading && !hasCachedData}
-								{#each Array(5) as _, i (i)}
-									<div
-										class="hero-cover hero-cover-skeleton skeleton"
-										class:hero-cover-raised={i % 2 === 1}
-									></div>
-								{/each}
-							{:else}
-								{#each heroEditions as edition, i (edition.id)}
-									<a
-										href={`${base}/editions/${edition.slug}`}
-										class="hero-cover"
-										class:hero-cover-raised={i % 2 === 1}
-										aria-label={`View ${edition.title}`}
-									>
-										<img
-											src={edition.thumbnail}
-											alt={edition.title}
-											loading={i < 2 ? 'eager' : 'lazy'}
-										/>
-										<span class="hero-cover-meta">
-											{#if edition.pubNum}
-												<span>Ed. {String(edition.pubNum).padStart(2, '0')}</span>
-											{/if}
-											<span>{edition.title}</span>
-										</span>
-									</a>
-								{/each}
-							{/if}
-						</div>
-					</div>
-
-					<div class="hero-actions">
-						<a href="{base}/editions" class="btn btn-primary">
-							Browse editions
-							<span class="arrow" aria-hidden="true">→</span>
-						</a>
-						<a href="{base}/collections" class="btn btn-secondary">View collections</a>
-					</div>
+				<div class="hero-actions">
+					<a class="button primary" href="{base}/editions">Explore editions <span>→</span></a>
+					<a class="button ghost" href="{base}/documentation/submission">Publish an edition</a>
 				</div>
+			</div>
+
+			<div class="object-stage" aria-label="Interactive abstract 3D scholarly model preview">
+				<div class="stage-ui top"><span>Model</span><strong>Object layer</strong></div>
+				<div class="stage-ui right"><span>Annotation</span><strong>12 notes</strong></div>
+				<div class="stage-ui bottom"><span>Citation</span><strong>Versioned DOI-ready record</strong></div>
+				<div class="orbit orbit-one"></div>
+				<div class="orbit orbit-two"></div>
+				<div class="model-core">
+					<div class="facet f1"></div>
+					<div class="facet f2"></div>
+					<div class="facet f3"></div>
+					<div class="facet f4"></div>
+					<div class="hotspot h1"></div>
+					<div class="hotspot h2"></div>
+					<div class="hotspot h3"></div>
+				</div>
+				{#each Array(24) as _, i (i)}
+					<i class="point" style={`--i:${i}; --x:${(i * 37) % 100}; --y:${(i * 53) % 100};`}></i>
+				{/each}
 			</div>
 		</div>
 	</section>
 
-	<!-- ============== STATS STRIP ============== -->
-	<section class="stats-strip">
-		<div class="shell">
-			<dl class="stats-grid">
-				<div class="stat">
-					<dt>3D Editions</dt>
-					<dd>
-						{#if isLoading && !hasCachedData}
-							<span class="loading loading-sm loading-spinner text-primary"></span>
-						{:else}
-							{totalEditions}
-						{/if}
-					</dd>
-				</div>
-				<div class="stat">
-					<dt>Collections</dt>
-					<dd>
-						{#if isLoading && !hasCachedData}
-							<span class="loading loading-sm loading-spinner text-primary"></span>
-						{:else}
-							{totalCollections}
-						{/if}
-					</dd>
-				</div>
-				<div class="stat">
-					<dt>Audience</dt>
-					<dd class="stat-text">Curators · researchers · students</dd>
-				</div>
-				<div class="stat">
-					<dt>Stance</dt>
-					<dd class="stat-text">Museum-grade · quiet · precise</dd>
-				</div>
-			</dl>
+	<section class="metrics" aria-label="Pure3D archive metrics">
+		<div class="shell metric-grid">
+			<div><span>{isLoading && !hasCachedData ? '…' : totalEditions}</span><p>published 3D editions</p></div>
+			<div><span>{isLoading && !hasCachedData ? '…' : totalCollections}</span><p>curated collections</p></div>
+			<div><span>3D</span><p>models, annotations, provenance</p></div>
+			<div><span>∞</span><p>static-first preservation mindset</p></div>
 		</div>
 	</section>
 
-	<!-- ============== FEATURED EDITIONS ============== -->
-	<section class="sec">
+	<section class="story">
+		<div class="shell story-grid">
+			<div class="sticky-panel">
+				<p class="eyebrow"><span></span> From object to argument</p>
+				<h2>The model is not decoration. It is the reading interface.</h2>
+				<p>
+					The landing page should behave like a scholarly instrument: cursor movement reveals depth,
+					scroll reveals evidence, and each interaction clarifies what can be cited, reviewed, and preserved.
+				</p>
+			</div>
+			<div class="story-steps">
+				{#each storySteps as step}
+					<article>
+						<span>{step.kicker}</span>
+						<h3>{step.title}</h3>
+						<p>{step.text}</p>
+					</article>
+				{/each}
+			</div>
+		</div>
+	</section>
+
+	<section class="editions-section">
 		<div class="shell">
-			<div class="sec-head">
-				<div class="sec-num">§ 01 — Editions</div>
-				<div class="sec-head-body">
-					<h2 class="sec-title">Recent <em>scholarly editions.</em></h2>
-					<p class="sec-sub">
-						Each edition is a citable, permalinked record of a 3D object, including model data,
-						descriptive metadata, annotations, and provenance information.
-					</p>
+			<div class="section-head">
+				<div>
+					<p class="eyebrow"><span></span> Highlighted collection</p>
+					<h2>Browse editions like curated releases.</h2>
 				</div>
-				<div class="sec-actions">
-					<button
-						onclick={() => scrollCarousel('left')}
-						class="nav-btn"
-						aria-label="Scroll editions left"
-					>
-						<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-							<path
-								d="M10 3 L5 8 L10 13"
-								stroke="currentColor"
-								stroke-width="1.4"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-							/>
-						</svg>
-					</button>
-					<button
-						onclick={() => scrollCarousel('right')}
-						class="nav-btn"
-						aria-label="Scroll editions right"
-					>
-						<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-							<path
-								d="M6 3 L11 8 L6 13"
-								stroke="currentColor"
-								stroke-width="1.4"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-							/>
-						</svg>
-					</button>
+				<div class="carousel-controls">
+					<button onclick={() => scrollCarousel('left')} aria-label="Scroll editions left">←</button>
+					<button onclick={() => scrollCarousel('right')} aria-label="Scroll editions right">→</button>
 				</div>
+			</div>
+
+			<div class="filter-bar" aria-label="Edition filters">
+				{#each filters as filter}
+					<button class:active={activeFilter === filter} onclick={() => (activeFilter = filter)}>{filter}</button>
+				{/each}
 			</div>
 
 			{#if isLoading && !hasCachedData}
-				<div class="carousel">
-					{#each Array(4) as _, i (i)}
-						<div class="h-80 w-64 flex-none skeleton"></div>
-					{/each}
+				<div class="edition-rail">
+					{#each Array(4) as _, i (i)}<div class="skeleton-card"></div>{/each}
 				</div>
 			{:else if featuredEditions.length > 0}
-				<div
-					bind:this={carouselContainer}
-					class="scrollbar-hide carousel"
-					style="scroll-behavior: smooth; -webkit-overflow-scrolling: touch;"
-				>
+				<div bind:this={carouselContainer} class="edition-rail">
 					{#each featuredEditions as edition (edition.id)}
-						<div class="w-64 flex-none snap-start">
-							<EditionCard {edition} />
-						</div>
+						<div class="edition-wrap"><EditionCard {edition} /></div>
 					{/each}
 				</div>
 			{:else}
 				<div class="empty">No editions available yet.</div>
 			{/if}
-
-			<div class="sec-footer">
-				<a href="{base}/editions" class="btn btn-ghost">
-					View all editions
-					<span class="arrow" aria-hidden="true">↗</span>
-				</a>
-			</div>
+			<a class="text-link" href="{base}/editions">View the full archive ↗</a>
 		</div>
 	</section>
 
-	<!-- ============== PROJECTS (COLLECTIONS) ============== -->
-	<section class="sec sec-paper2">
+	<section class="collections-section">
 		<div class="shell">
-			<div class="sec-head">
-				<div class="sec-num">§ 02 — Collections</div>
-				<div class="sec-head-body">
-					<h2 class="sec-title">Collections as <em>scholarly contexts.</em></h2>
-					<p class="sec-sub">
-						Collections organize related 3D editions by research question, object group, period,
-						provenance, institution, or material context.
-					</p>
-				</div>
+			<div class="section-head narrow">
+				<p class="eyebrow"><span></span> Collections</p>
+				<h2>Every collection is a guided argument through objects.</h2>
 			</div>
 
 			{#if isLoading && !hasCachedData}
-				<div class="projects-grid">
-					{#each Array(4) as _, i (i)}
-						<div class="h-96 skeleton"></div>
-					{/each}
-				</div>
+				<div class="collection-grid">{#each Array(4) as _, i (i)}<div class="skeleton-card tall"></div>{/each}</div>
 			{:else if collections.length > 0}
-				<div class="projects-grid">
+				<div class="collection-grid">
 					{#each collections.slice(0, 4) as collection (collection.id)}
 						<CollectionCard {collection} />
 					{/each}
 				</div>
-
-				{#if collections.length > 4}
-					<div class="sec-footer">
-						<a href="{base}/collections" class="btn btn-ghost">
-							All collections
-							<span class="arrow" aria-hidden="true">↗</span>
-						</a>
-					</div>
-				{/if}
 			{:else}
 				<div class="empty">No collections available yet.</div>
 			{/if}
 		</div>
 	</section>
 
-	<!-- ============== PUBLISH CTA ============== -->
-	<section class="sec">
-		<div class="shell">
-			<div class="publish-plate">
-				<div class="publish-head">
-					<div class="eyebrow eyebrow-on-ink">
-						<span class="dot" aria-hidden="true"></span>
-						<span>Call for editions</span>
-					</div>
-					<h2 class="publish-title">
-						Are you working on a 3D <em>scholarly edition?</em>
-					</h2>
-				</div>
-				<div class="publish-body">
-					<p class="publish-lede">
-						Pure 3D provides the infrastructure and tools to publish your interactive 3D research.
-						Join a growing community of digital humanities scholars.
-					</p>
-					<div class="publish-actions">
-						<a href="{base}/documentation/submission" class="btn btn-accent">
-							Submission guidelines
-							<span class="arrow" aria-hidden="true">→</span>
-						</a>
-						<a href="{base}/documentation" class="btn-on-ink-ghost btn">Read the documentation</a>
-					</div>
-				</div>
+	<section class="workflow-section">
+		<div class="shell workflow-card">
+			<div>
+				<p class="eyebrow inverse"><span></span> Editorial infrastructure</p>
+				<h2>From proposal to preserved edition.</h2>
+				<p>
+					A beautiful 3D archive still needs boring infrastructure: review states, metadata,
+					versioning, documentation, and long-term access. PURE3D makes those parts visible without making them heavy.
+				</p>
 			</div>
+			<ol>
+				{#each workflow as item, i}
+					<li><span>{String(i + 1).padStart(2, '0')}</span>{item}</li>
+				{/each}
+			</ol>
 		</div>
 	</section>
 
-	<!-- ============== PARTNERS ============== -->
-	<section class="partners-sec">
-		<div class="shell">
-			<div class="partners-head">Supported by</div>
-			<div class="partners-list">
-				<span>Maastricht University</span>
-				<span class="dot-sep" aria-hidden="true">·</span>
-				<span>Platform Digital Infrastructure</span>
-				<span class="dot-sep" aria-hidden="true">·</span>
-				<span>KNAW Digital Infrastructure</span>
+	<section class="final-cta">
+		<div class="shell cta-panel">
+			<p class="eyebrow"><span></span> Dynamic3D ready</p>
+			<h2>Let objects carry uncertainty, hypotheses, and time.</h2>
+			<p>
+				The next version of 3D scholarship should not flatten complexity. It should let readers move through it.
+			</p>
+			<div class="hero-actions center">
+				<a class="button primary" href="{base}/documentation">Read documentation</a>
+				<a class="button ghost" href="{base}/collections">View collections</a>
 			</div>
 		</div>
 	</section>
 </div>
 
 <style>
-	/* scoped reset for design-system typography on this page */
-	.p3d {
-		background: var(--color-base-100);
-		color: var(--color-base-content);
+	.p3d-landing {
+		--paper: #f4f1eb;
+		--paper-2: #ebe4d6;
+		--ink: #11110f;
+		--muted: #676154;
+		--rule: rgba(17, 17, 15, 0.12);
+		--red: oklch(62% 0.19 35);
+		--blue: #73d5ff;
+		--green: #b7ffcf;
+		background:
+			radial-gradient(circle at 50% -20%, rgba(255, 97, 54, 0.16), transparent 36rem),
+			linear-gradient(180deg, #f8f4eb 0%, var(--paper) 42%, #e8dfce 100%);
+		color: var(--ink);
 		font-family: var(--font-sans);
-		--rule: color-mix(in srgb, var(--color-base-content) 10%, transparent);
-		--rule-strong: color-mix(in srgb, var(--color-base-content) 20%, transparent);
+		overflow: clip;
 	}
-	.p3d :global(em) {
-		font-family: var(--font-serif);
-		font-style: italic;
-		font-weight: 400;
-		color: var(--color-vermillion-ink);
-	}
+	.p3d-landing :global(a),
+	.p3d-landing button { -webkit-tap-highlight-color: transparent; }
+	.shell { width: min(1180px, calc(100% - 40px)); margin: 0 auto; }
+	.eyebrow { display: flex; align-items: center; gap: 0.7rem; margin: 0 0 1.2rem; color: var(--muted); font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; }
+	.eyebrow span { width: 0.48rem; height: 0.48rem; border-radius: 999px; background: var(--red); box-shadow: 0 0 24px rgba(239, 83, 45, 0.8); }
+	.eyebrow.inverse { color: rgba(244, 241, 235, 0.64); }
 
-	/* layout shell */
-	.shell {
-		max-width: 1280px;
-		margin: 0 auto;
-		padding: 0 48px;
-	}
-	@media (max-width: 900px) {
-		.shell {
-			padding: 0 24px;
-		}
-	}
+	.hero { min-height: 92svh; position: relative; display: grid; place-items: center; padding: 7rem 0 5rem; isolation: isolate; }
+	.hero::before { content: ''; position: absolute; inset: 0; background-image: linear-gradient(rgba(17,17,15,.055) 1px, transparent 1px), linear-gradient(90deg, rgba(17,17,15,.055) 1px, transparent 1px); background-size: 72px 72px; mask-image: radial-gradient(circle at 65% 40%, #000, transparent 72%); z-index: -2; }
+	.ambient { position: absolute; border-radius: 999px; filter: blur(60px); opacity: .75; z-index: -1; transform: translate(calc(var(--mx) * 60px), calc(var(--my) * 60px)); }
+	.ambient-a { width: 42vw; height: 42vw; right: -12vw; top: 12vh; background: rgba(115, 213, 255, 0.28); }
+	.ambient-b { width: 32vw; height: 32vw; left: -10vw; bottom: 4vh; background: rgba(255, 83, 45, 0.26); }
+	.hero-shell { display: grid; grid-template-columns: minmax(0, 0.96fr) minmax(360px, 1.04fr); gap: clamp(2rem, 6vw, 6rem); align-items: center; }
+	.hero h1 { max-width: 11ch; margin: 0; font-size: clamp(4rem, 10vw, 9.6rem); line-height: .82; letter-spacing: -0.075em; font-weight: 600; text-wrap: balance; }
+	.lede { max-width: 42rem; margin: 2rem 0 0; color: #38342d; font-family: var(--font-serif); font-size: clamp(1.2rem, 2vw, 1.75rem); line-height: 1.35; }
+	.hero-actions { display: flex; flex-wrap: wrap; gap: .8rem; margin-top: 2rem; }
+	.hero-actions.center { justify-content: center; }
+	.button { display: inline-flex; align-items: center; justify-content: center; gap: .65rem; min-height: 3.1rem; padding: 0 1.2rem; border: 1px solid var(--rule); border-radius: 999px; color: var(--ink); text-decoration: none; font-weight: 600; transition: transform .18s ease, background .18s ease, border-color .18s ease; }
+	.button:hover { transform: translateY(-2px); border-color: rgba(17,17,15,.3); }
+	.button.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); box-shadow: 0 18px 50px rgba(17,17,15,.22); }
+	.button.ghost { background: rgba(255,255,255,.28); backdrop-filter: blur(18px); }
 
-	/* eyebrow pattern (mono label with vermillion dot) */
-	.eyebrow {
-		display: flex;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: 12px;
-		font-family: var(--font-mono);
-		font-size: 11.5px;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: var(--color-ink-3);
-	}
-	.eyebrow .dot {
-		width: 6px;
-		height: 6px;
-		border-radius: 50%;
-		background: var(--color-vermillion);
-	}
-	/* ---------- HERO ---------- */
-	.hero-sec {
-		padding: 128px 0 96px;
-		border-bottom: 1px solid var(--rule);
-	}
-	.hero-h1 {
-		font-family: var(--font-sans);
-		font-weight: 500;
-		font-size: clamp(42px, 7.4vw, 104px);
-		line-height: 0.96;
-		letter-spacing: -0.035em;
-		margin: 48px 0 32px;
-		text-wrap: balance;
-	}
-	.hero-grid {
-		display: grid;
-		grid-template-columns: 1.3fr 1fr;
-		gap: 96px;
-		align-items: start;
-		margin-top: 48px;
-	}
-	@media (max-width: 900px) {
-		.hero-grid {
-			grid-template-columns: 1fr;
-			gap: 32px;
-		}
-	}
-	.hero-lede {
-		font-family: var(--font-serif);
-		font-size: 22px;
-		line-height: 1.4;
-		color: var(--color-ink-2);
-		max-width: 48ch;
-		font-weight: 400;
-		margin: 0;
-		text-wrap: pretty;
-	}
-	.hero-actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 12px;
-		justify-self: start;
-	}
-	.hero-side {
-		display: grid;
-		gap: 22px;
-		justify-items: start;
-	}
-	.hero-editions {
-		width: min(100%, 520px);
-	}
-	.hero-editions-label {
-		font-family: var(--font-mono);
-		font-size: 10.5px;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-		color: var(--color-ink-4);
-		margin-bottom: 10px;
-	}
-	.hero-cover-row {
-		display: flex;
-		align-items: flex-end;
-		gap: 8px;
-		min-height: 112px;
-		overflow-x: auto;
-		overflow-y: hidden;
-		padding: 4px 2px 10px;
-		perspective: 900px;
-		scroll-snap-type: x proximity;
-		-webkit-overflow-scrolling: touch;
-	}
-	.hero-cover-row::-webkit-scrollbar {
-		display: none;
-	}
-	.hero-cover-row {
-		-ms-overflow-style: none;
-		scrollbar-width: none;
-	}
-	.hero-cover {
-		position: relative;
-		flex: 0 0 86px;
-		height: 108px;
-		display: block;
-		overflow: hidden;
-		border: 1px solid var(--rule-strong);
-		border-radius: 3px;
-		background: var(--color-paper-2);
-		box-shadow: 0 12px 28px rgba(16, 16, 15, 0.08);
-		transform: translateY(0);
-		transition:
-			transform 0.16s ease,
-			border-color 0.16s ease,
-			box-shadow 0.16s ease;
-		scroll-snap-align: start;
-	}
-	.hero-cover:hover {
-		border-color: var(--color-ink);
-		box-shadow: 0 16px 34px rgba(16, 16, 15, 0.12);
-		transform: translateY(-3px);
-	}
-	.hero-cover-raised {
-		transform: translateY(-10px);
-	}
-	.hero-cover-raised:hover {
-		transform: translateY(-13px);
-	}
-	.hero-cover img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		display: block;
-	}
-	.hero-cover::after {
-		content: '';
-		position: absolute;
-		inset: 0;
-		background: linear-gradient(to top, rgba(16, 16, 15, 0.72), transparent 48%);
-		opacity: 0;
-		transition: opacity 0.16s ease;
-	}
-	.hero-cover:hover::after,
-	.hero-cover:focus-visible::after {
-		opacity: 1;
-	}
-	.hero-cover-meta {
-		position: absolute;
-		left: 8px;
-		right: 8px;
-		bottom: 8px;
-		z-index: 1;
-		display: grid;
-		gap: 3px;
-		font-family: var(--font-sans);
-		font-size: 10px;
-		line-height: 1.15;
-		color: var(--color-paper);
-		opacity: 0;
-		transform: translateY(4px);
-		transition:
-			opacity 0.16s ease,
-			transform 0.16s ease;
-	}
-	.hero-cover-meta span:first-child {
-		font-family: var(--font-mono);
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: rgba(244, 241, 235, 0.72);
-	}
-	.hero-cover:hover .hero-cover-meta,
-	.hero-cover:focus-visible .hero-cover-meta {
-		opacity: 1;
-		transform: translateY(0);
-	}
-	@media (max-width: 900px) {
-		.hero-grid {
-			margin-top: 40px;
-		}
-		.hero-side {
-			gap: 24px;
-		}
-		.hero-editions {
-			width: 100%;
-		}
-		.hero-cover {
-			flex-basis: 84px;
-			height: 106px;
-		}
-	}
-	@media (max-width: 520px) {
-		.hero-cover-row {
-			margin-right: -24px;
-			padding-right: 24px;
-		}
-	}
+	.object-stage { min-height: 620px; position: relative; display: grid; place-items: center; perspective: 1100px; transform-style: preserve-3d; }
+	.object-stage::before { content: ''; position: absolute; width: min(44vw, 560px); aspect-ratio: 1; border-radius: 999px; background: radial-gradient(circle, rgba(255,255,255,.72), rgba(255,255,255,.08) 42%, transparent 68%); transform: translate3d(calc(var(--mx) * -28px), calc(var(--my) * -28px), -80px); }
+	.model-core { width: min(34vw, 420px); aspect-ratio: 1; position: relative; transform-style: preserve-3d; transform: rotateX(calc(var(--my) * -22deg + 58deg)) rotateZ(calc(var(--mx) * 22deg - 30deg)); transition: transform .2s ease-out; }
+	.facet { position: absolute; inset: 16%; border: 1px solid rgba(255,255,255,.42); background: linear-gradient(135deg, rgba(255,255,255,.75), rgba(115,213,255,.28), rgba(255,84,45,.26)); box-shadow: inset 0 0 50px rgba(255,255,255,.42), 0 28px 90px rgba(17,17,15,.24); clip-path: polygon(50% 0, 100% 32%, 84% 100%, 16% 100%, 0 32%); }
+	.f1 { transform: translateZ(74px); }
+	.f2 { transform: rotateY(72deg) translateZ(74px); opacity: .74; }
+	.f3 { transform: rotateY(-72deg) translateZ(74px); opacity: .7; }
+	.f4 { transform: rotateX(72deg) translateZ(74px); opacity: .58; }
+	.orbit { position: absolute; width: min(42vw, 540px); aspect-ratio: 1; border: 1px solid rgba(17,17,15,.18); border-radius: 50%; transform: rotateX(72deg) rotateZ(calc(var(--mx) * 18deg)); }
+	.orbit-two { width: min(32vw, 420px); transform: rotateX(62deg) rotateY(38deg) rotateZ(calc(var(--my) * -24deg)); border-color: rgba(239,83,45,.3); }
+	.hotspot, .point { position: absolute; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 8px rgba(239,83,45,.12), 0 0 22px rgba(239,83,45,.72); }
+	.hotspot { width: 12px; height: 12px; transform: translateZ(116px); animation: pulse 2.2s ease-in-out infinite; }
+	.h1 { top: 25%; left: 52%; } .h2 { top: 62%; left: 28%; animation-delay: .5s; } .h3 { top: 52%; right: 18%; animation-delay: 1s; }
+	.point { width: 4px; height: 4px; left: calc(var(--x) * 1%); top: calc(var(--y) * 1%); opacity: .44; background: #111; transform: translate(calc(var(--mx) * 30px), calc(var(--my) * 30px)); animation: float 5s ease-in-out infinite; animation-delay: calc(var(--i) * -0.14s); }
+	.stage-ui { position: absolute; z-index: 2; display: grid; gap: .18rem; padding: .75rem .9rem; border: 1px solid rgba(17,17,15,.13); border-radius: 18px; background: rgba(248,244,235,.6); backdrop-filter: blur(20px); box-shadow: 0 14px 50px rgba(17,17,15,.08); transform: translate(calc(var(--mx) * -18px), calc(var(--my) * -18px)); }
+	.stage-ui span { color: var(--muted); font-family: var(--font-mono); font-size: .66rem; text-transform: uppercase; letter-spacing: .1em; }
+	.stage-ui strong { font-size: .92rem; } .stage-ui.top { top: 7%; left: 16%; } .stage-ui.right { right: 3%; top: 39%; } .stage-ui.bottom { bottom: 11%; left: 7%; }
 
-	/* ---------- BUTTONS (design-system flavor, paired with DaisyUI class names) ---------- */
-	.btn {
-		display: inline-flex;
-		align-items: center;
-		gap: 10px;
-		font-family: var(--font-sans);
-		font-weight: 500;
-		font-size: 14px;
-		letter-spacing: -0.005em;
-		padding: 12px 18px;
-		border-radius: 2px;
-		cursor: pointer;
-		border: 1px solid transparent;
-		background: transparent;
-		text-decoration: none;
-		transition:
-			transform 0.08s ease,
-			background 0.15s ease,
-			border-color 0.15s ease,
-			color 0.15s ease;
-	}
-	.btn:active {
-		transform: translateY(1px);
-	}
-	.btn-primary {
-		background: var(--color-ink);
-		color: var(--color-paper);
-	}
-	.btn-primary:hover {
-		background: var(--color-ink-2);
-	}
-	.btn-secondary {
-		background: transparent;
-		color: var(--color-ink);
-		border-color: var(--rule-strong);
-	}
-	.btn-secondary:hover {
-		border-color: var(--color-ink);
-	}
-	.btn-ghost {
-		background: transparent;
-		color: var(--color-ink-2);
-		border-color: var(--rule);
-	}
-	.btn-ghost:hover {
-		background: var(--color-paper-2);
-		border-color: var(--rule-strong);
-	}
-	.btn-accent {
-		background: var(--color-vermillion);
-		color: #fff;
-	}
-	.btn-accent:hover {
-		background: var(--color-vermillion-ink);
-	}
-	.btn-on-ink-ghost {
-		color: var(--color-paper);
-		border-color: rgba(244, 241, 235, 0.35);
-	}
-	.btn-on-ink-ghost:hover {
-		border-color: var(--color-paper);
-		background: rgba(244, 241, 235, 0.08);
-	}
-	.arrow {
-		font-family: var(--font-sans);
-		font-size: 15px;
-		line-height: 1;
-	}
+	.metrics { border-block: 1px solid var(--rule); background: rgba(255,255,255,.25); backdrop-filter: blur(18px); }
+	.metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); }
+	.metric-grid div { padding: 1.6rem 1.2rem; border-right: 1px solid var(--rule); }
+	.metric-grid div:last-child { border-right: 0; }
+	.metric-grid span { display: block; font-size: clamp(2rem, 4vw, 4rem); line-height: .9; letter-spacing: -.05em; font-weight: 600; }
+	.metric-grid p { margin: .5rem 0 0; color: var(--muted); font-family: var(--font-mono); font-size: .74rem; text-transform: uppercase; letter-spacing: .08em; }
 
-	/* ---------- STATS STRIP ---------- */
-	.stats-strip {
-		padding: 40px 0;
-		border-bottom: 1px solid var(--rule);
-	}
-	.stats-grid {
-		margin: 0;
-		display: grid;
-		grid-template-columns: repeat(4, 1fr);
-		gap: 48px;
-	}
-	@media (max-width: 900px) {
-		.stats-grid {
-			grid-template-columns: repeat(2, 1fr);
-			gap: 24px;
-		}
-	}
-	.stat dt {
-		font-family: var(--font-mono);
-		font-size: 10.5px;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: var(--color-ink-4);
-		margin-bottom: 6px;
-	}
-	.stat dd {
-		margin: 0;
-		font-family: var(--font-sans);
-		font-weight: 500;
-		font-size: 34px;
-		letter-spacing: -0.025em;
-		line-height: 1;
-		color: var(--color-ink);
-	}
-	.stat dd.stat-text {
-		font-family: var(--font-serif);
-		font-style: italic;
-		font-weight: 400;
-		font-size: 17px;
-		line-height: 1.3;
-		color: var(--color-ink-2);
-		letter-spacing: 0;
-	}
+	.story, .editions-section, .collections-section, .workflow-section, .final-cta { padding: clamp(5rem, 9vw, 8rem) 0; }
+	.story-grid { display: grid; grid-template-columns: .82fr 1.18fr; gap: clamp(2rem, 7vw, 7rem); align-items: start; }
+	.sticky-panel { position: sticky; top: 6rem; }
+	.sticky-panel h2, .section-head h2, .workflow-card h2, .cta-panel h2 { margin: 0; font-size: clamp(2.4rem, 6vw, 6rem); line-height: .9; letter-spacing: -.06em; text-wrap: balance; }
+	.sticky-panel p:not(.eyebrow), .workflow-card p, .cta-panel p { color: #474238; font-family: var(--font-serif); font-size: 1.2rem; line-height: 1.55; }
+	.story-steps { display: grid; gap: 1rem; }
+	.story-steps article { min-height: 56vh; display: flex; flex-direction: column; justify-content: end; padding: clamp(1.4rem, 4vw, 3rem); border: 1px solid var(--rule); border-radius: 34px; background: linear-gradient(145deg, rgba(255,255,255,.62), rgba(255,255,255,.14)); box-shadow: 0 24px 90px rgba(17,17,15,.08); }
+	.story-steps span { color: var(--red); font-family: var(--font-mono); font-size: .75rem; text-transform: uppercase; letter-spacing: .1em; }
+	.story-steps h3 { margin: 1rem 0; font-size: clamp(2rem, 5vw, 4.8rem); line-height: .9; letter-spacing: -.055em; }
+	.story-steps p { max-width: 38rem; margin: 0; color: var(--muted); font-family: var(--font-serif); font-size: 1.24rem; line-height: 1.45; }
 
-	/* ---------- SECTIONS ---------- */
-	.sec {
-		padding: 128px 0;
-		border-bottom: 1px solid var(--rule);
-	}
-	.sec-paper2 {
-		background: var(--color-base-200);
-	}
-	@media (max-width: 900px) {
-		.sec {
-			padding: 80px 0;
-		}
-	}
+	.section-head { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-bottom: 2rem; }
+	.section-head.narrow { display: block; max-width: 760px; }
+	.carousel-controls { display: flex; gap: .5rem; }
+	.carousel-controls button { width: 3rem; height: 3rem; border: 1px solid var(--rule); border-radius: 50%; background: rgba(255,255,255,.42); cursor: pointer; font-size: 1.2rem; }
+	.filter-bar { display: flex; gap: .55rem; overflow-x: auto; padding-bottom: 1rem; margin-bottom: 1rem; scrollbar-width: none; }
+	.filter-bar button { flex: 0 0 auto; padding: .7rem 1rem; border: 1px solid var(--rule); border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer; font-weight: 600; }
+	.filter-bar button.active { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+	.edition-rail { display: flex; gap: 1rem; overflow-x: auto; padding: .5rem 0 1.4rem; scroll-snap-type: x mandatory; scrollbar-width: none; }
+	.edition-rail::-webkit-scrollbar, .filter-bar::-webkit-scrollbar { display: none; }
+	.edition-wrap { flex: 0 0 18rem; scroll-snap-align: start; transition: transform .18s ease; }
+	.edition-wrap:hover { transform: translateY(-6px) rotate(-.5deg); }
+	.text-link { display: inline-flex; margin-top: 1rem; color: var(--ink); font-weight: 700; text-decoration-thickness: 1px; text-underline-offset: 5px; }
+	.collection-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin-top: 2rem; }
+	.skeleton-card, .empty { min-height: 22rem; border-radius: 28px; border: 1px solid var(--rule); background: linear-gradient(90deg, rgba(255,255,255,.26), rgba(255,255,255,.62), rgba(255,255,255,.26)); animation: shimmer 1.8s infinite linear; }
+	.skeleton-card.tall { min-height: 27rem; }
+	.empty { display: grid; place-items: center; color: var(--muted); font-family: var(--font-serif); animation: none; }
 
-	.sec-head {
-		display: grid;
-		grid-template-columns: 120px 1fr auto;
-		gap: 32px;
-		align-items: baseline;
-		margin-bottom: 64px;
-	}
-	@media (max-width: 900px) {
-		.sec-head {
-			grid-template-columns: 1fr;
-			gap: 8px;
-		}
-		.sec-actions {
-			margin-top: 16px;
-		}
-	}
-	.sec-num {
-		font-family: var(--font-mono);
-		font-size: 11px;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-		color: var(--color-ink-4);
-	}
-	.sec-title {
-		font-family: var(--font-sans);
-		font-weight: 500;
-		font-size: clamp(28px, 3.8vw, 48px);
-		line-height: 1.05;
-		letter-spacing: -0.025em;
-		margin: 0 0 12px;
-	}
-	.sec-sub {
-		font-family: var(--font-serif);
-		font-size: 18px;
-		line-height: 1.5;
-		color: var(--color-ink-2);
-		max-width: 60ch;
-		margin: 0;
-		text-wrap: pretty;
-	}
-	.sec-actions {
-		display: flex;
-		gap: 4px;
-		align-self: end;
-	}
-	.nav-btn {
-		width: 36px;
-		height: 36px;
-		display: grid;
-		place-items: center;
-		background: transparent;
-		color: var(--color-ink-3);
-		border: 1px solid var(--rule-strong);
-		border-radius: 2px;
-		cursor: pointer;
-		transition:
-			color 0.15s,
-			border-color 0.15s;
-	}
-	.nav-btn:hover {
-		color: var(--color-ink);
-		border-color: var(--color-ink);
-	}
-	.sec-footer {
-		margin-top: 48px;
-		display: flex;
-		justify-content: center;
-	}
-	.empty {
-		padding: 48px 0;
-		text-align: center;
-		font-family: var(--font-serif);
-		font-style: italic;
-		color: var(--color-ink-4);
-	}
+	.workflow-section { background: #11110f; color: var(--paper); position: relative; }
+	.workflow-section::before { content: ''; position: absolute; inset: 0; background-image: linear-gradient(rgba(244,241,235,.055) 1px, transparent 1px), linear-gradient(90deg, rgba(244,241,235,.055) 1px, transparent 1px); background-size: 74px 74px; mask-image: radial-gradient(circle at center, #000, transparent 78%); }
+	.workflow-card { position: relative; display: grid; grid-template-columns: .9fr 1.1fr; gap: clamp(2rem, 7vw, 7rem); align-items: center; }
+	.workflow-card h2 { color: var(--paper); }
+	.workflow-card p { color: rgba(244,241,235,.72); }
+	.workflow-card ol { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; counter-reset: step; }
+	.workflow-card li { display: flex; align-items: center; gap: 1rem; padding: 1rem; border: 1px solid rgba(244,241,235,.14); border-radius: 18px; background: rgba(244,241,235,.055); color: var(--paper); font-weight: 600; }
+	.workflow-card li span { display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: 50%; background: var(--red); color: white; font-family: var(--font-mono); font-size: .72rem; }
 
-	/* ---------- CAROUSEL ---------- */
-	.carousel {
-		display: flex;
-		gap: 16px;
-		overflow-x: auto;
-		padding-bottom: 16px;
-		scroll-snap-type: x mandatory;
-	}
-	.carousel :global(> div) {
-		scroll-snap-align: start;
-	}
+	.final-cta { text-align: center; }
+	.cta-panel { padding: clamp(2rem, 7vw, 6rem); border: 1px solid var(--rule); border-radius: 42px; background: radial-gradient(circle at 50% 0, rgba(255,83,45,.18), transparent 44%), rgba(255,255,255,.34); box-shadow: 0 30px 110px rgba(17,17,15,.1); }
+	.cta-panel .eyebrow { justify-content: center; }
+	.cta-panel p { max-width: 42rem; margin-inline: auto; }
 
-	/* ---------- PROJECTS GRID ---------- */
-	.projects-grid {
-		display: grid;
-		grid-template-columns: repeat(4, 1fr);
-		gap: 16px;
-	}
-	@media (max-width: 1100px) {
-		.projects-grid {
-			grid-template-columns: repeat(3, 1fr);
-		}
-	}
-	@media (max-width: 900px) {
-		.projects-grid {
-			grid-template-columns: repeat(2, 1fr);
-		}
-	}
-	@media (max-width: 500px) {
-		.projects-grid {
-			grid-template-columns: 1fr;
-		}
-	}
+	@keyframes pulse { 50% { transform: translateZ(116px) scale(1.4); opacity: .62; } }
+	@keyframes float { 50% { translate: 0 -12px; opacity: .88; } }
+	@keyframes shimmer { from { background-position: -300px 0; } to { background-position: 300px 0; } }
 
-	/* ---------- PUBLISH CTA ---------- */
-	.publish-plate {
-		background: var(--color-ink);
-		color: var(--color-paper);
-		border-radius: 8px;
-		padding: 80px 64px;
-		display: grid;
-		grid-template-columns: 1.1fr 1fr;
-		gap: 64px;
-		align-items: end;
-		position: relative;
-		overflow: hidden;
+	@media (max-width: 980px) {
+		.hero-shell, .story-grid, .workflow-card { grid-template-columns: 1fr; }
+		.object-stage { min-height: 520px; order: -1; }
+		.hero h1 { max-width: 9ch; }
+		.metric-grid, .collection-grid { grid-template-columns: repeat(2, 1fr); }
+		.sticky-panel { position: static; }
+		.story-steps article { min-height: 360px; }
 	}
-	@media (max-width: 900px) {
-		.publish-plate {
-			grid-template-columns: 1fr;
-			gap: 32px;
-			padding: 48px 32px;
-		}
+	@media (max-width: 620px) {
+		.shell { width: min(100% - 28px, 1180px); }
+		.hero { min-height: auto; padding-top: 4.5rem; }
+		.object-stage { min-height: 390px; }
+		.model-core { width: 280px; }
+		.orbit { width: 330px; }
+		.stage-ui { display: none; }
+		.metric-grid, .collection-grid { grid-template-columns: 1fr; }
+		.metric-grid div { border-right: 0; border-bottom: 1px solid var(--rule); }
+		.section-head { align-items: start; flex-direction: column; }
 	}
-	.publish-plate::before {
-		content: '';
-		position: absolute;
-		inset: 0;
-		background-image:
-			linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-			linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-		background-size: 80px 80px;
-		mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
-		pointer-events: none;
-	}
-	.publish-head,
-	.publish-body {
-		position: relative;
-	}
-	.eyebrow-on-ink {
-		color: rgba(244, 241, 235, 0.6);
-		margin-bottom: 24px;
-	}
-	.publish-title {
-		font-family: var(--font-sans);
-		font-weight: 500;
-		font-size: clamp(32px, 4.2vw, 52px);
-		letter-spacing: -0.028em;
-		line-height: 1.02;
-		margin: 0;
-		text-wrap: balance;
-	}
-	.publish-title :global(em) {
-		color: #f4b5a0;
-	}
-	.publish-lede {
-		font-family: var(--font-serif);
-		font-size: 18px;
-		line-height: 1.5;
-		color: rgba(244, 241, 235, 0.78);
-		margin: 0 0 32px;
-		max-width: 50ch;
-	}
-	.publish-actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 12px;
-	}
-
-	/* ---------- PARTNERS ---------- */
-	.partners-sec {
-		padding: 64px 0 80px;
-	}
-	.partners-head {
-		font-family: var(--font-mono);
-		font-size: 11px;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-		color: var(--color-ink-4);
-		text-align: center;
-		margin-bottom: 24px;
-	}
-	.partners-list {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: 12px 18px;
-		font-family: var(--font-sans);
-		font-size: 13.5px;
-		color: var(--color-ink-3);
-	}
-	.partners-list .dot-sep {
-		color: var(--color-ink-4);
-		opacity: 0.5;
-	}
-
-	/* ---------- UTIL ---------- */
-	.scrollbar-hide {
-		-ms-overflow-style: none;
-		scrollbar-width: none;
-	}
-	.scrollbar-hide::-webkit-scrollbar {
-		display: none;
-	}
-	.w-64 {
-		width: 16rem;
-	}
-	.flex-none {
-		flex: none;
-	}
-	.snap-start {
-		scroll-snap-align: start;
-	}
-	.h-80 {
-		height: 20rem;
-	}
-	.h-96 {
-		height: 24rem;
-	}
-	.skeleton {
-		background: var(--color-base-300);
-		border-radius: 4px;
-		animation: pulse 1.6s ease-in-out infinite;
-	}
-	@keyframes pulse {
-		0%,
-		100% {
-			opacity: 1;
-		}
-		50% {
-			opacity: 0.55;
-		}
+	@media (prefers-reduced-motion: reduce) {
+		*, *::before, *::after { animation: none !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+		.model-core, .ambient, .stage-ui, .point { transform: none !important; }
 	}
 </style>
