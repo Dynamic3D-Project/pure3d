@@ -83,6 +83,32 @@
 			isLoading = false;
 		}
 	});
+
+	const storySteps = [
+		{
+			kicker: '01 · Capture',
+			title: 'Start with the object.',
+			text: 'A scan, mesh, point cloud, or reconstruction becomes the primary scholarly surface — not an illustration after the article.'
+		},
+		{
+			kicker: '02 · Annotate',
+			title: 'Attach arguments to form.',
+			text: 'Hotspots, layers, provenance, uncertainty, bibliography, and interpretation stay close to the part of the model they describe.'
+		},
+		{
+			kicker: '03 · Review',
+			title: 'Make it citable and durable.',
+			text: 'Editors and reviewers can evaluate both scholarship and 3D evidence before publication, preservation, and reuse.'
+		}
+	];
+	const workflow = [
+		'Proposal',
+		'Draft edition',
+		'Editorial review',
+		'Revision',
+		'Publication',
+		'Preservation'
+	];
 </script>
 
 <svelte:head>
@@ -165,7 +191,7 @@
 	<section class="stats-strip">
 		<div class="shell">
 			<dl class="stats-grid">
-				<div class="stat">
+				<a class="stat-link stat" href={`${base}/editions`}>
 					<dt>3D Editions</dt>
 					<dd>
 						{#if isLoading && !hasCachedData}
@@ -174,8 +200,8 @@
 							{totalEditions}
 						{/if}
 					</dd>
-				</div>
-				<div class="stat">
+				</a>
+				<a class="stat-link stat" href={`${base}/collections`}>
 					<dt>Collections</dt>
 					<dd>
 						{#if isLoading && !hasCachedData}
@@ -184,7 +210,7 @@
 							{totalCollections}
 						{/if}
 					</dd>
-				</div>
+				</a>
 				<div class="stat">
 					<dt>Audience</dt>
 					<dd class="stat-text">Curators · researchers · students</dd>
@@ -315,6 +341,50 @@
 		</div>
 	</section>
 
+	<section class="story">
+		<div class="shell story-grid">
+			<div class="sticky-panel">
+				<p class="eyebrow"><span></span> From object to argument</p>
+				<h2>The model is not decoration. It is the reading interface.</h2>
+				<p>
+					The landing page should behave like a scholarly instrument: cursor movement reveals depth,
+					scroll reveals evidence, and each interaction clarifies what can be cited, reviewed, and
+					preserved.
+				</p>
+			</div>
+			<div class="story-steps">
+				{#each storySteps as step (step.kicker)}
+					<article>
+						<span>{step.kicker}</span>
+						<h3>{step.title}</h3>
+						<p>{step.text}</p>
+					</article>
+				{/each}
+			</div>
+		</div>
+	</section>
+
+	<!-- ============== Proposal steps ============== -->
+	<section class="workflow-section">
+		<div class="shell workflow-card">
+			<div>
+				<p class="eyebrow inverse"><span></span> Editorial infrastructure</p>
+				<h2>From proposal to preserved edition.</h2>
+				<p>
+					A beautiful 3D archive still needs boring infrastructure: review states, metadata,
+					versioning, documentation, and long-term access. PURE3D makes those parts visible without
+					making them heavy.
+				</p>
+			</div>
+			<ol>
+				{#each workflow as item, i (item)}
+					<li><span>{String(i + 1).padStart(2, '0')}</span>{item}</li>
+				{/each}
+			</ol>
+		</div>
+	</section>
+
+
 	<!-- ============== PUBLISH CTA ============== -->
 	<section class="sec">
 		<div class="shell">
@@ -344,6 +414,7 @@
 			</div>
 		</div>
 	</section>
+
 
 	<!-- ============== PARTNERS ============== -->
 	<section class="partners-sec">
@@ -408,8 +479,31 @@
 	}
 	/* ---------- HERO ---------- */
 	.hero-sec {
+		position: relative;
+		isolation: isolate;
+		overflow: hidden;
 		padding: 128px 0 96px;
 		border-bottom: 1px solid var(--rule);
+		background: linear-gradient(180deg, var(--color-base-100) 0%, var(--color-base-200) 100%);
+	}
+	.hero-sec::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		background-image:
+			linear-gradient(
+				color-mix(in srgb, var(--color-base-content) 5%, transparent) 1px,
+				transparent 1px
+			),
+			linear-gradient(
+				90deg,
+				color-mix(in srgb, var(--color-base-content) 5%, transparent) 1px,
+				transparent 1px
+			);
+		background-size: 72px 72px;
+		mask-image: radial-gradient(circle at 64% 36%, black, transparent 74%);
+		pointer-events: none;
 	}
 	.hero-h1 {
 		font-family: var(--font-sans);
@@ -693,6 +787,14 @@
 		color: var(--color-ink-2);
 		letter-spacing: 0;
 	}
+	.stat-link {
+		text-decoration: none;
+		transition: opacity 0.15s ease;
+	}
+	.stat-link:hover,
+	.stat-link:focus-visible {
+		opacity: 0.72;
+	}
 
 	/* ---------- SECTIONS ---------- */
 	.sec {
@@ -782,6 +884,105 @@
 		font-family: var(--font-serif);
 		font-style: italic;
 		color: var(--color-ink-4);
+	}
+
+	/* ---------- STORY ---------- */
+	.story {
+		padding: 128px 0;
+		border-bottom: 1px solid var(--rule);
+		background:
+			radial-gradient(
+				circle at 80% 20%,
+				color-mix(in srgb, var(--color-vermillion) 12%, transparent),
+				transparent 34rem
+			),
+			var(--color-base-100);
+	}
+	.story-grid {
+		display: grid;
+		grid-template-columns: 0.82fr 1.18fr;
+		gap: clamp(32px, 7vw, 112px);
+		align-items: start;
+	}
+	.sticky-panel {
+		position: sticky;
+		top: 96px;
+	}
+	.story .eyebrow > span {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: var(--color-vermillion);
+		box-shadow: 0 0 24px color-mix(in srgb, var(--color-vermillion) 70%, transparent);
+	}
+	.sticky-panel h2 {
+		margin: 0;
+		font-family: var(--font-sans);
+		font-weight: 500;
+		font-size: clamp(28px, 3.8vw, 48px);
+		line-height: 1.05;
+		letter-spacing: -0.025em;
+		text-wrap: balance;
+	}
+	.sticky-panel p:not(.eyebrow),
+	.story-steps p {
+		font-family: var(--font-serif);
+		font-size: 18px;
+		line-height: 1.5;
+		color: var(--color-ink-2);
+	}
+	.story-steps {
+		display: grid;
+		gap: 16px;
+	}
+	.story-steps article {
+		min-height: 56vh;
+		display: flex;
+		flex-direction: column;
+		justify-content: end;
+		padding: clamp(24px, 4vw, 48px);
+		border: 1px solid var(--rule);
+		border-radius: 34px;
+		background: linear-gradient(
+			145deg,
+			color-mix(in srgb, var(--color-paper) 72%, transparent),
+			color-mix(in srgb, var(--color-paper) 18%, transparent)
+		);
+		box-shadow: 0 24px 90px rgba(16, 16, 15, 0.08);
+	}
+	.story-steps span {
+		color: var(--color-vermillion);
+		font-family: var(--font-mono);
+		font-size: 12px;
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+	}
+	.story-steps h3 {
+		margin: 16px 0;
+		font-family: var(--font-sans);
+		font-weight: 500;
+		font-size: clamp(28px, 3.8vw, 48px);
+		line-height: 1.05;
+		letter-spacing: -0.025em;
+	}
+	.story-steps p {
+		max-width: 38rem;
+		margin: 0;
+		color: var(--color-ink-3);
+	}
+	@media (max-width: 900px) {
+		.story {
+			padding: 80px 0;
+		}
+		.story-grid {
+			grid-template-columns: 1fr;
+		}
+		.sticky-panel {
+			position: static;
+		}
+		.story-steps article {
+			min-height: 360px;
+		}
 	}
 
 	/* ---------- CAROUSEL ---------- */
@@ -881,6 +1082,100 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 12px;
+	}
+
+	/* ---------- WORKFLOW ---------- */
+	.workflow-section {
+		position: relative;
+		overflow: hidden;
+		padding: 112px 0;
+		background: var(--color-ink);
+		color: var(--color-paper);
+	}
+	.workflow-section::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background-image:
+			linear-gradient(rgba(244, 241, 235, 0.04) 1px, transparent 1px),
+			linear-gradient(90deg, rgba(244, 241, 235, 0.04) 1px, transparent 1px);
+		background-size: 80px 80px;
+		mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+		pointer-events: none;
+	}
+	.workflow-card {
+		position: relative;
+		display: grid;
+		grid-template-columns: 0.9fr 1.1fr;
+		gap: clamp(32px, 7vw, 96px);
+		align-items: center;
+	}
+	.workflow-section .eyebrow.inverse {
+		color: rgba(244, 241, 235, 0.6);
+	}
+	.workflow-card .eyebrow > span {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: var(--color-vermillion);
+	}
+	.workflow-section .workflow-card h2 {
+		margin: 0;
+		font-family: var(--font-sans);
+		font-weight: 500;
+		font-size: clamp(32px, 4.2vw, 52px);
+		line-height: 1.02;
+		letter-spacing: -0.028em;
+		color: #f4f1eb;
+		text-wrap: balance;
+	}
+	.workflow-section .workflow-card p:not(.eyebrow) {
+		max-width: 52ch;
+		margin: 24px 0 0;
+		font-family: var(--font-serif);
+		font-weight: 400;
+		font-size: 18px;
+		line-height: 1.5;
+		color: rgba(244, 241, 235, 0.78);
+	}
+	.workflow-card ol {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: 12px;
+	}
+	.workflow-section .workflow-card li {
+		display: flex;
+		align-items: center;
+		gap: 16px;
+		padding: 16px;
+		border: 1px solid rgba(244, 241, 235, 0.14);
+		border-radius: 8px;
+		background: rgba(244, 241, 235, 0.055);
+		color: #f4f1eb;
+		font-family: var(--font-sans);
+		font-weight: 500;
+	}
+	.workflow-card li span {
+		display: grid;
+		place-items: center;
+		width: 36px;
+		height: 36px;
+		border-radius: 50%;
+		background: var(--color-vermillion);
+		color: #fff;
+		font-family: var(--font-mono);
+		font-size: 11px;
+		letter-spacing: 0.06em;
+	}
+	@media (max-width: 900px) {
+		.workflow-section {
+			padding: 80px 0;
+		}
+		.workflow-card {
+			grid-template-columns: 1fr;
+		}
 	}
 
 	/* ---------- PARTNERS ---------- */
