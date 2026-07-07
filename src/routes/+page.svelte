@@ -88,17 +88,23 @@
 		{
 			kicker: '01 · Capture',
 			title: 'Record the object.',
-			text: 'The edition starts from a scan, mesh, point cloud, or reconstruction that can be inspected directly.'
+			text: 'The edition starts from a scan, mesh, point cloud, or reconstruction that can be inspected directly.',
+			image: '/images/landing/capture.png',
+			alt: 'Abstract capture diagram showing a 3D object being recorded'
 		},
 		{
 			kicker: '02 · Annotate',
 			title: 'Document the evidence.',
-			text: 'Annotations connect parts of the model to provenance, uncertainty, bibliography, and interpretation.'
+			text: 'Annotations connect parts of the model to provenance, uncertainty, bibliography, and interpretation.',
+			image: '/images/landing/annotate.png',
+			alt: 'Abstract annotation diagram with evidence connected to a 3D object'
 		},
 		{
 			kicker: '03 · Review',
 			title: 'Publish a stable record.',
-			text: 'Editors and reviewers evaluate the model, metadata, annotations, and interpretation before publication.'
+			text: 'Editors and reviewers evaluate the model, metadata, annotations, and interpretation before publication.',
+			image: '/images/landing/review.png',
+			alt: 'Abstract review diagram showing a stable publication record'
 		}
 	];
 	const workflow = [
@@ -354,6 +360,12 @@
 			<div class="story-steps">
 				{#each storySteps as step (step.kicker)}
 					<article>
+						<img
+							class="story-step-image"
+							src={`${base}${step.image}`}
+							alt={step.alt}
+							loading="lazy"
+						/>
 						<span>{step.kicker}</span>
 						<h3>{step.title}</h3>
 						<p>{step.text}</p>
@@ -952,6 +964,15 @@
 		font-size: 12px;
 		text-transform: uppercase;
 		letter-spacing: 0.1em;
+	}
+	.story-step-image {
+		width: min(100%, 680px);
+		height: clamp(260px, 30vw, 380px);
+		margin: 0 auto auto;
+		object-fit: contain;
+		object-position: center;
+		opacity: 0.86;
+		filter: saturate(0.9) contrast(0.96);
 	}
 	.story-steps h3 {
 		margin: 16px 0;
