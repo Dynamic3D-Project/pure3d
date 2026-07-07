@@ -55,33 +55,37 @@
 		});
 	}
 
-	onMount(async () => {
-		const editionsStale = isStale($editionsStore.lastFetched);
-		const collectionsStale = isStale($collectionsStore.lastFetched);
+	onMount(() => {
+		async function loadData() {
+			const editionsStale = isStale($editionsStore.lastFetched);
+			const collectionsStale = isStale($collectionsStore.lastFetched);
 
-		if (hasCachedData && !editionsStale && !collectionsStale) {
-			isLoading = false;
-			const firstFoldThumbnails = [
-				...$editionsStore.items.slice(0, 15).map((e) => e.thumbnail),
-				...$collectionsStore.items.slice(0, 15).map((c) => c.thumbnail)
-			];
-			preloadImages(firstFoldThumbnails);
-			return;
+			if (hasCachedData && !editionsStale && !collectionsStale) {
+				isLoading = false;
+				const firstFoldThumbnails = [
+					...$editionsStore.items.slice(0, 15).map((e) => e.thumbnail),
+					...$collectionsStore.items.slice(0, 15).map((c) => c.thumbnail)
+				];
+				preloadImages(firstFoldThumbnails);
+				return;
+			}
+
+			try {
+				const { editions, collections: cols } = await fetchAllData();
+
+				const firstFoldThumbnails = [
+					...editions.slice(0, 15).map((e) => e.thumbnail),
+					...cols.slice(0, 15).map((c) => c.thumbnail)
+				];
+				preloadImages(firstFoldThumbnails);
+			} catch (error) {
+				console.error('Error loading data:', error);
+			} finally {
+				isLoading = false;
+			}
 		}
 
-		try {
-			const { editions, collections: cols } = await fetchAllData();
-
-			const firstFoldThumbnails = [
-				...editions.slice(0, 15).map((e) => e.thumbnail),
-				...cols.slice(0, 15).map((c) => c.thumbnail)
-			];
-			preloadImages(firstFoldThumbnails);
-		} catch (error) {
-			console.error('Error loading data:', error);
-		} finally {
-			isLoading = false;
-		}
+		loadData();
 	});
 
 	const storySteps = [
@@ -948,6 +952,7 @@
 		display: flex;
 		flex-direction: column;
 		justify-content: end;
+		overflow: hidden;
 		padding: clamp(24px, 4vw, 48px);
 		border: 1px solid var(--rule);
 		border-radius: 34px;
@@ -966,9 +971,10 @@
 		letter-spacing: 0.1em;
 	}
 	.story-step-image {
-		width: min(100%, 680px);
-		height: clamp(260px, 30vw, 380px);
-		margin: 0 auto auto;
+		width: min(112%, 820px);
+		max-width: none;
+		height: clamp(320px, 34vw, 460px);
+		margin: -24px auto auto;
 		object-fit: contain;
 		object-position: center;
 		opacity: 0.86;
@@ -999,6 +1005,11 @@
 		}
 		.story-steps article {
 			min-height: 360px;
+		}
+		.story-step-image {
+			width: 100%;
+			height: clamp(240px, 58vw, 340px);
+			margin: 0 auto auto;
 		}
 	}
 
