@@ -87,18 +87,18 @@
 	const storySteps = [
 		{
 			kicker: '01 · Capture',
-			title: 'Start with the object.',
-			text: 'A scan, mesh, point cloud, or reconstruction becomes the primary scholarly surface — not an illustration after the article.'
+			title: 'Record the object.',
+			text: 'The edition starts from a scan, mesh, point cloud, or reconstruction that can be inspected directly.'
 		},
 		{
 			kicker: '02 · Annotate',
-			title: 'Attach arguments to form.',
-			text: 'Hotspots, layers, provenance, uncertainty, bibliography, and interpretation stay close to the part of the model they describe.'
+			title: 'Document the evidence.',
+			text: 'Annotations connect parts of the model to provenance, uncertainty, bibliography, and interpretation.'
 		},
 		{
 			kicker: '03 · Review',
-			title: 'Make it citable and durable.',
-			text: 'Editors and reviewers can evaluate both scholarship and 3D evidence before publication, preservation, and reuse.'
+			title: 'Publish a stable record.',
+			text: 'Editors and reviewers evaluate the model, metadata, annotations, and interpretation before publication.'
 		}
 	];
 	const workflow = [
@@ -344,12 +344,11 @@
 	<section class="story">
 		<div class="shell story-grid">
 			<div class="sticky-panel">
-				<p class="eyebrow"><span></span> From object to argument</p>
-				<h2>The model is not decoration. It is the reading interface.</h2>
-				<p>
-					The landing page should behave like a scholarly instrument: cursor movement reveals depth,
-					scroll reveals evidence, and each interaction clarifies what can be cited, reviewed, and
-					preserved.
+				<p class="eyebrow"><span></span> 3D evidence</p>
+				<h2>Model as a source.</h2>
+				<p class="mt-4">
+					A 3D edition should make the object, its documentation, and its interpretation available
+					in the same place, so claims can be inspected, cited, reviewed, and preserved.
 				</p>
 			</div>
 			<div class="story-steps">
@@ -371,9 +370,8 @@
 				<p class="eyebrow inverse"><span></span> Editorial infrastructure</p>
 				<h2>From proposal to preserved edition.</h2>
 				<p>
-					A beautiful 3D archive still needs boring infrastructure: review states, metadata,
-					versioning, documentation, and long-term access. PURE3D makes those parts visible without
-					making them heavy.
+					A 3D edition requires review states, metadata, versioning, documentation, and long-term
+					access. PURE3D keeps these publication steps visible throughout the editorial process.
 				</p>
 			</div>
 			<ol>
@@ -383,7 +381,6 @@
 			</ol>
 		</div>
 	</section>
-
 
 	<!-- ============== PUBLISH CTA ============== -->
 	<section class="sec">
@@ -414,7 +411,6 @@
 			</div>
 		</div>
 	</section>
-
 
 	<!-- ============== PARTNERS ============== -->
 	<section class="partners-sec">
