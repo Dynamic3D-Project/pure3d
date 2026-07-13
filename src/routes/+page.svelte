@@ -139,12 +139,12 @@
 		{
 			name: 'Maastricht University',
 			href: 'https://www.maastrichtuniversity.nl',
-			image: '/images/logo_maastricht-university.png'
+			image: '/images/logos/maastricht-university-logo-png-transparent.webp'
 		},
 		{
 			name: 'Platform Digital Infrastructure',
 			href: 'https://pdi-ssh.nl',
-			image: '/images/logo_platform-digitale-infrastructuur.png'
+			image: '/images/logos/PDI_SSH_LOGO_B.webp'
 		},
 		{
 			name: 'KNAW Humanities Cluster',
@@ -154,7 +154,7 @@
 		{
 			name: 'KNAW Digital Infrastructure',
 			href: 'https://di.huc.knaw.nl',
-			image: '/images/logo-knaw-digital-infrastructure.png'
+			image: '/images/logos/logo-knaw-digital-infrastructure.webp'
 		}
 	];
 </script>
@@ -499,12 +499,13 @@
 		<div class="shell">
 			<div class="partners-head">Supported by</div>
 			<div class="partners-list">
+				<!-- eslint-disable svelte/no-navigation-without-resolve -->
 				{#each partnerLogos as partner (partner.name)}
-					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 					<a href={partner.href} target="_blank" rel="noreferrer" aria-label={partner.name}>
 						<img src={`${base}${partner.image}`} alt={partner.name} loading="lazy" />
 					</a>
 				{/each}
+				<!-- eslint-enable svelte/no-navigation-without-resolve -->
 			</div>
 		</div>
 	</section>
