@@ -93,21 +93,21 @@
 			kicker: '01 · Capture',
 			title: 'Record the object.',
 			text: 'The edition starts from a scan, mesh, point cloud, or reconstruction that can be inspected directly.',
-			image: '/images/landing/capture.png',
+			image: '/images/landing/capture.webp',
 			alt: 'Abstract capture diagram showing a 3D object being recorded'
 		},
 		{
 			kicker: '02 · Annotate',
 			title: 'Document the evidence.',
 			text: 'Annotations connect parts of the model to provenance, uncertainty, bibliography, and interpretation.',
-			image: '/images/landing/annotate.png',
+			image: '/images/landing/annotate.webp',
 			alt: 'Abstract annotation diagram with evidence connected to a 3D object'
 		},
 		{
 			kicker: '03 · Review',
 			title: 'Publish a stable record.',
 			text: 'Editors and reviewers evaluate the model, metadata, annotations, and interpretation before publication.',
-			image: '/images/landing/review.png',
+			image: '/images/landing/review.webp',
 			alt: 'Abstract review diagram showing a stable publication record'
 		}
 	];
@@ -272,28 +272,43 @@
 		</div>
 	</section>
 
-	<!-- ============== CORE PROMISES ============== -->
-	<section class="sec promise-sec">
+	<!-- ============== PROJECTS (COLLECTIONS) ============== -->
+	<section class="sec sec-paper2">
 		<div class="shell">
 			<div class="sec-head">
 				<div class="sec-head-body">
-					<h2 class="sec-title">What <em>PURE3D</em> brings together.</h2>
+					<h2 class="sec-title">Collections as <em>scholarly contexts.</em></h2>
 					<p class="sec-sub">
-						The platform serves both creators and readers of 3D research: researchers, educators,
-						cultural heritage managers, students, public audiences, and academic reviewers.
+						Collections organize related 3D editions by research question, object group, period,
+						provenance, institution, or material context.
 					</p>
 				</div>
 			</div>
 
-			<div class="promise-grid">
-				{#each promiseCards as card, i (card.title)}
-					<article class="promise-card">
-						<span>{String(i + 1).padStart(2, '0')}</span>
-						<h3>{card.title}</h3>
-						<p>{card.text}</p>
-					</article>
-				{/each}
-			</div>
+			{#if isLoading && !hasCachedData}
+				<div class="projects-grid">
+					{#each cardSkeletons as i (i)}
+						<div class="h-96 skeleton"></div>
+					{/each}
+				</div>
+			{:else if collections.length > 0}
+				<div class="projects-grid">
+					{#each collections.slice(0, 4) as collection (collection.id)}
+						<CollectionCard {collection} />
+					{/each}
+				</div>
+
+				{#if collections.length > 4}
+					<div class="sec-footer">
+						<a href={resolve('/collections')} class="btn btn-ghost">
+							All collections
+							<span class="arrow" aria-hidden="true">↗</span>
+						</a>
+					</div>
+				{/if}
+			{:else}
+				<div class="empty">No collections available yet.</div>
+			{/if}
 		</div>
 	</section>
 
@@ -373,43 +388,28 @@
 		</div>
 	</section>
 
-	<!-- ============== PROJECTS (COLLECTIONS) ============== -->
-	<section class="sec sec-paper2">
+	<!-- ============== CORE PROMISES ============== -->
+	<section class="sec promise-sec">
 		<div class="shell">
 			<div class="sec-head">
 				<div class="sec-head-body">
-					<h2 class="sec-title">Collections as <em>scholarly contexts.</em></h2>
+					<h2 class="sec-title">What <em>PURE3D</em> brings together.</h2>
 					<p class="sec-sub">
-						Collections organize related 3D editions by research question, object group, period,
-						provenance, institution, or material context.
+						The platform serves both creators and readers of 3D research: researchers, educators,
+						cultural heritage managers, students, public audiences, and academic reviewers.
 					</p>
 				</div>
 			</div>
 
-			{#if isLoading && !hasCachedData}
-				<div class="projects-grid">
-					{#each cardSkeletons as i (i)}
-						<div class="h-96 skeleton"></div>
-					{/each}
-				</div>
-			{:else if collections.length > 0}
-				<div class="projects-grid">
-					{#each collections.slice(0, 4) as collection (collection.id)}
-						<CollectionCard {collection} />
-					{/each}
-				</div>
-
-				{#if collections.length > 4}
-					<div class="sec-footer">
-						<a href={resolve('/collections')} class="btn btn-ghost">
-							All collections
-							<span class="arrow" aria-hidden="true">↗</span>
-						</a>
-					</div>
-				{/if}
-			{:else}
-				<div class="empty">No collections available yet.</div>
-			{/if}
+			<div class="promise-grid">
+				{#each promiseCards as card, i (card.title)}
+					<article class="promise-card">
+						<span>{String(i + 1).padStart(2, '0')}</span>
+						<h3>{card.title}</h3>
+						<p>{card.text}</p>
+					</article>
+				{/each}
+			</div>
 		</div>
 	</section>
 
@@ -1073,10 +1073,10 @@
 		letter-spacing: 0.1em;
 	}
 	.story-step-image {
-		width: min(128%, 940px);
+		width: min(118%, 860px);
 		max-width: none;
-		height: clamp(360px, 40vw, 560px);
-		margin: -32px auto 20px;
+		height: clamp(320px, 35vw, 500px);
+		margin: -24px auto 20px;
 		object-fit: contain;
 		object-position: center;
 		opacity: 0.86;
@@ -1109,8 +1109,8 @@
 			min-height: 0;
 		}
 		.story-step-image {
-			width: min(116%, 620px);
-			height: clamp(280px, 70vw, 420px);
+			width: min(108%, 560px);
+			height: clamp(240px, 62vw, 360px);
 			margin: 0 auto auto;
 		}
 	}
