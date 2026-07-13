@@ -99,15 +99,9 @@
 			.map((author) => author.trim())
 			.filter(Boolean);
 	});
-	const creatorProfiles = $derived(data.creatorProfiles ?? []);
 
 	function authorEditionsHref(author: string): string {
-		const profile = creatorProfiles.find(
-			(item) => item.name.toLowerCase() === author.toLowerCase()
-		);
-		return profile
-			? `${base}/profile/${profile.id}`
-			: `${base}/editions?q=${encodeURIComponent(author)}`;
+		return `${base}/editions?q=${encodeURIComponent(author)}`;
 	}
 
 	/**
