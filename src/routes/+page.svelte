@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { base } from '$app/paths';
+	import { base, resolve } from '$app/paths';
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
 	import CollectionCard from '$lib/components/cards/CollectionCard.svelte';
 	import { editionsStore, collectionsStore, fetchAllData, isStale } from '$lib/stores/data.store';
@@ -112,12 +112,50 @@
 		}
 	];
 	const workflow = [
-		'Proposal',
+		'Concept review',
 		'Draft edition',
-		'Editorial review',
+		'Alpha peer review',
 		'Revision',
-		'Publication',
-		'Preservation'
+		'Final review',
+		'Open publication'
+	];
+	const heroSkeletons = [0, 1, 2, 3, 4];
+	const cardSkeletons = [0, 1, 2, 3];
+	const promiseCards = [
+		{
+			title: 'Publish and explore 3D work',
+			text: 'PURE3D provides an infrastructure for publishing, depositing, and exploring interactive 3D worlds and objects online.'
+		},
+		{
+			title: 'Make scholarship inspectable',
+			text: '3D Scholarly Editions connect models with text, images, video, annotations, provenance, uncertainty, and paradata.'
+		},
+		{
+			title: 'Preserve access over time',
+			text: 'The platform supports long-term access by keeping 3D research findable, accessible, interoperable, and reusable.'
+		}
+	];
+	const partnerLogos = [
+		{
+			name: 'Maastricht University',
+			href: 'https://www.maastrichtuniversity.nl',
+			image: '/images/logo_maastricht-university.png'
+		},
+		{
+			name: 'Platform Digital Infrastructure',
+			href: 'https://pdi-ssh.nl',
+			image: '/images/logo_platform-digitale-infrastructuur.png'
+		},
+		{
+			name: 'KNAW Humanities Cluster',
+			href: 'https://huc.knaw.nl',
+			image: '/images/logo-knaw-humanities-cluster.png'
+		},
+		{
+			name: 'KNAW Digital Infrastructure',
+			href: 'https://di.huc.knaw.nl',
+			image: '/images/logo-knaw-digital-infrastructure.png'
+		}
 	];
 </script>
 
@@ -125,7 +163,7 @@
 	<title>Pure 3D | Explore 3D Scholarly Editions</title>
 	<meta
 		name="description"
-		content="Explore our 3D Scholarly Editions and create your own. Pure3D is a platform for digital humanities and heritage 3D collections."
+		content="PURE3D is an infrastructure for publishing, preserving, and exploring interactive 3D Scholarly Editions."
 	/>
 </svelte:head>
 
@@ -135,26 +173,25 @@
 		<div class="shell">
 			<div class="eyebrow">
 				<span class="dot" aria-hidden="true"></span>
-				<span>Pure 3D · scholarly publishing platform</span>
+				<span>PURE3D · 3D scholarly publishing infrastructure</span>
 			</div>
 
 			<h1 class="hero-h1">
-				Dimensional <em>scholarship</em>,<br />
-				published for the long read.
+				Publish, preserve, and explore <em>3D scholarship.</em>
 			</h1>
 
 			<div class="hero-grid">
 				<p class="hero-lede">
-					Pure 3D publishes cultural-heritage and scientific objects as interactive, citable,
-					long-lived records. The interface recedes, paper, ink, and precise chrome framing the
-					model itself.
+					PURE3D is an infrastructure for publishing, depositing, preserving, and exploring
+					interactive 3D Scholarly Editions: annotated, reviewable, citable records that connect
+					models with evidence, interpretation, paradata, and long-term access.
 				</p>
 				<div class="hero-side">
 					<div class="hero-editions" aria-label="Recent editions">
 						<div class="hero-editions-label">Recent editions</div>
 						<div class="hero-cover-row">
 							{#if isLoading && !hasCachedData}
-								{#each Array(5) as _, i (i)}
+								{#each heroSkeletons as i (i)}
 									<div
 										class="hero-cover hero-cover-skeleton skeleton"
 										class:hero-cover-raised={i % 2 === 1}
@@ -163,7 +200,7 @@
 							{:else}
 								{#each heroEditions as edition, i (edition.id)}
 									<a
-										href={`${base}/editions/${edition.slug}`}
+										href={resolve('/editions/[slug]', { slug: edition.slug })}
 										class="hero-cover"
 										class:hero-cover-raised={i % 2 === 1}
 										aria-label={`View ${edition.title}`}
@@ -186,11 +223,13 @@
 					</div>
 
 					<div class="hero-actions">
-						<a href="{base}/editions" class="btn btn-primary">
+						<a href={resolve('/editions')} class="btn btn-primary">
 							Browse editions
 							<span class="arrow" aria-hidden="true">→</span>
 						</a>
-						<a href="{base}/collections" class="btn btn-secondary">View collections</a>
+						<a href={resolve('/documentation/submission')} class="btn btn-secondary"
+							>Publish with us</a
+						>
 					</div>
 				</div>
 			</div>
@@ -201,7 +240,7 @@
 	<section class="stats-strip">
 		<div class="shell">
 			<dl class="stats-grid">
-				<a class="stat-link stat" href={`${base}/editions`}>
+				<a class="stat-link stat" href={resolve('/editions')}>
 					<dt>3D Editions</dt>
 					<dd>
 						{#if isLoading && !hasCachedData}
@@ -211,7 +250,7 @@
 						{/if}
 					</dd>
 				</a>
-				<a class="stat-link stat" href={`${base}/collections`}>
+				<a class="stat-link stat" href={resolve('/collections')}>
 					<dt>Collections</dt>
 					<dd>
 						{#if isLoading && !hasCachedData}
@@ -222,14 +261,40 @@
 					</dd>
 				</a>
 				<div class="stat">
-					<dt>Audience</dt>
-					<dd class="stat-text">Curators · researchers · students</dd>
+					<dt>Authors trained</dt>
+					<dd>100+</dd>
 				</div>
 				<div class="stat">
-					<dt>Stance</dt>
-					<dd class="stat-text">Museum-grade · quiet · precise</dd>
+					<dt>Presentations & workshops</dt>
+					<dd>45</dd>
 				</div>
 			</dl>
+		</div>
+	</section>
+
+	<!-- ============== CORE PROMISES ============== -->
+	<section class="sec promise-sec">
+		<div class="shell">
+			<div class="sec-head">
+				<div class="sec-num">§ 00 — Infrastructure</div>
+				<div class="sec-head-body">
+					<h2 class="sec-title">What <em>PURE3D</em> brings together.</h2>
+					<p class="sec-sub">
+						The platform serves both creators and readers of 3D research: researchers, educators,
+						cultural heritage managers, students, public audiences, and academic reviewers.
+					</p>
+				</div>
+			</div>
+
+			<div class="promise-grid">
+				{#each promiseCards as card, i (card.title)}
+					<article class="promise-card">
+						<span>{String(i + 1).padStart(2, '0')}</span>
+						<h3>{card.title}</h3>
+						<p>{card.text}</p>
+					</article>
+				{/each}
+			</div>
 		</div>
 	</section>
 
@@ -281,7 +346,7 @@
 
 			{#if isLoading && !hasCachedData}
 				<div class="carousel">
-					{#each Array(4) as _, i (i)}
+					{#each cardSkeletons as i (i)}
 						<div class="h-80 w-64 flex-none skeleton"></div>
 					{/each}
 				</div>
@@ -302,7 +367,7 @@
 			{/if}
 
 			<div class="sec-footer">
-				<a href="{base}/editions" class="btn btn-ghost">
+				<a href={resolve('/editions')} class="btn btn-ghost">
 					View all editions
 					<span class="arrow" aria-hidden="true">↗</span>
 				</a>
@@ -326,7 +391,7 @@
 
 			{#if isLoading && !hasCachedData}
 				<div class="projects-grid">
-					{#each Array(4) as _, i (i)}
+					{#each cardSkeletons as i (i)}
 						<div class="h-96 skeleton"></div>
 					{/each}
 				</div>
@@ -339,7 +404,7 @@
 
 				{#if collections.length > 4}
 					<div class="sec-footer">
-						<a href="{base}/collections" class="btn btn-ghost">
+						<a href={resolve('/collections')} class="btn btn-ghost">
 							All collections
 							<span class="arrow" aria-hidden="true">↗</span>
 						</a>
@@ -358,7 +423,8 @@
 				<h2>Model as a source.</h2>
 				<p class="mt-4">
 					A 3D edition should make the object, its documentation, and its interpretation available
-					in the same place, so claims can be inspected, cited, reviewed, and preserved.
+					in the same place, so modelling choices, source materials, uncertainty, and claims can be
+					inspected, cited, reviewed, and preserved.
 				</p>
 			</div>
 			<div class="story-steps">
@@ -386,8 +452,9 @@
 				<p class="eyebrow inverse"><span></span> Editorial infrastructure</p>
 				<h2>From proposal to preserved edition.</h2>
 				<p>
-					A 3D edition requires review states, metadata, versioning, documentation, and long-term
-					access. PURE3D keeps these publication steps visible throughout the editorial process.
+					PURE3D uses concept, alpha, and final review to assess the scholarly aim, technical
+					feasibility, model-centred argument, documentation, user experience, and readiness for
+					open publication.
 				</p>
 			</div>
 			<ol>
@@ -413,15 +480,17 @@
 				</div>
 				<div class="publish-body">
 					<p class="publish-lede">
-						Pure 3D provides the infrastructure and tools to publish your interactive 3D research.
-						Join a growing community of digital humanities scholars.
+						PURE3D accepts projects that use 3D models as the central component for making a
+						scholarly argument, developing hypotheses, or answering research questions.
 					</p>
 					<div class="publish-actions">
-						<a href="{base}/documentation/submission" class="btn btn-accent">
+						<a href={resolve('/documentation/submission')} class="btn btn-accent">
 							Submission guidelines
 							<span class="arrow" aria-hidden="true">→</span>
 						</a>
-						<a href="{base}/documentation" class="btn-on-ink-ghost btn">Read the documentation</a>
+						<a href={resolve('/documentation')} class="btn-on-ink-ghost btn"
+							>Read the documentation</a
+						>
 					</div>
 				</div>
 			</div>
@@ -433,11 +502,12 @@
 		<div class="shell">
 			<div class="partners-head">Supported by</div>
 			<div class="partners-list">
-				<span>Maastricht University</span>
-				<span class="dot-sep" aria-hidden="true">·</span>
-				<span>Platform Digital Infrastructure</span>
-				<span class="dot-sep" aria-hidden="true">·</span>
-				<span>KNAW Digital Infrastructure</span>
+				{#each partnerLogos as partner (partner.name)}
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+					<a href={partner.href} target="_blank" rel="noreferrer" aria-label={partner.name}>
+						<img src={`${base}${partner.image}`} alt={partner.name} loading="lazy" />
+					</a>
+				{/each}
 			</div>
 		</div>
 	</section>
@@ -790,15 +860,6 @@
 		line-height: 1;
 		color: var(--color-ink);
 	}
-	.stat dd.stat-text {
-		font-family: var(--font-serif);
-		font-style: italic;
-		font-weight: 400;
-		font-size: 17px;
-		line-height: 1.3;
-		color: var(--color-ink-2);
-		letter-spacing: 0;
-	}
 	.stat-link {
 		text-decoration: none;
 		transition: opacity 0.15s ease;
@@ -896,6 +957,58 @@
 		font-family: var(--font-serif);
 		font-style: italic;
 		color: var(--color-ink-4);
+	}
+	.promise-sec {
+		background: var(--color-base-100);
+	}
+	.promise-grid {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 16px;
+	}
+	.promise-card {
+		min-height: 260px;
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
+		padding: clamp(24px, 4vw, 40px);
+		border: 1px solid var(--rule);
+		border-radius: 28px;
+		background: linear-gradient(
+			145deg,
+			var(--color-paper),
+			color-mix(in srgb, var(--color-paper) 72%, transparent)
+		);
+		box-shadow: 0 20px 70px rgba(16, 16, 15, 0.06);
+	}
+	.promise-card span {
+		font-family: var(--font-mono);
+		font-size: 11px;
+		letter-spacing: 0.12em;
+		color: var(--color-vermillion);
+	}
+	.promise-card h3 {
+		margin: auto 0 16px;
+		font-family: var(--font-sans);
+		font-weight: 500;
+		font-size: clamp(24px, 2.6vw, 34px);
+		line-height: 1.05;
+		letter-spacing: -0.025em;
+	}
+	.promise-card p {
+		margin: 0;
+		font-family: var(--font-serif);
+		font-size: 17px;
+		line-height: 1.5;
+		color: var(--color-ink-2);
+	}
+	@media (max-width: 900px) {
+		.promise-grid {
+			grid-template-columns: 1fr;
+		}
+		.promise-card {
+			min-height: 220px;
+		}
 	}
 
 	/* ---------- STORY ---------- */
@@ -1224,14 +1337,30 @@
 		justify-content: center;
 		align-items: center;
 		flex-wrap: wrap;
-		gap: 12px 18px;
-		font-family: var(--font-sans);
-		font-size: 13.5px;
-		color: var(--color-ink-3);
+		gap: 16px;
 	}
-	.partners-list .dot-sep {
-		color: var(--color-ink-4);
-		opacity: 0.5;
+	.partners-list a {
+		display: grid;
+		place-items: center;
+		width: 190px;
+		height: 88px;
+		padding: 18px;
+		border: 1px solid var(--rule);
+		border-radius: 12px;
+		background: color-mix(in srgb, var(--color-paper) 84%, transparent);
+		transition:
+			border-color 0.15s ease,
+			opacity 0.15s ease;
+	}
+	.partners-list a:hover,
+	.partners-list a:focus-visible {
+		border-color: var(--rule-strong);
+		opacity: 0.76;
+	}
+	.partners-list img {
+		max-width: 100%;
+		max-height: 48px;
+		object-fit: contain;
 	}
 
 	/* ---------- UTIL ---------- */
