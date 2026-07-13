@@ -276,7 +276,6 @@
 	<section class="sec promise-sec">
 		<div class="shell">
 			<div class="sec-head">
-				<div class="sec-num">§ 00 — Infrastructure</div>
 				<div class="sec-head-body">
 					<h2 class="sec-title">What <em>PURE3D</em> brings together.</h2>
 					<p class="sec-sub">
@@ -302,7 +301,6 @@
 	<section class="sec">
 		<div class="shell">
 			<div class="sec-head">
-				<div class="sec-num">§ 01 — Editions</div>
 				<div class="sec-head-body">
 					<h2 class="sec-title">Recent <em>scholarly editions.</em></h2>
 					<p class="sec-sub">
@@ -379,7 +377,6 @@
 	<section class="sec sec-paper2">
 		<div class="shell">
 			<div class="sec-head">
-				<div class="sec-num">§ 02 — Collections</div>
 				<div class="sec-head-body">
 					<h2 class="sec-title">Collections as <em>scholarly contexts.</em></h2>
 					<p class="sec-sub">
@@ -885,7 +882,7 @@
 
 	.sec-head {
 		display: grid;
-		grid-template-columns: 120px 1fr auto;
+		grid-template-columns: 1fr auto;
 		gap: 32px;
 		align-items: baseline;
 		margin-bottom: 64px;
@@ -898,13 +895,6 @@
 		.sec-actions {
 			margin-top: 16px;
 		}
-	}
-	.sec-num {
-		font-family: var(--font-mono);
-		font-size: 11px;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-		color: var(--color-ink-4);
 	}
 	.sec-title {
 		font-family: var(--font-sans);
