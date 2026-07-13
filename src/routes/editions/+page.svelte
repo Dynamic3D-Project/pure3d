@@ -135,6 +135,13 @@
 		return value.trim().toLowerCase();
 	}
 
+	function nameKey(value: string) {
+		return normalize(value)
+			.replace(/\([^)]*\)/g, '')
+			.replace(/[^\p{L}\p{N}]+/gu, ' ')
+			.trim();
+	}
+
 	function profileNames(user: any) {
 		const names = [user.nickname, user.name, user.username, user.email].filter(Boolean).map(String);
 		return names.flatMap((name) => {
@@ -153,13 +160,13 @@
 	}
 
 	async function loadUserProfileForQuery(query: string) {
-		const normalizedQuery = normalize(query);
+		const normalizedQuery = nameKey(query);
 		if (!normalizedQuery) return;
 
 		try {
 			const result = await pb.collection('users').getList(1, 500, { $autoCancel: false });
 			const user = result.items.find((record) =>
-				profileNames(record).some((name) => normalize(name) === normalizedQuery)
+				profileNames(record).some((name) => nameKey(name) === normalizedQuery)
 			);
 
 			if (!user) return;
