@@ -397,7 +397,7 @@
 							onfocus={handleFocus}
 							onkeydown={handleKeydown}
 							placeholder="Search editions..."
-							class="input-bordered input w-full pr-10 pl-10"
+							class="input-bordered input w-full bg-base-100 pr-10 pl-10"
 							role="combobox"
 							aria-expanded={showSuggestions}
 							aria-haspopup="listbox"
