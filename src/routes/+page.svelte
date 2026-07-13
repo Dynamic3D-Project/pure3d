@@ -1073,10 +1073,10 @@
 		letter-spacing: 0.1em;
 	}
 	.story-step-image {
-		width: min(112%, 820px);
+		width: min(128%, 940px);
 		max-width: none;
-		height: clamp(320px, 34vw, 460px);
-		margin: -24px auto 24px;
+		height: clamp(360px, 40vw, 560px);
+		margin: -32px auto 20px;
 		object-fit: contain;
 		object-position: center;
 		opacity: 0.86;
@@ -1109,8 +1109,8 @@
 			min-height: 0;
 		}
 		.story-step-image {
-			width: 100%;
-			height: clamp(240px, 58vw, 340px);
+			width: min(116%, 620px);
+			height: clamp(280px, 70vw, 420px);
 			margin: 0 auto auto;
 		}
 	}
