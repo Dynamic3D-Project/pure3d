@@ -1051,10 +1051,9 @@
 		gap: 16px;
 	}
 	.story-steps article {
-		min-height: 56vh;
 		display: flex;
 		flex-direction: column;
-		justify-content: end;
+		justify-content: start;
 		overflow: hidden;
 		padding: clamp(24px, 4vw, 48px);
 		border: 1px solid var(--rule);
@@ -1077,7 +1076,7 @@
 		width: min(112%, 820px);
 		max-width: none;
 		height: clamp(320px, 34vw, 460px);
-		margin: -24px auto auto;
+		margin: -24px auto 24px;
 		object-fit: contain;
 		object-position: center;
 		opacity: 0.86;
@@ -1107,7 +1106,7 @@
 			position: static;
 		}
 		.story-steps article {
-			min-height: 360px;
+			min-height: 0;
 		}
 		.story-step-image {
 			width: 100%;
