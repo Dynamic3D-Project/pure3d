@@ -8,16 +8,18 @@
 	let { children } = $props();
 </script>
 
-<Header />
-
 <svelte:head>
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-<div class="-mt-10">
-	{@render children?.()}
+<div class="min-h-screen bg-base-100 text-base-content">
+	<Header />
+
+	<div class="-mt-10">
+		{@render children?.()}
+	</div>
+
+	<FeedbackPill />
+
+	<Toaster />
 </div>
-
-<FeedbackPill />
-
-<Toaster />
