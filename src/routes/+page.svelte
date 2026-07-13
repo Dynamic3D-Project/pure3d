@@ -18,12 +18,6 @@
 		$editionsStore.items.length > 0 || $collectionsStore.items.length > 0
 	);
 	let isLoading = $state(true);
-	const captureFrameCount = 96;
-	let captureFrameIndex = $state(1);
-	let captureImage: HTMLImageElement | undefined = $state();
-	let captureFrameSrc = $derived(
-		`${base}/images/landing/capture-frames/frame-${String(captureFrameIndex).padStart(3, '0')}.webp`
-	);
 
 	function preloadImages(urls: string[]) {
 		const validUrls = urls.filter(Boolean);
@@ -62,11 +56,6 @@
 	}
 
 	onMount(() => {
-		let targetFrame = 0;
-		let animationFrame = 0;
-		let targetProgress = 0;
-		let currentProgress = 0;
-
 		async function loadData() {
 			const editionsStale = isStale($editionsStore.lastFetched);
 			const collectionsStale = isStale($collectionsStore.lastFetched);
@@ -96,63 +85,7 @@
 			}
 		}
 
-		function preloadCaptureFrames() {
-			for (let i = 1; i <= captureFrameCount; i += 1) {
-				const img = new Image();
-				img.src = `${base}/images/landing/capture-frames/frame-${String(i).padStart(3, '0')}.webp`;
-			}
-		}
-
-		function updateCaptureTarget() {
-			targetFrame = 0;
-			const captureStep = captureImage?.closest('article');
-			if (!captureStep) return;
-
-			const rect = captureStep.getBoundingClientRect();
-			targetProgress = Math.min(
-				1,
-				Math.max(0, (window.innerHeight - rect.top) / (window.innerHeight + rect.height))
-			);
-			if (!animationFrame) animationFrame = requestAnimationFrame(animateCaptureVideo);
-		}
-
-		function animateCaptureVideo() {
-			animationFrame = 0;
-
-			currentProgress += (targetProgress - currentProgress) * 0.18;
-			captureFrameIndex = Math.min(
-				captureFrameCount,
-				Math.max(1, Math.round(currentProgress * (captureFrameCount - 1)) + 1)
-			);
-
-			if (Math.abs(targetProgress - currentProgress) > 0.002) {
-				animationFrame = requestAnimationFrame(animateCaptureVideo);
-			} else {
-				currentProgress = targetProgress;
-				captureFrameIndex = Math.min(
-					captureFrameCount,
-					Math.max(1, Math.round(currentProgress * (captureFrameCount - 1)) + 1)
-				);
-			}
-		}
-
-		function scheduleCaptureVideoUpdate() {
-			if (targetFrame) return;
-			targetFrame = requestAnimationFrame(updateCaptureTarget);
-		}
-
 		loadData();
-		preloadCaptureFrames();
-		window.addEventListener('scroll', scheduleCaptureVideoUpdate, { passive: true });
-		window.addEventListener('resize', scheduleCaptureVideoUpdate);
-		scheduleCaptureVideoUpdate();
-
-		return () => {
-			if (targetFrame) cancelAnimationFrame(targetFrame);
-			if (animationFrame) cancelAnimationFrame(animationFrame);
-			window.removeEventListener('scroll', scheduleCaptureVideoUpdate);
-			window.removeEventListener('resize', scheduleCaptureVideoUpdate);
-		};
 	});
 
 	const storySteps = [
@@ -160,7 +93,6 @@
 			kicker: '01 · Capture',
 			title: 'Record the object.',
 			text: 'The edition starts from a scan, mesh, point cloud, or reconstruction that can be inspected directly.',
-			frames: true,
 			image: '/images/landing/capture.webp',
 			alt: 'Abstract capture diagram showing a 3D object being recorded'
 		},
@@ -168,7 +100,6 @@
 			kicker: '02 · Annotate',
 			title: 'Document the evidence.',
 			text: 'Annotations connect parts of the model to provenance, uncertainty, bibliography, and interpretation.',
-			frames: false,
 			image: '/images/landing/annotate.webp',
 			alt: 'Abstract annotation diagram with evidence connected to a 3D object'
 		},
@@ -176,7 +107,6 @@
 			kicker: '03 · Review',
 			title: 'Publish a stable record.',
 			text: 'Editors and reviewers evaluate the model, metadata, annotations, and interpretation before publication.',
-			frames: false,
 			image: '/images/landing/review.webp',
 			alt: 'Abstract review diagram showing a stable publication record'
 		}
@@ -497,22 +427,12 @@
 			<div class="story-steps">
 				{#each storySteps as step (step.kicker)}
 					<article>
-						{#if step.frames}
-							<img
-								bind:this={captureImage}
-								class="story-step-image"
-								src={captureFrameSrc}
-								alt={step.alt}
-								loading="eager"
-							/>
-						{:else}
-							<img
-								class="story-step-image"
-								src={`${base}${step.image}`}
-								alt={step.alt}
-								loading="lazy"
-							/>
-						{/if}
+						<img
+							class="story-step-image"
+							src={`${base}${step.image}`}
+							alt={step.alt}
+							loading="lazy"
+						/>
 						<span>{step.kicker}</span>
 						<h3>{step.title}</h3>
 						<p>{step.text}</p>
