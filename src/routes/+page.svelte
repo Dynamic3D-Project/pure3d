@@ -273,7 +273,7 @@
 	</section>
 
 	<!-- ============== PROJECTS (COLLECTIONS) ============== -->
-	<section class="sec sec-paper2">
+	<section class="sec">
 		<div class="shell">
 			<div class="sec-head">
 				<div class="sec-head-body">
@@ -313,7 +313,7 @@
 	</section>
 
 	<!-- ============== FEATURED EDITIONS ============== -->
-	<section class="sec">
+	<section class="sec sec-paper2">
 		<div class="shell">
 			<div class="sec-head">
 				<div class="sec-head-body">
