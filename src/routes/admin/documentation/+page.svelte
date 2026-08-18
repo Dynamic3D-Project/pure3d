@@ -89,7 +89,7 @@
 				updated: r.updated
 			}));
 		} catch {
-			toast.error('Failed to load documentation pages');
+			toast.error('Failed to load pages');
 		} finally {
 			isLoading = false;
 		}
@@ -244,7 +244,7 @@
 					.filter((doc) => previousOrders.get(doc.id) !== doc.order)
 					.map((doc) => pb.collection('documentation').update(doc.id, { order: doc.order }))
 			);
-			toast.success('Documentation order updated');
+			toast.success('Page order updated');
 		} catch {
 			docs = previousDocs;
 			toast.error('Failed to update order');
@@ -274,7 +274,7 @@
 
 <div>
 	<div class="mb-6 flex items-center justify-between">
-		<h1 class="text-2xl font-bold">Documentation Pages</h1>
+		<h1 class="text-2xl font-bold">Pages</h1>
 		<button class="btn btn-primary btn-sm" onclick={startCreate}>
 			+ New Page
 		</button>
@@ -322,7 +322,7 @@
 					</label>
 					<textarea
 						id="doc-summary"
-						class="textarea textarea-bordered"
+					class="textarea textarea-bordered"
 						bind:value={formSummary}
 						placeholder="Short description for the overview page"
 						rows="2"
@@ -425,9 +425,9 @@
 			<span class="loading loading-spinner loading-lg"></span>
 		</div>
 	{:else if docs.length === 0}
-		<p class="py-12 text-center text-base-content/60">No documentation pages yet.</p>
+		<p class="py-12 text-center text-base-content/60">No pages yet.</p>
 	{:else if filteredDocs.length === 0}
-		<p class="py-12 text-center text-base-content/60">No documentation pages match the selected filters.</p>
+		<p class="py-12 text-center text-base-content/60">No pages match the selected filters.</p>
 	{:else}
 		<div class="mb-3 flex items-center gap-3 text-sm text-base-content/60">
 			<span>Drag pages by the handle to reorder them.</span>

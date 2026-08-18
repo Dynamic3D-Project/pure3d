@@ -7,7 +7,6 @@
 
 	let pages = $derived(data.pages);
 	let currentSlug = $derived($page.params.slug || '');
-	let isAbout = $derived($page.url.pathname === `${base}/documentation/about`);
 </script>
 
 <div class="container mx-auto max-w-6xl px-4 py-8">
@@ -19,16 +18,9 @@
 				<a
 					href="{base}/documentation"
 					class="btn btn-sm whitespace-nowrap"
-					class:btn-active={!currentSlug && !isAbout}
+					class:btn-active={!currentSlug}
 				>
 					Overview
-				</a>
-				<a
-					href="{base}/documentation/about"
-					class="btn btn-sm whitespace-nowrap"
-					class:btn-active={isAbout}
-				>
-					About
 				</a>
 				{#each pages as p (p.id)}
 					<a
@@ -48,19 +40,10 @@
 					<li>
 						<a
 							href="{base}/documentation"
-							class:bg-base-300={!currentSlug && !isAbout}
-							class:font-semibold={!currentSlug && !isAbout}
+							class:bg-base-300={!currentSlug}
+							class:font-semibold={!currentSlug}
 						>
 							Overview
-						</a>
-					</li>
-					<li>
-						<a
-							href="{base}/documentation/about"
-							class:bg-base-300={isAbout}
-							class:font-semibold={isAbout}
-						>
-							About
 						</a>
 					</li>
 					{#each pages as p (p.id)}

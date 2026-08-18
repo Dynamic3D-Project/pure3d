@@ -71,7 +71,7 @@ services:
         condition: service_completed_successfully
       pocketbase:
         condition: service_healthy
-    command: sh -c "bun install && bun scripts/create-pocketbase-collections.ts && bun scripts/import-data.ts && bun scripts/seed-users.js"
+    command: sh -c "bun install && bun scripts/create-pocketbase-collections.ts && bun scripts/migrate-documentation.ts && bun scripts/import-data.ts && bun scripts/seed-users.js"
     restart: "no"
 
   voyager-setup:

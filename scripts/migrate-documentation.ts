@@ -3,7 +3,7 @@
  * Migration: Documentation Pages
  *
  * 1. Creates `documentation` collection (title, slug, content, summary, order, isPublished)
- * 2. Seeds 7 initial documentation pages with placeholder content
+ * 2. Seeds the initial documentation pages
  *
  * Idempotent — safe to re-run.
  *
@@ -11,8 +11,10 @@
  */
 
 const PB_URL = process.env.POCKETBASE_URL || 'http://pocketbase:8090';
-const ADMIN_EMAIL = process.env.PB_ADMIN_EMAIL || 'admin@admin.local';
-const ADMIN_PASSWORD = process.env.PB_ADMIN_PASSWORD || '1234567890';
+const ADMIN_EMAIL =
+	process.env.POCKETBASE_ADMIN_EMAIL || process.env.PB_ADMIN_EMAIL || 'admin@admin.local';
+const ADMIN_PASSWORD =
+	process.env.POCKETBASE_ADMIN_PASSWORD || process.env.PB_ADMIN_PASSWORD || '1234567890';
 
 let authToken = '';
 
@@ -125,9 +127,18 @@ async function ensureAutodateFields() {
 // --- Step 1: Create documentation collection ---
 async function createDocumentationCollection() {
 	console.log('--- Step 1: Create documentation collection ---');
+	const rules = {
+		listRule: 'isPublished = true || @request.auth.globalRole = "admin"',
+		viewRule: 'isPublished = true || @request.auth.globalRole = "admin"',
+		createRule: '@request.auth.globalRole = "admin"',
+		updateRule: '@request.auth.globalRole = "admin"',
+		deleteRule: '@request.auth.globalRole = "admin"'
+	};
 
 	if (await collectionExists('documentation')) {
-		console.log('  documentation already exists, skipping\n');
+		const collection = await apiRequest('/api/collections/documentation');
+		await apiRequest(`/api/collections/${collection.id}`, 'PATCH', rules);
+		console.log('  documentation already exists, updated access rules\n');
 		return;
 	}
 
@@ -147,11 +158,7 @@ async function createDocumentationCollection() {
 			'CREATE INDEX idx_documentation_order ON documentation ("order")',
 			'CREATE INDEX idx_documentation_published ON documentation (isPublished)'
 		],
-		listRule: '',
-		viewRule: '',
-		createRule: '',
-		updateRule: '',
-		deleteRule: ''
+		...rules
 	});
 
 	console.log('  Created documentation collection\n');
@@ -159,6 +166,24 @@ async function createDocumentationCollection() {
 
 // --- Step 2: Seed initial documentation pages ---
 const SEED_PAGES = [
+	{
+		title: 'About',
+		slug: 'about',
+		order: 0,
+		isPublished: true,
+		summary: 'About PURE3D and 3D scholarly editions.',
+		content: `<h2>What is PURE3D?</h2>
+<p>PURE3D is a national infrastructure dedicated to the publication and preservation of 3D scholarship, spearheaded by Dr. Costas Papadopoulos and Prof. Susan Schreibman at Maastricht University, The Netherlands. The project aims to redefine how 3D cultural heritage and scholarly outputs are presented, preserved, and evaluated, fostering innovation in 3D-based research across the humanities and social sciences. Unlike traditional practices where 3D models are often detached from scholarly narratives, PURE3D integrates these models as primary scholarly outputs. By contextualising them with annotations, multimedia content, and metadata, PURE3D transforms them into multimodal resources that are impossible to replicate in print. This approach not only enhances accessibility but also ensures that both the models and their interpretative processes become part of the academic record.</p>
+<p>Phase 1 (2020-2024): Funded by the Platform Digitale Infrastructuur - Social Sciences &amp; Humanities (PDI-SSH), this phase focused on developing the foundational infrastructure through pilot projects. These pilots informed user requirements and helped build a collaborative community of researchers to co-develop, test, and use the platform. Supported by NWO's Open Science Fund, a follow-up project, OPER3D (2024), explores workflows for peer review and evaluation of 3D scholarly editions, transforming PURE3D into a robust publication infrastructure.</p>
+<p>Future Developments (2025-2028): Funding from the Lorentz Centre/eScience Center will allow the project team to investigate the concept of paradata - the documentation of decision-making processes in creating 3D models - and its application within PURE3D. This also includes bringing together a group of 25 scholars for a workshop hosted at the Lorentz Centre in September 2025. Additional support from the eScience Centre throuhg the Open eScience Call will also enable the infrastructure to integrate advanced analytical tools to enhance the scholarly potential of 3D Scholarly Editions.</p>
+<p>To learn more about PURE3D's mission and ongoing developments, visit the <a href="https://pure3d.eu/">PURE3D website</a>.</p>
+<h2>What is a PURE3D Project?</h2>
+<p>A 3D model can be turned into a 3D Scholarly Edition. However, a project may have more than a single edition. Therefore, PURE3D allows authors to develop a series of editions group together under a thematic project. For example, our project 'Let there be light' developed by the Netherlands Mijnmusem consists of several 3D Scholarly editions of mining lamps. This allows for better categorisation and retrieval of editions and can provide better search options in the future.</p>
+<h2>What is a 3D Scholarly Edition?</h2>
+<p>A 3D Scholarly Edition is an innovative form of digital publication where 3D models serve as the primary "text", accompanied by rich contextual, interpretative, and process-oriented information. Unlike traditional scholarly outputs that separate 3D models from their corresponding research narratives, 3DSEs integrate these elements into a unified, interactive environment designed to enhance scholarly communication and knowledge production.</p>
+<h2>Publish a 3D Scholarly Edition</h2>
+<p>Are you interested in turning your 3D model into a peer-reviewed 3D scholarly edition? You can find <a href="/documentation/submission">instructions for authors and submission guidelines</a>, <a href="/documentation/review">evaluation criteria</a>, and <a href="/documentation/examples">examples of already published 3D Scholarly Editions</a> on our documentation pages.</p>`
+	},
 	{
 		title: 'Submission Guidelines',
 		slug: 'submission',
