@@ -177,7 +177,7 @@
 			</div>
 
 			<h1 class="hero-h1">
-				Publish, preserve, and explore <em>3D scholarship.</em>
+				An infrastructure for the preservation and publication of <em>3D scholarship</em>
 			</h1>
 
 			<div class="hero-grid">
@@ -277,10 +277,10 @@
 		<div class="shell">
 			<div class="sec-head">
 				<div class="sec-head-body">
-					<h2 class="sec-title">Collections as <em>scholarly contexts.</em></h2>
+					<h2 class="sec-title">Collections as <em>scholarly contexts</em></h2>
 					<p class="sec-sub">
-						Collections organize related 3D editions by research question, object group, period,
-						provenance, institution, or material context.
+						Collections organise 3D editions by theme, period, provenance, institution, or material
+						context.
 					</p>
 				</div>
 			</div>
@@ -312,15 +312,45 @@
 		</div>
 	</section>
 
+	<!-- ============== PUBLISH CTA ============== -->
+	<section class="sec">
+		<div class="shell">
+			<div class="publish-plate">
+				<div class="publish-head">
+					<div class="eyebrow eyebrow-on-ink">
+						<span class="dot" aria-hidden="true"></span>
+						<span>Call for editions</span>
+					</div>
+					<h2 class="publish-title">Propose your own <em>edition.</em></h2>
+				</div>
+				<div class="publish-body">
+					<p class="publish-lede">
+						Pure 3D provides the infrastructure and tools to publish interactive 3D research. Join
+						our growing community edition editors/authors.
+					</p>
+					<div class="publish-actions">
+						<a href={resolve('/documentation/submission')} class="btn btn-accent">
+							Submission guidelines
+							<span class="arrow" aria-hidden="true">→</span>
+						</a>
+						<a href={resolve('/documentation')} class="btn-on-ink-ghost btn"
+							>Read the documentation</a
+						>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
 	<!-- ============== FEATURED EDITIONS ============== -->
 	<section class="sec sec-paper2">
 		<div class="shell">
 			<div class="sec-head">
 				<div class="sec-head-body">
-					<h2 class="sec-title">Recent <em>scholarly editions.</em></h2>
+					<h2 class="sec-title">Recent <em>scholarly editions</em></h2>
 					<p class="sec-sub">
-						Each edition is a citable, permalinked record of a 3D object, including model data,
-						descriptive metadata, annotations, and provenance information.
+						Each edition is a citable, permalinked record of a 3D object that includes descriptive
+						metadata, annotations, background and contextual information.
 					</p>
 				</div>
 				<div class="sec-actions">
@@ -417,11 +447,10 @@
 		<div class="shell story-grid">
 			<div class="sticky-panel">
 				<p class="eyebrow"><span></span> 3D evidence</p>
-				<h2>Model as a source.</h2>
+				<h2>A Model as source</h2>
 				<p class="mt-4">
-					A 3D edition should make the object, its documentation, and its interpretation available
-					in the same place, so modelling choices, source materials, uncertainty, and claims can be
-					inspected, cited, reviewed, and preserved.
+					A 3D edition makes the object, its documentation and its interpretation available in the
+					same place, so can be inspected, cited, reviewed, and preserved.
 				</p>
 			</div>
 			<div class="story-steps">
@@ -447,11 +476,10 @@
 		<div class="shell workflow-card">
 			<div>
 				<p class="eyebrow inverse"><span></span> Editorial infrastructure</p>
-				<h2>From proposal to preserved edition.</h2>
+				<h2>From proposal to published edition</h2>
 				<p>
-					PURE3D uses concept, alpha, and final review to assess the scholarly aim, technical
-					feasibility, model-centred argument, documentation, user experience, and readiness for
-					open publication.
+					Pure3D provides a supportive environment for authors/editors to publish 3D scholarship,
+					including training and mentorship, throughout the publishing process.
 				</p>
 			</div>
 			<ol>
@@ -459,38 +487,6 @@
 					<li><span>{String(i + 1).padStart(2, '0')}</span>{item}</li>
 				{/each}
 			</ol>
-		</div>
-	</section>
-
-	<!-- ============== PUBLISH CTA ============== -->
-	<section class="sec">
-		<div class="shell">
-			<div class="publish-plate">
-				<div class="publish-head">
-					<div class="eyebrow eyebrow-on-ink">
-						<span class="dot" aria-hidden="true"></span>
-						<span>Call for editions</span>
-					</div>
-					<h2 class="publish-title">
-						Are you working on a 3D <em>scholarly edition?</em>
-					</h2>
-				</div>
-				<div class="publish-body">
-					<p class="publish-lede">
-						PURE3D accepts projects that use 3D models as the central component for making a
-						scholarly argument, developing hypotheses, or answering research questions.
-					</p>
-					<div class="publish-actions">
-						<a href={resolve('/documentation/submission')} class="btn btn-accent">
-							Submission guidelines
-							<span class="arrow" aria-hidden="true">→</span>
-						</a>
-						<a href={resolve('/documentation')} class="btn-on-ink-ghost btn"
-							>Read the documentation</a
-						>
-					</div>
-				</div>
-			</div>
 		</div>
 	</section>
 
@@ -1193,6 +1189,7 @@
 		font-family: var(--font-sans);
 		font-weight: 500;
 		font-size: clamp(32px, 4.2vw, 52px);
+		color: var(--color-paper);
 		letter-spacing: -0.028em;
 		line-height: 1.02;
 		margin: 0;
