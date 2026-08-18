@@ -6,6 +6,7 @@ import {
 	getCollectionCoverUrl,
 	getEditionRoot
 } from '$lib/utils/asset-urls';
+import { profileNames } from '$lib/utils/profile-matching';
 
 export const load: PageLoad = async ({ params }) => {
 	try {
@@ -75,7 +76,16 @@ export const load: PageLoad = async ({ params }) => {
 			};
 		});
 
-		return { collection, editions };
+		const collectionUsers = await pb.collection('collectionUsers').getList(1, 100, {
+			filter: `collection = "${collectionRecord.id}"`,
+			expand: 'userId'
+		});
+		const creatorProfiles = collectionUsers.items
+			.map((item) => item.expand?.userId)
+			.filter(Boolean)
+			.map((user) => ({ id: user.id, names: profileNames(user) }));
+
+		return { collection, editions, creatorProfiles };
 	} catch (e) {
 		throw error(404, 'Collection not found');
 	}

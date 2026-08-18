@@ -12,6 +12,7 @@
 	import { EditionStatus, GlobalRole } from '$lib/types/roles';
 	import toast from 'svelte-french-toast';
 	import { editionMatchesQuery } from '$lib/utils/edition-search';
+	import { profileNameKey, profileNames } from '$lib/utils/profile-matching';
 
 	interface UserProfileSummary {
 		id: string;
@@ -58,8 +59,18 @@
 
 	let searchQuery = $state('');
 	let drawerOpen = $state(false);
+	let hasSelectedUserDetails = $derived(
+		!!selectedUserProfile &&
+		!!(
+			selectedUserProfile.profilePictureUrl ||
+			selectedUserProfile.titleRole ||
+			selectedUserProfile.affiliation ||
+			selectedUserProfile.orcid ||
+			selectedUserProfile.bio
+		)
+	);
 	let showSelectedUserProfile = $derived(
-		!!selectedUserProfile && normalize(searchQuery) === normalize(selectedUserQuery)
+		hasSelectedUserDetails && normalize(searchQuery) === normalize(selectedUserQuery)
 	);
 
 	// Autocomplete state
@@ -136,22 +147,6 @@
 		return value.trim().toLowerCase();
 	}
 
-	function nameKey(value: string) {
-		return normalize(value)
-			.replace(/\([^)]*\)/g, '')
-			.replace(/[^\p{L}\p{N}]+/gu, ' ')
-			.trim();
-	}
-
-	function profileNames(user: any) {
-		const names = [user.nickname, user.name, user.username, user.email].filter(Boolean).map(String);
-		return names.flatMap((name) => {
-			const clean = name.replace(/\s*\([^)]*\)\s*$/g, '').trim();
-			const comma = clean.match(/^([^,]+),\s+(.+)$/);
-			return comma ? [name, clean, `${comma[2]} ${comma[1]}`] : [name, clean];
-		});
-	}
-
 	function plainText(value: string) {
 		return value
 			.replace(/&nbsp;/g, ' ')
@@ -161,13 +156,13 @@
 	}
 
 	async function loadUserProfileForQuery(query: string) {
-		const normalizedQuery = nameKey(query);
+		const normalizedQuery = profileNameKey(query);
 		if (!normalizedQuery) return;
 
 		try {
 			const result = await pb.collection('users').getList(1, 500, { $autoCancel: false });
 			const user = result.items.find((record) =>
-				profileNames(record).some((name) => nameKey(name) === normalizedQuery)
+				profileNames(record).some((name) => profileNameKey(name) === normalizedQuery)
 			);
 
 			if (!user) return;
@@ -175,7 +170,7 @@
 			const profilePicture = user.profilePicture || user.avatar || '';
 			selectedUserProfile = {
 				id: user.id,
-				name: user.nickname || user.name || user.username || user.email || 'User',
+				name: user.name || query.trim() || user.nickname || user.username || user.email || 'User',
 				profilePictureUrl: profilePicture
 					? pb.files.getURL(user, profilePicture, { thumb: '200x200' })
 					: '',
@@ -514,40 +509,38 @@
 			</div>
 
 			{#if showSelectedUserProfile && selectedUserProfile}
-				<section class="mb-6 rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
-					<div class="flex min-w-0 gap-4">
-						<div class="avatar placeholder shrink-0">
-								{#if selectedUserProfile.profilePictureUrl}
-									<div class="h-28 w-20 overflow-hidden rounded-xl">
-										<img class="h-full w-full object-cover object-top" src={selectedUserProfile.profilePictureUrl} alt="{selectedUserProfile.name} profile" />
-									</div>
-								{:else}
-									<div class="h-28 w-20 rounded-xl bg-neutral text-neutral-content">
-										<span class="text-2xl">{selectedUserProfile.name.charAt(0).toUpperCase()}</span>
-									</div>
-								{/if}
-							</div>
+				<a
+					href="{base}/profile/{selectedUserProfile.id}"
+					class="group mb-6 flex items-center gap-4 rounded-xl border border-base-300 bg-base-100 p-4 shadow-sm transition hover:border-base-content/30 hover:shadow-md"
+				>
+					{#if selectedUserProfile.profilePictureUrl}
+						<img
+							class="h-16 w-16 shrink-0 rounded-full object-cover"
+							src={selectedUserProfile.profilePictureUrl}
+							alt="{selectedUserProfile.name} profile"
+						/>
+					{:else}
+						<div
+							class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-neutral text-xl font-semibold text-neutral-content"
+						>
+							{selectedUserProfile.name.charAt(0).toUpperCase()}
+						</div>
+					{/if}
 
-						<div class="min-w-0 pt-1">
-							<h2 class="text-2xl font-semibold leading-tight">{selectedUserProfile.name}</h2>
-								{#if selectedUserProfile.titleRole || selectedUserProfile.affiliation}
-									<p class="mt-1 text-sm text-base-content/70">
-										{#if selectedUserProfile.titleRole}{selectedUserProfile.titleRole}{/if}{#if selectedUserProfile.titleRole && selectedUserProfile.affiliation} at {/if}{#if selectedUserProfile.affiliation}{selectedUserProfile.affiliation}{/if}
-									</p>
-								{/if}
-								{#if selectedUserProfile.orcid}
-									<a class="link mt-1 block text-sm" href={selectedUserProfile.orcid} target="_blank" rel="noreferrer">
-										ORCID
-									</a>
-								{/if}
-								{#if selectedUserProfile.bio}
-									<p class="mt-3 line-clamp-2 max-w-3xl text-sm text-base-content/70">
-										{selectedUserProfile.bio}
-									</p>
-								{/if}
-							</div>
+					<div class="min-w-0 flex-1">
+						<h2 class="truncate text-lg font-semibold">{selectedUserProfile.name}</h2>
+						{#if selectedUserProfile.titleRole || selectedUserProfile.affiliation}
+							<p class="truncate text-sm text-base-content/60">
+								{[selectedUserProfile.titleRole, selectedUserProfile.affiliation]
+									.filter(Boolean)
+									.join(' at ')}
+							</p>
+						{/if}
 					</div>
-				</section>
+					<span class="text-sm font-medium text-base-content/60 group-hover:text-base-content">
+						View profile →
+					</span>
+				</a>
 			{/if}
 
 			<!-- Results count -->

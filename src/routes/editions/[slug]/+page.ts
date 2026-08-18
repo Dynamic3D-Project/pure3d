@@ -8,6 +8,7 @@ import {
 	DEFAULT_VOYAGER_VERSION,
 	MIN_DERIVATIVES_VERSION
 } from '$lib/utils/asset-urls';
+import { profileNameKey, profileNames } from '$lib/utils/profile-matching';
 
 /**
  * Compare semver versions (simple comparison for our use case)
@@ -105,6 +106,46 @@ export const load: PageLoad = async ({ params }) => {
 			collectionTitle: collection?.title || ''
 		};
 
+		let creatorProfiles: Array<{ id: string; names: string[] }> = [];
+		try {
+			const [authorResult, userResult] = await Promise.all([
+				pb.collection('editionUsers').getList(1, 50, {
+					filter: `editionId = "${record.id}" && role = "author"`,
+					expand: 'userId'
+				}),
+				pb.collection('users').getList(1, 500)
+			]);
+			creatorProfiles = authorResult.items
+				.map((author) => author.expand?.userId)
+				.filter(Boolean)
+				.map((user) => ({
+					id: user.id,
+					names: profileNames(user)
+				}));
+
+			const creatorKeys = new Set(toArray(record.dcCreator).map(profileNameKey));
+			for (const user of userResult.items) {
+				const hasDetails = !!(
+					user.profilePicture ||
+					user.avatar ||
+					user.titleRole ||
+					user.affiliation ||
+					user.orcid ||
+					user.bio
+				);
+				const names = profileNames(user);
+				if (
+					hasDetails &&
+					!creatorProfiles.some((profile) => profile.id === user.id) &&
+					names.some((name) => creatorKeys.has(profileNameKey(name)))
+				) {
+					creatorProfiles.push({ id: user.id, names });
+				}
+			}
+		} catch {
+			creatorProfiles = [];
+		}
+
 		// Fetch sibling editions (version history) for the same collection
 		let siblingEditions: Array<Record<string, unknown>> = [];
 		if (collectionId) {
@@ -136,6 +177,7 @@ export const load: PageLoad = async ({ params }) => {
 
 		return {
 			edition,
+			creatorProfiles,
 			siblingEditions,
 			viewerHelp: site?.viewerHelp || null,
 			viewerHelpVideoUrl: site?.viewerHelpVideoUrl || null

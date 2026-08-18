@@ -9,6 +9,7 @@
 	import { hasPermission } from '$lib/utils/permissions';
 	import { resolvePageContext } from '$lib/utils/page-permissions';
 	import { getEditionRoot, getEditionThumbnailUrl } from '$lib/utils/asset-urls';
+	import { profileNameKey } from '$lib/utils/profile-matching';
 	import toast from 'svelte-french-toast';
 	import type { RecordModel } from 'pocketbase';
 	import type { PageData } from './$types';
@@ -17,6 +18,10 @@
 
 	let collection = $derived(data.collection);
 	let editions = $state(data.editions);
+	let creatorProfiles = $derived(data.creatorProfiles ?? []);
+	let visibleCreators = $derived(
+		collection.dcCreator.length <= 3 ? collection.dcCreator : collection.dcCreator.slice(0, 2)
+	);
 
 	let permissionContext = $state<UserRoleContext>({ globalRole: GlobalRole.User });
 	let isCreating = $state(false);
@@ -46,10 +51,13 @@
 		stripHtml(collection.description).length > DESCRIPTION_CLAMP_LENGTH
 	);
 
-	function formatCreators(creators: string[]): string {
-		if (creators.length === 0) return '';
-		if (creators.length <= 3) return creators.join(', ');
-		return `${creators.slice(0, 2).join(', ')}, +${creators.length - 2} more`;
+	function creatorHref(creator: string): string {
+		const profile = creatorProfiles.find((item) =>
+			item.names.some((name) => profileNameKey(name) === profileNameKey(creator))
+		);
+		return profile
+			? `${base}/profile/${profile.id}`
+			: `${base}/editions?q=${encodeURIComponent(creator)}`;
 	}
 
 	let canEdit = $derived(hasPermission(permissionContext, Permission.CollectionEdit));
@@ -319,7 +327,15 @@
 				{#if collection.dcCreator.length > 0}
 					<p class="mb-3 text-sm text-base-content/70">
 						<span class="text-base-content/50">by</span>
-						{formatCreators(collection.dcCreator)}
+						{#each visibleCreators as creator, index (creator)}
+							<a class="link link-hover" href={creatorHref(creator)}>{creator}</a>{index <
+							visibleCreators.length - 1
+								? ', '
+								: ''}
+						{/each}
+						{#if collection.dcCreator.length > visibleCreators.length}
+							, +{collection.dcCreator.length - visibleCreators.length} more
+						{/if}
 					</p>
 				{/if}
 

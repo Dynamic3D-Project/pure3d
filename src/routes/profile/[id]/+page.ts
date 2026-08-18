@@ -6,6 +6,7 @@ import {
 	getEditionRoot,
 	getEditionThumbnailUrl
 } from '$lib/utils/asset-urls';
+import { profileDisplayName } from '$lib/utils/profile-matching';
 
 function escapeFilterValue(value: string): string {
 	return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
@@ -125,7 +126,7 @@ export const load: PageLoad = async ({ params }) => {
 		return {
 			profile: {
 				id: user.id,
-				name: user.nickname || user.username || 'User',
+				name: profileDisplayName(user),
 				profilePictureUrl: profilePicture
 					? pb.files.getURL(user, profilePicture, { thumb: '200x200' })
 					: '',
