@@ -11,7 +11,7 @@ import { join } from 'path';
  * Usage: bun scripts/export-from-pocketbase.ts <admin-email> <admin-password>
  */
 
-const POCKETBASE_URL = process.env.POCKETBASE_URL || 'http://127.0.0.1:8090';
+const POCKETBASE_URL = process.env.POCKETBASE_URL || 'http://127.0.0.1:14274';
 const OUTPUT_DIR = 'src/lib/data';
 
 interface PocketBaseProject {

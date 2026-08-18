@@ -19,7 +19,7 @@ import {
  * Create a PocketBase client
  */
 export function createPocketBaseClient() {
-	const pb = new PocketBase(PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090');
+	const pb = new PocketBase(PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:14274');
 
 	// Disable auto-cancellation for server-side requests
 	pb.autoCancellation(false);
@@ -32,7 +32,7 @@ export function createPocketBaseClient() {
  * Uses PUBLIC_POCKETBASE_URL instead of internal Docker URL
  */
 export function getPublicFileUrl(record: any, filename: string): string {
-	const baseUrl = PUBLIC_POCKETBASE_URL || 'http://localhost:8090';
+	const baseUrl = PUBLIC_POCKETBASE_URL || 'http://localhost:14274';
 	return `${baseUrl}/api/files/${record.collectionId}/${record.id}/${filename}`;
 }
 

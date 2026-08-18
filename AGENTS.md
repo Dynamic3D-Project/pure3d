@@ -29,10 +29,10 @@ bun run build     # production build
 
 Default local URLs:
 
-- Frontend: `http://localhost:8080`
-- PocketBase admin: `http://localhost:8090/_/`
-- MinIO console: `http://localhost:9001`
-- Asset bucket: `http://localhost:9000/pure3d-assets`
+- Frontend: `http://localhost:14273`
+- PocketBase admin: `http://localhost:14274/_/`
+- MinIO console: `http://localhost:14276`
+- Asset bucket: `http://localhost:14275/pure3d-assets`
 
 ## Code Layout
 

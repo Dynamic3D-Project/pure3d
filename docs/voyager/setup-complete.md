@@ -41,7 +41,7 @@ Your Pure3D application now has full Voyager integration with both iframe and di
 
 2. **Visit the test page**:
    ```
-   http://localhost:5173/test-voyager
+   http://localhost:14273/test-voyager
    ```
 
 3. **Check each test**:
@@ -193,8 +193,8 @@ When using Direct Mode (`direct={true}`):
 - **Hosting Guide**: `HOSTING_VOYAGER.md`
 - **Model Setup**: `static/models/example/README.md`
 - **Official Docs**: https://smithsonian.github.io/dpo-voyager/
-- **Test Page**: http://localhost:5173/test-voyager
-- **Demo Page**: http://localhost:5173/voyager-api-demo
+- **Test Page**: http://localhost:14273/test-voyager
+- **Demo Page**: http://localhost:14273/voyager-api-demo
 
 ## ✨ What's Next?
 

@@ -23,10 +23,10 @@ install:
 db:
 	@docker compose up -d minio pocketbase
 	@echo ""
-	@echo "PocketBase admin: http://localhost:8090/_/"
-	@echo "PocketBase health: http://localhost:8090/api/health"
-	@echo "MinIO console:    http://localhost:9001"
-	@echo "Asset bucket:     http://localhost:9000/pure3d-assets"
+	@echo "PocketBase admin: http://localhost:14274/_/"
+	@echo "PocketBase health: http://localhost:14274/api/health"
+	@echo "MinIO console:    http://localhost:14276"
+	@echo "Asset bucket:     http://localhost:14275/pure3d-assets"
 
 db-logs:
 	docker compose logs -f minio minio-setup pocketbase pocketbase-setup
@@ -40,7 +40,7 @@ dev:
 dev-web:
 	@docker compose up -d minio minio-setup pocketbase pocketbase-setup voyager-setup
 	@set -a; [ ! -f .env ] || . ./.env; set +a; \
-		bun install && bun run dev --host 0.0.0.0 --port "$${FRONTEND_PORT:-8080}"
+		bun install && bun run dev --host 0.0.0.0 --port "$${FRONTEND_PORT:-14273}"
 
 bun-dev: dev-web
 

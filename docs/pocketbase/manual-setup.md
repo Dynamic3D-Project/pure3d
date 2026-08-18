@@ -9,7 +9,7 @@ Since the automatic migration has API compatibility issues, we'll create the col
 docker compose up -d pocketbase
 
 # Open in browser
-open http://localhost:8090/_/
+open http://localhost:14274/_/
 ```
 
 Create an admin account when prompted:

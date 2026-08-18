@@ -16,7 +16,8 @@ const getVersion = (): string => {
 
 export default defineConfig({
 	server: {
-		host: '0.0.0.0'
+		host: '0.0.0.0',
+		port: 14273
 	},
 	define: {
 		__APP_VERSION__: JSON.stringify(getVersion()),

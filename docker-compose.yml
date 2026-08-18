@@ -2,8 +2,8 @@ services:
   minio:
     image: minio/minio:latest
     ports:
-      - '${MINIO_API_PORT:-9000}:9000'
-      - '${MINIO_CONSOLE_PORT:-9001}:9001'
+      - '${MINIO_API_PORT:-14275}:9000'
+      - '${MINIO_CONSOLE_PORT:-14276}:9001'
     volumes:
       - ./minio/data:/data
     environment:
@@ -28,14 +28,14 @@ services:
   pocketbase:
     image: ghcr.io/muchobien/pocketbase:latest
     ports:
-      - '${POCKETBASE_PORT:-8090}:8090'
+      - '${POCKETBASE_PORT:-14274}:8090'
     volumes:
       - ./pocketbase/pb_data:/pb/pb_data
       - ./pocketbase-entrypoint.sh:/entrypoint.sh:ro
     environment:
       - POCKETBASE_ADMIN_EMAIL=${POCKETBASE_ADMIN_EMAIL:-admin@admin.local}
       - POCKETBASE_ADMIN_PASSWORD=${POCKETBASE_ADMIN_PASSWORD:-1234567890}
-      - PUBLIC_POCKETBASE_URL=${PUBLIC_POCKETBASE_URL:-http://localhost:8090}
+      - PUBLIC_POCKETBASE_URL=${PUBLIC_POCKETBASE_URL:-http://localhost:14274}
       - SMTP_ENABLED=${SMTP_ENABLED:-false}
       - SMTP_HOST=${SMTP_HOST:-}
       - SMTP_PORT=${SMTP_PORT:-587}
@@ -59,7 +59,7 @@ services:
       - /app/node_modules
     environment:
       - POCKETBASE_URL=http://pocketbase:8090
-      - PUBLIC_POCKETBASE_URL=${PUBLIC_POCKETBASE_URL:-http://localhost:8090}
+      - PUBLIC_POCKETBASE_URL=${PUBLIC_POCKETBASE_URL:-http://localhost:14274}
       - POCKETBASE_ADMIN_EMAIL=${POCKETBASE_ADMIN_EMAIL:-admin@admin.local}
       - POCKETBASE_ADMIN_PASSWORD=${POCKETBASE_ADMIN_PASSWORD:-1234567890}
       - R2_ENDPOINT=${R2_ENDPOINT:-http://minio:9000}
@@ -91,10 +91,10 @@ services:
       - ./:/app
       - /app/node_modules
     ports:
-      - '${FRONTEND_PORT:-8080}:8080'
+      - '${FRONTEND_PORT:-14273}:14273'
     environment:
-      - PUBLIC_POCKETBASE_URL=${PUBLIC_POCKETBASE_URL:-http://localhost:8090}
-      - PUBLIC_ASSET_BASE_URL=${PUBLIC_ASSET_BASE_URL:-http://localhost:9000/pure3d-assets}
+      - PUBLIC_POCKETBASE_URL=${PUBLIC_POCKETBASE_URL:-http://localhost:14274}
+      - PUBLIC_ASSET_BASE_URL=${PUBLIC_ASSET_BASE_URL:-http://localhost:14275/pure3d-assets}
     depends_on:
       minio-setup:
         condition: service_completed_successfully
@@ -104,5 +104,5 @@ services:
         condition: service_completed_successfully
       voyager-setup:
         condition: service_completed_successfully
-    command: sh -c "bun install && bun run dev --host --port 8080"
+    command: sh -c "bun install && bun run dev --host --port 14273"
     restart: unless-stopped

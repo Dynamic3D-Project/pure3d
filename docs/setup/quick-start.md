@@ -19,8 +19,8 @@ On a new machine, `docker compose up -d` will:
 
 ## Default URLs
 
-- Frontend: `http://localhost:8080`
-- PocketBase admin UI: `http://localhost:8090/_/`
+- Frontend: `http://localhost:14273`
+- PocketBase admin UI: `http://localhost:14274/_/`
 
 ## Demo accounts
 
@@ -99,8 +99,8 @@ You should see:
 
 Then open:
 
-- `http://localhost:8080`
-- `http://localhost:8090/_/`
+- `http://localhost:14273`
+- `http://localhost:14274/_/`
 
 ## Start from scratch again
 

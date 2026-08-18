@@ -3,7 +3,7 @@
 # Import PocketBase schema from pb_schema/collections.json
 # This script imports the collections schema into a running PocketBase instance
 
-POCKETBASE_URL="${POCKETBASE_URL:-http://localhost:8090}"
+POCKETBASE_URL="${POCKETBASE_URL:-http://localhost:14274}"
 SCHEMA_FILE="./pocketbase/pb_schema/collections.json"
 
 echo "🔄 Importing PocketBase schema..."

@@ -40,7 +40,7 @@ bun install
 bun dev
 ```
 
-Open `http://localhost:5173` and you're done. All data and 3D assets load from the production services automatically.
+Open `http://localhost:14273` and you're done. All data and 3D assets load from the production services automatically.
 
 ### Option B: Full local stack with Docker
 
@@ -68,8 +68,8 @@ What happens on startup:
 
 Open the app:
 
-- Frontend: `http://localhost:8080`
-- PocketBase admin UI: `http://localhost:8090/_/`
+- Frontend: `http://localhost:14273`
+- PocketBase admin UI: `http://localhost:14274/_/`
 
 Demo accounts (created automatically):
 

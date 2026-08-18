@@ -3,7 +3,7 @@
 # Export PocketBase schema to pb_schema/collections.json
 # This script helps export your current PocketBase schema
 
-POCKETBASE_URL="${POCKETBASE_URL:-http://localhost:8090}"
+POCKETBASE_URL="${POCKETBASE_URL:-http://localhost:14274}"
 OUTPUT_FILE="./pocketbase/pb_schema/collections.json"
 
 echo "📤 Exporting PocketBase schema..."
