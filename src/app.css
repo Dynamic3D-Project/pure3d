@@ -39,26 +39,26 @@
   /* Pure 3D — paper · ink · vermillion.
      Primary = ink (dominant action is dark-on-paper).
      Accent  = vermillion (reserved for signal: pins, links, active tool). */
-  --color-base-100: #f4f1eb;
-  --color-base-200: #ece7dd;
-  --color-base-300: #e2dccf;
-  --color-base-content: #141413;
-  --color-primary: #141413;
-  --color-primary-content: #f4f1eb;
-  --color-secondary: #555249;
-  --color-secondary-content: #f4f1eb;
-  --color-accent: oklch(62% 0.19 35);
+  --color-base-100: var(--color-paper);
+  --color-base-200: var(--color-paper-2);
+  --color-base-300: var(--color-paper-3);
+  --color-base-content: var(--color-ink);
+  --color-primary: var(--color-ink);
+  --color-primary-content: var(--color-paper);
+  --color-secondary: var(--color-ink-3);
+  --color-secondary-content: var(--color-paper);
+  --color-accent: var(--color-vermillion);
   --color-accent-content: #ffffff;
-  --color-neutral: #2b2a27;
-  --color-neutral-content: #f4f1eb;
+  --color-neutral: var(--color-ink-2);
+  --color-neutral-content: var(--color-paper);
   --color-info: oklch(55% 0.15 220);
-  --color-info-content: #f4f1eb;
+  --color-info-content: var(--color-paper);
   --color-success: oklch(45% 0.12 150);
-  --color-success-content: #f4f1eb;
+  --color-success-content: var(--color-paper);
   --color-warning: oklch(72% 0.16 70);
-  --color-warning-content: #141413;
+  --color-warning-content: var(--color-ink);
   --color-error: oklch(55% 0.2 25);
-  --color-error-content: #f4f1eb;
+  --color-error-content: var(--color-paper);
   --radius-selector: 0.125rem;
   --radius-field: 0.125rem;
   --radius-box: 0.25rem;

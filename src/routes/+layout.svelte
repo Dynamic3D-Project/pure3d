@@ -14,7 +14,7 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-<div class="-mt-10 min-h-[calc(100vh-4rem)] bg-base-100">
+<div class="-mt-10 min-h-[calc(100vh-4rem)] bg-base-100 text-base-content">
 	{@render children?.()}
 </div>
 
