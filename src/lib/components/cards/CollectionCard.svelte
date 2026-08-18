@@ -30,6 +30,7 @@
 	}
 
 	let plainDescription = $derived(stripHtml(collection.description || ''));
+	let editionCount = $derived(collection.editionCount ?? collection.editionIds?.length ?? 0);
 
 	// Check if thumbnail is from local static assets
 	const isLocalAsset = $derived(collection.thumbnail?.includes('/project/'));
@@ -38,7 +39,7 @@
 <a
 	href={`${base}/collections/${collection.slug}`}
 	data-sveltekit-preload-data="hover"
-	class="group ds-card overflow-hidden"
+	class="group ds-card flex h-full flex-col overflow-hidden"
 	style="background: var(--ds-paper);"
 >
 	<figure class="relative overflow-hidden bg-base-200 aspect-[4/3]">
@@ -85,17 +86,17 @@
 			{/if}
 		{/if}
 	</figure>
-	<div class="card-body p-4">
+	<div class="card-body flex-1 p-4">
 		<h3 class="card-title text-base line-clamp-2 group-hover:text-primary transition-colors">
 			{collection.title}
 		</h3>
 		<p class="text-sm text-base-content/70 line-clamp-2">{plainDescription}</p>
-		<div class="card-actions justify-end mt-2">
+		<div class="card-actions mt-auto justify-end pt-2">
 			<div
 				class="badge badge-outline text-xs"
 				style="border-color: var(--ds-vermillion); color: var(--ds-vermillion);"
 			>
-				{collection.editionCount || collection.editionIds?.length || 0} editions
+				{editionCount} {editionCount === 1 ? 'edition' : 'editions'}
 			</div>
 		</div>
 	</div>

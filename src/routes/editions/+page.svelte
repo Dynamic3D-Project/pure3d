@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
 	import FilterSidebar from '$lib/components/filters/FilterSidebar.svelte';
@@ -11,6 +11,7 @@
 	import { pb } from '$lib/database/client';
 	import { EditionStatus, GlobalRole } from '$lib/types/roles';
 	import toast from 'svelte-french-toast';
+	import { editionMatchesQuery } from '$lib/utils/edition-search';
 
 	interface UserProfileSummary {
 		id: string;
@@ -40,12 +41,6 @@
 	let selectedUserQuery = $state('');
 
 	onMount(async () => {
-		const query = new URLSearchParams(window.location.search).get('q');
-		if (query) {
-			searchQuery = query;
-			await loadUserProfileForQuery(query);
-		}
-
 		// If we have fresh cached data, skip loading
 		if (!authStore.isAuthenticated && hasCachedData && !isStale($editionsStore.lastFetched)) {
 			isLoading = false;
@@ -73,6 +68,18 @@
 	let inputElement: HTMLInputElement | undefined = $state();
 	let suggestionsElement: HTMLDivElement | undefined = $state();
 
+	afterNavigate(() => {
+		const query = new URLSearchParams(window.location.search).get('q') || '';
+		if (query === searchQuery) return;
+
+		searchQuery = query;
+		selectedUserProfile = null;
+		selectedUserQuery = '';
+		showSuggestions = false;
+		selectedIndex = -1;
+		if (query) void loadUserProfileForQuery(query);
+	});
+
 	// Initialize filter state
 	let filters = $state<FilterState>({
 		dcSubject: [],
@@ -93,13 +100,7 @@
 
 		// Text search
 		if (searchQuery.trim()) {
-			const query = searchQuery.toLowerCase();
-			result = result.filter(
-				(edition) =>
-					edition.title.toLowerCase().includes(query) ||
-					edition.description.toLowerCase().includes(query) ||
-					edition.authors.toLowerCase().includes(query)
-			);
+			result = result.filter((edition) => editionMatchesQuery(edition, searchQuery));
 		}
 
 		// Category filters (AND between categories, OR within category)
@@ -403,7 +404,8 @@
 							oninput={handleInput}
 							onfocus={handleFocus}
 							onkeydown={handleKeydown}
-							placeholder="Search editions..."
+							placeholder="Search edition titles and metadata..."
+							aria-label="Search edition metadata"
 							class="input-bordered input w-full bg-base-100 pr-10 pl-10"
 							role="combobox"
 							aria-expanded={showSuggestions}
@@ -416,7 +418,7 @@
 								type="button"
 								onclick={clearSearch}
 								class="btn absolute top-1/2 right-3 btn-circle -translate-y-1/2 btn-ghost btn-xs"
-								aria-label="Clear search"
+								aria-label="Clear edition search"
 							>
 								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path

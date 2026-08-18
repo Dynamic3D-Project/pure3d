@@ -7,12 +7,21 @@
 
 	// Reactive data from persisted stores - shows cached data immediately
 	let featuredEditions = $derived($editionsStore.items.slice(0, 8));
-	let heroEditions = $derived(
-		$editionsStore.items.filter((edition) => edition.thumbnail).slice(0, 5)
+	const heroRotation = Math.random();
+	let heroEditions = $derived.by(() => {
+		const editions = $editionsStore.items.filter((edition) => edition.thumbnail);
+		if (editions.length <= 5) return editions;
+
+		const start = Math.floor(heroRotation * editions.length);
+		return Array.from({ length: 5 }, (_, index) => editions[(start + index) % editions.length]);
+	});
+	let collections = $derived(
+		$collectionsStore.items.filter(
+			(collection) => collection.isVisible && (collection.editionCount ?? 0) > 0
+		)
 	);
-	let collections = $derived($collectionsStore.items);
 	let totalEditions = $derived($editionsStore.total);
-	let totalCollections = $derived($collectionsStore.total);
+	let totalCollections = $derived(collections.length);
 
 	let hasCachedData = $derived(
 		$editionsStore.items.length > 0 || $collectionsStore.items.length > 0
@@ -210,12 +219,9 @@
 											alt={edition.title}
 											loading={i < 2 ? 'eager' : 'lazy'}
 										/>
-										<span class="hero-cover-meta">
-											{#if edition.pubNum}
-												<span>Ed. {String(edition.pubNum).padStart(2, '0')}</span>
-											{/if}
-											<span>{edition.title}</span>
-										</span>
+									<span class="hero-cover-meta">
+										<span>{edition.title}</span>
+									</span>
 									</a>
 								{/each}
 							{/if}

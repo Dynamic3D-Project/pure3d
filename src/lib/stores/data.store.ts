@@ -153,7 +153,7 @@ export async function fetchCollections(): Promise<(Collection & { editionCount?:
 			$autoCancel: false
 		}),
 		pb.collection('editions').getList(1, 500, {
-			filter: canRequestHidden ? undefined : 'isPublished = true',
+			filter: 'isPublished = true',
 			fields: 'id,collection',
 			$autoCancel: false
 		})

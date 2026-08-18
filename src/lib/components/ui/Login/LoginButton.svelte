@@ -46,16 +46,15 @@
 				class="p-2"
 				onclose={() => (accountMenuOpen = false)}
 			>
-				<ul class="menu" role="menu">
+				<ul class="menu w-full p-0">
 					<li class="menu-title px-4 py-2">
-						<span class="text-xs text-base-content/70">{authStore.user?.email}</span>
+						<span class="truncate text-xs text-base-content/70">{authStore.user?.email}</span>
 					</li>
-					<div class="divider my-0"></div>
 					{#if authStore.globalRole === GlobalRole.Admin}
 						<li>
 							<a
 								href="{base}/admin"
-								class="flex items-center gap-2"
+								class="flex w-full items-center gap-2"
 								onclick={() => (accountMenuOpen = false)}
 							>
 								<svg
@@ -76,11 +75,10 @@
 							</a>
 						</li>
 					{/if}
-					<div class="divider my-0"></div>
 					<li>
 						<a
 							href="{base}/profile"
-							class="flex items-center gap-2"
+							class="flex w-full items-center gap-2"
 							onclick={() => (accountMenuOpen = false)}
 						>
 							<svg
@@ -103,7 +101,7 @@
 					<li>
 						<a
 							href="{base}/reviews"
-							class="flex items-center gap-2"
+							class="flex w-full items-center gap-2"
 							onclick={() => (accountMenuOpen = false)}
 						>
 							<svg
@@ -123,11 +121,10 @@
 							My Work
 						</a>
 					</li>
-					<div class="divider my-0"></div>
 					<li>
 						<button
 							type="button"
-							class="flex items-center gap-2 text-error"
+							class="flex w-full items-center gap-2 text-error"
 							onclick={() => {
 								accountMenuOpen = false;
 								authStore.logout();

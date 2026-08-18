@@ -128,11 +128,11 @@ async function ensureAutodateFields() {
 async function createDocumentationCollection() {
 	console.log('--- Step 1: Create documentation collection ---');
 	const rules = {
-		listRule: 'isPublished = true || @request.auth.globalRole = "admin"',
-		viewRule: 'isPublished = true || @request.auth.globalRole = "admin"',
-		createRule: '@request.auth.globalRole = "admin"',
-		updateRule: '@request.auth.globalRole = "admin"',
-		deleteRule: '@request.auth.globalRole = "admin"'
+		listRule: 'isPublished = true || @request.auth.role = "admin"',
+		viewRule: 'isPublished = true || @request.auth.role = "admin"',
+		createRule: '@request.auth.role = "admin"',
+		updateRule: '@request.auth.role = "admin"',
+		deleteRule: '@request.auth.role = "admin"'
 	};
 
 	if (await collectionExists('documentation')) {

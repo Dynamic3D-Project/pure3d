@@ -66,10 +66,10 @@
 	});
 </script>
 
-<div id="admin-layout" class="flex min-h-[calc(100vh-80px)]">
+<div id="admin-layout" class="flex min-h-[calc(100vh-4rem)]">
 	<!-- Sidebar -->
 	<aside
-		class="fixed inset-y-0 left-0 z-40 w-64 shrink-0 transform border-r border-base-300 bg-base-200 pt-20 transition-transform duration-200 lg:sticky lg:top-[60px] lg:h-[calc(100vh-60px)] lg:translate-x-0 lg:pt-0"
+		class="fixed inset-y-0 left-0 z-40 w-64 shrink-0 transform border-r border-base-300 bg-base-200 pt-20 transition-transform duration-200 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:translate-x-0 lg:pt-0"
 		class:translate-x-0={sidebarOpen}
 		class:-translate-x-full={!sidebarOpen}
 	>
@@ -118,7 +118,7 @@
 	{/if}
 
 	<!-- Main content -->
-	<main class="flex-1 p-4 lg:p-8">
+	<main class="min-w-0 flex-1 p-4 lg:p-8">
 		<button
 			class="btn btn-outline mb-4 gap-2 lg:hidden"
 			onclick={() => (sidebarOpen = !sidebarOpen)}

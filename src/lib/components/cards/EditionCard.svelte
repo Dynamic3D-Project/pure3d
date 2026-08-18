@@ -124,15 +124,6 @@
 				/>
 			</div>
 		{/if}
-		<!-- Edition number badge -->
-		{#if edition.pubNum}
-			<div
-				class="absolute top-2 left-2 z-10 rounded-md px-1.5 py-0.5 text-xs font-medium backdrop-blur-sm"
-				style="background: var(--ds-vermillion); color: var(--ds-vermillion-ink);"
-			>
-				Ed. {String(edition.pubNum || 1).padStart(2, '0')}
-			</div>
-		{/if}
 		{#if onRemove}
 			<button
 				type="button"

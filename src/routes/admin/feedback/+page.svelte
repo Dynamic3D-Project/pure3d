@@ -24,6 +24,11 @@
 		record: RecordModel;
 	}
 
+	interface FeedbackRecipient {
+		id: string;
+		email: string;
+	}
+
 	const categoryLabels: Record<string, string> = {
 		bug: 'Bug',
 		confusing: 'Confusing',
@@ -73,6 +78,11 @@
 	let categoryFilter = $state('');
 	let severityFilter = $state('');
 	let expandedId = $state<string | null>(null);
+	let recipients = $state<FeedbackRecipient[]>([]);
+	let recipientEmail = $state('');
+	let isLoadingRecipients = $state(true);
+	let isSavingRecipient = $state(false);
+	let deletingRecipientId = $state<string | null>(null);
 	const perPage = 500;
 
 	let hasActiveFilters = $derived(Boolean(searchQuery || statusFilter || categoryFilter || severityFilter));
@@ -87,6 +97,7 @@
 	);
 	onMount(() => {
 		loadFeedback();
+		loadRecipients();
 
 		let unsubscribe: (() => void) | null = null;
 		pb.collection('feedback')
@@ -114,6 +125,50 @@
 			unsubscribe?.();
 		};
 	});
+
+	async function loadRecipients() {
+		isLoadingRecipients = true;
+		try {
+			const records = await pb.collection('feedbackRecipients').getFullList({ sort: 'email' });
+			recipients = records.map((record) => ({ id: record.id, email: record.email }));
+		} catch (error) {
+			console.error('Failed to load feedback recipients:', error);
+			toast.error('Failed to load email recipients');
+		} finally {
+			isLoadingRecipients = false;
+		}
+	}
+
+	async function addRecipient() {
+		const email = recipientEmail.trim().toLowerCase();
+		if (!email) return;
+
+		isSavingRecipient = true;
+		try {
+			await pb.collection('feedbackRecipients').create({ email });
+			recipientEmail = '';
+			await loadRecipients();
+			toast.success('Email recipient added');
+		} catch (error: any) {
+			const message = error?.response?.data?.email?.message || 'Failed to add email recipient';
+			toast.error(message);
+		} finally {
+			isSavingRecipient = false;
+		}
+	}
+
+	async function deleteRecipient(recipient: FeedbackRecipient) {
+		deletingRecipientId = recipient.id;
+		try {
+			await pb.collection('feedbackRecipients').delete(recipient.id);
+			recipients = recipients.filter((item) => item.id !== recipient.id);
+			toast.success('Email recipient removed');
+		} catch {
+			toast.error('Failed to remove email recipient');
+		} finally {
+			deletingRecipientId = null;
+		}
+	}
 
 	async function loadFeedback() {
 		isLoading = true;
@@ -217,6 +272,14 @@
 		return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
 	}
 
+	function plainText(html: string) {
+		return html
+			.replace(/&nbsp;/g, ' ')
+			.replace(/<[^>]*>/g, ' ')
+			.replace(/\s+/g, ' ')
+			.trim();
+	}
+
 	function imageUrl(item: FeedbackEntry, filename: string) {
 		return pb.files.getURL(item.record, filename, { thumb: '400x300' });
 	}
@@ -237,7 +300,7 @@
 	<title>Send Feedback | Admin | Pure3D</title>
 </svelte:head>
 
-<div id="admin-feedback-page" class="mx-auto max-w-6xl">
+<div id="admin-feedback-page" class="mx-auto w-full min-w-0 max-w-6xl">
 	<div class="mb-8 flex flex-wrap items-start justify-between gap-4">
 		<div>
 			<h1 class="text-3xl font-bold">Send Feedback</h1>
@@ -251,6 +314,61 @@
 		</button>
 	</div>
 
+	<section class="mb-6 rounded-box border border-base-300 bg-base-100 p-4 shadow-sm">
+		<div class="mb-3">
+			<h2 class="font-semibold">Email notifications</h2>
+			<p class="text-sm text-base-content/60">
+				These addresses receive an email whenever new feedback is submitted.
+			</p>
+		</div>
+		<form
+			class="flex flex-col gap-2 sm:flex-row"
+			onsubmit={(event) => {
+				event.preventDefault();
+				addRecipient();
+			}}
+		>
+			<label class="form-control min-w-0 flex-1">
+				<span class="sr-only">Email address</span>
+				<input
+					type="email"
+					required
+					placeholder="notifications@example.org"
+					class="input input-bordered w-full"
+					bind:value={recipientEmail}
+				/>
+			</label>
+			<button class="btn btn-primary" type="submit" disabled={isSavingRecipient}>
+				{#if isSavingRecipient}<span class="loading loading-spinner loading-xs"></span>{/if}
+				Add recipient
+			</button>
+		</form>
+
+		{#if isLoadingRecipients}
+			<div class="mt-4"><span class="loading loading-spinner loading-sm"></span></div>
+		{:else if recipients.length === 0}
+			<div class="alert alert-warning mt-4 text-sm">
+				No recipients configured. Feedback will still be saved, but no email will be sent.
+			</div>
+		{:else}
+			<ul class="mt-4 divide-y divide-base-300 rounded-box border border-base-300">
+				{#each recipients as recipient (recipient.id)}
+					<li class="flex items-center justify-between gap-3 px-3 py-2">
+						<span class="min-w-0 truncate">{recipient.email}</span>
+						<button
+							type="button"
+							class="btn btn-ghost btn-xs text-error"
+							disabled={deletingRecipientId === recipient.id}
+							onclick={() => deleteRecipient(recipient)}
+						>
+							{deletingRecipientId === recipient.id ? 'Removing...' : 'Remove'}
+						</button>
+					</li>
+				{/each}
+			</ul>
+		{/if}
+	</section>
+
 	<div class="mb-6 rounded-box border border-base-300 bg-base-100 p-4 shadow-sm">
 		<div class="mb-3 flex items-center justify-between gap-3">
 			<div>
@@ -261,7 +379,7 @@
 				<button type="button" class="btn btn-ghost btn-xs" onclick={clearFilters}>Clear</button>
 			{/if}
 		</div>
-		<div class="grid gap-3 md:grid-cols-[minmax(16rem,1fr)_12rem_12rem_12rem]">
+		<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(16rem,1fr)_12rem_12rem_12rem]">
 			<label class="form-control">
 				<span class="label pb-1 pt-0"><span class="label-text text-xs">Search</span></span>
 				<input
@@ -394,8 +512,8 @@
 
 							<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
 								<div class="space-y-4">
-									<div class="prose prose-sm max-w-none rounded-box bg-base-200 p-4">
-										{@html item.feedbackHtml || '<p>No written feedback.</p>'}
+									<div class="whitespace-pre-wrap rounded-box bg-base-200 p-4 text-sm">
+										{plainText(item.feedbackHtml) || 'No written feedback.'}
 									</div>
 
 									{#if item.images.length > 0}

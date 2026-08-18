@@ -662,6 +662,11 @@ async function main() {
 			relationField('createdBy', collectionIds['users'])
 		]
 	});
+	collectionIds['feedbackRecipients'] = await ensureCollection({
+		name: 'feedbackRecipients',
+		type: 'base',
+		fields: [{ name: 'email', type: 'email', required: true }]
+	});
 
 	console.log('\nPhase 4: Dropping legacy userProfiles (if present)...\n');
 	await dropLegacyUserProfiles();
@@ -685,6 +690,19 @@ async function main() {
 	]) {
 		await setOpenRules(name);
 	}
+
+	const feedbackRecipients = await pb.collections.getOne('feedbackRecipients');
+	await pb.collections.update(feedbackRecipients.id, {
+		listRule: '@request.auth.role = "admin"',
+		viewRule: '@request.auth.role = "admin"',
+		createRule: '@request.auth.role = "admin"',
+		updateRule: '@request.auth.role = "admin"',
+		deleteRule: '@request.auth.role = "admin"',
+		indexes: [
+			'CREATE UNIQUE INDEX idx_feedbackRecipients_email ON feedbackRecipients (email COLLATE NOCASE)'
+		]
+	});
+	console.log('   feedbackRecipients: API rules restricted to admins');
 
 	// Configure S3-compatible storage only when all four R2_* env vars are present.
 	// Per-field `maxSize` on file fields gates upload sizes (PocketBase v0.22+

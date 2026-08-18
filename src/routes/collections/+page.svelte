@@ -14,14 +14,18 @@
 	let canShowHiddenCollections = $derived(authStore.globalRole === GlobalRole.Admin);
 	let allCollections = $derived($collectionsStore.items ?? []);
 	let hiddenCollectionCount = $derived(
-		allCollections.filter((collection) => !collection.isVisible).length
+		allCollections.filter((collection) => !isPublicCollection(collection)).length
 	);
+
+	function isPublicCollection(collection: (typeof allCollections)[number]) {
+		return collection.isVisible && (collection.editionCount ?? 0) > 0;
+	}
 
 	// Reactive data from persisted store
 	let collections = $derived(
 		canShowHiddenCollections && showHiddenCollections
 			? allCollections
-			: allCollections.filter((collection) => collection.isVisible)
+			: allCollections.filter(isPublicCollection)
 	);
 	let hasCachedData = $derived(($collectionsStore.items ?? []).length > 0);
 	let isLoading = $state(true);
@@ -265,7 +269,7 @@
 						class="toggle toggle-sm toggle-primary"
 						bind:checked={showHiddenCollections}
 					/>
-					<span>Show non-public</span>
+					<span>Show hidden and empty</span>
 					{#if hiddenCollectionCount > 0}
 						<span class="badge badge-sm badge-ghost">{hiddenCollectionCount}</span>
 					{/if}
@@ -388,7 +392,9 @@
 								<span class="badge badge-sm border-red-800 bg-red-700 text-white">Not public</span>
 							{/if}
 							{#if suggestion.editionCount !== undefined}
-								<span class="badge badge-ghost badge-sm">{suggestion.editionCount} editions</span>
+								<span class="badge badge-ghost badge-sm">
+									{suggestion.editionCount} {suggestion.editionCount === 1 ? 'edition' : 'editions'}
+								</span>
 							{/if}
 						</button>
 					</div>
@@ -411,7 +417,7 @@
 		{/if}
 	</div>
 
-	<!-- Masonry Grid -->
+	<!-- Collections Grid -->
 	{#if isLoading && !hasCachedData}
 		<div class="masonry-grid">
 			{#each Array(8) as _}
@@ -457,32 +463,30 @@
 
 <style>
 	.masonry-grid {
-		column-count: 1;
-		column-gap: 1.5rem;
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 1.5rem;
 	}
 
 	@media (min-width: 640px) {
 		.masonry-grid {
-			column-count: 2;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
 	}
 
 	@media (min-width: 1024px) {
 		.masonry-grid {
-			column-count: 3;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
 		}
 	}
 
 	@media (min-width: 1280px) {
 		.masonry-grid {
-			column-count: 4;
+			grid-template-columns: repeat(4, minmax(0, 1fr));
 		}
 	}
 
 	.masonry-item {
-		break-inside: avoid;
-		margin-bottom: 1.5rem;
-		display: inline-block;
-		width: 100%;
+		min-width: 0;
 	}
 </style>

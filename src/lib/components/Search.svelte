@@ -2,6 +2,7 @@
 	import { base } from '$app/paths';
 	import { pb } from '$lib/database';
 	import { debounce } from '$lib/utils/debounce';
+	import { editionMatchesQuery } from '$lib/utils/edition-search';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { computePosition, flip, shift, offset, size, autoUpdate } from '@floating-ui/dom';
@@ -49,7 +50,7 @@
 
 			const [editionsRes, collectionsRes] = await Promise.all([
 				fetch(
-					`${baseUrl}/api/collections/editions/records?filter=${encodeURIComponent('isPublished=true')}&expand=collection&perPage=100`
+					`${baseUrl}/api/collections/editions/records?filter=${encodeURIComponent('isPublished=true')}&expand=collection&perPage=500`
 				),
 				fetch(
 					`${baseUrl}/api/collections/collections/records?filter=${encodeURIComponent('isVisible=true')}&perPage=100`
@@ -79,20 +80,7 @@
 			const lowerQuery = trimmedQuery.toLowerCase();
 
 			const filteredEditions = trimmedQuery
-				? editionsResult.items.filter((edition: any) => {
-						const title = (edition.dcTitle || edition.title || '').toLowerCase();
-						const abstract = (edition.dcAbstract || '').toLowerCase();
-						const description = (edition.dcDescription || '').toLowerCase();
-						const creators = Array.isArray(edition.dcCreator)
-							? edition.dcCreator.join(' ').toLowerCase()
-							: '';
-						return (
-							title.includes(lowerQuery) ||
-							abstract.includes(lowerQuery) ||
-							description.includes(lowerQuery) ||
-							creators.includes(lowerQuery)
-						);
-					})
+				? editionsResult.items.filter((edition: any) => editionMatchesQuery(edition, trimmedQuery))
 				: editionsResult.items;
 
 			const filteredCollections = trimmedQuery
@@ -389,6 +377,7 @@
 			bind:this={searchInputElement}
 			bind:value={searchQuery}
 			placeholder="Search editions, collections..."
+			aria-label="Search all editions and collections"
 			class="grow border-none outline-none focus:ring-0 focus:outline-none"
 			onfocus={openSearchResults}
 			onclick={openSearchResults}
