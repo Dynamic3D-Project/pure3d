@@ -96,10 +96,10 @@
 </script>
 
 <div
-	class="group ds-card overflow-hidden"
+	class="group ds-card overflow-clip"
 	style="background: var(--ds-paper);"
 >
-	<figure class="relative overflow-hidden aspect-square bg-base-200">
+	<figure class="relative overflow-clip aspect-square bg-base-200">
 		{#if edition.isPublished === false}
 			<div
 				class="absolute top-2 right-2 z-10 rounded-md border border-red-800 bg-red-700 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm"
@@ -154,27 +154,29 @@
 		<!-- Actual image with format fallback -->
 		{#if coverUrl && !imageError}
 			{@const isLocalAsset = coverUrl.includes('/project/')}
-			{#if isLocalAsset}
-				<picture class="block w-full h-full">
-					<source srcset={coverUrl.replace('.png', '.avif')} type="image/avif" />
-					<source srcset={coverUrl.replace('.png', '.webp')} type="image/webp" />
+			<div class="card-image-zoom h-full w-full">
+				{#if isLocalAsset}
+					<picture class="block w-full h-full">
+						<source srcset={coverUrl.replace('.png', '.avif')} type="image/avif" />
+						<source srcset={coverUrl.replace('.png', '.webp')} type="image/webp" />
+						<img
+							src={coverUrl}
+							alt={edition.title}
+							class="card-parallax-image w-full h-full object-cover"
+							loading="lazy"
+							onerror={handleImageError}
+						/>
+					</picture>
+				{:else}
 					<img
 						src={coverUrl}
 						alt={edition.title}
-						class="w-full h-full object-cover"
+						class="card-parallax-image w-full h-full object-cover"
 						loading="lazy"
 						onerror={handleImageError}
 					/>
-				</picture>
-			{:else}
-				<img
-					src={coverUrl}
-					alt={edition.title}
-					class="w-full h-full object-cover"
-					loading="lazy"
-					onerror={handleImageError}
-				/>
-			{/if}
+				{/if}
+			</div>
 		{/if}
 		<a
 			href={`${base}/editions/${edition.slug}`}

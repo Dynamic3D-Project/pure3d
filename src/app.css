@@ -138,6 +138,48 @@ a[target='_blank'] {
   margin-top: 60px;
 }
 
+@keyframes card-image-parallax {
+  from {
+    transform: translate3d(0, -10%, 0) scale(1.26);
+  }
+
+  to {
+    transform: translate3d(0, 10%, 0) scale(1.26);
+  }
+}
+
+@supports (animation-timeline: view()) {
+  .card-parallax-image {
+    animation: card-image-parallax linear both;
+    animation-timeline: view();
+    animation-range: cover 0% cover 100%;
+    will-change: transform;
+  }
+}
+
+.card-image-zoom {
+  transition: transform 150ms ease-out;
+}
+
+.group:hover .card-image-zoom {
+  transform: scale(1.04);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-parallax-image {
+    animation: none;
+    transform: none;
+  }
+
+  .card-image-zoom {
+    transition: none;
+  }
+
+  .group:hover .card-image-zoom {
+    transform: none;
+  }
+}
+
 /* Floating label form styles */
 .form-control-float {
   @apply relative;
