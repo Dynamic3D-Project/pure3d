@@ -9,9 +9,10 @@
 		edition: Edition;
 		onRemove?: () => void;
 		removeDisabled?: boolean;
+		discovery?: boolean;
 	}
 
-	let { edition, onRemove, removeDisabled = false }: Props = $props();
+	let { edition, onRemove, removeDisabled = false, discovery = false }: Props = $props();
 	let imageError = $state(false);
 	let hasPrefetched = false;
 
@@ -97,9 +98,12 @@
 
 <div
 	class="group ds-card overflow-clip"
-	style="background: var(--ds-paper);"
+	class:discovery-card={discovery}
 >
-	<figure class="relative overflow-clip aspect-square bg-base-200">
+	<figure
+		class="relative overflow-clip rounded-t-xl bg-base-200"
+		class:aspect-square={!discovery || !coverUrl || imageError}
+	>
 		{#if edition.isPublished === false}
 			<div
 				class="absolute top-2 right-2 z-10 rounded-md border border-red-800 bg-red-700 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm"
@@ -110,7 +114,7 @@
 			</div>
 		{/if}
 		<!-- Peer Review Badge -->
-		{#if edition.hasPeerReview}
+		{#if edition.hasPeerReview && !discovery}
 			<div
 				class="absolute right-2 z-10"
 				class:top-12={edition.isPublished === false}
@@ -137,7 +141,7 @@
 			</button>
 		{/if}
 		<!-- Mesh/Texture info chip -->
-		{#if (edition as any).modelSize}
+		{#if (edition as any).modelSize && !discovery}
 			<div class="absolute bottom-2 left-2 z-10 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
 				{(edition as any).modelSize}
 			</div>
@@ -154,15 +158,18 @@
 		<!-- Actual image with format fallback -->
 		{#if coverUrl && !imageError}
 			{@const isLocalAsset = coverUrl.includes('/project/')}
-			<div class="card-image-zoom h-full w-full">
+			<div class:h-full={!discovery} class="w-full">
 				{#if isLocalAsset}
-					<picture class="block w-full h-full">
+					<picture class:h-full={!discovery} class="block w-full">
 						<source srcset={coverUrl.replace('.png', '.avif')} type="image/avif" />
 						<source srcset={coverUrl.replace('.png', '.webp')} type="image/webp" />
 						<img
 							src={coverUrl}
 							alt={edition.title}
-							class="card-parallax-image w-full h-full object-cover"
+							class="card-cover-image w-full object-cover"
+							class:card-parallax-image={!discovery}
+							class:card-masonry-image={discovery}
+							class:h-full={!discovery}
 							loading="lazy"
 							onerror={handleImageError}
 						/>
@@ -171,7 +178,10 @@
 					<img
 						src={coverUrl}
 						alt={edition.title}
-						class="card-parallax-image w-full h-full object-cover"
+						class="card-cover-image w-full object-cover"
+						class:card-parallax-image={!discovery}
+						class:card-masonry-image={discovery}
+						class:h-full={!discovery}
 						loading="lazy"
 						onerror={handleImageError}
 					/>
@@ -186,7 +196,7 @@
 			aria-label={`View ${edition.title}`}
 		></a>
 	</figure>
-	<div class="card-body gap-1 p-4">
+	<div class="card-body gap-1" class:p-1={discovery} class:p-4={!discovery}>
 		<a
 			href={`${base}/editions/${edition.slug}`}
 			data-sveltekit-preload-data="hover"
@@ -196,7 +206,7 @@
 				{edition.title}
 			</h3>
 		</a>
-		{#if edition.authors}
+		{#if edition.authors && !discovery}
 			<p class="text-xs text-base-content/60 line-clamp-1">{edition.authors}</p>
 		{/if}
 	</div>

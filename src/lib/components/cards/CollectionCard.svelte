@@ -14,14 +14,22 @@
 
 	interface Props {
 		collection: CollectionCardData;
+		showDescription?: boolean;
 	}
 
-	let { collection }: Props = $props();
+	let { collection, showDescription = true }: Props = $props();
 
 	let imageError = $state(false);
+	let imageFit = $state<'cover' | 'contain'>('contain');
 
 	function handleImageError() {
 		imageError = true;
+	}
+
+	function handleImageLoad(event: Event) {
+		const image = event.currentTarget as HTMLImageElement;
+		const ratio = image.naturalWidth / image.naturalHeight;
+		imageFit = ratio >= 1 / 1.5 && ratio <= 1.5 ? 'cover' : 'contain';
 	}
 
 	// Strip HTML tags for plain-text preview
@@ -40,9 +48,8 @@
 	href={`${base}/collections/${collection.slug}`}
 	data-sveltekit-preload-data="hover"
 	class="group ds-card flex h-full flex-col overflow-clip"
-	style="background: var(--ds-paper);"
 >
-	<figure class="relative overflow-clip bg-base-200 aspect-[4/3]">
+	<figure class="relative aspect-square min-h-0 w-full shrink-0 overflow-clip rounded-t-xl bg-base-200">
 		{#if collection.isVisible === false}
 			<div
 				class="absolute top-2 right-2 z-10 rounded-md border border-red-800 bg-red-700 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm"
@@ -63,7 +70,7 @@
 		</div>
 		<!-- Actual image with format fallback -->
 		{#if collection.thumbnail && !imageError}
-			<div class="card-image-zoom h-full w-full">
+			<div class="h-full w-full">
 				{#if isLocalAsset}
 					<picture class="block w-full h-full">
 						<source srcset={collection.thumbnail.replace('.png', '.avif')} type="image/avif" />
@@ -71,8 +78,11 @@
 						<img
 							src={collection.thumbnail}
 							alt={collection.title}
-							class="card-parallax-image w-full h-full object-cover"
+							class="card-cover-image w-full h-full"
+							class:object-cover={imageFit === 'cover'}
+							class:object-contain={imageFit === 'contain'}
 							loading="lazy"
+							onload={handleImageLoad}
 							onerror={handleImageError}
 						/>
 					</picture>
@@ -80,8 +90,11 @@
 					<img
 						src={collection.thumbnail}
 						alt={collection.title}
-						class="card-parallax-image w-full h-full object-cover"
+						class="card-cover-image w-full h-full"
+						class:object-cover={imageFit === 'cover'}
+						class:object-contain={imageFit === 'contain'}
 						loading="lazy"
+						onload={handleImageLoad}
 						onerror={handleImageError}
 					/>
 				{/if}
@@ -92,11 +105,13 @@
 		<h3 class="card-title text-base line-clamp-2 group-hover:text-primary transition-colors">
 			{collection.title}
 		</h3>
-		<p class="text-sm text-base-content/70 line-clamp-2">{plainDescription}</p>
+		{#if showDescription && plainDescription}
+			<p class="text-sm text-base-content/70 line-clamp-2">{plainDescription}</p>
+		{/if}
 		<div class="card-actions mt-auto justify-end pt-2">
 			<div
 				class="badge badge-outline text-xs"
-				style="border-color: var(--ds-vermillion); color: var(--ds-vermillion);"
+				style="border-color: var(--color-vermillion); color: var(--color-vermillion);"
 			>
 				{editionCount} {editionCount === 1 ? 'edition' : 'editions'}
 			</div>

@@ -12,14 +12,15 @@ export const load: LayoutLoad = async () => {
 			fields: 'id,title,slug,summary,order'
 		});
 
-		const pages: Pick<Documentation, 'id' | 'title' | 'slug' | 'summary' | 'order'>[] =
-			result.items.map((r) => ({
+		const pages: Pick<Documentation, 'id' | 'title' | 'slug' | 'summary' | 'order'>[] = result.items
+			.map((r) => ({
 				id: r.id,
 				title: r.title,
 				slug: r.slug,
 				summary: r.summary || '',
 				order: r.order
-			}));
+			}))
+			.sort((a, b) => a.order - b.order);
 
 		return { pages };
 	} catch {

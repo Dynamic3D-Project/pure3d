@@ -59,9 +59,9 @@
   --color-warning-content: var(--color-ink);
   --color-error: oklch(55% 0.2 25);
   --color-error-content: var(--color-paper);
-  --radius-selector: 0.125rem;
-  --radius-field: 0.125rem;
-  --radius-box: 0.25rem;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
   --size-selector: 0.25rem;
   --size-field: 0.28125rem;
   --border: 1px;
@@ -138,13 +138,25 @@ a[target='_blank'] {
   margin-top: 60px;
 }
 
+.ds-card {
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-box);
+  background: var(--color-base-100);
+  box-shadow: 0 1px 3px oklch(0% 0 0 / 0.08), 0 1px 2px oklch(0% 0 0 / 0.06);
+  transition: box-shadow 180ms ease-out;
+}
+
+.ds-card:hover {
+  box-shadow: 0 10px 25px oklch(0% 0 0 / 0.12), 0 4px 10px oklch(0% 0 0 / 0.08);
+}
+
 @keyframes card-image-parallax {
   from {
-    transform: translate3d(0, -10%, 0) scale(1.26);
+    transform: translate3d(0, -21%, 0) scale(1.5);
   }
 
   to {
-    transform: translate3d(0, 10%, 0) scale(1.26);
+    transform: translate3d(0, 21%, 0) scale(1.5);
   }
 }
 
@@ -157,12 +169,16 @@ a[target='_blank'] {
   }
 }
 
-.card-image-zoom {
-  transition: transform 150ms ease-out;
+.card-cover-image {
+  transition: opacity 180ms ease-out;
 }
 
-.group:hover .card-image-zoom {
-  transform: scale(1.04);
+.group:hover .card-cover-image {
+  opacity: 0.9;
+}
+
+.card-masonry-image {
+  aspect-ratio: auto 4 / 3;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -171,12 +187,8 @@ a[target='_blank'] {
     transform: none;
   }
 
-  .card-image-zoom {
+  .card-cover-image {
     transition: none;
-  }
-
-  .group:hover .card-image-zoom {
-    transform: none;
   }
 }
 

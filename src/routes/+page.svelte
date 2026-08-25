@@ -219,9 +219,6 @@
 											alt={edition.title}
 											loading={i < 2 ? 'eager' : 'lazy'}
 										/>
-									<span class="hero-cover-meta">
-										<span>{edition.title}</span>
-									</span>
 									</a>
 								{/each}
 							{/if}
@@ -300,7 +297,7 @@
 			{:else if collections.length > 0}
 				<div class="projects-grid">
 					{#each collections.slice(0, 4) as collection (collection.id)}
-						<CollectionCard {collection} />
+						<CollectionCard {collection} showDescription={false} />
 					{/each}
 				</div>
 
@@ -693,47 +690,6 @@
 		height: 100%;
 		object-fit: cover;
 		display: block;
-	}
-	.hero-cover::after {
-		content: '';
-		position: absolute;
-		inset: 0;
-		background: linear-gradient(to top, rgba(16, 16, 15, 0.72), transparent 48%);
-		opacity: 0;
-		transition: opacity 0.16s ease;
-	}
-	.hero-cover:hover::after,
-	.hero-cover:focus-visible::after {
-		opacity: 1;
-	}
-	.hero-cover-meta {
-		position: absolute;
-		left: 8px;
-		right: 8px;
-		bottom: 8px;
-		z-index: 1;
-		display: grid;
-		gap: 3px;
-		font-family: var(--font-sans);
-		font-size: 10px;
-		line-height: 1.15;
-		color: var(--color-paper);
-		opacity: 0;
-		transform: translateY(4px);
-		transition:
-			opacity 0.16s ease,
-			transform 0.16s ease;
-	}
-	.hero-cover-meta span:first-child {
-		font-family: var(--font-mono);
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: rgba(244, 241, 235, 0.72);
-	}
-	.hero-cover:hover .hero-cover-meta,
-	.hero-cover:focus-visible .hero-cover-meta {
-		opacity: 1;
-		transform: translateY(0);
 	}
 	@media (max-width: 900px) {
 		.hero-grid {

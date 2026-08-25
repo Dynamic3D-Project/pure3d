@@ -560,11 +560,11 @@
 					{/each}
 				</div>
 			{:else if filteredEditions.length > 0}
-				<div
-					class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5"
-				>
+				<div class="columns-2 gap-4 sm:columns-3 md:columns-4 xl:columns-5">
 					{#each filteredEditions as edition (edition.id)}
-						<EditionCard {edition} />
+						<div class="mb-4 break-inside-avoid">
+							<EditionCard {edition} discovery />
+						</div>
 					{/each}
 				</div>
 			{:else}

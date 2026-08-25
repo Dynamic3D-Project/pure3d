@@ -9,24 +9,30 @@
 	let currentSlug = $derived($page.params.slug || '');
 </script>
 
-<div class="container mx-auto max-w-6xl px-4 py-8">
+<div id="documentation-layout" class="container mx-auto max-w-7xl px-4 py-8">
 	<div class="flex flex-col gap-8 lg:flex-row">
 		<!-- Sidebar -->
 		<nav class="shrink-0 lg:sticky lg:top-16 lg:w-64 lg:self-start">
 			<!-- Mobile: horizontal scrollable tabs -->
-			<div class="flex gap-2 overflow-x-auto pb-2 lg:hidden">
+			<div class="flex gap-2 overflow-x-auto border-b border-base-300 pb-3 lg:hidden">
 				<a
 					href="{base}/documentation"
-					class="btn btn-sm whitespace-nowrap"
-					class:btn-active={!currentSlug}
+					class="rounded-full border px-4 py-2 text-sm font-semibold whitespace-nowrap transition hover:border-base-content"
+					class:border-ink={!currentSlug}
+					class:bg-ink={!currentSlug}
+					class:text-paper={!currentSlug}
+					class:border-base-300={!!currentSlug}
 				>
-					Overview
+					Get started
 				</a>
 				{#each pages as p (p.id)}
 					<a
 						href="{base}/documentation/{p.slug}"
-						class="btn btn-sm whitespace-nowrap"
-						class:btn-active={currentSlug === p.slug}
+						class="rounded-full border px-4 py-2 text-sm font-semibold whitespace-nowrap transition hover:border-base-content"
+						class:border-ink={currentSlug === p.slug}
+						class:bg-ink={currentSlug === p.slug}
+						class:text-paper={currentSlug === p.slug}
+						class:border-base-300={currentSlug !== p.slug}
 					>
 						{p.title}
 					</a>
@@ -35,25 +41,28 @@
 
 			<!-- Desktop: vertical sidebar -->
 			<div class="hidden lg:block">
-				<h2 class="mb-4 text-lg font-bold">Documentation</h2>
-				<ul class="menu w-full gap-1 rounded-box bg-base-200 p-2">
-					<li>
+				<p class="text-xs font-bold tracking-[0.18em] text-vermillion uppercase">Publish with us</p>
+				<h2 class="mt-2 mb-5 text-2xl font-bold tracking-tight">Guide contents</h2>
+				<ul class="w-full border-t border-base-300">
+					<li class="border-b border-base-300">
 						<a
 							href="{base}/documentation"
-							class:bg-base-300={!currentSlug}
-							class:font-semibold={!currentSlug}
+							class="block border-l-2 border-transparent px-3 py-3 text-sm transition hover:bg-base-200/60"
+							class:border-l-vermillion={!currentSlug}
+							class:bg-base-200={!currentSlug}
 						>
-							Overview
+							<span class:font-bold={!currentSlug}>Get started</span>
 						</a>
 					</li>
 					{#each pages as p (p.id)}
-						<li>
+						<li class="border-b border-base-300">
 							<a
 								href="{base}/documentation/{p.slug}"
-								class:bg-base-300={currentSlug === p.slug}
-								class:font-semibold={currentSlug === p.slug}
+								class="block border-l-2 border-transparent px-3 py-3 text-sm transition hover:bg-base-200/60"
+								class:border-l-vermillion={currentSlug === p.slug}
+								class:bg-base-200={currentSlug === p.slug}
 							>
-								{p.title}
+								<span class:font-bold={currentSlug === p.slug}>{p.title}</span>
 							</a>
 						</li>
 					{/each}
