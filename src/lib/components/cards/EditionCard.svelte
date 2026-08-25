@@ -196,13 +196,16 @@
 			aria-label={`View ${edition.title}`}
 		></a>
 	</figure>
-	<div class="card-body gap-1" class:p-1={discovery} class:p-4={!discovery}>
+	<div class="card-body gap-1" class:p-2={discovery} class:p-4={!discovery}>
 		<a
 			href={`${base}/editions/${edition.slug}`}
 			data-sveltekit-preload-data="hover"
 			onmouseenter={prefetch3DAssets}
 		>
-			<h3 class="card-title text-sm line-clamp-2 transition-colors group-hover:text-primary">
+			<h3
+				class="card-title text-sm line-clamp-2 transition-colors group-hover:text-primary"
+				class:font-medium={discovery}
+			>
 				{edition.title}
 			</h3>
 		</a>
