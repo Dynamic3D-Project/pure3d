@@ -96,17 +96,14 @@
 	}
 </script>
 
-<div
-	class="group ds-card overflow-clip"
-	class:discovery-card={discovery}
->
+<div class="catalogue-card group ds-card overflow-clip p-3" class:discovery-card={discovery}>
 	<figure
-		class="relative overflow-clip rounded-t-xl bg-base-200"
+		class="relative overflow-clip rounded-lg bg-base-200"
 		class:aspect-square={!discovery || !coverUrl || imageError}
 	>
 		{#if edition.isPublished === false}
 			<div
-				class="absolute top-2 right-2 z-10 rounded-md border border-red-800 bg-red-700 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm"
+				class="absolute top-2 right-2 z-10 rounded-md border border-red-800 bg-red-700 px-2 py-1 text-[11px] font-semibold tracking-wide text-white uppercase shadow-sm"
 				style="color: white;"
 				title="This edition is hidden and not visible to public visitors"
 			>
@@ -124,14 +121,14 @@
 				<img
 					src="{base}/images/peer-reviewed-badge.svg"
 					alt="Peer Reviewed"
-					class="w-10 h-10 drop-shadow-md"
+					class="h-10 w-10 drop-shadow-md"
 				/>
 			</div>
 		{/if}
 		{#if onRemove}
 			<button
 				type="button"
-				class="btn btn-square btn-neutral btn-xs absolute right-2 bottom-2 z-20 shadow"
+				class="btn absolute right-2 bottom-2 z-20 btn-square shadow btn-xs btn-neutral"
 				title="Remove edition from this collection"
 				aria-label="Remove edition from this collection"
 				onclick={handleRemove}
@@ -142,7 +139,9 @@
 		{/if}
 		<!-- Mesh/Texture info chip -->
 		{#if (edition as any).modelSize && !discovery}
-			<div class="absolute bottom-2 left-2 z-10 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+			<div
+				class="absolute bottom-2 left-2 z-10 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm"
+			>
 				{(edition as any).modelSize}
 			</div>
 		{/if}
@@ -151,8 +150,19 @@
 			class="absolute inset-0 flex items-center justify-center text-base-content/30"
 			class:hidden={coverUrl && !imageError}
 		>
-			<svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="h-16 w-16"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="1.5"
+					d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+				/>
 			</svg>
 		</div>
 		<!-- Actual image with format fallback -->
@@ -196,21 +206,33 @@
 			aria-label={`View ${edition.title}`}
 		></a>
 	</figure>
-	<div class="card-body gap-1" class:p-2={discovery} class:p-4={!discovery}>
-		<a
-			href={`${base}/editions/${edition.slug}`}
-			data-sveltekit-preload-data="hover"
-			onmouseenter={prefetch3DAssets}
-		>
-			<h3
-				class="card-title text-sm line-clamp-2 transition-colors group-hover:text-primary"
-				class:font-medium={discovery}
+	<div class="grid min-h-20 grid-cols-[minmax(4.75rem,0.7fr)_minmax(0,1.3fr)] gap-3 pt-3">
+		<div class="flex flex-col justify-between rounded-md bg-base-200 px-3 py-2.5">
+			<span class="text-lg leading-none font-medium">{edition.hasPeerReview ? '✓' : '3D'}</span>
+			<span
+				class="font-mono text-[9px] leading-none tracking-[0.12em] text-base-content/55 uppercase"
 			>
-				{edition.title}
-			</h3>
-		</a>
-		{#if edition.authors && !discovery}
-			<p class="text-xs text-base-content/60 line-clamp-1">{edition.authors}</p>
-		{/if}
+				{edition.hasPeerReview ? 'Reviewed' : 'Edition'}
+			</span>
+		</div>
+		<div class="flex min-w-0 flex-col py-0.5">
+			<a
+				href={`${base}/editions/${edition.slug}`}
+				data-sveltekit-preload-data="hover"
+				onmouseenter={prefetch3DAssets}
+			>
+				<h3 class="card-title line-clamp-2 text-sm leading-tight transition-colors">
+					{edition.title}
+				</h3>
+			</a>
+			{#if edition.authors}
+				<p class="mt-1 line-clamp-1 text-xs text-base-content/60">{edition.authors}</p>
+			{/if}
+			<div
+				class="mt-auto pt-2 font-mono text-[9px] tracking-[0.12em] text-base-content/45 uppercase"
+			>
+				3D scholarly edition
+			</div>
+		</div>
 	</div>
 </div>

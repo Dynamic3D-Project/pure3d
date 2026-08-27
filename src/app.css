@@ -142,12 +142,29 @@ a[target='_blank'] {
   border: 1px solid var(--color-base-300);
   border-radius: var(--radius-box);
   background: var(--color-base-100);
-  box-shadow: 0 1px 3px oklch(0% 0 0 / 0.08), 0 1px 2px oklch(0% 0 0 / 0.06);
-  transition: box-shadow 180ms ease-out;
+  box-shadow:
+    0 1px 2px oklch(0% 0 0 / 0.06),
+    0 5px 14px oklch(0% 0 0 / 0.035);
+  transition:
+    border-color 180ms ease-out,
+    box-shadow 180ms ease-out,
+    transform 180ms ease-out;
 }
 
 .ds-card:hover {
-  box-shadow: 0 10px 25px oklch(0% 0 0 / 0.12), 0 4px 10px oklch(0% 0 0 / 0.08);
+  border-color: color-mix(in oklch, var(--color-base-content) 22%, var(--color-base-300));
+  box-shadow:
+    0 2px 5px oklch(0% 0 0 / 0.08),
+    0 9px 24px oklch(0% 0 0 / 0.06);
+  transform: translateY(-2px);
+}
+
+.catalogue-card .card-title {
+  color: var(--color-base-content);
+}
+
+.catalogue-card:hover .card-title {
+  color: var(--color-vermillion-ink);
 }
 
 @keyframes card-image-parallax {
@@ -182,6 +199,14 @@ a[target='_blank'] {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .ds-card {
+    transition: none;
+  }
+
+  .ds-card:hover {
+    transform: none;
+  }
+
   .card-parallax-image {
     animation: none;
     transform: none;
