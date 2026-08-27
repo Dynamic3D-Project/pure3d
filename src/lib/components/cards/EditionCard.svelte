@@ -96,7 +96,10 @@
 	}
 </script>
 
-<div class="catalogue-card group ds-card overflow-clip p-3" class:discovery-card={discovery}>
+<div
+	class="catalogue-card group ds-card flex h-full flex-col overflow-clip p-3"
+	class:discovery-card={discovery}
+>
 	<figure
 		class="relative overflow-clip rounded-lg bg-base-200"
 		class:aspect-square={!discovery || !coverUrl || imageError}
@@ -206,33 +209,21 @@
 			aria-label={`View ${edition.title}`}
 		></a>
 	</figure>
-	<div class="grid min-h-20 grid-cols-[minmax(4.75rem,0.7fr)_minmax(0,1.3fr)] gap-3 pt-3">
-		<div class="flex flex-col justify-between rounded-md bg-base-200 px-3 py-2.5">
-			<span class="text-lg leading-none font-medium">{edition.hasPeerReview ? '✓' : '3D'}</span>
-			<span
-				class="font-mono text-[9px] leading-none tracking-[0.12em] text-base-content/55 uppercase"
-			>
-				{edition.hasPeerReview ? 'Reviewed' : 'Edition'}
-			</span>
-		</div>
-		<div class="flex min-w-0 flex-col py-0.5">
-			<a
-				href={`${base}/editions/${edition.slug}`}
-				data-sveltekit-preload-data="hover"
-				onmouseenter={prefetch3DAssets}
-			>
-				<h3 class="card-title line-clamp-2 text-sm leading-tight transition-colors">
-					{edition.title}
-				</h3>
-			</a>
-			{#if edition.authors}
-				<p class="mt-1 line-clamp-1 text-xs text-base-content/60">{edition.authors}</p>
-			{/if}
-			<div
-				class="mt-auto pt-2 font-mono text-[9px] tracking-[0.12em] text-base-content/45 uppercase"
-			>
-				3D scholarly edition
-			</div>
+	<div class="mt-3 flex min-h-24 flex-1 flex-col rounded-md bg-base-200 px-3 py-3">
+		<a
+			href={`${base}/editions/${edition.slug}`}
+			data-sveltekit-preload-data="hover"
+			onmouseenter={prefetch3DAssets}
+		>
+			<h3 class="card-title line-clamp-2 text-base leading-tight font-semibold transition-colors">
+				{edition.title}
+			</h3>
+		</a>
+		{#if edition.authors}
+			<p class="mt-2 line-clamp-1 text-sm text-base-content/60">{edition.authors}</p>
+		{/if}
+		<div class="mt-auto pt-3 font-mono text-[9px] tracking-[0.12em] text-base-content/45 uppercase">
+			{edition.hasPeerReview ? 'Peer-reviewed 3D edition' : '3D scholarly edition'}
 		</div>
 	</div>
 </div>

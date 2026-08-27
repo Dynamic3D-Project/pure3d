@@ -112,7 +112,7 @@
 			{/if}
 		</figure>
 		<div class="flex flex-1 flex-col pt-3">
-			<div class="rounded-md bg-base-200 px-3 py-3">
+			<div class="flex flex-1 flex-col rounded-md bg-base-200 px-3 py-3">
 				<h3 class="card-title line-clamp-2 text-base leading-tight font-semibold transition-colors">
 					{collection.title}
 				</h3>
@@ -121,12 +121,12 @@
 						{plainDescription}
 					</p>
 				{/if}
-			</div>
-			<div
-				class="mt-auto px-3 pt-3 text-xs font-medium tracking-wide text-base-content/75 uppercase"
-			>
-				{editionCount}
-				{editionCount === 1 ? 'Edition' : 'Editions'}
+				<div
+					class="mt-auto pt-3 text-xs font-medium tracking-wide text-base-content/75 uppercase"
+				>
+					{editionCount}
+					{editionCount === 1 ? 'Edition' : 'Editions'}
+				</div>
 			</div>
 		</div>
 	</a>

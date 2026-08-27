@@ -13,6 +13,7 @@
 	import toast from 'svelte-french-toast';
 	import { editionMatchesQuery } from '$lib/utils/edition-search';
 	import { profileNameKey, profileNames } from '$lib/utils/profile-matching';
+	import SearchIcon from '~icons/lucide/search';
 
 	interface UserProfileSummary {
 		id: string;
@@ -349,11 +350,11 @@
 			</div>
 
 			<!-- Search and Filter Button (mobile) -->
-			<div class="mb-6 flex gap-3">
+			<div class="mb-6 flex flex-wrap gap-2">
 				<!-- Mobile filter button -->
 				<label
 					for="filter-drawer"
-					class="btn flex-none btn-outline lg:hidden"
+					class="btn flex-none border-base-300 bg-base-100 shadow-none lg:hidden"
 					aria-label="Open filters"
 				>
 					<svg
@@ -377,21 +378,12 @@
 				</label>
 
 				<!-- Search input with autocomplete -->
-				<div class="search-container flex-1">
+				<div class="search-container min-w-0 flex-1">
 					<div class="relative">
-						<svg
-							class="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-base-content/50"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-							/>
-						</svg>
+						<SearchIcon
+							class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-base-content/60"
+							aria-hidden="true"
+						/>
 						<input
 							type="text"
 							bind:this={inputElement}
@@ -401,7 +393,7 @@
 							onkeydown={handleKeydown}
 							placeholder="Search edition titles and metadata..."
 							aria-label="Search edition metadata"
-							class="input-bordered input w-full bg-base-100 pr-10 pl-10"
+							class="input h-12 w-full rounded-lg border border-base-300 bg-base-100 pr-10 pl-10 shadow-none focus:border-base-content/40 focus:outline-none"
 							role="combobox"
 							aria-expanded={showSuggestions}
 							aria-haspopup="listbox"
@@ -506,6 +498,22 @@
 						</div>
 					</FloatingDropdown>
 				</div>
+
+				{#if !isLoading || hasCachedData}
+					<div
+						class="flex w-full items-center justify-between rounded-lg border border-base-300 bg-base-100 px-4 py-2.5 lg:w-auto lg:min-w-44"
+						role="status"
+						aria-live="polite"
+					>
+						<span class="font-mono text-[9px] tracking-[0.12em] text-base-content/45 uppercase">
+							Results
+						</span>
+						<span class="text-sm font-semibold tabular-nums">
+							{filteredEditions.length}
+							<span class="font-normal text-base-content/45">/ {editions.length}</span>
+						</span>
+					</div>
+				{/if}
 			</div>
 
 			{#if showSelectedUserProfile && selectedUserProfile}
@@ -541,13 +549,6 @@
 						View profile →
 					</span>
 				</a>
-			{/if}
-
-			<!-- Results count -->
-			{#if !isLoading || hasCachedData}
-				<div class="mb-4 text-sm text-base-content/70">
-					Showing {filteredEditions.length} of {editions.length} editions
-				</div>
 			{/if}
 
 			<!-- Editions Grid -->
