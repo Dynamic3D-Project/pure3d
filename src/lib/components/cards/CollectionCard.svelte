@@ -111,29 +111,22 @@
 				</div>
 			{/if}
 		</figure>
-		<div class="grid min-h-20 grid-cols-[minmax(4.75rem,0.7fr)_minmax(0,1.3fr)] gap-3 pt-3">
-			<div class="flex flex-col justify-between rounded-md bg-base-200 px-3 py-2.5">
-				<span class="text-xl leading-none font-medium tabular-nums">{editionCount}</span>
-				<span
-					class="font-mono text-[9px] leading-none tracking-[0.12em] text-base-content/55 uppercase"
-				>
-					{editionCount === 1 ? 'Edition' : 'Editions'}
-				</span>
-			</div>
-			<div class="flex min-w-0 flex-col py-0.5">
-				<h3 class="card-title line-clamp-2 text-sm leading-tight transition-colors">
+		<div class="flex flex-1 flex-col pt-3">
+			<div class="rounded-md bg-base-200 px-3 py-3">
+				<h3 class="card-title line-clamp-2 text-base leading-tight font-semibold transition-colors">
 					{collection.title}
 				</h3>
 				{#if showDescription && plainDescription}
-					<p class="mt-1 line-clamp-2 text-xs leading-snug text-base-content/60">
+					<p class="mt-2 line-clamp-2 text-sm leading-snug text-base-content/60">
 						{plainDescription}
 					</p>
 				{/if}
-				<div
-					class="mt-auto pt-2 font-mono text-[9px] tracking-[0.12em] text-base-content/45 uppercase"
-				>
-					Collection
-				</div>
+			</div>
+			<div
+				class="mt-auto px-3 pt-3 text-xs font-medium tracking-wide text-base-content/75 uppercase"
+			>
+				{editionCount}
+				{editionCount === 1 ? 'Edition' : 'Editions'}
 			</div>
 		</div>
 	</a>
