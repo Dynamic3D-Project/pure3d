@@ -267,42 +267,44 @@
 		>
 			<!-- Cover -->
 			<figure
-				class="relative aspect-square w-full overflow-hidden rounded-2xl bg-base-200 shadow-lg ring-1 ring-base-300 md:sticky md:top-24"
+				class="aspect-square w-full rounded-xl border border-base-300 bg-base-100 p-3 shadow-sm md:sticky md:top-24"
 			>
-				{#if collection.thumbnail}
-					<img
-						src={collection.thumbnail}
-						alt={collection.title}
-						class="h-full w-full object-cover"
-						loading="eager"
-					/>
-				{:else}
-					<div class="flex h-full w-full items-center justify-center text-base-content/20">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="h-24 w-24"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
+				<div class="relative h-full w-full overflow-hidden rounded-lg bg-base-200">
+					{#if collection.thumbnail}
+						<img
+							src={collection.thumbnail}
+							alt={collection.title}
+							class="h-full w-full object-cover"
+							loading="eager"
+						/>
+					{:else}
+						<div class="flex h-full w-full items-center justify-center text-base-content/20">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-24 w-24"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="1.25"
+									d="M4.5 4.5h15v15h-15z M4.5 15l4-4 4 4 3-3 4 4"
+								/>
+							</svg>
+						</div>
+					{/if}
+					{#if collection.isVisible === false}
+						<div
+							class="absolute top-3 right-3 rounded-md border border-red-800 bg-red-700 px-2 py-1 text-[11px] font-semibold tracking-wide text-white uppercase shadow-sm"
+							style="color: white;"
+							title="This collection is hidden and not visible to public visitors"
 						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="1.25"
-								d="M4.5 4.5h15v15h-15z M4.5 15l4-4 4 4 3-3 4 4"
-							/>
-						</svg>
-					</div>
-				{/if}
-				{#if collection.isVisible === false}
-					<div
-						class="absolute top-3 right-3 rounded-md border border-red-800 bg-red-700 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm"
-						style="color: white;"
-						title="This collection is hidden and not visible to public visitors"
-					>
-						Not public
-					</div>
-				{/if}
+							Not public
+						</div>
+					{/if}
+				</div>
 			</figure>
 
 			<!-- Info column -->

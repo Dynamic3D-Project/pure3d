@@ -726,7 +726,7 @@
 						class:lg:opacity-0={isSidebarCollapsed}
 						class:lg:invisible={isSidebarCollapsed}
 					>
-						<div class="card-body w-96 p-0">
+						<div class="card-body w-full p-0 lg:w-96">
 							<!-- Tabs -->
 							<div
 								role="tablist"
@@ -734,7 +734,7 @@
 							>
 								<button
 									role="tab"
-									class="tab shrink-0 whitespace-nowrap"
+									class="tab grow shrink-0 whitespace-nowrap"
 									class:tab-active={activeTab === 'description'}
 									onclick={() => (activeTab = 'description')}
 								>
@@ -742,7 +742,7 @@
 								</button>
 								<button
 									role="tab"
-									class="tab shrink-0 whitespace-nowrap"
+									class="tab grow shrink-0 whitespace-nowrap"
 									class:tab-active={activeTab === 'metadata'}
 									onclick={() => (activeTab = 'metadata')}
 								>
@@ -750,7 +750,7 @@
 								</button>
 								<button
 									role="tab"
-									class="tab shrink-0 whitespace-nowrap"
+									class="tab grow shrink-0 whitespace-nowrap"
 									class:tab-active={activeTab === 'peer-review'}
 									onclick={() => (activeTab = 'peer-review')}
 								>
@@ -759,7 +759,7 @@
 								{#if siblingEditions && siblingEditions.length > 0}
 									<button
 										role="tab"
-										class="tab shrink-0 whitespace-nowrap"
+										class="tab grow shrink-0 whitespace-nowrap"
 										class:tab-active={activeTab === 'versions'}
 										onclick={() => (activeTab = 'versions')}
 									>
@@ -768,7 +768,7 @@
 								{/if}
 								<button
 									role="tab"
-									class="tab shrink-0 whitespace-nowrap"
+									class="tab grow shrink-0 whitespace-nowrap"
 									class:tab-active={activeTab === 'printables'}
 									onclick={() => (activeTab = 'printables')}
 								>
