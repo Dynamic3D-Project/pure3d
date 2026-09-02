@@ -1,78 +1,56 @@
 # AGENTS.md
 
-Guidance for working in this repository.
+## Workflow
 
-## Project
-
-Pure3D is a SvelteKit web platform for exploring 3D digital collections and editions.
-
-- Frontend: SvelteKit 2, Svelte 5, TypeScript
-- Styling: TailwindCSS 4, DaisyUI
-- Runtime/package manager: Bun
-- Backend/data: PocketBase
-- Local object storage: MinIO through Docker Compose
-- 3D viewer: Smithsonian Voyager assets under `static/voyager/`
+- Use Bun as the package manager and runtime. Use the latest stable Bun unless a compatibility
+  pin is added to the repository.
+- Implement new features directly on `main` unless the user requests another branch or workflow.
+- Preserve unrelated working-tree changes.
+- Keep changes minimal and follow existing SvelteKit 2/Svelte 5 patterns.
+- Do not commit, push, or open a pull request unless explicitly requested.
+- Report failed checks and blockers clearly.
 
 ## Commands
 
-Use the smallest command that verifies the change.
-
 ```sh
-make install      # provision local MinIO, PocketBase, Voyager, and dependencies
-make dev          # run full local dev app in Docker/OrbStack
-make db           # start MinIO and PocketBase only
-make bun-dev      # run services in Docker and frontend with native Bun
-bun run check     # Svelte/TypeScript check
-bun run lint      # Prettier check and ESLint
+bun install       # install dependencies
+make install      # provision local services, Voyager, and assets
+make dev          # run the full local Docker stack
+make db           # run PocketBase and MinIO only
+make dev-web      # run services in Docker and the frontend with Bun
+bun run check     # Svelte and TypeScript checks
+bun run lint      # Prettier and ESLint checks
 bun run build     # production build
 ```
 
-Default local URLs:
-
-- Frontend: `http://localhost:14273`
-- PocketBase admin: `http://localhost:14274/_/`
-- MinIO console: `http://localhost:14276`
-- Asset bucket: `http://localhost:14275/pure3d-assets`
-
-## Code Layout
-
-- `src/routes/` - SvelteKit pages, layouts, and endpoints
-- `src/lib/components/` - reusable Svelte components
-- `src/lib/database/` - PocketBase client, stores, and data helpers
-- `src/lib/utils/` - shared utility functions
-- `src/lib/types/` - shared TypeScript types
-- `src/lib/paraglide/` - generated localization output
-- `static/` - public static assets, including Voyager runtime files
-- `pocketbase/` - local PocketBase data and migrations/setup state
-- `scripts/` - setup, migration, import, and asset scripts
-- `docs/` - project documentation and implementation notes
-
-## Style
-
-- Follow existing SvelteKit and Svelte 5 patterns in nearby files.
-- Prefer existing components, utilities, stores, and types before adding new ones.
-- Keep changes small and local; avoid speculative abstractions.
-- Formatting is Prettier-controlled: tabs, single quotes, no trailing commas, 100 character print width.
-- Every Svelte component must have an `id` on its root HTML element, using kebab-case from the filename. Example: `ProfileCard.svelte` uses `id="profile-card"`.
-- If a Svelte component would have multiple root elements, wrap them in one root element with the required `id`.
-
-## Data And Storage
-
-- Frontend-only development can use the default production PocketBase and R2 asset URLs.
-- Full local development uses Docker Compose services for PocketBase and MinIO.
-- Historical imported assets use the legacy `project/<collection>/<edition>/...` path layout in the asset bucket.
-- New uploads are stored through PocketBase file fields and served from PocketBase file URLs.
-
-## Safety
-
-- Do not commit secrets or local state: `.env`, `data/`, `pocketbase/pb_data`, `minio/data`, logs, or large private assets.
-- Keep generated files out of edits unless the command being run intentionally regenerates them.
-- Do not change local service credentials or ports unless the task requires it.
-- For UI, routing, upload, permission, or data-loading changes, test in a browser when feasible.
-
 ## Verification
 
-- For TypeScript/Svelte changes, run `bun run check` when feasible.
-- For formatting or lint-sensitive edits, run `bun run lint` when feasible.
-- For production-impacting changes, run `bun run build` when feasible.
-- For UI changes, verify the affected page in the running app, preferably against the local Docker stack.
+- Run the smallest relevant check after changes.
+- Run `bun run check` for TypeScript or Svelte changes and `bun run lint` for formatting or lint
+  changes.
+- Run `bun run build` for production-impacting changes.
+- Browser-test affected UI, routing, upload, permission, or data-loading behavior when feasible.
+
+## Architecture And Safety
+
+- The app uses SvelteKit's static adapter with an SPA fallback; do not assume a persistent
+  application server at deployment.
+- PocketBase is the data backend. MinIO emulates object storage locally; deployed assets may use
+  R2. Preserve the legacy `project/<collection>/<edition>/...` asset paths.
+- Never commit `.env`, `data/`, `pocketbase/pb_data`, `minio/data`, logs, credentials, or private
+  assets.
+- Do not edit generated files such as `src/lib/paraglide/` unless intentionally regenerating them.
+- Do not change service credentials, ports, or production data defaults unless required.
+
+## Conventions
+
+- Formatting is Prettier-controlled: tabs, single quotes, no trailing commas, 100-character width.
+- Every Svelte component must have one root HTML element with an `id` matching the filename in
+  kebab-case, for example `ProfileCard.svelte` uses `id="profile-card"`.
+
+## Key Directories
+
+- `src/routes/` - pages, layouts, and endpoints
+- `src/lib/` - shared components, database access, types, and utilities
+- `pocketbase/` and `scripts/` - local backend hooks, setup, migrations, and imports
+- `static/voyager/` - Smithsonian Voyager runtime assets
