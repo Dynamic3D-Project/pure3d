@@ -29,18 +29,17 @@ Pure3D provides an interactive way to view and explore 3D digitized artifacts, a
 
 ## Quick Start
 
-### Option A: Frontend only (recommended for most development)
+### Option A: Frontend against production services (recommended for most development)
 
-No Docker, no database setup. The app connects to the production PocketBase and R2 assets by default.
+No local database setup. The app runs in Docker and connects to the production PocketBase and R2 assets.
 
 ```sh
 git clone <your-repo-url>
 cd pure3D-26
-bun install
-bun dev
+make dev-prod
 ```
 
-Open `http://localhost:60020` and you're done. All data and 3D assets load from the production services automatically.
+Open `http://localhost:60020` and you're done. The frontend runs in Docker and all data and 3D assets load from the production services automatically.
 
 ### Option B: Full local stack with Docker
 

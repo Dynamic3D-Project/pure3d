@@ -1,4 +1,4 @@
-.PHONY: help install db db-logs db-stop dev dev-web bun-dev seed-assets stack stack-stop
+.PHONY: help install db db-logs db-stop dev dev-prod dev-web bun-dev seed-assets stack stack-stop
 
 help:
 	@echo "Pure3D commands"
@@ -7,6 +7,7 @@ help:
 	@echo "  make db-logs     Follow PocketBase logs"
 	@echo "  make db-stop     Stop local database/storage services"
 	@echo "  make dev         Run full local dev app in Docker/OrbStack"
+	@echo "  make dev-prod    Run frontend against production data/assets"
 	@echo "  make dev-web     Run DB/MinIO in Docker, then native Bun frontend"
 	@echo "  make bun-dev     Alias for dev-web"
 	@echo "  make seed-assets Mirror static/project into local MinIO bucket"
@@ -37,6 +38,11 @@ db-stop:
 
 dev:
 	docker compose up frontend
+
+dev-prod:
+	PUBLIC_POCKETBASE_URL=https://pure3d-database.ctwhome.com \
+	PUBLIC_ASSET_BASE_URL=https://pure3d-assets.ctwhome.com \
+		docker compose up --no-deps frontend
 
 dev-web:
 	@docker compose up -d minio minio-setup pocketbase pocketbase-setup voyager-setup
