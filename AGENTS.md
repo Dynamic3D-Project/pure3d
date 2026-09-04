@@ -38,9 +38,6 @@ bun run build     # production build
   application server at deployment.
 - PocketBase is the data backend. MinIO emulates object storage locally; deployed assets may use
   R2. Preserve the legacy `project/<collection>/<edition>/...` asset paths.
-- Local host ports are frontend `60020`, PocketBase `60021`, MinIO API `60023`, MinIO console
-  `60024`, and Vite preview `60025`. Container ports remain frontend `14273`, PocketBase `8090`,
-  and MinIO `9000`/`9001`.
 - Never commit `.env`, `data/`, `pocketbase/pb_data`, `minio/data`, logs, credentials, or private
   assets.
 - Do not edit generated files such as `src/lib/paraglide/` unless intentionally regenerating them.
