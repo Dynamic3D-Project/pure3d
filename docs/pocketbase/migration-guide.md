@@ -74,14 +74,14 @@ pure3D-26/
 
 ```bash
 # Start PocketBase server
-./pocketbase serve
+./pocketbase serve --http=127.0.0.1:60021
 
-# Server will run at: http://127.0.0.1:8090
+# Server will run at: http://127.0.0.1:60021
 ```
 
 ### Step 2: Create Admin Account
 
-1. Open http://127.0.0.1:8090/_/ in your browser
+1. Open http://127.0.0.1:60021/_/ in your browser
 2. Create your admin account (first-time setup)
 3. Note down your credentials - you'll need them for import
 
@@ -89,7 +89,7 @@ pure3D-26/
 
 The migration will be automatically applied when PocketBase starts. Verify collections were created:
 
-1. Go to http://127.0.0.1:8090/_/#/collections
+1. Go to http://127.0.0.1:60021/_/#/collections
 2. You should see 7 collections:
    - users
    - site
@@ -127,9 +127,9 @@ Replace with your actual admin credentials from Step 2.
 ### Step 6: Verify Import
 
 Check the collections in PocketBase admin UI:
-- http://127.0.0.1:8090/_/#/collections/users
-- http://127.0.0.1:8090/_/#/collections/projects
-- http://127.0.0.1:8090/_/#/collections/editions
+- http://127.0.0.1:60021/_/#/collections/users
+- http://127.0.0.1:60021/_/#/collections/projects
+- http://127.0.0.1:60021/_/#/collections/editions
 
 ## Collection Details
 
@@ -293,7 +293,7 @@ bun add pocketbase
 // src/lib/pocketbase.ts
 import PocketBase from 'pocketbase';
 
-export const pb = new PocketBase('http://127.0.0.1:8090');
+export const pb = new PocketBase('http://127.0.0.1:60021');
 
 // Enable auto-cancellation for SSR
 pb.autoCancellation(false);

@@ -121,7 +121,7 @@ export function formatAuthorReconciliation(report: AuthorReconciliation): string
 }
 
 async function main() {
-	const url = process.env.POCKETBASE_URL || 'http://localhost:14274';
+	const url = process.env.POCKETBASE_URL || 'http://localhost:60021';
 	const email = process.env.POCKETBASE_ADMIN_EMAIL || process.env.PB_ADMIN_EMAIL;
 	const password = process.env.POCKETBASE_ADMIN_PASSWORD || process.env.PB_ADMIN_PASSWORD;
 	if (!email || !password) {

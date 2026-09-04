@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import PocketBase from 'pocketbase';
 
-const pb = new PocketBase('http://127.0.0.1:14274');
+const pb = new PocketBase('http://127.0.0.1:60021');
 
 async function main() {
   // Authenticate
@@ -21,7 +21,7 @@ async function main() {
 
   // Try direct fetch without SDK
   console.log('\n\n📦 Trying direct API call...');
-  const response = await fetch('http://127.0.0.1:14274/api/collections/projects/records?perPage=1', {
+  const response = await fetch('http://127.0.0.1:60021/api/collections/projects/records?perPage=1', {
     headers: {
       'Authorization': pb.authStore.token
     }

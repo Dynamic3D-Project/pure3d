@@ -27,7 +27,7 @@ pure3D-26/
 │       └── fonts/
 ```
 
-Then access at: `http://localhost:14273/voyager/voyager-explorer.html`
+Then access at: `http://localhost:60020/voyager/voyager-explorer.html`
 
 ### Option 2: Use Smithsonian's CDN (Current approach)
 

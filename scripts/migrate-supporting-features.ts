@@ -10,7 +10,7 @@
  * Run: bun scripts/migrate-supporting-features.ts
  */
 
-const PB_URL = process.env.POCKETBASE_URL || 'http://127.0.0.1:14274';
+const PB_URL = process.env.POCKETBASE_URL || 'http://127.0.0.1:60021';
 const ADMIN_EMAIL = process.env.PB_ADMIN_EMAIL || 'admin@admin.local';
 const ADMIN_PASSWORD = process.env.PB_ADMIN_PASSWORD || '1234567890';
 

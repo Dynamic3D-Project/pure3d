@@ -267,7 +267,7 @@
 		>
 			<!-- Cover -->
 			<figure
-				class="aspect-square w-full rounded-xl border border-base-300 bg-base-100 p-3 shadow-sm md:sticky md:top-24"
+				class="ds-card-frame aspect-square w-full p-3 md:sticky md:top-24"
 			>
 				<div class="relative h-full w-full overflow-hidden rounded-lg bg-base-200">
 					{#if collection.thumbnail}

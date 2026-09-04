@@ -6,14 +6,14 @@ import { join } from 'path';
  * Import MongoDB backup data into PocketBase
  *
  * PREREQUISITES:
- * 1. PocketBase server must be running (default: http://127.0.0.1:14274)
+ * 1. PocketBase server must be running (default: http://127.0.0.1:60021)
  * 2. Migration must be applied first (collections created)
  * 3. Admin account created in PocketBase
  *
  * Usage: bun scripts/import-to-pocketbase.ts <admin-email> <admin-password>
  */
 
-const POCKETBASE_URL = process.env.POCKETBASE_URL || 'http://127.0.0.1:14274';
+const POCKETBASE_URL = process.env.POCKETBASE_URL || 'http://127.0.0.1:60021';
 const JSON_DIR = 'data/json-output';
 
 interface ImportStats {

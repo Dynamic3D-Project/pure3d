@@ -12,9 +12,9 @@ If a component has multiple root elements (fragment), wrap them in a `<div id="c
 
 Development runs fully locally through Docker/OrbStack:
 
-- PocketBase: `http://localhost:14274`
-- MinIO S3 API: `http://localhost:14275`
-- MinIO console: `http://localhost:14276`
+- PocketBase: `http://localhost:60021`
+- MinIO S3 API: `http://localhost:60023`
+- MinIO console: `http://localhost:60024`
 - Default MinIO credentials: `pure3d` / `pure3d-local-secret`
 - Default bucket: `pure3d-assets`
 
@@ -25,10 +25,10 @@ R2_ENDPOINT=http://minio:9000
 R2_BUCKET=pure3d-assets
 R2_ACCESS_KEY_ID=pure3d
 R2_SECRET_ACCESS_KEY=pure3d-local-secret
-PUBLIC_ASSET_BASE_URL=http://localhost:14275/pure3d-assets
+PUBLIC_ASSET_BASE_URL=http://localhost:60023/pure3d-assets
 ```
 
-Use `http://minio:9000` for PocketBase because it runs inside the Docker network. Use `http://localhost:14275/pure3d-assets` for the browser-facing asset URL.
+Use `http://minio:9000` for PocketBase because it runs inside the Docker network. Use `http://localhost:60023/pure3d-assets` for the browser-facing asset URL.
 
 ### Install Local Development Services
 
@@ -53,10 +53,10 @@ This runs the frontend container with Docker Compose. Compose starts MinIO, Pock
 The important URLs are:
 
 ```txt
-Frontend:         http://localhost:14273
-PocketBase admin: http://localhost:14274/_/
-MinIO console:    http://localhost:14276
-Asset bucket:     http://localhost:14275/pure3d-assets
+Frontend:         http://localhost:60020
+PocketBase admin: http://localhost:60021/_/
+MinIO console:    http://localhost:60024
+Asset bucket:     http://localhost:60023/pure3d-assets
 ```
 
 ### Start Or Restart Services Only
@@ -74,11 +74,11 @@ make install
 ### Verify Local Services
 
 ```sh
-curl http://localhost:14274/api/health
-curl -I http://localhost:14275/pure3d-assets/
+curl http://localhost:60021/api/health
+curl -I http://localhost:60023/pure3d-assets/
 ```
 
-Open the MinIO console at `http://localhost:14276` and confirm the `pure3d-assets` bucket exists.
+Open the MinIO console at `http://localhost:60024` and confirm the `pure3d-assets` bucket exists.
 
 ### Seed Historical Project Assets
 
@@ -93,7 +93,7 @@ project/<collectionPubNum>/edition/<editionPubNum>/<models/textures/etc>
 The frontend builds those URLs from `PUBLIC_ASSET_BASE_URL`. For example, collection 13 edition 20 resolves locally to:
 
 ```txt
-http://localhost:14275/pure3d-assets/project/13/edition/20/scene.svx.json
+http://localhost:60023/pure3d-assets/project/13/edition/20/scene.svx.json
 ```
 
 If you have the legacy asset tree locally under `static/project`, `make install` mirrors it into MinIO automatically. To rerun only the asset mirror step:
@@ -105,7 +105,7 @@ make seed-assets
 Then verify a known scene file:
 
 ```sh
-curl -I http://localhost:14275/pure3d-assets/project/13/edition/20/scene.svx.json
+curl -I http://localhost:60023/pure3d-assets/project/13/edition/20/scene.svx.json
 ```
 
 If that returns `404`, the metadata exists in PocketBase but the asset files have not been seeded into MinIO.

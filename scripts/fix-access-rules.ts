@@ -2,7 +2,7 @@
 /**
  * Fix access rules for existing PocketBase collections
  */
-const PB_URL = 'http://127.0.0.1:14274';
+const PB_URL = 'http://127.0.0.1:60021';
 const ADMIN_EMAIL = 'admin@admin.local';
 const ADMIN_PASSWORD = '1234567890';
 

@@ -10,6 +10,9 @@
 	import { EditionStatus, GlobalRole, Permission, type UserRoleContext } from '$lib/types/roles';
 	import { hasPermission } from '$lib/utils/permissions';
 	import { resolvePageContext } from '$lib/utils/page-permissions';
+	import CopyIcon from '~icons/lucide/copy';
+	import PanelRightCloseIcon from '~icons/lucide/panel-right-close';
+	import PanelRightOpenIcon from '~icons/lucide/panel-right-open';
 
 	// View preset type for camera positions
 	interface ViewPreset {
@@ -155,6 +158,7 @@
 	let imagineModalOpen = $state(false);
 	let loadedModelSize = $state<number | null>(null);
 	let isFullWindow = $state(false);
+	let detailsPanelElement: HTMLDivElement | undefined = $state();
 
 	// Version history & citation state
 	let citationCopied = $state(false);
@@ -270,6 +274,16 @@
 		isSidebarCollapsed = !isSidebarCollapsed;
 	}
 
+	function showMetadata() {
+		activeTab = 'metadata';
+		isSidebarCollapsed = false;
+		if (window.innerWidth < 1024) {
+			requestAnimationFrame(() =>
+				detailsPanelElement?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+			);
+		}
+	}
+
 	function toggleFullWindow() {
 		isFullWindow = !isFullWindow;
 	}
@@ -356,32 +370,36 @@
 		{/if}
 
 		<!-- Title and Authors -->
-		<div class="mb-6 flex items-start gap-4">
-			{#if edition.hasPeerReview}
-				<div class="flex-shrink-0" title="This edition has been peer reviewed">
-					<img
-						src="{base}/images/peer-reviewed-badge.svg"
-						alt="Peer Reviewed"
-						class="h-16 w-16 md:h-20 md:w-20"
-					/>
-				</div>
-			{/if}
-			<div class="flex-1">
-				<div class="mb-1 flex flex-wrap items-center gap-3">
-					<h1 class="text-3xl font-bold md:text-4xl">{edition.title}</h1>
+		<div class="mb-8 flex items-start justify-between gap-6">
+			<div class="min-w-0 flex-1">
+				<div
+					class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 font-mono text-[10px] tracking-[0.12em] text-base-content/50 uppercase"
+				>
+					<span>3D scholarly edition</span>
+					{#if (edition as any).pubNum}
+						<span>Ed. {String((edition as any).pubNum).padStart(2, '0')}</span>
+					{/if}
+					{#if edition.hasPeerReview}
+						<span class="rounded-full bg-base-200 px-2.5 py-1 text-base-content/70">
+							Peer reviewed
+						</span>
+					{/if}
 					{#if (edition as any).isPublished === false}
 						<span
-							class="badge border-error/40 bg-error text-error-content"
+							class="rounded-full bg-error px-2.5 py-1 text-error-content"
 							title="This edition is hidden and not visible to public visitors"
 						>
 							Not public
 						</span>
 					{/if}
 					{#if showDraftBadge}
-						<StatusBadge status={EditionStatus.Draft} size="md" />
+						<StatusBadge status={EditionStatus.Draft} size="sm" />
 					{/if}
 				</div>
-				<p class="text-base-content/70">
+				<h1 class="max-w-5xl text-3xl leading-tight font-bold md:text-4xl lg:text-5xl">
+					{edition.title}
+				</h1>
+				<p class="mt-3 text-base-content/70">
 					{#each creatorNames as author, index (author)}
 						<a href={authorEditionsHref(author)} class="link link-hover">{author}</a>{index <
 						creatorNames.length - 1
@@ -391,36 +409,18 @@
 				</p>
 				<!-- Institution -->
 				{#if (edition as any).dcInstitution && (edition as any).dcInstitution.length > 0}
-					<p class="mt-1 text-xs text-base-content/50">
+					<p class="mt-1 text-sm text-base-content/45">
 						{((edition as any).dcInstitution as string[]).join(', ')}
 					</p>
 				{/if}
 			</div>
-			<div class="flex flex-col gap-2">
+			<div class="flex shrink-0 flex-col gap-2">
 				{#if canManagePage}
 					<a href="{base}/editions/{edition.id}/workflow" class="btn btn-sm btn-primary">
 						Manage
 					</a>
 				{/if}
 			</div>
-			<!-- Sidebar toggle button -->
-			<button
-				onclick={toggleSidebar}
-				class="btn hidden btn-ghost btn-sm lg:flex"
-				aria-label={isSidebarCollapsed ? 'Show details' : 'Hide details'}
-			>
-				{isSidebarCollapsed ? 'Show details' : 'Hide details'}
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-4 w-4 transition-transform duration-300"
-					class:rotate-180={isSidebarCollapsed}
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-				>
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-				</svg>
-			</button>
 		</div>
 
 		<!-- Main Content Grid -->
@@ -431,10 +431,10 @@
 			<div class="min-w-0 flex-1 space-y-6">
 				<!-- Voyager 3D Viewer -->
 				<div
-					class="card overflow-hidden bg-base-200 shadow-xl transition-all duration-300"
+					class="ds-card-frame viewer-frame p-3 transition-all duration-300"
 					class:full-window-viewer={isFullWindow}
 				>
-					<div class="relative card-body h-full p-0">
+					<div class="relative overflow-hidden rounded-lg bg-base-200">
 						<VoyagerViewer
 							url={useDirectMode ? edition.voyagerRoot : edition.voyagerUrl}
 							document={edition.sceneFile}
@@ -696,19 +696,37 @@
 							</div>
 						{/if}
 					</div>
-				</div>
 
-				<!-- Viewer info row -->
-				<div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-base-content/50">
-					{#if edition.voyagerVersion}
-						<span>Voyager v{edition.voyagerVersion}</span>
-					{/if}
-					{#if loadedModelSize}
-						<span>Model: {formatBytes(loadedModelSize)}</span>
-					{/if}
-					<span>{edition.usageConditions}</span>
-					{#if edition.alternativeVersion}
-						<a href={edition.alternativeVersion} class="link link-hover">Alternative version</a>
+					{#if !isFullWindow}
+						<div
+							class="flex flex-wrap items-center justify-between gap-x-5 gap-y-2 px-1 pt-3 text-xs"
+						>
+							<div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-base-content/60">
+								{#if edition.usageConditions}
+									<span>
+										<span class="font-mono text-[9px] tracking-[0.1em] uppercase">License</span>
+										<span class="ml-1 font-medium text-base-content/80">{edition.usageConditions}</span>
+									</span>
+								{/if}
+								{#if primaryDoi}
+									<a
+										href={`https://doi.org/${primaryDoi}`}
+										target="_blank"
+										rel="noreferrer"
+										class="font-medium text-base-content/80 underline decoration-base-content/25 underline-offset-4 hover:decoration-base-content"
+									>
+										Cite this edition
+									</a>
+								{/if}
+							</div>
+							<button
+								type="button"
+								class="min-h-8 font-medium text-base-content/60 transition-colors hover:text-base-content"
+								onclick={showMetadata}
+							>
+								View full metadata →
+							</button>
+						</div>
 					{/if}
 				</div>
 			</div>
@@ -717,41 +735,75 @@
 			<div
 				class="shrink-0 transition-all duration-300 ease-in-out"
 				class:lg:w-96={!isSidebarCollapsed}
-				class:lg:w-0={isSidebarCollapsed}
+				class:lg:w-12={isSidebarCollapsed}
 			>
-				<div class="lg:sticky lg:top-4">
+				<div bind:this={detailsPanelElement} class="scroll-mt-24 lg:sticky lg:top-24">
+					{#if isSidebarCollapsed}
+						<button
+							type="button"
+							class="ds-card-frame hidden h-12 w-12 items-center justify-center lg:flex"
+							onclick={toggleSidebar}
+							aria-label="Show edition details"
+							title="Show edition details"
+						>
+							<PanelRightOpenIcon class="h-4 w-4" aria-hidden="true" />
+						</button>
+					{/if}
 					<div
-						class="card overflow-hidden bg-base-200 shadow-xl transition-all duration-300"
-						class:lg:w-0={isSidebarCollapsed}
-						class:lg:opacity-0={isSidebarCollapsed}
-						class:lg:invisible={isSidebarCollapsed}
+						class="ds-card-frame w-full p-3 transition-all duration-300 lg:w-96"
+						class:lg:hidden={isSidebarCollapsed}
 					>
-						<div class="card-body w-full p-0 lg:w-96">
+						<div class="overflow-hidden rounded-lg bg-base-200">
+							<div class="flex min-h-11 items-center justify-between gap-3 bg-base-100 px-3 py-2">
+								<span
+									class="font-mono text-[9px] tracking-[0.12em] text-base-content/45 uppercase"
+								>
+									Edition record
+								</span>
+								<button
+									type="button"
+									class="hidden h-8 w-8 items-center justify-center rounded-md text-base-content/50 transition-colors hover:bg-base-200 hover:text-base-content lg:flex"
+									onclick={toggleSidebar}
+									aria-label="Hide edition details"
+									title="Hide edition details"
+								>
+									<PanelRightCloseIcon class="h-4 w-4" aria-hidden="true" />
+								</button>
+							</div>
 							<!-- Tabs -->
 							<div
 								role="tablist"
-								class="tabs-bordered tabs flex-nowrap overflow-x-auto bg-base-300"
+								class="scrollbar-hide flex overflow-x-auto border-b border-base-300 bg-base-100 px-2"
 							>
 								<button
 									role="tab"
-									class="tab grow shrink-0 whitespace-nowrap"
-									class:tab-active={activeTab === 'description'}
+									aria-selected={activeTab === 'description'}
+									class="min-h-11 grow shrink-0 border-b-2 px-3 text-xs whitespace-nowrap transition-colors {activeTab ===
+									'description'
+										? 'border-accent text-base-content'
+										: 'border-transparent text-base-content/50 hover:text-base-content'}"
 									onclick={() => (activeTab = 'description')}
 								>
 									Description
 								</button>
 								<button
 									role="tab"
-									class="tab grow shrink-0 whitespace-nowrap"
-									class:tab-active={activeTab === 'metadata'}
+									aria-selected={activeTab === 'metadata'}
+									class="min-h-11 grow shrink-0 border-b-2 px-3 text-xs whitespace-nowrap transition-colors {activeTab ===
+									'metadata'
+										? 'border-accent text-base-content'
+										: 'border-transparent text-base-content/50 hover:text-base-content'}"
 									onclick={() => (activeTab = 'metadata')}
 								>
 									Metadata
 								</button>
 								<button
 									role="tab"
-									class="tab grow shrink-0 whitespace-nowrap"
-									class:tab-active={activeTab === 'peer-review'}
+									aria-selected={activeTab === 'peer-review'}
+									class="min-h-11 grow shrink-0 border-b-2 px-3 text-xs whitespace-nowrap transition-colors {activeTab ===
+									'peer-review'
+										? 'border-accent text-base-content'
+										: 'border-transparent text-base-content/50 hover:text-base-content'}"
 									onclick={() => (activeTab = 'peer-review')}
 								>
 									Peer Review
@@ -759,8 +811,11 @@
 								{#if siblingEditions && siblingEditions.length > 0}
 									<button
 										role="tab"
-										class="tab grow shrink-0 whitespace-nowrap"
-										class:tab-active={activeTab === 'versions'}
+										aria-selected={activeTab === 'versions'}
+										class="min-h-11 grow shrink-0 border-b-2 px-3 text-xs whitespace-nowrap transition-colors {activeTab ===
+										'versions'
+											? 'border-accent text-base-content'
+											: 'border-transparent text-base-content/50 hover:text-base-content'}"
 										onclick={() => (activeTab = 'versions')}
 									>
 										Versions
@@ -768,8 +823,11 @@
 								{/if}
 								<button
 									role="tab"
-									class="tab grow shrink-0 whitespace-nowrap"
-									class:tab-active={activeTab === 'printables'}
+									aria-selected={activeTab === 'printables'}
+									class="min-h-11 grow shrink-0 border-b-2 px-3 text-xs whitespace-nowrap transition-colors {activeTab ===
+									'printables'
+										? 'border-accent text-base-content'
+										: 'border-transparent text-base-content/50 hover:text-base-content'}"
 									onclick={() => (activeTab = 'printables')}
 								>
 									Printables
@@ -777,7 +835,7 @@
 							</div>
 
 							<!-- Tab Content -->
-							<div class="prose prose-sm max-w-none p-6">
+							<div class="prose prose-sm max-h-[75vh] max-w-none overflow-y-auto p-5">
 								{#if activeTab === 'description'}
 									<p class="leading-relaxed text-base-content/80">
 										{#each descriptionSegments as segment}
@@ -818,76 +876,131 @@
 										</div>
 									</div>
 								{:else if activeTab === 'metadata'}
-									<div class="space-y-4">
-										{#if primaryDoi}
-											<div>
-												<h3 class="text-sm font-semibold text-base-content/60">DOI</h3>
-												<div class="mt-1 flex flex-wrap items-center gap-2">
-													<p class="font-mono text-xs break-all">{primaryDoi}</p>
-													<button
-														class="btn btn-outline btn-xs"
-														onclick={copyDoi}
-														title={`Copy DOI ${primaryDoi}`}
-													>
-														{citationCopied ? 'Copied' : 'Copy DOI'}
-													</button>
+									<div class="not-prose space-y-0">
+										<section class="metadata-section">
+											<div class="metadata-heading">
+												<h2>Publication record</h2>
+											</div>
+											<dl class="metadata-list">
+												{#if primaryDoi}
+													<div class="metadata-row">
+														<dt class="text-base-content/50">DOI</dt>
+														<dd class="min-w-0">
+															<p class="font-mono text-xs break-all">{primaryDoi}</p>
+															<button
+																type="button"
+																class="metadata-action"
+																onclick={copyDoi}
+																title="Copy DOI"
+															>
+																<CopyIcon class="h-3 w-3" aria-hidden="true" />
+																{citationCopied ? 'Copied' : 'Copy DOI'}
+															</button>
+														</dd>
+													</div>
+												{/if}
+												<div class="metadata-row">
+													<dt class="text-base-content/50">Record created</dt>
+													<dd>{formatDate(edition.created)}</dd>
 												</div>
+												{#if (edition as any).pubNum}
+													<div class="metadata-row">
+														<dt class="text-base-content/50">Edition number</dt>
+														<dd>Ed. {String((edition as any).pubNum).padStart(2, '0')}</dd>
+													</div>
+												{/if}
+												{#if (edition as any).status}
+													<div class="metadata-row items-center">
+														<dt class="text-base-content/50">Publication status</dt>
+														<dd><StatusBadge status={(edition as any).status} /></dd>
+													</div>
+												{/if}
+											</dl>
+										</section>
+
+										<section class="metadata-section">
+											<div class="metadata-heading">
+												<h2>Contributors &amp; institution</h2>
 											</div>
-										{/if}
-										<div>
-											<h3 class="text-sm font-semibold text-base-content/60">Created</h3>
-											<p>{formatDate(edition.created)}</p>
-										</div>
-										<div>
-											<h3 class="text-sm font-semibold text-base-content/60">Authors</h3>
-											<p>
-												{#each creatorNames as author, index (author)}
-													<a href={authorEditionsHref(author)} class="link link-hover">{author}</a
-													>{index < creatorNames.length - 1 ? ', ' : ''}
-												{/each}
-											</p>
-										</div>
-										{#if (edition as any).dcInstitution && (edition as any).dcInstitution.length > 0}
-											<div>
-												<h3 class="text-sm font-semibold text-base-content/60">Institution</h3>
-												<p>{((edition as any).dcInstitution as string[]).join(', ')}</p>
+											<dl class="metadata-list">
+												<div class="metadata-row">
+													<dt class="text-base-content/50">Authors</dt>
+													<dd>
+														{#if creatorNames.length > 0}
+															{#each creatorNames as author, index (author)}
+																<a href={authorEditionsHref(author)} class="link link-hover">{author}</a
+																>{index < creatorNames.length - 1 ? ', ' : ''}
+															{/each}
+														{:else}
+															<span class="text-base-content/45">Not provided</span>
+														{/if}
+													</dd>
+												</div>
+												{#if (edition as any).dcInstitution && (edition as any).dcInstitution.length > 0}
+													<div class="metadata-row">
+														<dt class="text-base-content/50">Institution</dt>
+														<dd>{((edition as any).dcInstitution as string[]).join(', ')}</dd>
+													</div>
+												{/if}
+											</dl>
+										</section>
+
+										<section class="metadata-section">
+											<div class="metadata-heading">
+												<h2>Rights &amp; access</h2>
 											</div>
-										{/if}
-										{#if (edition as any).pubNum}
-											<div>
-												<h3 class="text-sm font-semibold text-base-content/60">Edition Number</h3>
-												<p>Ed. {String((edition as any).pubNum).padStart(2, '0')}</p>
+											<dl class="metadata-list">
+												<div class="metadata-row">
+													<dt class="text-base-content/50">Usage license</dt>
+													<dd>{edition.usageConditions || 'Not specified'}</dd>
+												</div>
+												{#if edition.alternativeVersion}
+													<div class="metadata-row">
+														<dt class="text-base-content/50">Other version</dt>
+														<dd><a href={edition.alternativeVersion} class="link link-hover">View version</a></dd>
+													</div>
+												{/if}
+											</dl>
+										</section>
+
+										<section class="metadata-section">
+											<div class="metadata-heading">
+												<h2>Technical provenance</h2>
 											</div>
-										{/if}
-										{#if (edition as any).status}
-											<div>
-												<h3 class="text-sm font-semibold text-base-content/60">Status</h3>
-												<StatusBadge status={(edition as any).status} />
-											</div>
-										{/if}
-										{#if (edition as any).modelSize}
-											<div>
-												<h3 class="text-sm font-semibold text-base-content/60">Model Size</h3>
-												<p>{String((edition as any).modelSize)}</p>
-											</div>
-										{/if}
-										{#if (edition as any).settingsAuthorToolVersion}
-											<div>
-												<h3 class="text-sm font-semibold text-base-content/60">Tool Version</h3>
-												<p>
-													{(edition as any).settingsAuthorToolName || 'Voyager'}
-													v{(edition as any).settingsAuthorToolVersion}
-												</p>
-											</div>
-										{/if}
-										<div>
-											<h3 class="text-sm font-semibold text-base-content/60">License</h3>
-											<p>{edition.usageConditions}</p>
-										</div>
-										<div>
-											<h3 class="text-sm font-semibold text-base-content/60">Edition ID</h3>
-											<p class="font-mono text-xs break-all">{edition.id}</p>
-										</div>
+											<dl class="metadata-list">
+												{#if loadedModelSize || (edition as any).modelSize}
+													<div class="metadata-row">
+														<dt class="text-base-content/50">Model size</dt>
+														<dd>{loadedModelSize ? formatBytes(loadedModelSize) : String((edition as any).modelSize)}</dd>
+													</div>
+												{/if}
+												{#if edition.voyagerVersion}
+													<div class="metadata-row">
+														<dt class="text-base-content/50">Viewer runtime</dt>
+														<dd>Voyager v{edition.voyagerVersion}</dd>
+													</div>
+												{/if}
+												{#if (edition as any).settingsAuthorToolVersion}
+													<div class="metadata-row">
+														<dt class="text-base-content/50">Authoring tool</dt>
+														<dd>
+															{(edition as any).settingsAuthorToolName || 'Voyager'}
+															v{(edition as any).settingsAuthorToolVersion}
+														</dd>
+													</div>
+												{/if}
+												{#if edition.sceneFile}
+													<div class="metadata-row">
+														<dt class="text-base-content/50">Scene document</dt>
+														<dd class="font-mono text-xs break-all">{edition.sceneFile}</dd>
+													</div>
+												{/if}
+												<div class="metadata-row">
+													<dt class="text-base-content/50">Record ID</dt>
+													<dd class="font-mono text-xs break-all">{edition.id}</dd>
+												</div>
+											</dl>
+										</section>
 									</div>
 								{:else if activeTab === 'peer-review'}
 									{#if edition.hasPeerReview}
@@ -1196,9 +1309,92 @@
 		bottom: 0;
 		z-index: 30; /* Below header (z-50) */
 		border-radius: 0 !important;
+		border: 0 !important;
+		padding: 0 !important;
+		background: #000 !important;
+		box-shadow: none !important;
 		margin: 0 !important;
 		max-height: none !important;
 		height: auto !important;
+	}
+
+	.full-window-viewer > div {
+		border-radius: 0 !important;
+	}
+
+	.metadata-section {
+		padding: 0.125rem 0 0.875rem;
+	}
+
+	.metadata-section + .metadata-section {
+		padding-top: 0.875rem;
+		border-top: 1px solid var(--color-base-300);
+	}
+
+	.metadata-heading {
+		margin-bottom: 0.3rem;
+	}
+
+	.metadata-heading h2 {
+		font-family: var(--font-mono);
+		font-size: 0.625rem;
+		font-weight: 500;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
+	}
+
+	.metadata-row {
+		display: grid;
+		grid-template-columns: 5.75rem minmax(0, 1fr);
+		gap: 0.625rem;
+		padding: 0.35rem 0;
+	}
+
+	.metadata-row:last-child {
+		padding-bottom: 0;
+	}
+
+	.metadata-row dt {
+		font-family: var(--font-mono);
+		font-size: 0.5625rem;
+		line-height: 1.4;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: color-mix(in oklch, var(--color-base-content) 48%, transparent);
+	}
+
+	.metadata-row dd {
+		min-width: 0;
+		font-size: 0.8125rem;
+		line-height: 1.45;
+		color: color-mix(in oklch, var(--color-base-content) 86%, transparent);
+	}
+
+	.metadata-action {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		min-height: 1.625rem;
+		margin-top: 0.25rem;
+		padding: 0.2rem 0.45rem;
+		border: 1px solid var(--color-base-300);
+		border-radius: 0.375rem;
+		font-size: 0.6875rem;
+		font-weight: 500;
+		transition: border-color 160ms ease-out, background 160ms ease-out;
+	}
+
+	.metadata-action:hover {
+		border-color: color-mix(in oklch, var(--color-base-content) 25%, var(--color-base-300));
+		background: var(--color-base-200);
+	}
+
+	@media (max-width: 480px) {
+		.metadata-row {
+			grid-template-columns: 5rem minmax(0, 1fr);
+			gap: 0.5rem;
+		}
 	}
 
 	.full-window-viewer :global(.voyager-container),
@@ -1212,5 +1408,13 @@
 	/* Hide body scrollbar in fullscreen mode */
 	:global(body:has(.full-window-viewer)) {
 		overflow: hidden !important;
+	}
+
+	.scrollbar-hide {
+		scrollbar-width: none;
+	}
+
+	.scrollbar-hide::-webkit-scrollbar {
+		display: none;
 	}
 </style>
