@@ -138,7 +138,8 @@ a[target='_blank'] {
   margin-top: 60px;
 }
 
-.ds-card {
+.ds-card,
+.ds-card-frame {
   border: 1px solid var(--color-base-300);
   border-radius: var(--radius-box);
   background: var(--color-base-100);
