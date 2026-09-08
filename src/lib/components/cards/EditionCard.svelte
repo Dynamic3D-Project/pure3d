@@ -168,37 +168,19 @@
 				/>
 			</svg>
 		</div>
-		<!-- Actual image with format fallback -->
+		<!-- Actual image -->
 		{#if coverUrl && !imageError}
-			{@const isLocalAsset = coverUrl.includes('/project/')}
 			<div class:h-full={!discovery} class="w-full">
-				{#if isLocalAsset}
-					<picture class:h-full={!discovery} class="block w-full">
-						<source srcset={coverUrl.replace('.png', '.avif')} type="image/avif" />
-						<source srcset={coverUrl.replace('.png', '.webp')} type="image/webp" />
-						<img
-							src={coverUrl}
-							alt={edition.title}
-							class="card-cover-image w-full object-cover"
-							class:card-parallax-image={!discovery}
-							class:card-masonry-image={discovery}
-							class:h-full={!discovery}
-							loading="lazy"
-							onerror={handleImageError}
-						/>
-					</picture>
-				{:else}
-					<img
-						src={coverUrl}
-						alt={edition.title}
-						class="card-cover-image w-full object-cover"
-						class:card-parallax-image={!discovery}
-						class:card-masonry-image={discovery}
-						class:h-full={!discovery}
-						loading="lazy"
-						onerror={handleImageError}
-					/>
-				{/if}
+				<img
+					src={coverUrl}
+					alt={edition.title}
+					class="card-cover-image w-full object-cover"
+					class:card-parallax-image={!discovery}
+					class:card-masonry-image={discovery}
+					class:h-full={!discovery}
+					loading="lazy"
+					onerror={handleImageError}
+				/>
 			</div>
 		{/if}
 		<a
