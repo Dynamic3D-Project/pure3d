@@ -7,7 +7,11 @@
 	import { ROLE_LABELS } from '$lib/types/roles';
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
 	import CollectionCard from '$lib/components/cards/CollectionCard.svelte';
-	import { getCollectionThumbnailUrl, getEditionRoot, getEditionThumbnailUrl } from '$lib/utils/asset-urls';
+	import {
+		getCollectionThumbnailUrl,
+		getEditionRoot,
+		getEditionThumbnailUrl
+	} from '$lib/utils/asset-urls';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
 	import WorkflowTimeline from '$lib/components/workflow/WorkflowTimeline.svelte';
 	import { EditionStatus } from '$lib/types/roles';
@@ -170,7 +174,10 @@
 			title: record.dcTitle || record.title,
 			description: record.dcAbstract || '',
 			authors: toArray(record.dcCreator).join(', '),
-			thumbnail: collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, editionPubNum) : '',
+			thumbnail:
+				record.thumbnail && collectionPubNum > 0
+					? getEditionThumbnailUrl(collectionPubNum, editionPubNum)
+					: '',
 			voyagerUrl: collectionPubNum > 0 ? getEditionRoot(collectionPubNum, editionPubNum) : '',
 			usageConditions: record.dcRightsLicense || '',
 			alternativeVersion: null,
@@ -227,7 +234,8 @@
 			slug: record.id,
 			title: record.dcTitle || record.title,
 			description: record.dcAbstract || '',
-			thumbnail: record.pubNum > 0 ? getCollectionThumbnailUrl(record.pubNum) : '',
+			thumbnail:
+				record.thumbnail && record.pubNum > 0 ? getCollectionThumbnailUrl(record.pubNum) : '',
 			editionIds: [],
 			editionCount,
 			isVisible: record.isVisible
@@ -282,10 +290,9 @@
 				const collectionPubNum = collection?.pubNum || 0;
 				const editionPubNum = record.pubNum || 0;
 				const thumbnail =
-					record.thumbnail ||
-					(collectionPubNum > 0 && editionPubNum > 0
+					record.thumbnail && collectionPubNum > 0 && editionPubNum > 0
 						? getEditionThumbnailUrl(collectionPubNum, editionPubNum)
-						: '');
+						: '';
 
 				editionRecords.set(record.id, record);
 				dashboardEditions.set(record.id, {
@@ -386,7 +393,12 @@
 			const updatedUser = await pb.collection('users').update(authStore.user.id, formData);
 			const freshUser = await pb.collection('users').getOne(authStore.user.id);
 			pb.authStore.save(pb.authStore.token, freshUser);
-			const profilePicture = freshUser.profilePicture || freshUser.avatar || updatedUser.profilePicture || updatedUser.avatar || '';
+			const profilePicture =
+				freshUser.profilePicture ||
+				freshUser.avatar ||
+				updatedUser.profilePicture ||
+				updatedUser.avatar ||
+				'';
 
 			if (profileData) {
 				profileData.displayName = tempData.username || tempData.displayName;
@@ -512,10 +524,13 @@
 			<div class="h-24 bg-gradient-to-r from-base-300 via-base-200 to-base-100"></div>
 			<div class="flex flex-col gap-6 p-6 pt-0 sm:flex-row sm:items-end">
 				<div class="-mt-12 shrink-0">
-					<div class="avatar placeholder block">
+					<div class="placeholder avatar block">
 						{#if profilePicturePreviewUrl || profileData.profilePictureUrl}
 							<div class="w-32 rounded-full ring-4 ring-base-100">
-								<img src={profilePicturePreviewUrl || profileData.profilePictureUrl} alt="{profileData.displayName} profile" />
+								<img
+									src={profilePicturePreviewUrl || profileData.profilePictureUrl}
+									alt="{profileData.displayName} profile"
+								/>
 							</div>
 						{:else}
 							<div class="w-32 rounded-full bg-neutral text-neutral-content ring-4 ring-base-100">
@@ -524,9 +539,14 @@
 						{/if}
 					</div>
 					{#if isEditing}
-						<label class="btn btn-outline btn-xs mt-3 w-32 overflow-hidden">
+						<label class="btn mt-3 w-32 overflow-hidden btn-outline btn-xs">
 							{profilePictureFile ? 'Photo selected' : 'Photo'}
-							<input type="file" accept="image/png,image/jpeg,image/webp,image/avif" class="hidden" onchange={selectProfilePicture} />
+							<input
+								type="file"
+								accept="image/png,image/jpeg,image/webp,image/avif"
+								class="hidden"
+								onchange={selectProfilePicture}
+							/>
 						</label>
 					{/if}
 				</div>
@@ -536,29 +556,55 @@
 						<div class="max-w-2xl">
 							<div class="flex flex-wrap items-center gap-2">
 								<label for="username" class="sr-only">Username</label>
-								<input id="username" type="text" bind:value={tempData.username} class="input input-bordered h-auto min-h-0 w-auto max-w-full bg-base-100 px-3 py-1 text-3xl font-bold leading-tight" placeholder="Display name" />
-								<span class="badge badge-neutral">{ROLE_LABELS[profileData.role] || profileData.role}</span>
+								<input
+									id="username"
+									type="text"
+									bind:value={tempData.username}
+									class="input-bordered input h-auto min-h-0 w-auto max-w-full bg-base-100 px-3 py-1 text-3xl leading-tight font-bold"
+									placeholder="Display name"
+								/>
+								<span class="badge badge-neutral"
+									>{ROLE_LABELS[profileData.role] || profileData.role}</span
+								>
 								{#if profileData.verified}
 									<span class="badge badge-success">Verified</span>
 								{/if}
 							</div>
-							<div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-base text-base-content/70">
-								<input id="title-role" type="text" bind:value={tempData.titleRole} class="input input-bordered h-9 min-h-0 w-48 bg-base-100 px-3 py-1" placeholder="Title / role position" />
+							<div
+								class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-base text-base-content/70"
+							>
+								<input
+									id="title-role"
+									type="text"
+									bind:value={tempData.titleRole}
+									class="input-bordered input h-9 min-h-0 w-48 bg-base-100 px-3 py-1"
+									placeholder="Title / role position"
+								/>
 								<span class="text-base-content/30">at</span>
-								<input id="affiliation" type="text" bind:value={tempData.affiliation} class="input input-bordered h-9 min-h-0 w-48 bg-base-100 px-3 py-1" placeholder="Affiliation" />
+								<input
+									id="affiliation"
+									type="text"
+									bind:value={tempData.affiliation}
+									class="input-bordered input h-9 min-h-0 w-48 bg-base-100 px-3 py-1"
+									placeholder="Affiliation"
+								/>
 							</div>
 						</div>
 					{:else}
 						<div class="flex flex-wrap items-center gap-2">
-							<h1 class="text-3xl font-bold leading-tight">{profileData.displayName}</h1>
-							<span class="badge badge-neutral">{ROLE_LABELS[profileData.role] || profileData.role}</span>
+							<h1 class="text-3xl leading-tight font-bold">{profileData.displayName}</h1>
+							<span class="badge badge-neutral"
+								>{ROLE_LABELS[profileData.role] || profileData.role}</span
+							>
 							{#if profileData.verified}
 								<span class="badge badge-success">Verified</span>
 							{/if}
 						</div>
 						{#if profileData.titleRole || profileData.affiliation}
 							<p class="mt-2 text-base text-base-content/70">
-								{#if profileData.titleRole}{profileData.titleRole}{/if}{#if profileData.titleRole && profileData.affiliation} at {/if}{#if profileData.affiliation}{profileData.affiliation}{/if}
+								{#if profileData.titleRole}{profileData.titleRole}{/if}{#if profileData.titleRole && profileData.affiliation}
+									at
+								{/if}{#if profileData.affiliation}{profileData.affiliation}{/if}
 							</p>
 						{/if}
 					{/if}
@@ -569,12 +615,14 @@
 
 				<div class="flex shrink-0 gap-2">
 					{#if isEditing}
-						<button class="btn btn-primary btn-sm" onclick={saveProfile} disabled={isSaving}>
+						<button class="btn btn-sm btn-primary" onclick={saveProfile} disabled={isSaving}>
 							{isSaving ? 'Saving...' : 'Save'}
 						</button>
-						<button class="btn btn-ghost btn-sm" onclick={cancelEdit} disabled={isSaving}>Cancel</button>
+						<button class="btn btn-ghost btn-sm" onclick={cancelEdit} disabled={isSaving}
+							>Cancel</button
+						>
 					{:else}
-						<button onclick={startEdit} class="btn btn-primary btn-sm">Edit Profile</button>
+						<button onclick={startEdit} class="btn btn-sm btn-primary">Edit Profile</button>
 					{/if}
 				</div>
 			</div>
@@ -620,9 +668,14 @@
 			<div class="grid gap-8 border-t border-base-300 p-6 lg:grid-cols-[1fr_20rem]">
 				<div class="space-y-6">
 					<div>
-						<h3 class="text-sm font-semibold uppercase tracking-wide text-base-content/50">Bio</h3>
+						<h3 class="text-sm font-semibold tracking-wide text-base-content/50 uppercase">Bio</h3>
 						{#if isEditing}
-							<textarea id="bio" bind:value={tempData.bio} class="textarea-bordered textarea mt-2 min-h-40 w-full" placeholder="Short public biography"></textarea>
+							<textarea
+								id="bio"
+								bind:value={tempData.bio}
+								class="textarea-bordered textarea mt-2 min-h-40 w-full"
+								placeholder="Short public biography"
+							></textarea>
 						{:else if profileData.bio}
 							<div class="prose mt-2 max-w-none text-base-content/80">{@html profileData.bio}</div>
 						{:else}
@@ -633,29 +686,54 @@
 
 				<aside class="space-y-3">
 					<div class="rounded-xl bg-base-200 p-4">
-						<div class="text-xs font-semibold uppercase tracking-wide text-base-content/50">Profile links</div>
+						<div class="text-xs font-semibold tracking-wide text-base-content/50 uppercase">
+							Profile links
+						</div>
 						{#if isEditing}
-							<label for="orcid" class="mt-3 block text-xs font-medium text-base-content/60">ORCID</label>
-							<input id="orcid" type="url" bind:value={tempData.orcid} class="input-bordered input mt-1 w-full" placeholder="https://orcid.org/0000-0000-0000-0000" />
-							<label for="socials" class="mt-4 block text-xs font-medium text-base-content/60">Links</label>
-							<textarea id="socials" bind:value={tempData.socials} class="textarea-bordered textarea mt-1 min-h-28 w-full" placeholder="One link per line"></textarea>
+							<label for="orcid" class="mt-3 block text-xs font-medium text-base-content/60"
+								>ORCID</label
+							>
+							<input
+								id="orcid"
+								type="url"
+								bind:value={tempData.orcid}
+								class="input-bordered input mt-1 w-full"
+								placeholder="https://orcid.org/0000-0000-0000-0000"
+							/>
+							<label for="socials" class="mt-4 block text-xs font-medium text-base-content/60"
+								>Links</label
+							>
+							<textarea
+								id="socials"
+								bind:value={tempData.socials}
+								class="textarea-bordered textarea mt-1 min-h-28 w-full"
+								placeholder="One link per line"
+							></textarea>
+						{:else if profileData.orcid || profileData.socials}
+							<div class="mt-3 flex flex-col gap-2">
+								{#if profileData.orcid}
+									<a
+										class="btn justify-start btn-outline btn-sm"
+										href={profileData.orcid}
+										target="_blank"
+										rel="noreferrer"
+									>
+										ORCID: {socialLabel(profileData.orcid)}
+									</a>
+								{/if}
+								{#each socialLinks(profileData.socials) as social}
+									<a
+										class="btn justify-start btn-outline btn-sm"
+										href={socialHref(social)}
+										target="_blank"
+										rel="noreferrer"
+									>
+										{socialLabel(social)}
+									</a>
+								{/each}
+							</div>
 						{:else}
-							{#if profileData.orcid || profileData.socials}
-								<div class="mt-3 flex flex-col gap-2">
-									{#if profileData.orcid}
-										<a class="btn btn-outline btn-sm justify-start" href={profileData.orcid} target="_blank" rel="noreferrer">
-											ORCID: {socialLabel(profileData.orcid)}
-										</a>
-									{/if}
-									{#each socialLinks(profileData.socials) as social}
-										<a class="btn btn-outline btn-sm justify-start" href={socialHref(social)} target="_blank" rel="noreferrer">
-											{socialLabel(social)}
-										</a>
-									{/each}
-								</div>
-							{:else}
-								<p class="mt-3 text-base-content/50">Add ORCID or social links.</p>
-							{/if}
+							<p class="mt-3 text-base-content/50">Add ORCID or social links.</p>
 						{/if}
 					</div>
 				</aside>
@@ -694,18 +772,37 @@
 
 			{#if workTab === 'editions'}
 				{#if myEditions.length === 0}
-					<p class="py-8 text-center text-base-content/60">You are not listed as an author on any editions.</p>
+					<p class="py-8 text-center text-base-content/60">
+						You are not listed as an author on any editions.
+					</p>
 				{:else}
 					<div class="space-y-3">
 						{#each myEditions as edition (edition.id)}
 							<div class="rounded-box border border-base-300 bg-base-100 p-4">
 								<div class="flex gap-4">
 									{#if edition.thumbnail}
-										<img src={edition.thumbnail} alt={edition.title} class="size-16 shrink-0 rounded-lg object-cover" />
+										<img
+											src={edition.thumbnail}
+											alt={edition.title}
+											class="size-16 shrink-0 rounded-lg object-cover"
+										/>
 									{:else}
-										<div class="flex size-16 shrink-0 items-center justify-center rounded-lg bg-base-200 text-base-content/30">
-											<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-												<path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" />
+										<div
+											class="flex size-16 shrink-0 items-center justify-center rounded-lg bg-base-200 text-base-content/30"
+										>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												fill="none"
+												viewBox="0 0 24 24"
+												stroke-width="1.5"
+												stroke="currentColor"
+												class="size-6"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"
+												/>
 											</svg>
 										</div>
 									{/if}
@@ -717,11 +814,19 @@
 											</div>
 											<div class="flex items-center gap-2">
 												{#if edition.status === EditionStatus.Draft}
-													<button type="button" class="btn text-error btn-ghost btn-sm" disabled={deletingId === edition.id} onclick={() => deleteDraft(edition)} aria-label="Delete draft">
+													<button
+														type="button"
+														class="btn text-error btn-ghost btn-sm"
+														disabled={deletingId === edition.id}
+														onclick={() => deleteDraft(edition)}
+														aria-label="Delete draft"
+													>
 														{deletingId === edition.id ? 'Deleting...' : 'Delete'}
 													</button>
 												{/if}
-												<a href="{base}/editions/{edition.id}/workflow" class="btn btn-ghost btn-sm">View Workflow</a>
+												<a href="{base}/editions/{edition.id}/workflow" class="btn btn-ghost btn-sm"
+													>View Workflow</a
+												>
 											</div>
 										</div>
 										{#if edition.collectionTitle}
@@ -730,7 +835,10 @@
 									</div>
 								</div>
 								<div class="mt-3">
-									<WorkflowTimeline currentStatus={edition.status} hrefForStatus={(status) => workflowStepHref(edition.id, status)} />
+									<WorkflowTimeline
+										currentStatus={edition.status}
+										hrefForStatus={(status) => workflowStepHref(edition.id, status)}
+									/>
 								</div>
 							</div>
 						{/each}
@@ -747,14 +855,21 @@
 									<div class="flex flex-wrap items-center gap-3">
 										<span class="font-medium">{edition?.title || 'Unknown Edition'}</span>
 										{#if edition}<StatusBadge status={edition.status} />{/if}
-										<span class="badge badge-ghost badge-sm">{getStageLabel(assignment.reviewStage)}</span>
+										<span class="badge badge-ghost badge-sm"
+											>{getStageLabel(assignment.reviewStage)}</span
+										>
 									</div>
-									<a href="{base}/editions/{assignment.editionId}/workflow" class="btn btn-primary btn-sm">Start Review</a>
+									<a
+										href="{base}/editions/{assignment.editionId}/workflow"
+										class="btn btn-sm btn-primary">Start Review</a
+									>
 								</div>
 								{#if edition?.collectionTitle}
 									<p class="mt-1 text-sm text-base-content/50">in {edition.collectionTitle}</p>
 								{/if}
-								<p class="mt-1 text-xs text-base-content/40">Assigned {formatDate(assignment.created)}</p>
+								<p class="mt-1 text-xs text-base-content/40">
+									Assigned {formatDate(assignment.created)}
+								</p>
 							</div>
 						{/each}
 					</div>
@@ -765,19 +880,37 @@
 					<div class="space-y-2">
 						{#each completedAssignments as assignment (assignment.id)}
 							{@const edition = assignment.edition}
-							{@const review = myReviews.find((item) => item.editionId === assignment.editionId && item.reviewStage === assignment.reviewStage)}
+							{@const review = myReviews.find(
+								(item) =>
+									item.editionId === assignment.editionId &&
+									item.reviewStage === assignment.reviewStage
+							)}
 							<div class="rounded-box border border-base-200 bg-base-200/30 p-4">
 								<div class="flex flex-wrap items-center gap-3">
 									<span class="font-medium">{edition?.title || 'Unknown Edition'}</span>
 									{#if edition}<StatusBadge status={edition.status} />{/if}
-									<span class="badge badge-ghost badge-sm">{getStageLabel(assignment.reviewStage)}</span>
+									<span class="badge badge-ghost badge-sm"
+										>{getStageLabel(assignment.reviewStage)}</span
+									>
 									{#if review}
-										<span class="badge badge-sm {review.decision === ReviewDecision.Approve ? 'badge-success' : review.decision === ReviewDecision.Reject ? 'badge-error' : 'badge-warning'}">
-											{review.decision === ReviewDecision.Approve ? 'Approved' : review.decision === ReviewDecision.Reject ? 'Rejected' : 'Revisions'}
+										<span
+											class="badge badge-sm {review.decision === ReviewDecision.Approve
+												? 'badge-success'
+												: review.decision === ReviewDecision.Reject
+													? 'badge-error'
+													: 'badge-warning'}"
+										>
+											{review.decision === ReviewDecision.Approve
+												? 'Approved'
+												: review.decision === ReviewDecision.Reject
+													? 'Rejected'
+													: 'Revisions'}
 										</span>
 									{/if}
 								</div>
-								<p class="mt-1 text-xs text-base-content/40">Reviewed {review ? formatDate(review.created) : ''}</p>
+								<p class="mt-1 text-xs text-base-content/40">
+									Reviewed {review ? formatDate(review.created) : ''}
+								</p>
 							</div>
 						{/each}
 					</div>
@@ -801,7 +934,9 @@
 					{/each}
 				</div>
 			{:else}
-				<p class="rounded-2xl border border-base-300 bg-base-100 p-6 text-base-content/60 shadow-sm">
+				<p
+					class="rounded-2xl border border-base-300 bg-base-100 p-6 text-base-content/60 shadow-sm"
+				>
 					No public editions yet.
 				</p>
 			{/if}
@@ -819,7 +954,9 @@
 					{/each}
 				</div>
 			{:else}
-				<p class="rounded-2xl border border-base-300 bg-base-100 p-6 text-base-content/60 shadow-sm">
+				<p
+					class="rounded-2xl border border-base-300 bg-base-100 p-6 text-base-content/60 shadow-sm"
+				>
 					No public collections yet.
 				</p>
 			{/if}

@@ -63,18 +63,18 @@ export function getVoyagerScriptUrl(version: string): string {
 }
 
 /**
- * Get URL for edition thumbnail (icon.png in edition folder)
+ * Get URL for edition thumbnail (icon.avif in edition folder)
  */
 export function getEditionThumbnailUrl(collectionPubNum: number, editionPubNum: number): string {
-	return getEditionAssetUrl(collectionPubNum, editionPubNum, 'icon.png');
+	return getEditionAssetUrl(collectionPubNum, editionPubNum, 'icon.avif');
 }
 
 /**
- * Get URL for collection thumbnail (icon.png in project folder)
+ * Get URL for collection thumbnail (icon.avif in project folder)
  */
 export function getCollectionThumbnailUrl(collectionPubNum: number): string {
 	const base = getAssetBaseUrl();
-	return `${base}/project/${collectionPubNum}/icon.png`;
+	return `${base}/project/${collectionPubNum}/icon.avif`;
 }
 
 /**
@@ -98,18 +98,11 @@ export const MIN_DERIVATIVES_VERSION = '0.59.0';
 
 export type VoyagerVersion = (typeof VOYAGER_VERSIONS)[number];
 
-export function getEditionCoverUrl(
-	edition: RecordModel,
-	collectionPubNum?: number | null,
-	editionPubNum?: number | null
-): string | null {
+export function getEditionCoverUrl(edition: RecordModel): string | null {
 	const coverImage = (edition.coverImage as string | undefined) ?? '';
 	if (coverImage) return pb.files.getURL(edition, coverImage, { thumb: '400x300' });
 	const thumbnail = (edition.thumbnail as string | undefined) ?? '';
 	if (thumbnail) return thumbnail;
-	if (collectionPubNum && editionPubNum) {
-		return getEditionThumbnailUrl(collectionPubNum, editionPubNum);
-	}
 	return null;
 }
 
@@ -119,10 +112,10 @@ export function getCollectionCoverUrl(
 ): string | null {
 	const coverImage = (collection.coverImage as string | undefined) ?? '';
 	if (coverImage) return pb.files.getURL(collection, coverImage, { thumb: '400x300' });
-	if (collectionPubNum && collectionPubNum > 0) {
+	const thumbnail = (collection.thumbnail as string | undefined) ?? '';
+	if (thumbnail && collectionPubNum && collectionPubNum > 0) {
 		return getCollectionThumbnailUrl(collectionPubNum);
 	}
-	const thumbnail = (collection.thumbnail as string | undefined) ?? '';
 	if (thumbnail) return thumbnail;
 	return null;
 }

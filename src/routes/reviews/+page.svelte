@@ -102,10 +102,9 @@
 					const collectionPubNum = col?.pubNum || 0;
 					const editionPubNum = r.pubNum || 0;
 					const thumbnail =
-						r.thumbnail ||
-						(collectionPubNum > 0 && editionPubNum > 0
+						r.thumbnail && collectionPubNum > 0 && editionPubNum > 0
 							? getEditionThumbnailUrl(collectionPubNum, editionPubNum)
-							: '');
+							: '';
 					editionMap.set(r.id, {
 						id: r.id,
 						title: r.dcTitle || r.title,

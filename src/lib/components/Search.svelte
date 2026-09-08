@@ -99,7 +99,9 @@
 				const collectionPubNum = edition.expand?.collection?.pubNum || 0;
 				const editionPubNum = edition.pubNum || 1;
 				const thumbnail =
-					collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, editionPubNum) : '';
+					edition.thumbnail && collectionPubNum > 0
+						? getEditionThumbnailUrl(collectionPubNum, editionPubNum)
+						: '';
 
 				return {
 					type: 'edition' as const,
@@ -114,7 +116,10 @@
 			});
 
 			const collectionResults: SearchResult[] = collections.items.map((collection: any) => {
-				const thumbnail = collection.pubNum > 0 ? getCollectionThumbnailUrl(collection.pubNum) : '';
+				const thumbnail =
+					collection.thumbnail && collection.pubNum > 0
+						? getCollectionThumbnailUrl(collection.pubNum)
+						: '';
 
 				return {
 					type: 'collection' as const,

@@ -69,7 +69,9 @@ export async function fetchEditions(): Promise<Edition[]> {
 
 		// Thumbnail: use asset URL built from pubNums (respects PUBLIC_ASSET_BASE_URL / R2)
 		const thumbnail =
-			collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, editionPubNum) : '';
+			record.thumbnail && collectionPubNum > 0
+				? getEditionThumbnailUrl(collectionPubNum, editionPubNum)
+				: '';
 
 		return {
 			id: record.id,

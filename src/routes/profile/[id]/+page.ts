@@ -26,7 +26,10 @@ function mapEdition(record: any) {
 		title: record.dcTitle || record.title,
 		description: record.dcAbstract || '',
 		authors: toArray(record.dcCreator).join(', '),
-		thumbnail: collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, editionPubNum) : '',
+		thumbnail:
+			record.thumbnail && collectionPubNum > 0
+				? getEditionThumbnailUrl(collectionPubNum, editionPubNum)
+				: '',
 		voyagerUrl: collectionPubNum > 0 ? getEditionRoot(collectionPubNum, editionPubNum) : '',
 		usageConditions: record.dcRightsLicense || '',
 		alternativeVersion: null,
@@ -83,7 +86,8 @@ function mapCollection(record: any, editionCount = 0) {
 		slug: record.id,
 		title: record.dcTitle || record.title,
 		description: record.dcAbstract || '',
-		thumbnail: record.pubNum > 0 ? getCollectionThumbnailUrl(record.pubNum) : '',
+		thumbnail:
+			record.thumbnail && record.pubNum > 0 ? getCollectionThumbnailUrl(record.pubNum) : '',
 		editionIds: [],
 		editionCount,
 		isVisible: record.isVisible

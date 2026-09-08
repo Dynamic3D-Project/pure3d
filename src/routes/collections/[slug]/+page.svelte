@@ -120,7 +120,9 @@
 			description: record.dcAbstract || '',
 			authors: Array.isArray(record.dcCreator) ? record.dcCreator.join(', ') : '',
 			thumbnail:
-				collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, editionPubNum) : '',
+				record.thumbnail && collectionPubNum > 0
+					? getEditionThumbnailUrl(collectionPubNum, editionPubNum)
+					: '',
 			voyagerUrl: collectionPubNum > 0 ? getEditionRoot(collectionPubNum, editionPubNum) : '',
 			usageConditions: record.dcRightsLicense || '',
 			alternativeVersion: null,
@@ -266,9 +268,7 @@
 			class="relative grid gap-8 md:grid-cols-[minmax(0,320px)_1fr] md:items-start md:gap-10 lg:gap-14"
 		>
 			<!-- Cover -->
-			<figure
-				class="ds-card-frame aspect-square w-full p-3 md:sticky md:top-24"
-			>
+			<figure class="ds-card-frame aspect-square w-full p-3 md:sticky md:top-24">
 				<div class="relative h-full w-full overflow-hidden rounded-lg bg-base-200">
 					{#if collection.thumbnail}
 						<img
@@ -313,7 +313,7 @@
 					<div
 						class="mb-3 flex flex-wrap justify-end gap-2 md:absolute md:top-0 md:right-0 md:z-10 md:mb-0"
 					>
-						<a href="{base}/collections/{collection.id}/edit" class="btn btn-neutral btn-sm">
+						<a href="{base}/collections/{collection.id}/edit" class="btn btn-sm btn-neutral">
 							Manage
 						</a>
 					</div>
@@ -437,9 +437,11 @@
 						</label>
 						<select
 							id="edition-to-add"
-							class="select select-bordered w-full"
+							class="select-bordered select w-full"
 							bind:value={selectedEditionId}
-							disabled={isLoadingEditionManager || isUpdatingEdition || availableEditions.length === 0}
+							disabled={isLoadingEditionManager ||
+								isUpdatingEdition ||
+								availableEditions.length === 0}
 						>
 							<option value="">
 								{availableEditions.length === 0
@@ -448,7 +450,9 @@
 							</option>
 							{#each availableEditions as edition (edition.id)}
 								<option value={edition.id}>
-									{edition.pubNum ? `Ed. ${String(edition.pubNum).padStart(2, '0')} · ` : ''}{edition.title}{edition.collectionTitle
+									{edition.pubNum
+										? `Ed. ${String(edition.pubNum).padStart(2, '0')} · `
+										: ''}{edition.title}{edition.collectionTitle
 										? ` · currently in ${edition.collectionTitle}`
 										: ' · unassigned'}
 								</option>
@@ -523,7 +527,9 @@
 					{#each editions as edition (edition.id)}
 						<EditionCard
 							edition={edition as any}
-							onRemove={canManageEditions ? () => removeEditionFromCollection(edition.id) : undefined}
+							onRemove={canManageEditions
+								? () => removeEditionFromCollection(edition.id)
+								: undefined}
 							removeDisabled={isUpdatingEdition}
 						/>
 					{/each}

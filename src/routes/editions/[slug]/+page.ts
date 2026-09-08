@@ -37,15 +37,15 @@ function getEffectiveVoyagerVersion(requestedVersion: string | null): string {
 	return requestedVersion;
 }
 
-export const load: PageLoad = async ({ params }) => {
+export const load: PageLoad = async ({ params, fetch }) => {
 	if (params.slug === 'demo') {
 		throw error(404, 'Demo moved to /demo');
 	}
 
 	try {
 		const [record, siteResult] = await Promise.all([
-			pb.collection('editions').getOne(params.slug, { expand: 'collection' }),
-			pb.collection('site').getList(1, 1)
+			pb.collection('editions').getOne(params.slug, { expand: 'collection', fetch }),
+			pb.collection('site').getList(1, 1, { fetch })
 		]);
 
 		const site = siteResult.items[0];
@@ -62,7 +62,9 @@ export const load: PageLoad = async ({ params }) => {
 
 		// Thumbnail from asset URL (respects PUBLIC_ASSET_BASE_URL / R2)
 		const thumbnail =
-			collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, editionPubNum) : '';
+			record.thumbnail && collectionPubNum > 0
+				? getEditionThumbnailUrl(collectionPubNum, editionPubNum)
+				: '';
 
 		const toArray = (v: unknown): string[] =>
 			Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && !!x) : [];
@@ -111,9 +113,10 @@ export const load: PageLoad = async ({ params }) => {
 			const [authorResult, userResult] = await Promise.all([
 				pb.collection('editionUsers').getList(1, 50, {
 					filter: `editionId = "${record.id}" && role = "author"`,
-					expand: 'userId'
+					expand: 'userId',
+					fetch
 				}),
-				pb.collection('users').getList(1, 500)
+				pb.collection('users').getList(1, 500, { fetch })
 			]);
 			creatorProfiles = authorResult.items
 				.map((author) => author.expand?.userId)
@@ -152,7 +155,8 @@ export const load: PageLoad = async ({ params }) => {
 			try {
 				const siblingsResult = await pb.collection('editions').getList(1, 100, {
 					sort: '-pubNum',
-					filter: `collection = "${collectionId}" && isPublished = true`
+					filter: `collection = "${collectionId}" && isPublished = true`,
+					fetch
 				});
 				siblingEditions = siblingsResult.items
 					.filter((r) => r.id !== record.id)
@@ -168,7 +172,9 @@ export const load: PageLoad = async ({ params }) => {
 						created: r.created,
 						hasPeerReview: !!r.peerReviewKind && r.peerReviewKind !== 'No peer review',
 						thumbnail:
-							collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, r.pubNum || 1) : ''
+							r.thumbnail && collectionPubNum > 0
+								? getEditionThumbnailUrl(collectionPubNum, r.pubNum || 1)
+								: ''
 					}));
 			} catch {
 				// Non-critical — sibling editions are bonus data

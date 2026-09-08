@@ -143,7 +143,8 @@ export async function getCollections() {
 			const pubNum = record.pubNum || 0;
 
 			// Thumbnail from asset URL (respects PUBLIC_ASSET_BASE_URL / R2)
-			const thumbnail = record.pubNum > 0 ? getCollectionThumbnailUrl(record.pubNum) : '';
+			const thumbnail =
+				record.thumbnail && record.pubNum > 0 ? getCollectionThumbnailUrl(record.pubNum) : '';
 
 			return {
 				id: record.id,
@@ -240,7 +241,9 @@ function transformEditionRecord(record: any, collection?: any) {
 	// Voyager and thumbnail URLs from asset-urls (respects PUBLIC_ASSET_BASE_URL / R2)
 	const voyagerUrl = collectionPubNum > 0 ? getEditionRoot(collectionPubNum, editionPubNum) : '';
 	const thumbnail =
-		collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, editionPubNum) : '';
+		record.thumbnail && collectionPubNum > 0
+			? getEditionThumbnailUrl(collectionPubNum, editionPubNum)
+			: '';
 
 	return {
 		id: record.id,

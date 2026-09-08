@@ -53,7 +53,9 @@ export const load: PageLoad = async ({ params }) => {
 				collectionPubNum > 0 ? getEditionRoot(collectionPubNum, editionPubNum) : '';
 
 			const editionThumbnail =
-				collectionPubNum > 0 ? getEditionThumbnailUrl(collectionPubNum, editionPubNum) : '';
+				record.thumbnail && collectionPubNum > 0
+					? getEditionThumbnailUrl(collectionPubNum, editionPubNum)
+					: '';
 
 			return {
 				id: record.id,
