@@ -13,6 +13,8 @@
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
 		"report:authors": "bun scripts/reconcile-author-profiles.ts",
+		"migrate:orcid-credits": "bun scripts/migrate-orcid-credits.ts",
+		"test:orcid-migration": "bun test scripts/reconcile-author-profiles.test.ts scripts/migrate-orcid-credits.test.ts scripts/import-data.test.ts",
 		"seed": "bun scripts/seed-data.ts",
 		"migrate:viewer-help": "bun scripts/add-viewer-help-field.ts",
 		"migrate:workflow": "bun scripts/migrate-workflow-statuses.ts"

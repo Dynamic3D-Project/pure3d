@@ -4,6 +4,11 @@
 		"type": "auth",
 		"fields": [
 			{
+				"name": "email",
+				"type": "email",
+				"required": false
+			},
+			{
 				"name": "nickname",
 				"type": "text",
 				"required": false
@@ -14,20 +19,28 @@
 				"required": false,
 				"maxSelect": 1,
 				"maxSize": 5242880,
-				"mimeTypes": [
-					"image/jpeg",
-					"image/png",
-					"image/webp",
-					"image/avif"
-				],
-				"thumbs": [
-					"200x200",
-					"80x80"
-				]
+				"mimeTypes": ["image/jpeg", "image/png", "image/webp", "image/avif"],
+				"thumbs": ["200x200", "80x80"]
 			},
 			{
 				"name": "orcid",
 				"type": "url",
+				"required": false
+			},
+			{
+				"name": "orcidVerifiedAt",
+				"type": "date",
+				"required": false
+			},
+			{
+				"name": "pendingOrcid",
+				"type": "url",
+				"hidden": true,
+				"required": false
+			},
+			{
+				"name": "userHash",
+				"type": "text",
 				"required": false
 			},
 			{
@@ -55,21 +68,20 @@
 				"type": "select",
 				"required": false,
 				"maxSelect": 1,
-				"values": [
-					"admin",
-					"editorial_board",
-					"viewer"
-				]
+				"values": ["admin", "editorial_board", "user"]
 			}
 		],
 		"indexes": [
-			"CREATE INDEX IF NOT EXISTS idx_users_userHash ON users (userHash)"
+			"CREATE INDEX IF NOT EXISTS idx_users_userHash ON users (userHash)",
+			"CREATE UNIQUE INDEX idx_users_orcid ON users (orcid) WHERE orcid != ''",
+			"CREATE UNIQUE INDEX idx_users_pendingOrcid ON users (pendingOrcid) WHERE pendingOrcid != ''"
 		],
 		"listRule": "",
 		"viewRule": "",
-		"createRule": "",
-		"updateRule": "",
-		"deleteRule": ""
+		"createRule": null,
+		"updateRule": "@request.auth.id != '' && (@request.auth.id = id || @request.auth.role = 'admin')",
+		"deleteRule": "@request.auth.role = 'admin'",
+		"manageRule": null
 	},
 	{
 		"name": "site",
@@ -131,15 +143,7 @@
 				"type": "select",
 				"required": true,
 				"maxSelect": 1,
-				"values": [
-					"country",
-					"period",
-					"audience",
-					"subject",
-					"language",
-					"license",
-					"funder"
-				]
+				"values": ["country", "period", "audience", "subject", "language", "license", "funder"]
 			},
 			{
 				"name": "value",
@@ -156,6 +160,12 @@
 		"name": "collections",
 		"type": "base",
 		"fields": [
+			{
+				"name": "credits",
+				"type": "json",
+				"required": false,
+				"maxSize": 262144
+			},
 			{
 				"name": "title",
 				"type": "text",
@@ -260,28 +270,27 @@
 				"required": false,
 				"maxSelect": 1,
 				"maxSize": 20971520,
-				"mimeTypes": [
-					"image/jpeg",
-					"image/png",
-					"image/webp",
-					"image/avif"
-				],
-				"thumbs": [
-					"400x300",
-					"100x100"
-				]
+				"mimeTypes": ["image/jpeg", "image/png", "image/webp", "image/avif"],
+				"thumbs": ["400x300", "100x100"]
 			}
 		],
-		"indexes": [
-			"CREATE INDEX idx_collections_visible ON collections (isVisible)"
-		],
-		"listRule": "isVisible = true",
-		"viewRule": "isVisible = true"
+		"indexes": ["CREATE INDEX idx_collections_visible ON collections (isVisible)"],
+		"listRule": "isVisible = true || (@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'editorial_board' || collectionUsers_via_collection.userId ?= @request.auth.id))",
+		"viewRule": "isVisible = true || (@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'editorial_board' || collectionUsers_via_collection.userId ?= @request.auth.id))",
+		"createRule": "@request.auth.role = 'admin'",
+		"updateRule": "@request.auth.id != ''",
+		"deleteRule": "@request.auth.id != ''"
 	},
 	{
 		"name": "editions",
 		"type": "base",
 		"fields": [
+			{
+				"name": "credits",
+				"type": "json",
+				"required": false,
+				"maxSize": 262144
+			},
 			{
 				"name": "title",
 				"type": "text",
@@ -509,16 +518,8 @@
 				"required": false,
 				"maxSelect": 1,
 				"maxSize": 20971520,
-				"mimeTypes": [
-					"image/jpeg",
-					"image/png",
-					"image/webp",
-					"image/avif"
-				],
-				"thumbs": [
-					"400x300",
-					"100x100"
-				]
+				"mimeTypes": ["image/jpeg", "image/png", "image/webp", "image/avif"],
+				"thumbs": ["400x300", "100x100"]
 			},
 			{
 				"name": "modelFile",
@@ -546,8 +547,11 @@
 			"CREATE INDEX idx_editions_published ON editions (isPublished)",
 			"CREATE INDEX idx_editions_status ON editions (status)"
 		],
-		"listRule": "isPublished = true",
-		"viewRule": "isPublished = true"
+		"listRule": "isPublished = true || (@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'editorial_board' || (@collection.editionUsers:member.editionId ?= id && @collection.editionUsers:member.userId ?= @request.auth.id && @collection.editionUsers:member.role ?!= 'reviewer') || (@collection.reviewAssignments:review.editionId ?= id && @collection.reviewAssignments:review.reviewerId ?= @request.auth.id && @collection.reviewAssignments:review.status ?!= 'declined') || collection.collectionUsers_via_collection.userId ?= @request.auth.id))",
+		"viewRule": "isPublished = true || (@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'editorial_board' || (@collection.editionUsers:member.editionId ?= id && @collection.editionUsers:member.userId ?= @request.auth.id && @collection.editionUsers:member.role ?!= 'reviewer') || (@collection.reviewAssignments:review.editionId ?= id && @collection.reviewAssignments:review.reviewerId ?= @request.auth.id && @collection.reviewAssignments:review.status ?!= 'declined') || collection.collectionUsers_via_collection.userId ?= @request.auth.id))",
+		"createRule": "@request.auth.id != '' && @request.auth.orcidVerifiedAt != ''",
+		"updateRule": "@request.auth.id != ''",
+		"deleteRule": "@request.auth.id != ''"
 	},
 	{
 		"name": "collectionUsers",
@@ -555,19 +559,18 @@
 		"fields": [
 			{
 				"name": "user",
-				"type": "text",
-				"required": true
+				"type": "relation",
+				"required": false,
+				"maxSelect": 1,
+				"collectionId": "users",
+				"cascadeDelete": true
 			},
 			{
 				"name": "role",
 				"type": "select",
 				"required": true,
 				"maxSelect": 1,
-				"values": [
-					"owner",
-					"editor",
-					"viewer"
-				]
+				"values": ["owner", "editor", "viewer"]
 			},
 			{
 				"name": "collection",
@@ -588,29 +591,39 @@
 		],
 		"listRule": "",
 		"viewRule": "",
-		"createRule": "",
-		"updateRule": "",
-		"deleteRule": ""
+		"createRule": "@request.auth.id != ''",
+		"updateRule": "@request.auth.id != ''",
+		"deleteRule": "@request.auth.id != ''",
+		"indexes": [
+			"CREATE UNIQUE INDEX idx_collectionUsers_identity ON collectionUsers (collection, userId) WHERE userId != ''"
+		]
 	},
 	{
 		"name": "editionUsers",
 		"type": "base",
 		"fields": [
 			{
+				"name": "edition",
+				"type": "relation",
+				"required": false,
+				"maxSelect": 1,
+				"collectionId": "editions",
+				"cascadeDelete": true
+			},
+			{
 				"name": "user",
-				"type": "text",
-				"required": true
+				"type": "relation",
+				"required": false,
+				"maxSelect": 1,
+				"collectionId": "users",
+				"cascadeDelete": true
 			},
 			{
 				"name": "role",
 				"type": "select",
 				"required": true,
 				"maxSelect": 1,
-				"values": [
-					"author",
-					"collaborator",
-					"reviewer"
-				]
+				"values": ["author", "collaborator", "reviewer"]
 			},
 			{
 				"name": "editionId",
@@ -631,14 +644,19 @@
 		],
 		"listRule": "",
 		"viewRule": "",
-		"createRule": "",
-		"updateRule": "",
-		"deleteRule": ""
+		"createRule": "@request.auth.id != ''",
+		"updateRule": "@request.auth.id != ''",
+		"deleteRule": "@request.auth.id != ''",
+		"indexes": [
+			"CREATE UNIQUE INDEX idx_editionUsers_identity ON editionUsers (editionId, userId) WHERE userId != ''"
+		]
 	},
 	{
 		"name": "auditLog",
 		"type": "base",
 		"fields": [
+			{ "name": "created", "type": "autodate", "onCreate": true, "onUpdate": false },
+			{ "name": "updated", "type": "autodate", "onCreate": true, "onUpdate": true },
 			{
 				"name": "action",
 				"type": "text",
@@ -649,11 +667,7 @@
 				"type": "select",
 				"required": true,
 				"maxSelect": 1,
-				"values": [
-					"user",
-					"collection",
-					"edition"
-				]
+				"values": ["user", "collection", "edition", "documentation"]
 			},
 			{
 				"name": "targetId",
@@ -675,16 +689,18 @@
 			"CREATE INDEX idx_auditlog_action ON auditLog (action)",
 			"CREATE INDEX idx_auditlog_created ON auditLog (created)"
 		],
-		"listRule": "",
-		"viewRule": "",
-		"createRule": "",
-		"updateRule": "",
-		"deleteRule": ""
+		"listRule": "@request.auth.role = 'admin'",
+		"viewRule": "@request.auth.role = 'admin'",
+		"createRule": null,
+		"updateRule": null,
+		"deleteRule": null
 	},
 	{
 		"name": "editionReviews",
 		"type": "base",
 		"fields": [
+			{ "name": "created", "type": "autodate", "onCreate": true, "onUpdate": false },
+			{ "name": "updated", "type": "autodate", "onCreate": true, "onUpdate": true },
 			{
 				"name": "editionId",
 				"type": "relation",
@@ -711,11 +727,7 @@
 				"type": "select",
 				"required": true,
 				"maxSelect": 1,
-				"values": [
-					"approve",
-					"reject",
-					"request_revisions"
-				]
+				"values": ["approve", "reject", "request_revisions"]
 			},
 			{
 				"name": "comment",
@@ -724,20 +736,23 @@
 			}
 		],
 		"indexes": [
+			"CREATE UNIQUE INDEX idx_editionReviews_identity ON editionReviews (editionId, reviewerId, reviewStage)",
 			"CREATE INDEX idx_editionreviews_edition ON editionReviews (editionId)",
 			"CREATE INDEX idx_editionreviews_reviewer ON editionReviews (reviewerId)",
 			"CREATE INDEX idx_editionreviews_stage ON editionReviews (reviewStage)"
 		],
-		"listRule": "",
-		"viewRule": "",
-		"createRule": "",
-		"updateRule": "",
-		"deleteRule": ""
+		"listRule": "@request.auth.id != '' && (@request.auth.role = 'admin' || (reviewerId = @request.auth.id && @collection.reviewAssignments:assigned.editionId ?= editionId && @collection.reviewAssignments:assigned.reviewerId ?= @request.auth.id && @collection.reviewAssignments:assigned.reviewStage ?= reviewStage && @collection.reviewAssignments:assigned.status ?!= 'declined') || (@collection.editionUsers:author.editionId ?= editionId && @collection.editionUsers:author.userId ?= @request.auth.id && @collection.editionUsers:author.role ?= 'author') || (@collection.collectionUsers:owner.collection ?= editionId.collection && @collection.collectionUsers:owner.userId ?= @request.auth.id && @collection.collectionUsers:owner.role ?= 'owner'))",
+		"viewRule": "@request.auth.id != '' && (@request.auth.role = 'admin' || (reviewerId = @request.auth.id && @collection.reviewAssignments:assigned.editionId ?= editionId && @collection.reviewAssignments:assigned.reviewerId ?= @request.auth.id && @collection.reviewAssignments:assigned.reviewStage ?= reviewStage && @collection.reviewAssignments:assigned.status ?!= 'declined') || (@collection.editionUsers:author.editionId ?= editionId && @collection.editionUsers:author.userId ?= @request.auth.id && @collection.editionUsers:author.role ?= 'author') || (@collection.collectionUsers:owner.collection ?= editionId.collection && @collection.collectionUsers:owner.userId ?= @request.auth.id && @collection.collectionUsers:owner.role ?= 'owner'))",
+		"createRule": "@request.auth.id != '' && (@request.auth.role = 'admin' || reviewerId = @request.auth.id)",
+		"updateRule": "@request.auth.id != '' && (@request.auth.role = 'admin' || reviewerId = @request.auth.id)",
+		"deleteRule": "@request.auth.role = 'admin'"
 	},
 	{
 		"name": "reviewAssignments",
 		"type": "base",
 		"fields": [
+			{ "name": "created", "type": "autodate", "onCreate": true, "onUpdate": false },
+			{ "name": "updated", "type": "autodate", "onCreate": true, "onUpdate": true },
 			{
 				"name": "editionId",
 				"type": "relation",
@@ -772,12 +787,7 @@
 				"type": "select",
 				"required": true,
 				"maxSelect": 1,
-				"values": [
-					"pending",
-					"accepted",
-					"declined",
-					"completed"
-				]
+				"values": ["pending", "accepted", "declined", "completed"]
 			}
 		],
 		"indexes": [
@@ -785,16 +795,18 @@
 			"CREATE INDEX idx_reviewassignments_edition ON reviewAssignments (editionId)",
 			"CREATE INDEX idx_reviewassignments_reviewer ON reviewAssignments (reviewerId)"
 		],
-		"listRule": "",
-		"viewRule": "",
-		"createRule": "",
-		"updateRule": "",
-		"deleteRule": ""
+		"listRule": "@request.auth.id != '' && (@request.auth.role = 'admin' || reviewerId = @request.auth.id || (@collection.editionUsers:author.editionId ?= editionId && @collection.editionUsers:author.userId ?= @request.auth.id && @collection.editionUsers:author.role ?= 'author') || (@collection.collectionUsers:owner.collection ?= editionId.collection && @collection.collectionUsers:owner.userId ?= @request.auth.id && @collection.collectionUsers:owner.role ?= 'owner'))",
+		"viewRule": "@request.auth.id != '' && (@request.auth.role = 'admin' || reviewerId = @request.auth.id || (@collection.editionUsers:author.editionId ?= editionId && @collection.editionUsers:author.userId ?= @request.auth.id && @collection.editionUsers:author.role ?= 'author') || (@collection.collectionUsers:owner.collection ?= editionId.collection && @collection.collectionUsers:owner.userId ?= @request.auth.id && @collection.collectionUsers:owner.role ?= 'owner'))",
+		"createRule": "@request.auth.role = 'admin'",
+		"updateRule": "@request.auth.id != '' && (@request.auth.role = 'admin' || reviewerId = @request.auth.id)",
+		"deleteRule": "@request.auth.role = 'admin'"
 	},
 	{
 		"name": "notifications",
 		"type": "base",
 		"fields": [
+			{ "name": "created", "type": "autodate", "onCreate": true, "onUpdate": false },
+			{ "name": "updated", "type": "autodate", "onCreate": true, "onUpdate": true },
 			{
 				"name": "recipientId",
 				"type": "relation",
@@ -826,7 +838,14 @@
 					"user_added_to_edition",
 					"collaborator_added",
 					"collaborator_removed",
-					"feedback_received"
+					"feedback_received",
+					"membership_added",
+					"membership_removed",
+					"membership_role_changed",
+					"review_updated",
+					"review_assignment_updated",
+					"feedback_resolved",
+					"feedback_reopened"
 				]
 			},
 			{
@@ -863,16 +882,18 @@
 			"CREATE INDEX idx_notifications_recipient_read ON notifications (recipientId, read)",
 			"CREATE INDEX idx_notifications_created ON notifications (created)"
 		],
-		"listRule": "",
-		"viewRule": "",
-		"createRule": "",
-		"updateRule": "",
-		"deleteRule": ""
+		"listRule": "@request.auth.id != '' && recipientId = @request.auth.id",
+		"viewRule": "@request.auth.id != '' && recipientId = @request.auth.id",
+		"createRule": null,
+		"updateRule": "@request.auth.id != '' && recipientId = @request.auth.id",
+		"deleteRule": null
 	},
 	{
 		"name": "reviewFeedback",
 		"type": "base",
 		"fields": [
+			{ "name": "created", "type": "autodate", "onCreate": true, "onUpdate": false },
+			{ "name": "updated", "type": "autodate", "onCreate": true, "onUpdate": true },
 			{
 				"name": "editionId",
 				"type": "relation",
@@ -899,11 +920,7 @@
 				"type": "select",
 				"required": true,
 				"maxSelect": 1,
-				"values": [
-					"general",
-					"annotation",
-					"article"
-				]
+				"values": ["general", "annotation", "article"]
 			},
 			{
 				"name": "targetLabel",
@@ -927,10 +944,10 @@
 			"CREATE INDEX idx_reviewfeedback_stage ON reviewFeedback (reviewStage)",
 			"CREATE INDEX idx_reviewfeedback_resolved ON reviewFeedback (resolved)"
 		],
-		"listRule": "",
-		"viewRule": "",
-		"createRule": "",
-		"updateRule": "",
-		"deleteRule": ""
+		"listRule": "@request.auth.id != '' && (@request.auth.role = 'admin' || (reviewerId = @request.auth.id && @collection.reviewAssignments:assigned.editionId ?= editionId && @collection.reviewAssignments:assigned.reviewerId ?= @request.auth.id && @collection.reviewAssignments:assigned.reviewStage ?= reviewStage && @collection.reviewAssignments:assigned.status ?!= 'declined') || (@collection.editionUsers:author.editionId ?= editionId && @collection.editionUsers:author.userId ?= @request.auth.id && @collection.editionUsers:author.role ?= 'author') || (@collection.collectionUsers:owner.collection ?= editionId.collection && @collection.collectionUsers:owner.userId ?= @request.auth.id && @collection.collectionUsers:owner.role ?= 'owner'))",
+		"viewRule": "@request.auth.id != '' && (@request.auth.role = 'admin' || (reviewerId = @request.auth.id && @collection.reviewAssignments:assigned.editionId ?= editionId && @collection.reviewAssignments:assigned.reviewerId ?= @request.auth.id && @collection.reviewAssignments:assigned.reviewStage ?= reviewStage && @collection.reviewAssignments:assigned.status ?!= 'declined') || (@collection.editionUsers:author.editionId ?= editionId && @collection.editionUsers:author.userId ?= @request.auth.id && @collection.editionUsers:author.role ?= 'author') || (@collection.collectionUsers:owner.collection ?= editionId.collection && @collection.collectionUsers:owner.userId ?= @request.auth.id && @collection.collectionUsers:owner.role ?= 'owner'))",
+		"createRule": "@request.auth.id != '' && (@request.auth.role = 'admin' || reviewerId = @request.auth.id)",
+		"updateRule": "@request.auth.id != '' && (@request.auth.role = 'admin' || reviewerId = @request.auth.id || (@collection.editionUsers:author.editionId ?= editionId && @collection.editionUsers:author.userId ?= @request.auth.id && @collection.editionUsers:author.role ?= 'author') || (@collection.collectionUsers:owner.collection ?= editionId.collection && @collection.collectionUsers:owner.userId ?= @request.auth.id && @collection.collectionUsers:owner.role ?= 'owner'))",
+		"deleteRule": "@request.auth.role = 'admin'"
 	}
 ]

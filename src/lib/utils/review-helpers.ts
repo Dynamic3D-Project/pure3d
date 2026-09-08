@@ -1,7 +1,6 @@
-import { EditionStatus, ReviewStage, GlobalRole } from '$lib/types/roles';
+import { EditionStatus, ReviewStage } from '$lib/types/roles';
 import { ReviewDecision } from '$lib/types/reviews';
 import type { EditionReview, ReviewAssignment } from '$lib/types/reviews';
-import { pb } from '$lib/database/client';
 
 export interface DisplayReview {
 	displayName: string;
@@ -97,19 +96,5 @@ export function getTargetStatusFromVerdict(
 			return null;
 		default:
 			return null;
-	}
-}
-
-/**
- * Get IDs of all admin users.
- */
-export async function getAdminUserIds(): Promise<string[]> {
-	try {
-		const result = await pb.collection('users').getList(1, 500, {
-			filter: `role = "${GlobalRole.Admin}"`
-		});
-		return result.items.map((r) => r.id);
-	} catch {
-		return [];
 	}
 }

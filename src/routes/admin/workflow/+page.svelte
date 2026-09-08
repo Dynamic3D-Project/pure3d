@@ -4,23 +4,21 @@
 	import { pb } from '$lib/database/client';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { EditionStatus, ReviewStage, STATUS_LABELS } from '$lib/types/roles';
-	import { ReviewDecision } from '$lib/types/reviews';
+	import { ReviewDecision, ReviewAssignmentStatus } from '$lib/types/reviews';
 	import type { EditionReview, ReviewAssignment } from '$lib/types/reviews';
 	import { updateEditionStatus, assignReviewer } from '$lib/database/edition-helpers';
-	import { logAudit } from '$lib/utils/audit';
-	import { notify, notifyMany } from '$lib/utils/notifications';
-	import { NotificationType } from '$lib/types/notifications';
 	import {
 		anonymizeReviews,
 		aggregateVerdicts,
-		getTargetStatusFromVerdict,
-		getAdminUserIds
+		getTargetStatusFromVerdict
 	} from '$lib/utils/review-helpers';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
 	import WorkflowTimeline from '$lib/components/workflow/WorkflowTimeline.svelte';
 	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
 	import UserSearchSelect from '$lib/components/ui/UserSearchSelect.svelte';
 	import toast from 'svelte-french-toast';
+	import { readCredits, validateCredits } from '$lib/utils/credits';
+	import { canTransitionStatus } from '$lib/utils/permissions';
 
 	interface WfEdition {
 		id: string;
@@ -37,14 +35,16 @@
 	interface AppUser {
 		id: string;
 		nickname: string;
-		email: string;
+		orcid: string;
 	}
 
 	let editions = $state<WfEdition[]>([]);
 	let allAssignments = $state<ReviewAssignment[]>([]);
 	let allReviews = $state<EditionReview[]>([]);
 	let allUsers = $state<AppUser[]>([]);
-	let userLookup = $derived(new Map(allUsers.map((u) => [u.id, u.nickname || u.email])));
+	let userLookup = $derived(
+		new Map(allUsers.map((u) => [u.id, u.nickname || u.orcid || 'Unnamed user']))
+	);
 
 	let isLoading = $state(true);
 	let activeTab = $state<'submissions' | 'editorial' | 'alpha' | 'final' | 'publish' | 'all'>(
@@ -95,17 +95,26 @@
 	);
 	let alphaEditions = $derived(
 		filteredBaseEditions.filter(
-			(e) => e.status === EditionStatus.AlphaReview || e.status === EditionStatus.AlphaRevisions
+			(e) =>
+				e.status === EditionStatus.ConceptAccepted ||
+				e.status === EditionStatus.AlphaReview ||
+				e.status === EditionStatus.AlphaRevisions
 		)
 	);
 	let finalEditions = $derived(
 		filteredBaseEditions.filter(
-			(e) => e.status === EditionStatus.FinalReview || e.status === EditionStatus.FinalRevisions
+			(e) =>
+				e.status === EditionStatus.AlphaAccepted ||
+				e.status === EditionStatus.FinalReview ||
+				e.status === EditionStatus.FinalRevisions
 		)
 	);
 	let publishEditions = $derived(
 		filteredBaseEditions.filter(
-			(e) => e.status === EditionStatus.AlphaAccepted || e.status === EditionStatus.Published
+			(e) =>
+				e.status === EditionStatus.Published ||
+				(e.status === EditionStatus.FinalReview &&
+					(!e.peerReviewRequested || hasCompletedFinalReview(e.id)))
 		)
 	);
 	let allNonDraft = $derived(filteredBaseEditions.filter((e) => e.status !== EditionStatus.Draft));
@@ -132,6 +141,23 @@
 		);
 	}
 
+	function hasCompletedFinalReview(editionId: string): boolean {
+		const assignments = editionAssignments(editionId, ReviewStage.Final).filter(
+			(assignment) => assignment.status !== ReviewAssignmentStatus.Declined
+		);
+		const reviews = editionReviews(editionId, ReviewStage.Final);
+		return (
+			assignments.length > 0 &&
+			assignments.every((assignment) =>
+				reviews.some(
+					(review) =>
+						review.reviewerId === assignment.reviewerId &&
+						review.decision === ReviewDecision.Approve
+				)
+			)
+		);
+	}
+
 	onMount(loadData);
 
 	async function loadData() {
@@ -143,7 +169,7 @@
 					expand: 'reviewerId,assignedBy'
 				}),
 				pb.collection('editionReviews').getList(1, 1000, { expand: 'reviewerId' }),
-				pb.collection('users').getList(1, 500)
+				pb.collection('users').getFullList()
 			]);
 
 			editions = edResult.items.map((r) => ({
@@ -180,10 +206,10 @@
 				updated: r.updated
 			}));
 
-			allUsers = userResult.items.map((r) => ({
+			allUsers = userResult.map((r) => ({
 				id: r.id,
 				nickname: r.nickname || '',
-				email: r.email || ''
+				orcid: r.orcid || ''
 			}));
 		} catch (error) {
 			console.error('Error loading workflow data:', error);
@@ -215,22 +241,6 @@
 
 			await updateEditionStatus(edition.id, EditionStatus.EditorialReview);
 
-			await logAudit('reviewer_assigned', 'edition', edition.id, authStore.user?.email || '', {
-				reviewerId: assignUserId,
-				stage: ReviewStage.Concept,
-				statusChange: `${edition.status} -> ${EditionStatus.EditorialReview}`
-			});
-
-			// Notify the assigned reviewer
-			await notify(
-				assignUserId,
-				NotificationType.ReviewerAssigned,
-				'You have been assigned as a reviewer',
-				`Please review the concept for "${edition.title}".`,
-				edition.id,
-				`${base}/editions/${edition.id}/workflow`
-			);
-
 			edition.status = EditionStatus.EditorialReview;
 			editions = [...editions];
 			allAssignments = [
@@ -241,7 +251,7 @@
 					reviewerId: assignUserId,
 					reviewStage: ReviewStage.Concept,
 					assignedBy: authStore.appUserId || '',
-					status: 'pending' as any,
+					status: ReviewAssignmentStatus.Pending,
 					created: new Date().toISOString(),
 					updated: new Date().toISOString()
 				}
@@ -272,35 +282,18 @@
 			toast.error('Could not determine target status');
 			return;
 		}
+		if (!canTransitionStatus(edition.status, targetStatus)) {
+			toast.error('This verdict is not a valid transition from the current stage');
+			return;
+		}
+		if (targetStatus === EditionStatus.Published) {
+			await publishEdition(edition);
+			return;
+		}
 
 		actionLoading = true;
 		try {
 			await updateEditionStatus(edition.id, targetStatus, authStore.appUserId || '');
-
-			await logAudit('status_transition', 'edition', edition.id, authStore.user?.email || '', {
-				from: edition.status,
-				to: targetStatus,
-				verdict,
-				stage
-			});
-
-			// Notify the author(s) about the verdict
-			const editionUsers = await pb.collection('editionUsers').getList(1, 50, {
-				filter: `editionId = "${edition.id}" && role = "author"`
-			});
-			const authorIds = editionUsers.items.map((r) => r.userId);
-
-			const notifType = getNotificationType(targetStatus);
-			if (notifType && authorIds.length > 0) {
-				await notifyMany(
-					authorIds,
-					notifType,
-					`Edition status: ${STATUS_LABELS[targetStatus]}`,
-					`Your edition "${edition.title}" has been moved to ${STATUS_LABELS[targetStatus]}.`,
-					edition.id,
-					`${base}/editions/${edition.id}/workflow`
-				);
-			}
 
 			edition.status = targetStatus;
 			editions = [...editions];
@@ -313,19 +306,6 @@
 		}
 	}
 
-	function getNotificationType(status: EditionStatus): NotificationType | null {
-		const map: Partial<Record<EditionStatus, NotificationType>> = {
-			[EditionStatus.ConceptAccepted]: NotificationType.ConceptAccepted,
-			[EditionStatus.ConceptRejected]: NotificationType.ConceptRejected,
-			[EditionStatus.AlphaAccepted]: NotificationType.AlphaAccepted,
-			[EditionStatus.AlphaRejected]: NotificationType.AlphaRejected,
-			[EditionStatus.AlphaRevisions]: NotificationType.AlphaRevisionsRequested,
-			[EditionStatus.FinalRevisions]: NotificationType.FinalRevisionsRequested,
-			[EditionStatus.Published]: NotificationType.Published
-		};
-		return map[status] ?? null;
-	}
-
 	// --- Assign reviewer for alpha/final stages ---
 	async function assignStageReviewer(edition: WfEdition, stage: ReviewStage) {
 		if (!assignUserId) {
@@ -336,20 +316,6 @@
 		try {
 			await assignReviewer(edition.id, assignUserId, stage, authStore.appUserId || '');
 
-			await logAudit('reviewer_assigned', 'edition', edition.id, authStore.user?.email || '', {
-				reviewerId: assignUserId,
-				stage
-			});
-
-			await notify(
-				assignUserId,
-				NotificationType.ReviewerAssigned,
-				'You have been assigned as a reviewer',
-				`Please review "${edition.title}" (stage ${stage}).`,
-				edition.id,
-				`${base}/editions/${edition.id}/workflow`
-			);
-
 			allAssignments = [
 				...allAssignments,
 				{
@@ -358,7 +324,7 @@
 					reviewerId: assignUserId,
 					reviewStage: stage,
 					assignedBy: authStore.appUserId || '',
-					status: 'pending' as any,
+					status: ReviewAssignmentStatus.Pending,
 					created: new Date().toISOString(),
 					updated: new Date().toISOString()
 				}
@@ -377,6 +343,22 @@
 	async function publishEdition(edition: WfEdition) {
 		actionLoading = true;
 		try {
+			const current = await pb.collection('editions').getOne(edition.id);
+			if (!canTransitionStatus(current.status as EditionStatus, EditionStatus.Published)) {
+				toast.error('Complete the final review stage before publishing');
+				return;
+			}
+			if (current.peerReviewRequested && !hasCompletedFinalReview(edition.id)) {
+				toast.error(
+					'All assigned final reviewers must approve before publishing with a review stamp'
+				);
+				return;
+			}
+			const issue = validateCredits(readCredits(current.credits), true);
+			if (issue) {
+				toast.error(issue);
+				return;
+			}
 			const updateData: Record<string, unknown> = {
 				status: EditionStatus.Published,
 				isPublished: true,
@@ -384,7 +366,7 @@
 				publishedBy: authStore.appUserId
 			};
 
-			if (edition.peerReviewRequested) {
+			if (current.peerReviewRequested) {
 				// Compile peer review content from all reviews
 				const reviews = allReviews.filter((r) => r.editionId === edition.id);
 				const peerReviewContent = reviews
@@ -394,43 +376,21 @@
 					)
 					.join('\n\n');
 
-				updateData.peerReviewStamp = true;
 				updateData.peerReviewContent = peerReviewContent;
-				updateData.peerReviewKind = 'Peer reviewed';
 			}
 
-			await pb.collection('editions').update(edition.id, updateData);
-
-			await logAudit('status_transition', 'edition', edition.id, authStore.user?.email || '', {
-				from: edition.status,
-				to: EditionStatus.Published,
-				peerReviewStamp: !!edition.peerReviewRequested
-			});
-
-			// Notify authors
-			const editionUsers = await pb.collection('editionUsers').getList(1, 50, {
-				filter: `editionId = "${edition.id}" && role = "author"`
-			});
-			const authorIds = editionUsers.items.map((r) => r.userId);
-			if (authorIds.length > 0) {
-				await notifyMany(
-					authorIds,
-					NotificationType.Published,
-					'Edition published',
-					`"${edition.title}" has been published.`,
-					edition.id
-				);
-			}
+			const saved = await pb.collection('editions').update(edition.id, updateData);
 
 			edition.status = EditionStatus.Published;
-			edition.peerReviewStamp = !!edition.peerReviewRequested;
-			edition.publishedAt = new Date().toISOString();
+			edition.peerReviewRequested = saved.peerReviewRequested;
+			edition.peerReviewStamp = saved.peerReviewStamp;
+			edition.publishedAt = saved.publishedAt || null;
 			editions = [...editions];
 			publishModalEdition = null;
 			toast.success('Edition published');
 		} catch (error) {
 			console.error('Error publishing:', error);
-			toast.error('Failed to publish edition');
+			toast.error(error instanceof Error ? error.message : 'Failed to publish edition');
 		} finally {
 			actionLoading = false;
 		}
@@ -442,11 +402,6 @@
 			await pb.collection('editions').update(edition.id, {
 				status: EditionStatus.Draft,
 				isPublished: false
-			});
-
-			await logAudit('status_transition', 'edition', edition.id, authStore.user?.email || '', {
-				from: EditionStatus.Published,
-				to: EditionStatus.Draft
 			});
 
 			edition.status = EditionStatus.Draft;
@@ -465,11 +420,6 @@
 		actionLoading = true;
 		try {
 			await updateEditionStatus(edition.id, targetStatus, authStore.appUserId || '');
-
-			await logAudit('status_transition', 'edition', edition.id, authStore.user?.email || '', {
-				from: edition.status,
-				to: targetStatus
-			});
 
 			edition.status = targetStatus;
 			editions = [...editions];
@@ -826,7 +776,7 @@
 				Publish <strong>{publishModalEdition.title}</strong>?
 			</p>
 
-			{#if publishModalEdition.peerReviewRequested}
+			{#if publishModalEdition.peerReviewRequested && hasCompletedFinalReview(publishModalEdition.id)}
 				<div class="mt-4 alert alert-info">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -849,6 +799,10 @@
 						</p>
 					</div>
 				</div>
+			{:else if publishModalEdition.peerReviewRequested}
+				<div class="mt-4 alert alert-warning">
+					<p>Complete all final review approvals before publishing with a peer review stamp.</p>
+				</div>
 			{:else}
 				<div class="mt-4 alert">
 					<p>This edition will be published without a peer review stamp.</p>
@@ -866,7 +820,10 @@
 				<button
 					class="btn btn-primary"
 					onclick={() => publishModalEdition && publishEdition(publishModalEdition)}
-					disabled={actionLoading}
+					disabled={actionLoading ||
+						!canTransitionStatus(publishModalEdition.status, EditionStatus.Published) ||
+						(publishModalEdition.peerReviewRequested &&
+							!hasCompletedFinalReview(publishModalEdition.id))}
 				>
 					{#if actionLoading}
 						<span class="loading loading-sm loading-spinner"></span>
@@ -915,6 +872,8 @@
 			{@const assignments = editionAssignments(edition.id, stage)}
 			{@const reviews = editionReviews(edition.id, stage)}
 			{@const verdict = aggregateVerdicts(reviews, assignments.length)}
+			{@const verdictTarget =
+				verdict === 'pending' ? null : getTargetStatusFromVerdict(verdict, stage)}
 			{@const displayReviews = anonymizeReviews(reviews, assignments, stage, userLookup, true)}
 			<div class="space-y-4 border-t border-base-300 px-4 pt-3 pb-4">
 				<!-- Timeline -->
@@ -999,7 +958,7 @@
 					<div class="flex items-center gap-3">
 						<span class="text-sm font-semibold">Aggregate Verdict:</span>
 						<span class="badge {getVerdictBadge(verdict)}">{getVerdictLabel(verdict)}</span>
-						{#if verdict !== 'pending'}
+						{#if verdictTarget && canTransitionStatus(edition.status, verdictTarget)}
 							<button
 								class="btn btn-sm btn-primary"
 								onclick={() => applyVerdict(edition, stage)}

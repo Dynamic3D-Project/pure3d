@@ -7,7 +7,7 @@
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { pb } from '$lib/database/client';
 	import FloatingDropdown from '$lib/components/ui/FloatingDropdown.svelte';
-	import { CollectionRole, GlobalRole } from '$lib/types/roles';
+	import { GlobalRole } from '$lib/types/roles';
 	import toast from 'svelte-french-toast';
 
 	let showHiddenCollections = $state(false);
@@ -219,17 +219,6 @@
 				isVisible: false
 			});
 
-			try {
-				await pb.collection('collectionUsers').create({
-					collection: record.id,
-					user: authStore.appUserId,
-					userId: authStore.appUserId,
-					role: CollectionRole.Owner
-				});
-			} catch {
-				// Non-critical
-			}
-
 			goto(`${base}/collections/${record.id}/edit?new=1`);
 		} catch (e: unknown) {
 			const message = e instanceof Error ? e.message : 'Failed to create collection';
@@ -263,15 +252,17 @@
 					{/if}
 					+ New Collection
 				</button>
-				<label class="flex cursor-pointer items-center gap-2 rounded-full border border-base-300 bg-base-100 px-4 py-2 text-sm shadow-sm">
+				<label
+					class="flex cursor-pointer items-center gap-2 rounded-full border border-base-300 bg-base-100 px-4 py-2 text-sm shadow-sm"
+				>
 					<input
 						type="checkbox"
-						class="toggle toggle-sm toggle-primary"
+						class="toggle toggle-primary toggle-sm"
 						bind:checked={showHiddenCollections}
 					/>
 					<span>Show hidden and empty</span>
 					{#if hiddenCollectionCount > 0}
-						<span class="badge badge-sm badge-ghost">{hiddenCollectionCount}</span>
+						<span class="badge badge-ghost badge-sm">{hiddenCollectionCount}</span>
 					{/if}
 				</label>
 			</div>
@@ -389,11 +380,12 @@
 								{/if}
 							</div>
 							{#if suggestion.isVisible === false}
-								<span class="badge badge-sm border-red-800 bg-red-700 text-white">Not public</span>
+								<span class="badge border-red-800 bg-red-700 badge-sm text-white">Not public</span>
 							{/if}
 							{#if suggestion.editionCount !== undefined}
 								<span class="badge badge-ghost badge-sm">
-									{suggestion.editionCount} {suggestion.editionCount === 1 ? 'edition' : 'editions'}
+									{suggestion.editionCount}
+									{suggestion.editionCount === 1 ? 'edition' : 'editions'}
 								</span>
 							{/if}
 						</button>

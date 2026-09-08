@@ -1,0 +1,469 @@
+# ORCID Attribution and Rollout
+
+## Author Requirements
+
+Keep each author's work connected to the right person. **Every individual author needs a valid
+ORCID before submission or publication**, including co-authors. Do not invent identifiers, guess
+identities from names, classify an unknown person as an organization to evade the requirement, or
+grant permanent legacy exemptions. Unresolved attribution belongs in a review queue until the
+author supplies or confirms an identifier. Authors are person credits with `role: 'creator'`;
+their ORCIDs are mandatory. Contributor ORCIDs are optional. The migration, frontend and backend
+block submission/publication when a person creator lacks ORCID or there are no creators.
+
+The canonical ordered JSON field on both `collections` and `editions` is `credits`:
+
+```ts
+type Credit = {
+	type: 'person' | 'org';
+	name: string;
+	orcid: string | null; // https://orcid.org/NNNN-NNNN-NNNN-NNNX, valid MOD 11-2 checksum
+	role: 'creator' | 'contributor';
+	provenance: 'manual' | 'oauth';
+	userId?: string;
+	contributionRole?: string;
+};
+```
+
+ORCID belongs to a person, not an organization. Organization credits have `orcid: null`, no
+`userId`, and manual provenance. A manually approved identifier is attribution evidence, not OAuth
+ownership proof. A linked account must already have matching verified ORCID and exactly one matching
+`oidc` external identity. This migration never sets user identity, verification timestamps,
+memberships, or permissions, and never manufactures OAuth provenance.
+
+## Safe Inventory
+
+These commands are operator instructions, **not evidence that production has been migrated**.
+Use the current branch, keep private reports outside the repository, and never commit credentials,
+reports, database backups, or private source JSON. Inject `POCKETBASE_ADMIN_EMAIL` and
+`POCKETBASE_ADMIN_PASSWORD` from a secret manager or a protected environment. Do not put secrets in
+CLI arguments, URLs, shell history, screenshots, or debug logs. `--target` is mandatory; neither
+inventory nor migration defaults to a production or local database. Remote targets require HTTPS;
+plain HTTP is permitted only for loopback.
+
+```sh
+bun run report:authors --target https://POCKETBASE_ORIGIN --output /PRIVATE_EXISTING_DIRECTORY/orcid-review.json
+bun run migrate:orcid-credits --target https://POCKETBASE_ORIGIN --manifest /PRIVATE_EXISTING_DIRECTORY/orcid-review.json
+```
+
+Replace the placeholder origin and directory explicitly. Both commands default to read-only remote
+operations: authentication, inventory, schema/identity reads, and preflight. They do not create a
+server backup, change schema, disable login, or update records. The inventory writes one **new** local
+file with mode `0600` and refuses to overwrite it. It reports counts, not names or credentials, to
+stdout; failures never dump SDK responses. Files contain attribution and record snapshots and must
+be handled as private review material. Protect the containing directory as well.
+
+The inventory covers creators **and** contributors on both collections and editions, including
+hidden/draft records. Existing canonical credits are retained where present; otherwise it converts
+`dcCreator`, then `dcContributor`, without trimming names, splitting commas, deduplicating, sorting,
+or linking accounts. A scalar string is one credit, not a comma-separated list. Invalid legacy
+shapes fail closed rather than drop entries. `dcInstitution` remains contextual metadata and is not
+silently converted into authorship. Snapshots include all original fields, including legacy fields,
+so reviewers can compare existing canonical attribution against legacy attribution.
+
+Inventory also reads only `id`, `name`, `nickname`, `username`, `orcid` and `orcidVerifiedAt` from
+`users`. Each person credit's private `profileCandidates` lists every account matching an existing
+credit user ID, canonical ORCID, or normalized profile name. Evidence includes the exact account ID,
+stored ORCID, `verifiedAt` timestamp, source field and original matching value. Name normalization
+includes case/punctuation and comma-name variants for suggestions only; credited text is unchanged.
+Multiple matches remain separate entries so name/ORCID collisions and conflicting accounts are visible.
+Email addresses and private auth fields are not used for matching or fetched for this report.
+
+**Every profile candidate is `unapproved`, even if unique or already OAuth-verified.** Candidates do
+not populate credit ORCID/userId fields or review evidence and migration ignores the candidate list.
+Reviewers must confirm identity and explicitly approve the mapping; application/runtime name matching
+is not restored. A profile timestamp is reported evidence, not a substitute for the migration's live
+verified-account/external-auth checks.
+
+Optional public ORCID candidate suggestions:
+
+```sh
+bun run report:authors --target https://POCKETBASE_ORIGIN --output /PRIVATE_EXISTING_DIRECTORY/orcid-candidates.json --lookup-orcid
+```
+
+Use this flag when asking the tool to **try to find ORCIDs automatically**. It searches only person
+credits missing an identifier, including optional contributors. Check the privacy policy and obtain
+authorization to disclose those names first. `ORCID_ENVIRONMENT=production` (default) searches
+`https://pub.orcid.org`; `ORCID_ENVIRONMENT=sandbox` searches `https://pub.sandbox.orcid.org`.
+This is public search, not sign-in: no PocketBase credentials or provider tokens are sent to ORCID.
+
+Queries are quoted with Lucene special characters escaped and encoded using URL parameters. Names
+longer than 500 characters are skipped. Calls are sequential, with a one-second pause between requests,
+a ten-second request timeout, at most 100 distinct-name requests per run, and at most five candidate
+identifiers per credit. Repeated exact names reuse search evidence but retain every indexed credit.
+There are no automatic retries. Do not repeatedly rerun a rate-limited report to evade provider limits.
+
+Private `suggestions` entries contain the record fingerprint and credit index, candidate identifiers,
+and search evidence (API source, escaped query, timestamp and HTTP status when available). Outcomes
+are `candidates`, `no-results`, `denied`, `rate-limited`, `unavailable`, or `skipped`. A 401/403 denial,
+429 rate limit, network failure or malformed response halts further requests **without losing the
+inventory**: the command still saves the manifest and marks remaining lookups skipped. The 100-request
+bound also leaves remaining credits in the report. Raw API/error bodies, names and tokens are not logged.
+
+Suggestions never change credit status, evidence, ORCID, provenance, or account links, and migration
+ignores them. Inspect the private report, independently confirm candidates with the authors, and
+record actual approval evidence in the credit review. Search evidence alone is not identity proof,
+even for one result. On denial or no match, use manual author confirmation; never fabricate a mapping.
+Without `--lookup-orcid`, no requests are made to ORCID.
+
+## Review Manifest
+
+Keep an immutable copy of the initial inventory in protected storage. Have an authorized reviewer
+edit a separate copy. The manifest contains `version: 1`, exact `target`, and per-record collection,
+ID, SHA-256 fingerprint, original snapshot, review status, and indexed credit reviews. Fingerprints
+cover every record field except PocketBase's `updated` timestamp; the original timestamp is also
+checked before first application. Fingerprints detect conflicts, not malicious edits or reviewer
+identity: protect files and retain reviewer approval in your controlled change record.
+
+For each credit, preserve `index`, `name`, and `role` exactly. Duplicate names have separate indices
+and each requires review. Set `status` and a nonempty `evidence` reference (author confirmation,
+institutional evidence, reviewer/date or controlled ticket). Evidence must substantiate identity,
+not merely record that a search returned the same name.
+
+- `pending`: not reviewed; cannot be applied as part of an approved record.
+- `unresolved`: reviewed but not identified; preserve original type/ORCID/account link unchanged.
+- `approved`: explicitly approve `type`, canonical checksum-valid `orcid`, and optional `userId`.
+- For an approved organization, use `type: "org"`, `orcid: null`, and omit `userId`.
+- An approved person contributor may have `orcid: null`; any supplied identifier must still be valid,
+  and an account link always requires a matching verified ORCID.
+- For a manually mapped person, do not add an OAuth provenance claim. Existing proof cannot be replaced.
+
+Example credit review, **illustrative only, not identity evidence**:
+
+```json
+{
+	"index": 0,
+	"name": "Doe, Jane",
+	"role": "creator",
+	"status": "approved",
+	"evidence": "Replace with actual author confirmation and reviewer/date",
+	"type": "person",
+	"orcid": "https://orcid.org/0000-0002-1825-0097"
+}
+```
+
+Set the **record** `status` to `approved` only when every indexed entry has evidence and is either
+approved or explicitly unresolved. Leave other records `pending` or mark them `blocked`; neither
+will be changed. An approved draft may retain unresolved person creators, but cannot be submitted or
+published until their ORCIDs are resolved. An active record (visible collection or non-draft/published
+edition) with unresolved person creators is rejected before writes; keep it blocked and resolve the queue.
+A contributor without ORCID does not block publication or migration of an otherwise reviewed record. The migration
+does not unpublish, hide, delete, relabel, or overwrite existing identity proof to force progress.
+Zero creators is also a publication blocker. Empty legacy attribution needs separate author review,
+not fabricated defaults.
+
+Do not remove records to manufacture a clean queue. Preflight may process an approved subset; that
+is **not** a complete rollout check. Compare a fresh full inventory and its IDs with the original,
+verify every credit including contributors, and track skipped/unresolved records to closure.
+
+## Backup-Gated Apply
+
+Test on a restored, isolated copy first. Arrange a maintenance window that stops application writes,
+background jobs, and other administrators. PocketBase's REST record API has no atomic compare-and-swap
+PATCH, so snapshots alone cannot close the read/write race. `--maintenance-confirmed` is an operator
+assertion, not a server lock. Do not supply it until isolation is real.
+
+```sh
+bun run migrate:orcid-credits --target https://POCKETBASE_ORIGIN --manifest /PRIVATE_EXISTING_DIRECTORY/orcid-reviewed.json
+bun run migrate:orcid-credits --target https://POCKETBASE_ORIGIN --manifest /PRIVATE_EXISTING_DIRECTORY/orcid-reviewed.json --apply --maintenance-confirmed --audit /PRIVATE_EXISTING_DIRECTORY/orcid-apply-NEW.jsonl
+```
+
+Apply performs full approved-record preflight and linked-account proof checks first. If changes are
+needed, it creates a uniquely named `orcid-credits-*.zip` through **PocketBase's backups API** and
+confirms a nonempty entry in the backup listing **before any schema or record write**, on every target.
+Missing backup permissions or an unconfirmed backup aborts. No-op reruns perform no remote backup or writes,
+but an apply run still records a private audit of its skipped results.
+Backup API success is not a restore test: separately verify backup storage, retention, encryption,
+download access, and restore capability. PocketBase backups do not replace independent R2/MinIO asset
+backups; this migration never changes object-storage paths or assets.
+
+After backup, apply rechecks record and schema snapshots, adds only a missing JSON `credits` field
+to each collection, and updates only approved `credits` arrays. It does **not** call
+`configure-orcid.ts`, bootstrap scripts, schema import, or login cutover. It checks each record again
+immediately before writing and reads it back to verify exact stored content. Deletions, identity
+remapping, legacy-field cleanup, and publication state changes are deliberately absent. Source fields
+remain intact. Re-running the same reviewed manifest recognizes exact applied content and skips it.
+Other content changes require a fresh inventory and review. A schema-only partial run exposing null
+credits can be resumed without altering the snapshot.
+
+The run is not a transaction across records. On failure, stop and inspect privately; earlier writes
+may have succeeded. Keep the original manifest and confirmed backup, run read-only preflight again,
+and investigate conflicts or hook normalization before retrying. Do not overwrite fingerprints to
+suppress conflicts. For rollback, use PocketBase's supported backup restore procedure only under a
+separately approved maintenance operation; restoring a database can discard later unrelated writes.
+
+### Private Apply Audit
+
+`--apply` requires `--audit NEW_PRIVATE_FILE`; read-only runs reject `--audit` and create no audit.
+The file must not already exist and its containing directory must exist and be protected. The audit
+opens with exclusive creation and mode `0600` after manifest validation/authentication and before
+migration preflight or any backup/schema/data operation. Invalid arguments, unreadable manifests,
+failed authentication or an existing/unwritable audit path can fail before an audit starts; none of
+those cases performs migration writes. Never reuse a prior audit path or use the manifest path.
+
+The audit is append-only **JSONL**: each newline is one JSON event, flushed with `fsync` before the
+next operation. It records the target, run ID and manifest record fingerprints, backup request and
+confirmation, schema-write acknowledgements, record-write intent, per-record results and a completed
+or failed run footer. Every event carries the same reserved `backupId` (`orcid-credits-<runId>.zip`).
+The identifier alone is not backup proof: require a `backup` event with `status: "confirmed"` and
+`backupConfirmed: true`. Failed preflight/backup or no-op runs may never create that reserved backup.
+Events written before confirmation correctly retain `backupConfirmed: false`.
+
+Per-record `record` results are keyed by backup ID, collection and record ID:
+
+- `applied`: PATCH succeeded and a separate readback matched the expected fingerprint. The audit
+  includes the complete committed readback, expected/readback fingerprints and `committed: true`.
+- `skipped`: `not-approved`, `already-applied`, or `run-aborted-before-write`. Already-applied records
+  include matching readback and `committed: true`, but `writeAttempted: false`; no PATCH occurred in
+  this run. Other skipped records have no readback and `committed: false`.
+- `failed`: records the failing phase, write-attempt/acknowledgement flags and available readback,
+  without SDK error bodies or credentials. If PATCH may have reached the server, failure handling
+  reads the record again without retrying PATCH. `committed: true` means expected content was observed
+  despite the error; `null` means the write outcome is unconfirmed. A pre-write failure is `false`.
+
+Successful results are durable **before the next record write**, not only at process shutdown.
+Caught failures append the failing record, remaining unattempted/skipped results and failed footer
+before closing the file. Disk failure or abrupt termination can leave an incomplete final JSONL line
+or an intent without a result/footer; preserve completed lines and treat the last write as uncertain.
+Investigate with fresh read-only inventory before retrying. An audit failure stops further writes;
+the audit is not a database transaction or a substitute for a tested backup.
+
+Audits contain private attribution/readback data. Do not log their contents, publish them as frontend
+assets or commit them. Keep each audit beside its immutable reviewed manifest and confirmed backup
+in protected operator storage. Aggregate console counts alone do not establish which records committed.
+
+## ORCID Registration
+
+1. Register the application in ORCID's developer tools with the actual production owner and support
+   contact. Obtain legitimate client credentials; missing client ID/secret blocks cutover. Users can
+   obtain their own identifiers at `https://orcid.org/register`.
+2. Register the **exact public PocketBase callback** used by the SDK OAuth flow, normally
+   `https://POCKETBASE_ORIGIN/api/oauth2-redirect`. It is not the static frontend `/register` page.
+   Verify the redirect URI generated by the deployed client/SDK and its reverse proxy, including
+   scheme, hostname, path, and trailing-slash behavior; register it exactly, without wildcards.
+3. Use separate sandbox registrations, secrets and databases. Configure with
+   `ORCID_ENVIRONMENT=sandbox` and start the sandbox PocketBase hooks with
+   `ORCID_ISSUER=https://sandbox.orcid.org`. Production uses `ORCID_ENVIRONMENT=production` and
+   `ORCID_ISSUER=https://orcid.org` (both default to production when omitted). Cutover verifies
+   that the hooks' reported issuer agrees with the selected environment. Do not switch environments
+   on a database holding identity mappings. Sandbox identifiers are stored in the same canonical
+   `https://orcid.org/...` format, so database isolation is essential. Use HTTPS callbacks in production
+   and register each environment's exact callback separately under ORCID's registration rules.
+4. Store `ORCID_CLIENT_ID` and `ORCID_CLIENT_SECRET` only in the protected backend/operator
+   environment. Never expose the secret as `PUBLIC_*`, browser config, a query parameter, source code,
+   or a log. Run configuration without shell tracing. Restrict PocketBase superuser and settings access.
+5. The configured provider is PocketBase generic **`oidc`**, with production authorization
+   `https://orcid.org/oauth/authorize`, token `https://orcid.org/oauth/token`, issuer
+   `https://orcid.org`, JWKS `https://orcid.org/oauth/jwks`, empty `userInfoURL`, and PKCE enabled.
+   Sandbox uses `https://sandbox.orcid.org` for the issuer and all `/oauth/...` endpoints, with public
+   profile refresh from `https://pub.sandbox.orcid.org`. The client explicitly requests
+   **`scopes: ['openid']`**. The current configuration notes that
+   PocketBase v0.35 does not persist a scopes setting. Do not assume the generic OIDC defaults work;
+   verify actual provider requests and ORCID registration support for the requested scope. Do not
+   replace ID-token proof with public profile lookup or silently widen scopes.
+6. Use the SDK's state/PKCE OAuth handling and trusted exact callback; never accept arbitrary callback
+   or post-login redirect URLs. Verify issuer, signature/JWKS, audience/authorized party, subject,
+   expiration, and matching account link. Backend hooks reject name/email-based automatic linking.
+   Check the actual deployed PocketBase version supports the configured ID-token verification path.
+7. Existing accounts need a separately approved pending mapping through the private admin endpoint:
+   `GET /api/pure3d/orcid/pending/{userId}` to inspect and
+   `POST /api/pure3d/orcid/pending/{userId}` with `{ "orcid": "https://orcid.org/..." }` to propose
+   the confirmed identifier (`null` clears it). Back up before this separate data operation too.
+   Do not patch identity fields directly. Only the real owner's subsequent ORCID authentication
+   establishes OAuth proof. Do not fabricate verification timestamps or external-auth records.
+8. `POST /api/pure3d/orcid/profile-refresh` refreshes public profile fields after verified login.
+   The client attempts it after successful sign-in; an outage does not undo verified sign-in and
+   users can retry from Profile. Do not imply private ORCID data access or that search results verify ownership. Confirm
+   provider access/refresh tokens and raw profile payloads are absent from browser auth responses,
+   application storage, telemetry, and default logs.
+
+## Deployment and Cutover
+
+The SvelteKit app is a **static SPA**. Deploying the frontend does not deploy PocketBase hooks.
+Production needs a separate deployment of the complete `pocketbase/pb_hooks/` directory, including
+`orcid.pb.js`, `orcid-service.cjs`, `orcid-validation.cjs` and the required `review-service.cjs` helper,
+followed by the service's supported reload/restart. Do not deploy only the hook entrypoint. Verify the authenticated read-only
+`GET /api/pure3d/orcid/config` returns `backend: "pure3d-orcid-v1"` and the expected `issuer` from
+the PocketBase process's `ORCID_ISSUER`. Test schema/hook compatibility on
+the restored database before touching production; restrict public traffic during staged deployment.
+
+`scripts/configure-orcid.ts` is a separate cutover tool. Its no-argument dry run is offline:
+
+```sh
+bun --no-env-file scripts/configure-orcid.ts
+```
+
+Preparation and cutover are separate, mutually exclusive commands:
+
+```sh
+# Writes fields/indexes only, after a confirmed backup; no ORCID client secret required.
+POCKETBASE_URL=http://localhost:60021 bun scripts/configure-orcid.ts --prepare
+
+# First approve and read back pending mappings with the private admin endpoint.
+# Then, in an isolated maintenance window, with matching hooks issuer and real client credentials:
+POCKETBASE_URL=http://localhost:60021 ORCID_ENVIRONMENT=sandbox bun scripts/configure-orcid.ts --apply
+```
+
+These examples target local PocketBase and are not automatic startup steps. Both write modes require
+`POCKETBASE_URL`, `POCKETBASE_ADMIN_EMAIL` and `POCKETBASE_ADMIN_PASSWORD` from the protected operator
+environment. `--prepare` checks schema/identity compatibility, creates and verifies a fresh backup,
+aligns fields and indexes (including private `pendingOrcid`), and reads back the prepared identity
+fields. It preserves existing login methods, API rules and token signing settings. It neither grants
+approval nor requires existing privileged accounts to have already approved mappings, so administrators
+can prepare the schema **before** using the pending-mapping endpoint. Preparation is not a cutover and
+does not yet configure an ORCID provider or revoke sessions.
+
+After preparation, approve and read back the exact privileged mappings. `--apply` requires the private
+identity fields to exist; it refuses an unprepared schema. It aligns profile/credit/membership fields,
+indexes and API rules, enables `oidc`, and disables user password/OTP/MFA and automatic profile mapping.
+It additionally requires `ORCID_CLIENT_ID` and `ORCID_CLIENT_SECRET`.
+Set `ORCID_ENVIRONMENT` explicitly for an operator run and set matching `ORCID_ISSUER` on PocketBase.
+Before any schema/auth writes, the configuration CLI preflights schema and identities, checks
+privileged account mappings, then creates a fresh `orcid-config-*.zip` through PocketBase's backups API
+and confirms its nonempty listing. Backup/preflight failure prevents those writes. It rechecks
+privileged accounts after schema alignment, before disabling legacy login, then reads back the saved
+auth configuration. In the same collection update that disables legacy login, it replaces the
+`users` authentication-token signing secret with a new random secret. **All existing `users` sessions
+become invalid**, including previously verified ORCID sessions; users must sign in with ORCID again.
+Repeating `--apply` rotates the secret again. `_superusers` login and sessions are unchanged. Do not
+print, export or manually copy token signing secrets. Verify old users JWT access/refresh is rejected
+after cutover rather than assuming a disabled password button invalidates issued tokens.
+
+Schema/auth updates are not transactional: retain the backup, isolate writers in
+a maintenance window, and investigate any partial failure before retrying.
+
+Privileged accounts include `admin`/`editorial_board` users, collection owners/editors, and **all**
+edition membership accounts. Each must have either matching verified ORCID/external-auth proof or an
+administrator-approved canonical `pendingOrcid` with no conflicting external link. Missing mappings
+block cutover; a pending mapping is not verified ownership until the real user authenticates. Keep
+superuser recovery access and test the backup restore separately. Configuration does not reconcile
+author credits, so complete the reviewed credit workflow separately.
+
+Never use broad
+`create-pocketbase-collections.ts`, `make install`, the compose setup chain, or bootstrap imports to
+reconcile production data.
+
+The credit migration is independently callable before login cutover, including before the new hooks
+are deployed. When hooks are already installed, preflight uses their validator and refuses any
+normalization/rejection of reviewed content before writes. The current backend preserves exact names,
+whitespace, contribution-role text and duplicate credit entries. Do not disable validation to push
+through public unresolved authors. Plan the staged migration and hook deployment in the maintenance window.
+
+## Local Provisioning and Author Onboarding
+
+The local compose setup uses the PocketBase **superuser** to bootstrap schema, documentation,
+legacy users and content. The retired `scripts/seed-users.js` was removed after verifying there were
+no active callers; it is not a supported provisioning path. Imported users are unverified accounts
+with randomly generated bootstrap passwords, not ready-to-use author logins. No ORCID, pending
+approval, verification timestamp or external identity is fabricated by import.
+
+For a new isolated sandbox, configure the PocketBase service with
+`ORCID_ISSUER=https://sandbox.orcid.org` (the compose service passes this variable through), and use
+`ORCID_ENVIRONMENT=sandbox` for operator configuration/lookup commands. Keep sandbox credentials and
+data separate from production. Superuser bootstrap remains available without creating an anonymous
+application user or using an imported user's password. Do not point the setup service at production.
+
+The active importer can finish while author onboarding remains pending:
+
+```sh
+# Local bootstrap only; credentials come from the protected environment.
+POCKETBASE_URL=http://localhost:60021 bun scripts/import-data.ts --onboarding-dir data/import-onboarding
+```
+
+Compose invokes the same importer with `/app/data/import-onboarding`, persisted through its checkout
+bind mount as `data/import-onboarding/` on the host. This ignored directory is created with mode
+`0700`; an existing directory must already be private and must not be a symlink. Each pending run
+creates a new `edition-author-onboarding-<uuid>.json` with exclusive creation, mode `0600` and flushed
+writes. Protect its ownership as well as permissions; keep it out of Git, public exports and logs.
+The importer prints the report location, pending-author count, other missing-target count and next
+steps without printing names, source rows or credentials.
+
+Every **new author assignment** is staged for explicit review, even if its account is already
+verified. Existing author memberships are left untouched. Legacy edition `editor` maps to requested
+`author`; it is never silently changed to `collaborator`. Eligible reader/collaborator/reviewer
+memberships continue to import normally. Missing user or edition targets are also preserved in the
+report instead of disappearing. Duplicate pending source rows retain separate indices.
+
+Each pending entry records the original `editionUser.json` row, source index/fingerprint, original
+edition ID and user hash, candidate PocketBase IDs (or null), requested role, reason, `status: "pending"`
+and empty approval evidence. These fields preserve legacy membership intent, not account identity
+proof or granted access. The report is written **before any edition-membership creates**; report
+failure stops that phase. If a later create fails, the report survives. Earlier content-import phases
+may already have completed. Preserve the original source JSON for retries and auditing.
+
+Onboarding is an explicit administrative workflow:
+
+1. Keep the generated report immutable and record review in a separate protected copy/change ticket.
+   Verify the edition's `mongoId` against `legacyEditionId` and the user's `userHash` against
+   `legacyUserHash`. Candidate IDs from import are not approval. Resolve missing or conflicting
+   targets explicitly; do not link by matching names or invent missing users.
+2. Obtain the actual owner's ORCID confirmation and record reviewer/date/evidence. Use the protected
+   pending-ORCID endpoint for an approved account mapping, with the required backup and deployed
+   onboarding schema/hooks. On an existing database, run `configure-orcid.ts --prepare` first if its
+   private identity fields are not present; do not use `--apply` to try to skip the approval phase.
+   A source membership or a public search hit is not OAuth ownership proof.
+3. Complete provider configuration only after its privileged-account preflight is satisfied. Have
+   the real user authenticate with ORCID. Confirm their canonical ORCID, verified timestamp and
+   matching external identity before adding an `author` membership. A pending mapping alone is
+   insufficient for the backend's author-membership gate.
+4. Through the authorized membership workflow/API, grant exactly the reviewed edition/user/role.
+   Check for an existing assignment first. Do not downgrade roles to work around validation. Record
+   the granted membership ID in the protected review record.
+5. Re-run the local importer if needed: existing granted assignments are skipped and remaining
+   intent gets a fresh report. Prior reports and reviewer evidence are never overwritten or consumed
+   automatically. Reconcile the latest queue against earlier reports and the original source.
+
+The onboarding report is **not** the credit migration manifest. Neither importer nor credit migration
+automatically applies reviewed membership reports. Configuration preflight examines actual accounts
+and memberships, not this private file: operators must account for deferred author intent separately.
+An import-complete message means content import finished, not that author access, ORCID sign-in or
+publication readiness has been approved.
+
+### Retired Exporter
+
+`scripts/export-from-pocketbase.ts` was removed after checking the repository for callers and finding
+none outside the script itself. It used the obsolete `projects` collection, old admin authentication,
+CLI password arguments, lossy `dcCreator` strings and a one-page export into frontend assets. The
+active app reads PocketBase `collections`/`editions` and canonical ordered `credits` directly; there
+is no replacement static-export startup step. Use PocketBase's supported backups for full database
+recovery, and `report:authors` for private attribution inventory (not a whole-database backup).
+
+### Current Release Blockers
+
+- Unresolved person creators, missing privileged-account mappings, issuer/environment disagreement,
+  schema conflicts or an unconfirmed backup block the relevant migration/cutover step. Contributor
+  ORCIDs are optional; do not relabel a real author as a contributor to evade the author requirement.
+- The active legacy importer is local bootstrap only and writes canonical credits for new records,
+  preserving duplicates and names. Imports with unresolved person creators stay draft/hidden;
+  original JSON remains the attribution/publication-history source. It skips existing records and is
+  **not** production migration. Hooks allow superuser bootstrap user/content creation without identity
+  assertions, while still enforcing credit/publication validation. New author assignments are preserved
+  in the private onboarding queue so bootstrap can finish without bypassing verified-ORCID checks.
+  Unreviewed assignments still block completion of author onboarding, not unrelated content import.
+- Production credentials, ORCID registration/scopes/callback, the deployed provider sign-in flow,
+  PocketBase version, verified legacy-account mappings, and unmatched authors require real operator
+  verification. No successful production rollout or OAuth round trip is claimed by these scripts.
+
+### Verification Checklist
+
+- Run `bun run test:orcid-migration`, `bun run check`, and the formatting/lint checks before deployment.
+- Rehearse backup failure, stale manifests, duplicate authors, organizations, unresolved co-authors,
+  and a partial-run retry against a restored isolated database. Verify backup restore independently.
+- Check both record collections: counts, creator/contributor order, exact names, duplicates, canonical
+  checksums, approved links, unchanged legacy fields, and unchanged publication states/assets.
+- Resolve every pending/blocked record and every unresolved individual author before cutover; keep
+  the reviewed queue as an auditable artifact. Optional missing contributor ORCIDs are not author
+  blockers. Review existing canonical credits against legacy fields.
+- Reconcile the private author-assignment onboarding reports separately; verify exact source targets,
+  approved mappings, real ORCID ownership and the final requested membership roles. No seed-password
+  account or unreviewed report entry should provide author access.
+- Exercise real ORCID registration and sign-in on desktop/mobile; check state/PKCE, callback, scope,
+  expired/wrong issuer/audience tokens, duplicate identities, and rejected automatic name/email linking.
+- Confirm public browsing remains possible, OAuth-only login is enforced, `_superusers` recovery still
+  works, role/membership checks hold, and no unresolved individual author can submit or publish.
+- Confirm `--prepare` preserves login, rules and existing sessions; then verify `--apply` rejects old
+  users JWT access/refresh, requires fresh ORCID sign-in and preserves superuser sessions. Rehearse
+  missing prepared fields, unapproved privileged mappings and backup failure before rollout.
+- Confirm protected profile refresh and pending mapping authorization, no token leakage, and production
+  hook health after restart. Do not switch frontend traffic until these checks pass.
+- Only after separately verified attribution parity, queue closure, backup/restore approval and an
+  explicit cleanup change may legacy source fields be removed. Neither script offers a cleanup flag.

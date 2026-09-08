@@ -1,3 +1,5 @@
+import { readCredits } from './credits';
+
 const SEARCHABLE_FIELDS = [
 	'title',
 	'description',
@@ -7,8 +9,6 @@ const SEARCHABLE_FIELDS = [
 	'dcSubtitle',
 	'dcAbstract',
 	'dcDescription',
-	'dcCreator',
-	'dcContributor',
 	'dcInstitution',
 	'dcContact',
 	'dcSubject',
@@ -36,6 +36,14 @@ export function editionMatchesQuery(edition: object, query: string): boolean {
 	const normalizedQuery = query.trim().toLowerCase();
 	if (!normalizedQuery) return true;
 	const record = edition as Record<string, unknown>;
+	if (
+		readCredits(record.credits).some((credit) =>
+			[credit.name, credit.orcid, credit.contributionRole].some((value) =>
+				value?.toLowerCase().includes(normalizedQuery)
+			)
+		)
+	)
+		return true;
 
 	return SEARCHABLE_FIELDS.some((field) => {
 		const value = record[field];

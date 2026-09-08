@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { creditHref, creatorNames, readCredits } from '$lib/utils/credits';
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
@@ -94,24 +95,8 @@
 
 	// Parsed description segments
 	const descriptionSegments = $derived(parseDescription(edition.description || ''));
-	const creatorNames = $derived.by(() => {
-		const creators = ((edition as any).dcCreator as string[]) || [];
-		if (creators.length > 0) return creators;
-		return (edition.authors || '')
-			.split(',')
-			.map((author) => author.trim())
-			.filter(Boolean);
-	});
-	const creatorProfiles = $derived(data.creatorProfiles ?? []);
-
-	function authorEditionsHref(author: string): string {
-		const profile = creatorProfiles.find((item) =>
-			item.names.some((name) => name.toLowerCase() === author.toLowerCase())
-		);
-		return profile
-			? `${base}/profile/${profile.id}`
-			: `${base}/editions?q=${encodeURIComponent(author)}`;
-	}
+	const credits = $derived(readCredits(edition.credits));
+	const creators = $derived(credits.filter((credit) => credit.role === 'creator'));
 
 	/**
 	 * Handle click on a view link - change camera position
@@ -174,13 +159,12 @@
 
 	// Format citation (Chicago style)
 	const citationText = $derived.by(() => {
-		const creators = ((edition as any).dcCreator as string[]) || [];
-		const creatorStr = creators.length > 0 ? creators.join(', ') : edition.authors || 'Unknown';
+		const creatorStr = creatorNames(credits) || 'Unknown';
 		const year = edition.created ? new Date(edition.created).getFullYear() : '';
 		const title = edition.title;
 		const pubNum = (edition as any).pubNum;
 		const doi = primaryDoi;
-		return `${creatorStr}. <em>${title}.</em> Pure 3D${pubNum ? `, ed. ${String(pubNum).padStart(2, '0')}` : ''}${year ? ` (${year})` : ''}.${doi ? ` doi:${doi}.` : ''}`;
+		return `${creatorStr}. ${title}. Pure 3D${pubNum ? `, ed. ${String(pubNum).padStart(2, '0')}` : ''}${year ? ` (${year})` : ''}.${doi ? ` doi:${doi}.` : ''}`;
 	});
 
 	// Build diff/changelog from dcAbstract comparison with previous edition
@@ -236,7 +220,7 @@
 	}
 
 	async function copyCitation() {
-		const text = citationText.replace(/<[^>]*>/g, '');
+		const text = citationText;
 		try {
 			await navigator.clipboard.writeText(text);
 			citationCopied = true;
@@ -400,11 +384,13 @@
 					{edition.title}
 				</h1>
 				<p class="mt-3 text-base-content/70">
-					{#each creatorNames as author, index (author)}
-						<a href={authorEditionsHref(author)} class="link link-hover">{author}</a>{index <
-						creatorNames.length - 1
-							? ', '
-							: ''}
+					{#each creators as credit, index (credit)}
+						{@const href = creditHref(credit, base)}
+						{#if href}<a
+								{href}
+								class="link link-hover"
+								rel={credit.userId ? undefined : 'external noopener noreferrer'}>{credit.name}</a
+							>{:else}{credit.name}{/if}{index < creators.length - 1 ? '; ' : ''}
 					{/each}
 				</p>
 				<!-- Institution -->
@@ -705,7 +691,9 @@
 								{#if edition.usageConditions}
 									<span>
 										<span class="font-mono text-[9px] tracking-[0.1em] uppercase">License</span>
-										<span class="ml-1 font-medium text-base-content/80">{edition.usageConditions}</span>
+										<span class="ml-1 font-medium text-base-content/80"
+											>{edition.usageConditions}</span
+										>
 									</span>
 								{/if}
 								{#if primaryDoi}
@@ -755,9 +743,7 @@
 					>
 						<div class="overflow-hidden rounded-lg bg-base-200">
 							<div class="flex min-h-11 items-center justify-between gap-3 bg-base-100 px-3 py-2">
-								<span
-									class="font-mono text-[9px] tracking-[0.12em] text-base-content/45 uppercase"
-								>
+								<span class="font-mono text-[9px] tracking-[0.12em] text-base-content/45 uppercase">
 									Edition record
 								</span>
 								<button
@@ -778,7 +764,7 @@
 								<button
 									role="tab"
 									aria-selected={activeTab === 'description'}
-									class="min-h-11 grow shrink-0 border-b-2 px-3 text-xs whitespace-nowrap transition-colors {activeTab ===
+									class="min-h-11 shrink-0 grow border-b-2 px-3 text-xs whitespace-nowrap transition-colors {activeTab ===
 									'description'
 										? 'border-accent text-base-content'
 										: 'border-transparent text-base-content/50 hover:text-base-content'}"
@@ -789,7 +775,7 @@
 								<button
 									role="tab"
 									aria-selected={activeTab === 'metadata'}
-									class="min-h-11 grow shrink-0 border-b-2 px-3 text-xs whitespace-nowrap transition-colors {activeTab ===
+									class="min-h-11 shrink-0 grow border-b-2 px-3 text-xs whitespace-nowrap transition-colors {activeTab ===
 									'metadata'
 										? 'border-accent text-base-content'
 										: 'border-transparent text-base-content/50 hover:text-base-content'}"
@@ -800,7 +786,7 @@
 								<button
 									role="tab"
 									aria-selected={activeTab === 'peer-review'}
-									class="min-h-11 grow shrink-0 border-b-2 px-3 text-xs whitespace-nowrap transition-colors {activeTab ===
+									class="min-h-11 shrink-0 grow border-b-2 px-3 text-xs whitespace-nowrap transition-colors {activeTab ===
 									'peer-review'
 										? 'border-accent text-base-content'
 										: 'border-transparent text-base-content/50 hover:text-base-content'}"
@@ -812,7 +798,7 @@
 									<button
 										role="tab"
 										aria-selected={activeTab === 'versions'}
-										class="min-h-11 grow shrink-0 border-b-2 px-3 text-xs whitespace-nowrap transition-colors {activeTab ===
+										class="min-h-11 shrink-0 grow border-b-2 px-3 text-xs whitespace-nowrap transition-colors {activeTab ===
 										'versions'
 											? 'border-accent text-base-content'
 											: 'border-transparent text-base-content/50 hover:text-base-content'}"
@@ -824,7 +810,7 @@
 								<button
 									role="tab"
 									aria-selected={activeTab === 'printables'}
-									class="min-h-11 grow shrink-0 border-b-2 px-3 text-xs whitespace-nowrap transition-colors {activeTab ===
+									class="min-h-11 shrink-0 grow border-b-2 px-3 text-xs whitespace-nowrap transition-colors {activeTab ===
 									'printables'
 										? 'border-accent text-base-content'
 										: 'border-transparent text-base-content/50 hover:text-base-content'}"
@@ -923,19 +909,29 @@
 												<h2>Contributors &amp; institution</h2>
 											</div>
 											<dl class="metadata-list">
-												<div class="metadata-row">
-													<dt class="text-base-content/50">Authors</dt>
-													<dd>
-														{#if creatorNames.length > 0}
-															{#each creatorNames as author, index (author)}
-																<a href={authorEditionsHref(author)} class="link link-hover">{author}</a
-																>{index < creatorNames.length - 1 ? ', ' : ''}
-															{/each}
-														{:else}
-															<span class="text-base-content/45">Not provided</span>
-														{/if}
-													</dd>
-												</div>
+												{#each ['creator', 'contributor'] as role (role)}
+													<div class="metadata-row">
+														<dt class="text-base-content/50">
+															{role === 'creator' ? 'Creators' : 'Contributors'}
+														</dt>
+														<dd>
+															{#each credits.filter((credit) => credit.role === role) as credit (credit)}
+																{@const href = creditHref(credit, base)}
+																<div>
+																	{#if href}<a
+																			{href}
+																			class="link link-hover"
+																			rel={credit.userId
+																				? undefined
+																				: 'external noopener noreferrer'}>{credit.name}</a
+																		>{:else}{credit.name}{/if}{credit.contributionRole
+																		? ` (${credit.contributionRole})`
+																		: ''}
+																</div>
+															{:else}<span class="text-base-content/45">Not provided</span>{/each}
+														</dd>
+													</div>
+												{/each}
 												{#if (edition as any).dcInstitution && (edition as any).dcInstitution.length > 0}
 													<div class="metadata-row">
 														<dt class="text-base-content/50">Institution</dt>
@@ -957,7 +953,11 @@
 												{#if edition.alternativeVersion}
 													<div class="metadata-row">
 														<dt class="text-base-content/50">Other version</dt>
-														<dd><a href={edition.alternativeVersion} class="link link-hover">View version</a></dd>
+														<dd>
+															<a href={edition.alternativeVersion} class="link link-hover"
+																>View version</a
+															>
+														</dd>
 													</div>
 												{/if}
 											</dl>
@@ -971,7 +971,11 @@
 												{#if loadedModelSize || (edition as any).modelSize}
 													<div class="metadata-row">
 														<dt class="text-base-content/50">Model size</dt>
-														<dd>{loadedModelSize ? formatBytes(loadedModelSize) : String((edition as any).modelSize)}</dd>
+														<dd>
+															{loadedModelSize
+																? formatBytes(loadedModelSize)
+																: String((edition as any).modelSize)}
+														</dd>
 													</div>
 												{/if}
 												{#if edition.voyagerVersion}
@@ -1038,15 +1042,21 @@
 													{#each demoReviewFeedback as item (item.id)}
 														<div class="rounded-lg border border-base-300 p-3">
 															<div class="flex flex-wrap items-center gap-2">
-																<span class="badge badge-sm badge-info capitalize">{item.category}</span>
-																<span class="text-xs font-medium text-base-content/60">{item.targetLabel}</span>
+																<span class="badge badge-sm capitalize badge-info"
+																	>{item.category}</span
+																>
+																<span class="text-xs font-medium text-base-content/60"
+																	>{item.targetLabel}</span
+																>
 																<span class="ml-auto text-xs text-base-content/40">
 																	{item.reviewer} · {formatDate(item.created)}
 																</span>
 															</div>
 															<p class="mt-1 text-sm">{item.comment}</p>
 															{#if item.resolved}
-																<span class="mt-2 badge inline-block badge-sm badge-success">Resolved</span>
+																<span class="mt-2 badge inline-block badge-sm badge-success"
+																	>Resolved</span
+																>
 															{/if}
 														</div>
 													{/each}
@@ -1059,7 +1069,9 @@
 											</div>
 										{/if}
 									{:else}
-												<div class="not-prose rounded-lg border border-dashed border-base-300 bg-base-100 p-5 text-sm">
+										<div
+											class="not-prose rounded-lg border border-dashed border-base-300 bg-base-100 p-5 text-sm"
+										>
 											<div class="mb-2 flex items-center gap-2">
 												<span class="badge badge-outline badge-sm">Status</span>
 												<h3 class="font-semibold">
@@ -1070,15 +1082,18 @@
 											</div>
 											<p class="text-base-content/70">
 												{#if (edition as any).peerReviewRequested}
-														This edition is marked for peer review. Review details and feedback will appear
-														here when they are available.
+													This edition is marked for peer review. Review details and feedback will
+													appear here when they are available.
 												{:else}
-														Peer review is an optional trust signal for Pure 3D editions. If requested for
-														this edition, review information will appear here.
+													Peer review is an optional trust signal for Pure 3D editions. If requested
+													for this edition, review information will appear here.
 												{/if}
 											</p>
 											{#if canManagePage && !(edition as any).peerReviewRequested}
-													<a class="btn btn-outline btn-xs mt-4" href="{base}/editions/{edition.id}/workflow">
+												<a
+													class="btn mt-4 btn-outline btn-xs"
+													href="{base}/editions/{edition.id}/workflow"
+												>
 													Request peer review
 												</a>
 											{/if}
@@ -1094,12 +1109,16 @@
 															<h3 class="font-semibold">{item.title}</h3>
 															<p class="mt-1 text-sm text-base-content/70">{item.description}</p>
 														</div>
-																<span class="badge badge-outline shrink-0">{item.type}</span>
+														<span class="badge shrink-0 badge-outline">{item.type}</span>
 													</div>
 													<div class="mt-3 flex items-center justify-between gap-3">
 														<p class="text-xs text-base-content/50">{item.size}</p>
 														{#if item.url}
-																	<a class="btn btn-outline btn-xs" href={item.url} download={item.filename || true}>
+															<a
+																class="btn btn-outline btn-xs"
+																href={item.url}
+																download={item.filename || true}
+															>
 																Download
 															</a>
 														{/if}
@@ -1108,18 +1127,23 @@
 											{/each}
 										</div>
 									{:else}
-												<div class="not-prose rounded-lg border border-dashed border-base-300 bg-base-100 p-5 text-sm">
+										<div
+											class="not-prose rounded-lg border border-dashed border-base-300 bg-base-100 p-5 text-sm"
+										>
 											<div class="mb-2 flex items-center gap-2">
 												<span class="badge badge-outline badge-sm">Not provided</span>
 												<h3 class="font-semibold">No printables uploaded</h3>
 											</div>
 											<p class="text-base-content/70">
-													Contributors can upload downloadable worksheets, fabrication files, lesson
-													materials, or reference sheets for an edition. None have been provided for this
-													edition.
+												Contributors can upload downloadable worksheets, fabrication files, lesson
+												materials, or reference sheets for an edition. None have been provided for
+												this edition.
 											</p>
 											{#if canManagePage}
-													<a class="btn btn-outline btn-xs mt-4" href="{base}/editions/{edition.id}/workflow">
+												<a
+													class="btn mt-4 btn-outline btn-xs"
+													href="{base}/editions/{edition.id}/workflow"
+												>
 													Manage edition assets
 												</a>
 											{/if}
@@ -1131,7 +1155,7 @@
 										<div class="rounded-lg bg-base-300 p-4">
 											<h3 class="mb-2 text-sm font-semibold">Citation</h3>
 											<div class="text-sm leading-relaxed text-base-content/80">
-												{@html citationText}
+												{citationText}
 											</div>
 											<div class="mt-2 flex gap-2">
 												<button class="btn btn-xs btn-secondary" onclick={copyCitation}>
@@ -1382,7 +1406,9 @@
 		border-radius: 0.375rem;
 		font-size: 0.6875rem;
 		font-weight: 500;
-		transition: border-color 160ms ease-out, background 160ms ease-out;
+		transition:
+			border-color 160ms ease-out,
+			background 160ms ease-out;
 	}
 
 	.metadata-action:hover {

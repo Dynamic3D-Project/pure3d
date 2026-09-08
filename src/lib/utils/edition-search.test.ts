@@ -5,7 +5,23 @@ describe('editionMatchesQuery', () => {
 	const edition = {
 		title: 'The Battle at 25 Northumberland Road',
 		dcAbstract: 'The Sherwood Foresters during the Easter Rising.',
-		dcCreator: ['Susan Schreibman'],
+		credits: [
+			{
+				type: 'person',
+				name: 'Susan Schreibman',
+				orcid: 'https://orcid.org/0000-0002-1825-0097',
+				role: 'creator',
+				provenance: 'manual'
+			},
+			{
+				type: 'org',
+				name: 'Example Museum',
+				orcid: null,
+				role: 'contributor',
+				provenance: 'manual',
+				contributionRole: 'Digitization'
+			}
+		],
 		dcKeyword: ['British History', 'Irish History'],
 		dcSubject: ['History', 'War and conflict'],
 		dcCoverageCountry: ['Ireland (IE)'],
@@ -18,6 +34,9 @@ describe('editionMatchesQuery', () => {
 			'battle',
 			'Sherwood Foresters',
 			'Susan Schreibman',
+			'0000-0002-1825-0097',
+			'Example Museum',
+			'Digitization',
 			'British History',
 			'War and conflict',
 			'Ireland (IE)',

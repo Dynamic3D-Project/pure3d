@@ -9,7 +9,7 @@
 	import { hasPermission } from '$lib/utils/permissions';
 	import { resolvePageContext } from '$lib/utils/page-permissions';
 	import { getEditionRoot, getEditionThumbnailUrl } from '$lib/utils/asset-urls';
-	import { profileNameKey } from '$lib/utils/profile-matching';
+	import { creditHref, creatorNames, readCredits } from '$lib/utils/credits';
 	import toast from 'svelte-french-toast';
 	import type { RecordModel } from 'pocketbase';
 	import type { PageData } from './$types';
@@ -18,10 +18,6 @@
 
 	let collection = $derived(data.collection);
 	let editions = $state(data.editions);
-	let creatorProfiles = $derived(data.creatorProfiles ?? []);
-	let visibleCreators = $derived(
-		collection.dcCreator.length <= 3 ? collection.dcCreator : collection.dcCreator.slice(0, 2)
-	);
 
 	let permissionContext = $state<UserRoleContext>({ globalRole: GlobalRole.User });
 	let isCreating = $state(false);
@@ -50,15 +46,6 @@
 	let descriptionIsLong = $derived(
 		stripHtml(collection.description).length > DESCRIPTION_CLAMP_LENGTH
 	);
-
-	function creatorHref(creator: string): string {
-		const profile = creatorProfiles.find((item) =>
-			item.names.some((name) => profileNameKey(name) === profileNameKey(creator))
-		);
-		return profile
-			? `${base}/profile/${profile.id}`
-			: `${base}/editions?q=${encodeURIComponent(creator)}`;
-	}
 
 	let canEdit = $derived(hasPermission(permissionContext, Permission.CollectionEdit));
 	let canCreateEdition = $derived(hasPermission(permissionContext, Permission.EditionCreate));
@@ -118,7 +105,8 @@
 			slug: record.id,
 			title: record.dcTitle || record.title,
 			description: record.dcAbstract || '',
-			authors: Array.isArray(record.dcCreator) ? record.dcCreator.join(', ') : '',
+			authors: creatorNames(record.credits),
+			credits: readCredits(record.credits),
 			thumbnail:
 				record.thumbnail && collectionPubNum > 0
 					? getEditionThumbnailUrl(collectionPubNum, editionPubNum)
@@ -219,20 +207,6 @@
 				isPublished: false
 			});
 
-			if (authStore.appUserId) {
-				try {
-					await pb.collection('editionUsers').create({
-						edition: record.id,
-						editionId: record.id,
-						user: authStore.appUserId,
-						userId: authStore.appUserId,
-						role: 'author'
-					});
-				} catch {
-					// Non-critical
-				}
-			}
-
 			goto(`${base}/editions/${record.id}/workflow`);
 		} catch (e: any) {
 			toast.error(e?.message || 'Failed to create edition');
@@ -326,20 +300,27 @@
 				</div>
 
 				<!-- Creators byline -->
-				{#if collection.dcCreator.length > 0}
-					<p class="mb-3 text-sm text-base-content/70">
-						<span class="text-base-content/50">by</span>
-						{#each visibleCreators as creator, index (creator)}
-							<a class="link link-hover" href={creatorHref(creator)}>{creator}</a>{index <
-							visibleCreators.length - 1
-								? ', '
-								: ''}
-						{/each}
-						{#if collection.dcCreator.length > visibleCreators.length}
-							, +{collection.dcCreator.length - visibleCreators.length} more
-						{/if}
-					</p>
-				{/if}
+				{#each ['creator', 'contributor'] as role (role)}
+					{@const credits = collection.credits.filter((credit) => credit.role === role)}
+					{#if credits.length}
+						<p class="mb-3 text-sm text-base-content/70">
+							<span class="text-base-content/50"
+								>{role === 'creator' ? 'Creators:' : 'Contributors:'}</span
+							>
+							{#each credits as credit, index (credit)}
+								{@const href = creditHref(credit, base)}
+								{#if href}<a
+										class="link link-hover"
+										{href}
+										rel={credit.userId ? undefined : 'external noopener noreferrer'}
+										>{credit.name}</a
+									>{:else}{credit.name}{/if}{credit.contributionRole
+									? ` (${credit.contributionRole})`
+									: ''}{index < credits.length - 1 ? '; ' : ''}
+							{/each}
+						</p>
+					{/if}
+				{/each}
 
 				<!-- Meta chips -->
 				<div class="mb-5 flex flex-wrap items-center gap-2 text-sm">

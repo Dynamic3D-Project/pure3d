@@ -1,11 +1,6 @@
 <script lang="ts">
 	import { FeedbackCategory } from '$lib/types/reviews';
-	import { logAudit } from '$lib/utils/audit';
-	import { authStore } from '$lib/database/stores/auth.svelte';
-	import { notifyMany } from '$lib/utils/notifications';
-	import { NotificationType } from '$lib/types/notifications';
 	import { pb } from '$lib/database/client';
-	import { base } from '$app/paths';
 	import toast from 'svelte-french-toast';
 
 	interface Props {
@@ -41,27 +36,6 @@
 				comment: comment.trim(),
 				targetLabel: showTargetLabel ? targetLabel.trim() : ''
 			});
-
-			await logAudit('feedback_created', 'edition', editionId, authStore.user?.email || '', {
-				category,
-				targetLabel: showTargetLabel ? targetLabel : null
-			});
-
-			// Notify authors
-			const edUsers = await pb.collection('editionUsers').getList(1, 50, {
-				filter: `editionId = "${editionId}" && role = "author"`
-			});
-			const authorIds = edUsers.items.map((r) => r.userId);
-			if (authorIds.length > 0) {
-				await notifyMany(
-					authorIds,
-					NotificationType.FeedbackReceived,
-					'New review feedback',
-					`A reviewer has left ${category} feedback on your edition.`,
-					editionId,
-					`${base}/editions/${editionId}/workflow`
-				);
-			}
 
 			comment = '';
 			targetLabel = '';

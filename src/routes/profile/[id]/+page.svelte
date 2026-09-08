@@ -19,14 +19,18 @@
 	}
 
 	function socialLinks(value: string) {
-		return value
-			.split(/\n+/)
-			.map((item) => item.trim())
-			.filter(Boolean);
+		return [
+			...new Set(
+				value
+					.split(/\n+/)
+					.map((item) => item.trim())
+					.filter(Boolean)
+			)
+		];
 	}
 </script>
 
-<div class="container mx-auto max-w-6xl px-4 py-8">
+<div id="page" class="container mx-auto max-w-6xl px-4 py-8">
 	<section class="mb-8 overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm">
 		{#if data.profile.profilePictureUrl}
 			<div class="h-24 bg-gradient-to-r from-base-300 via-base-200 to-base-100"></div>
@@ -46,8 +50,8 @@
 			<div class="flex-1">
 				<div class="flex flex-wrap items-center gap-2">
 					<h1 class="text-3xl font-bold">{data.profile.name}</h1>
-					{#if data.profile.verified}
-						<span class="badge badge-sm badge-success">Verified</span>
+					{#if data.profile.orcid && data.profile.orcidVerifiedAt}
+						<span class="badge badge-sm badge-success">ORCID verified</span>
 					{/if}
 				</div>
 				{#if data.profile.role && data.profile.role !== 'user'}
@@ -72,15 +76,22 @@
 				<div>
 					<h2 class="text-2xl font-semibold">Profile</h2>
 					{#if data.profile.bio}
-						<div class="prose mt-4 max-w-none text-base-content/80">{@html data.profile.bio}</div>
+						<p class="mt-4 whitespace-pre-line text-base-content/80">{data.profile.bio}</p>
 					{/if}
 
 					{#if data.profile.socials}
 						<div class="mt-6 flex flex-wrap gap-2">
-							{#each socialLinks(data.profile.socials) as social}
-								<a class="btn btn-outline btn-sm" href={socialHref(social)} target="_blank" rel="noreferrer">
+							{#each socialLinks(data.profile.socials) as social (social)}
+								<!-- eslint-disable svelte/no-navigation-without-resolve -- External ORCID profile URL, not an app route. -->
+								<a
+									class="btn btn-outline btn-sm"
+									href={socialHref(social)}
+									target="_blank"
+									rel="noreferrer"
+								>
 									{socialLabel(social)}
 								</a>
+								<!-- eslint-enable svelte/no-navigation-without-resolve -->
 							{/each}
 						</div>
 					{/if}
@@ -88,12 +99,19 @@
 
 				{#if data.profile.orcid}
 					<aside>
-					<div class="rounded-xl bg-base-200 p-4">
-						<div class="text-xs font-semibold uppercase tracking-wide text-base-content/50">ORCID</div>
-						<a class="link mt-1 block break-all" href={data.profile.orcid} target="_blank" rel="noreferrer">
-							{socialLabel(data.profile.orcid)}
-						</a>
-					</div>
+						<div class="rounded-xl bg-base-200 p-4">
+							<div class="text-xs font-semibold tracking-wide text-base-content/50 uppercase">
+								ORCID
+							</div>
+							<a
+								class="mt-1 block link break-all"
+								href={`https://orcid.org/${data.profile.orcid.slice(18)}`}
+								target="_blank"
+								rel="noreferrer"
+							>
+								{socialLabel(data.profile.orcid)}
+							</a>
+						</div>
 					</aside>
 				{/if}
 			</div>

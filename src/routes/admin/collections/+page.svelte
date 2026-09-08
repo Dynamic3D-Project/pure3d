@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { pb } from '$lib/database/client';
 	import { CollectionRole, COLLECTION_ROLE_LABELS, GlobalRole } from '$lib/types/roles';
@@ -52,10 +52,10 @@
 	async function loadCollections() {
 		try {
 			isLoading = true;
-			const result = await pb.collection('collections').getList(1, 500, {
+			const result = await pb.collection('collections').getFullList({
 				sort: 'pubNum'
 			});
-			collections = result.items.map((r) => ({
+			collections = result.map((r) => ({
 				id: r.id,
 				title: r.title,
 				isVisible: r.isVisible,
@@ -89,18 +89,7 @@
 				isVisible: false
 			});
 
-			try {
-				await pb.collection('collectionUsers').create({
-					collection: record.id,
-					user: authStore.appUserId,
-					userId: authStore.appUserId,
-					role: CollectionRole.Owner
-				});
-			} catch {
-				// Non-critical
-			}
-
-			goto(`${base}/collections/${record.id}/edit?new=1`);
+			goto(resolve(`/collections/${record.id}/edit?new=1`));
 		} catch (e: unknown) {
 			const message = e instanceof Error ? e.message : 'Failed to create collection';
 			toast.error(message);
@@ -115,7 +104,8 @@
 		<div>
 			<h1 class="text-3xl font-bold">Collection Management</h1>
 			<p class="mt-2 text-base-content/60">
-				Manage collection members and their roles. {collections.length} collections.
+				Reconcile creator ORCIDs and linked user IDs separately from access roles. Expand a
+				collection to edit its credits. {collections.length} collections.
 			</p>
 		</div>
 		<button
@@ -221,8 +211,13 @@
 							</div>
 						</button>
 						<div class="flex shrink-0 items-center gap-2">
-							<a href="{base}/collections/{collection.id}" class="btn btn-outline btn-sm">Open</a>
-							<a href="{base}/collections/{collection.id}/edit" class="btn btn-ghost btn-sm">Edit</a
+							<a
+								href={resolve('/collections/[slug]', { slug: collection.id })}
+								class="btn btn-outline btn-sm">Open</a
+							>
+							<a
+								href={resolve('/collections/[slug]/edit', { slug: collection.id })}
+								class="btn btn-ghost btn-sm">Edit</a
 							>
 							<button
 								class="btn btn-square btn-ghost btn-sm"
@@ -258,7 +253,6 @@
 								roleValues={collectionRoleValues}
 								roleLabels={COLLECTION_ROLE_LABELS}
 								defaultRole={CollectionRole.Viewer}
-								auditTargetType="collection"
 								isReadOnly={!canManageAllMembers}
 							/>
 						</div>

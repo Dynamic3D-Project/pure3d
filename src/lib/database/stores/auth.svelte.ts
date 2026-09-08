@@ -12,6 +12,7 @@ interface User {
 	avatar?: string;
 	profilePicture?: string;
 	orcid?: string;
+	orcidVerifiedAt?: string;
 	affiliation?: string;
 	titleRole?: string;
 	bio?: string;
@@ -46,21 +47,24 @@ class AuthStore {
 		}
 	}
 
-	async login(email: string, password: string) {
-		const authData = await pb.collection('users').authWithPassword(email, password);
-		this.user = authData.record as unknown as User;
-		return authData;
-	}
-
-	async register(email: string, password: string, passwordConfirm: string) {
-		await pb.collection('users').create({
-			email,
-			password,
-			passwordConfirm,
-			nickname: email.split('@')[0],
-			role: GlobalRole.User
+	async loginWithOrcid() {
+		const authData = await pb.collection('users').authWithOAuth2({
+			provider: 'oidc',
+			scopes: ['openid']
 		});
-		await this.login(email, password);
+		if (!authData.record.orcid || !authData.record.orcidVerifiedAt) {
+			this.logout();
+			throw new Error('ORCID verification was not completed. Please contact an administrator.');
+		}
+		this.user = authData.record as unknown as User;
+		try {
+			await pb.send('/api/pure3d/orcid/profile-refresh', { method: 'POST' });
+			const record = await pb.collection('users').getOne(authData.record.id);
+			pb.authStore.save(pb.authStore.token, record);
+		} catch {
+			// A public-profile outage must not undo a verified sign-in; users can retry in Profile.
+		}
+		return authData;
 	}
 
 	logout() {

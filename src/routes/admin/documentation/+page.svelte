@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { pb } from '$lib/database/client';
-	import { authStore } from '$lib/database/stores/auth.svelte';
-	import { logAudit } from '$lib/utils/audit';
 	import type { Documentation } from '$lib/types/documentation';
 	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
 	import RichTextEditor from '$lib/components/ui/RichTextEditor.svelte';
@@ -144,23 +142,9 @@
 
 			if (editingId) {
 				await pb.collection('documentation').update(editingId, data);
-				await logAudit(
-					'doc_updated',
-					'documentation',
-					editingId,
-					authStore.user?.email || '',
-					{ title: data.title }
-				);
 				toast.success('Page updated');
 			} else {
-				const record = await pb.collection('documentation').create(data);
-				await logAudit(
-					'doc_created',
-					'documentation',
-					record.id,
-					authStore.user?.email || '',
-					{ title: data.title }
-				);
+				await pb.collection('documentation').create(data);
 				toast.success('Page created');
 			}
 
@@ -176,13 +160,6 @@
 	async function deleteDoc(doc: Documentation) {
 		try {
 			await pb.collection('documentation').delete(doc.id);
-			await logAudit(
-				'doc_deleted',
-				'documentation',
-				doc.id,
-				authStore.user?.email || '',
-				{ title: doc.title }
-			);
 			toast.success('Page deleted');
 			deletingId = null;
 			await loadDocs();
@@ -257,13 +234,6 @@
 	async function togglePublished(doc: Documentation) {
 		try {
 			await pb.collection('documentation').update(doc.id, { isPublished: !doc.isPublished });
-			await logAudit(
-				'doc_updated',
-				'documentation',
-				doc.id,
-				authStore.user?.email || '',
-				{ title: doc.title, isPublished: !doc.isPublished }
-			);
 			toast.success(doc.isPublished ? 'Unpublished' : 'Published');
 			await loadDocs();
 		} catch {
@@ -275,9 +245,7 @@
 <div>
 	<div class="mb-6 flex items-center justify-between">
 		<h1 class="text-2xl font-bold">Pages</h1>
-		<button class="btn btn-primary btn-sm" onclick={startCreate}>
-			+ New Page
-		</button>
+		<button class="btn btn-sm btn-primary" onclick={startCreate}> + New Page </button>
 	</div>
 
 	{#if showForm}
@@ -295,7 +263,7 @@
 						<input
 							id="doc-title"
 							type="text"
-							class="input input-bordered"
+							class="input-bordered input"
 							bind:value={formTitle}
 							oninput={handleTitleInput}
 							placeholder="Page title"
@@ -308,7 +276,7 @@
 						<input
 							id="doc-slug"
 							type="text"
-							class="input input-bordered"
+							class="input-bordered input"
 							bind:value={formSlug}
 							oninput={() => (autoSlug = false)}
 							placeholder="url-friendly-slug"
@@ -322,7 +290,7 @@
 					</label>
 					<textarea
 						id="doc-summary"
-					class="textarea textarea-bordered"
+						class="textarea-bordered textarea"
 						bind:value={formSummary}
 						placeholder="Short description for the overview page"
 						rows="2"
@@ -337,7 +305,7 @@
 						<input
 							id="doc-order"
 							type="number"
-							class="input input-bordered w-24"
+							class="input-bordered input w-24"
 							bind:value={formOrder}
 							min="0"
 						/>
@@ -367,9 +335,9 @@
 				</div>
 
 				<div class="flex gap-2">
-					<button class="btn btn-primary btn-sm" onclick={saveDoc} disabled={isSaving}>
+					<button class="btn btn-sm btn-primary" onclick={saveDoc} disabled={isSaving}>
 						{#if isSaving}
-							<span class="loading loading-spinner loading-xs"></span>
+							<span class="loading loading-xs loading-spinner"></span>
 						{/if}
 						{editingId ? 'Update' : 'Create'}
 					</button>
@@ -382,7 +350,7 @@
 	<div class="mb-6 rounded-box border border-base-300 bg-base-100 p-4 shadow-sm">
 		<div class="mb-3 flex items-center justify-between gap-3">
 			<div>
-				<h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/70">Filters</h2>
+				<h2 class="text-sm font-semibold tracking-wide text-base-content/70 uppercase">Filters</h2>
 				<p class="text-xs text-base-content/50">Find pages by title, slug, summary, or status.</p>
 			</div>
 			{#if hasActiveFilters}
@@ -400,16 +368,16 @@
 		</div>
 		<div class="grid gap-3 md:grid-cols-[minmax(16rem,1fr)_13rem]">
 			<label class="form-control">
-				<span class="label pb-1 pt-0"><span class="label-text text-xs">Search</span></span>
+				<span class="label pt-0 pb-1"><span class="label-text text-xs">Search</span></span>
 				<input
 					type="text"
 					placeholder="Title, slug, or summary..."
-					class="input input-bordered w-full bg-base-200/40"
+					class="input-bordered input w-full bg-base-200/40"
 					bind:value={searchQuery}
 				/>
 			</label>
 			<label class="form-control">
-				<span class="label pb-1 pt-0"><span class="label-text text-xs">Status</span></span>
+				<span class="label pt-0 pb-1"><span class="label-text text-xs">Status</span></span>
 				<FloatingSelect
 					id="documentation-status-filter"
 					bind:value={statusFilter}
@@ -422,7 +390,7 @@
 
 	{#if isLoading}
 		<div class="flex justify-center py-12">
-			<span class="loading loading-spinner loading-lg"></span>
+			<span class="loading loading-lg loading-spinner"></span>
 		</div>
 	{:else if docs.length === 0}
 		<p class="py-12 text-center text-base-content/60">No pages yet.</p>
@@ -436,7 +404,7 @@
 			{/if}
 			{#if isReordering}
 				<span class="inline-flex items-center gap-2 text-base-content">
-					<span class="loading loading-spinner loading-xs"></span>
+					<span class="loading loading-xs loading-spinner"></span>
 					Saving order...
 				</span>
 			{/if}
@@ -467,7 +435,7 @@
 							<td>
 								<button
 									type="button"
-									class="btn btn-ghost btn-sm cursor-grab gap-2 active:cursor-grabbing"
+									class="btn cursor-grab gap-2 btn-ghost btn-sm active:cursor-grabbing"
 									disabled={isReordering}
 									aria-label={`Drag to reorder ${doc.title}`}
 									title="Drag to reorder"
@@ -497,14 +465,17 @@
 										Edit
 									</button>
 									{#if deletingId === doc.id}
-										<button class="btn btn-error btn-xs" onclick={() => deleteDoc(doc)}>
+										<button class="btn btn-xs btn-error" onclick={() => deleteDoc(doc)}>
 											Confirm
 										</button>
 										<button class="btn btn-ghost btn-xs" onclick={() => (deletingId = null)}>
 											Cancel
 										</button>
 									{:else}
-										<button class="btn btn-ghost btn-xs text-error" onclick={() => (deletingId = doc.id)}>
+										<button
+											class="btn text-error btn-ghost btn-xs"
+											onclick={() => (deletingId = doc.id)}
+										>
 											Delete
 										</button>
 									{/if}

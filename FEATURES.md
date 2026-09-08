@@ -3,6 +3,7 @@
 ## Functionality
 
 ### 3D Viewer
+
 Powered by the Smithsonian Voyager Explorer, embedded directly or via iframe.
 
 - [x] Interactive orbit camera with reset control
@@ -19,17 +20,21 @@ Powered by the Smithsonian Voyager Explorer, embedded directly or via iframe.
 - [ ] Keyboard shortcuts for viewer navigation
 
 ### Search
+
 - [x] Global search across editions and collections
 - [x] Real-time results with keyboard navigation
 - [x] Grouped results by type with thumbnail previews
 
 ### Authentication
-- [x] Email/password, Google OAuth, and magic link login
-- [x] User registration and profile management
-- [ ] Password reset flow
-- [ ] Email verification
+
+- [x] ORCID identity backend and ordered person/organization credit model
+- [x] Manual attribution review without name-based account linking
+- [ ] Production ORCID-only registration/sign-in cutover and deployment verification
+- [ ] Every individual author's ORCID resolved before submission/publication; no legacy exemptions
+- Production registration, hooks, credentials and rollout blockers: [ORCID operations](docs/orcid.md)
 
 ### Content
+
 - [x] Edition and collection browsing with thumbnails
 - [x] Featured editions carousel on home page
 - [x] Tabbed detail panels (description, metadata, peer review, printables)
@@ -41,12 +46,21 @@ Powered by the Smithsonian Voyager Explorer, embedded directly or via iframe.
 - [ ] Deep linking to specific scenes and annotations
 
 ### Data
-- [x] PocketBase backend with auto-migration on first run
+
+- [x] PocketBase backend with local bootstrap tooling (not a production migration)
+- [x] Read-only ORCID inventory and reviewed, backup-gated attribution migration
+- [x] Private per-record apply audits with backup identity, committed readbacks and partial-failure results
+- [x] Unapproved account candidates with source evidence and visible identity/name collisions
+- [x] Optional bounded public ORCID candidate lookup, with separate manual identity approval
+- [x] Legacy names, duplicate entries and ordering retained; unresolved identities stay in review
+- [x] Local imports preserve pending author assignments in private onboarding reports without role downgrades
+- [ ] Production attribution reconciliation and independently verified legacy-field cleanup
 - [x] Persisted stores with stale-while-revalidate caching
 - [x] CDN-ready asset URL configuration
 - [x] Image preloading during browser idle time
 
 ### SEO & Analytics
+
 - [x] Per-route meta tags and page titles
 - [x] Analytics-ready (Plausible/Umami)
 
@@ -55,6 +69,7 @@ Powered by the Smithsonian Voyager Explorer, embedded directly or via iframe.
 ## UI
 
 ### Layout & Navigation
+
 - [x] Responsive mobile and desktop layout
 - [x] Sticky frosted glass header with mobile hamburger menu
 - [x] Active route highlighting and breadcrumb navigation
@@ -62,10 +77,12 @@ Powered by the Smithsonian Voyager Explorer, embedded directly or via iframe.
 - [x] Link prefetching on hover
 
 ### Theming
+
 - [x] Dark/light theme toggle
 - [x] Consistent frosted glass effects
 
 ### UX Polish
+
 - [x] Toast notifications
 - [x] Loading skeletons
 - [x] Smooth scroll carousel with arrow buttons
@@ -81,18 +98,19 @@ Powered by the Smithsonian Voyager Explorer, embedded directly or via iframe.
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | SvelteKit 2 + Svelte 5 (runes) |
-| Styling | TailwindCSS 4 + DaisyUI |
-| 3D Viewer | Smithsonian Voyager |
-| Backend | PocketBase |
-| Runtime | Bun |
-| Language | TypeScript (strict) |
-| Deployment | Docker Compose |
+| Layer      | Technology                                 |
+| ---------- | ------------------------------------------ |
+| Framework  | SvelteKit 2 + Svelte 5 (runes)             |
+| Styling    | TailwindCSS 4 + DaisyUI                    |
+| 3D Viewer  | Smithsonian Voyager                        |
+| Backend    | PocketBase                                 |
+| Runtime    | Bun                                        |
+| Language   | TypeScript (strict)                        |
+| Deployment | Docker Compose                             |
 | Versioning | Tag-triggered releases with auto changelog |
 
 ### Developer Tools
+
 - [x] Dev environment banner and debug overlay
 - [x] Voyager API demo page (dev only)
 - [x] Environment variable configuration

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { pb } from '$lib/database/client';
 	import {
 		EditionStatus,
@@ -8,18 +7,16 @@
 		type UserRoleContext
 	} from '$lib/types/roles';
 	import { canUserTransitionStatus } from '$lib/utils/permissions';
-	import { logAudit } from '$lib/utils/audit';
 	import toast from 'svelte-french-toast';
 
 	interface Props {
 		editionId: string;
-		title: string;
 		status: EditionStatus;
 		context: UserRoleContext;
 		onchanged?: (newStatus: EditionStatus) => void;
 	}
 
-	let { editionId, title, status, context, onchanged }: Props = $props();
+	let { editionId, status, context, onchanged }: Props = $props();
 
 	let transitioning = $state(false);
 
@@ -32,18 +29,11 @@
 	async function transitionTo(target: EditionStatus) {
 		transitioning = true;
 		try {
-			const oldStatus = status;
 			const isPublished = target === EditionStatus.Published;
 
 			await pb.collection('editions').update(editionId, {
 				status: target,
 				isPublished
-			});
-
-			await logAudit('status_transition', 'edition', editionId, authStore.user?.email || '', {
-				from: oldStatus,
-				to: target,
-				title
 			});
 
 			toast.success(`Status changed to ${STATUS_LABELS[target]}`);

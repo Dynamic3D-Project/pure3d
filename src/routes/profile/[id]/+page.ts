@@ -6,16 +6,13 @@ import {
 	getEditionRoot,
 	getEditionThumbnailUrl
 } from '$lib/utils/asset-urls';
-import { profileDisplayName } from '$lib/utils/profile-matching';
-
-function escapeFilterValue(value: string): string {
-	return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-}
+import { creatorNames, normalizeOrcid, readCredits } from '$lib/utils/credits';
+import type { RecordModel } from 'pocketbase';
 
 const toArray = (value: unknown): string[] =>
 	Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 
-function mapEdition(record: any) {
+function mapEdition(record: RecordModel) {
 	const collection = record.expand?.collection;
 	const collectionPubNum = collection?.pubNum || 0;
 	const editionPubNum = record.pubNum || 1;
@@ -25,7 +22,7 @@ function mapEdition(record: any) {
 		slug: record.id,
 		title: record.dcTitle || record.title,
 		description: record.dcAbstract || '',
-		authors: toArray(record.dcCreator).join(', '),
+		authors: creatorNames(record.credits),
 		thumbnail:
 			record.thumbnail && collectionPubNum > 0
 				? getEditionThumbnailUrl(collectionPubNum, editionPubNum)
@@ -43,8 +40,7 @@ function mapEdition(record: any) {
 		dcSubtitle: record.dcSubtitle || null,
 		dcAbstract: record.dcAbstract || null,
 		dcDescription: record.dcDescription || null,
-		dcCreator: toArray(record.dcCreator),
-		dcContributor: toArray(record.dcContributor),
+		credits: readCredits(record.credits),
 		dcInstitution: toArray(record.dcInstitution),
 		dcContact: record.dcContact || null,
 		dcSubject: toArray(record.dcSubject),
@@ -80,7 +76,7 @@ function mapEdition(record: any) {
 	};
 }
 
-function mapCollection(record: any, editionCount = 0) {
+function mapCollection(record: RecordModel, editionCount = 0) {
 	return {
 		id: record.id,
 		slug: record.id,
@@ -95,24 +91,20 @@ function mapCollection(record: any, editionCount = 0) {
 }
 
 export const load: PageLoad = async ({ params }) => {
-	const userId = escapeFilterValue(params.id);
-
 	try {
 		const user = await pb.collection('users').getOne(params.id);
-		const [editionUsers, collectionUsers] = await Promise.all([
-			pb.collection('editionUsers').getList(1, 100, {
-				filter: `userId = "${userId}" && role = "author"`,
-				expand: 'editionId,editionId.collection'
-			}),
-			pb.collection('collectionUsers').getList(1, 100, {
-				filter: `userId = "${userId}"`,
+		const [editionRecords, collectionRecords] = await Promise.all([
+			pb.collection('editions').getFullList({
+				filter: 'isPublished = true',
 				expand: 'collection'
+			}),
+			pb.collection('collections').getFullList({
+				filter: 'isVisible = true'
 			})
 		]);
 
-		const editions = editionUsers.items
-			.map((item) => item.expand?.editionId)
-			.filter((record) => record?.isPublished)
+		const editions = editionRecords
+			.filter((record) => readCredits(record.credits).some((credit) => credit.userId === user.id))
 			.map(mapEdition);
 
 		const editionCounts = new Map<string, number>();
@@ -120,9 +112,8 @@ export const load: PageLoad = async ({ params }) => {
 			editionCounts.set(edition.collectionId, (editionCounts.get(edition.collectionId) || 0) + 1);
 		}
 
-		const collections = collectionUsers.items
-			.map((item) => item.expand?.collection)
-			.filter((record) => record?.isVisible)
+		const collections = collectionRecords
+			.filter((record) => readCredits(record.credits).some((credit) => credit.userId === user.id))
 			.map((record) => mapCollection(record, editionCounts.get(record.id) || 0));
 
 		const profilePicture = user.profilePicture || user.avatar || '';
@@ -130,17 +121,17 @@ export const load: PageLoad = async ({ params }) => {
 		return {
 			profile: {
 				id: user.id,
-				name: profileDisplayName(user),
+				name: user.nickname || 'Unnamed user',
 				profilePictureUrl: profilePicture
 					? pb.files.getURL(user, profilePicture, { thumb: '200x200' })
 					: '',
-				orcid: user.orcid || '',
+				orcid: normalizeOrcid(user.orcid) || '',
 				affiliation: user.affiliation || '',
 				titleRole: user.titleRole || '',
 				bio: user.bio || '',
 				socials: user.socials || '',
 				role: user.role || null,
-				verified: !!user.verified,
+				orcidVerifiedAt: user.orcidVerifiedAt || null,
 				created: user.created
 			},
 			editions,

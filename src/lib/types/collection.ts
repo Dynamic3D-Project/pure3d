@@ -1,4 +1,5 @@
 import { GlobalRole, CollectionRole, EditionRole, EditionStatus } from './roles';
+import type { Credit } from './credits';
 
 // Site configuration
 export interface Site {
@@ -51,8 +52,7 @@ export interface Collection {
 	dcSubtitle: string | null;
 	dcAbstract: string | null;
 	dcDescription: string | null;
-	dcCreator: string[];
-	dcContributor: string[];
+	credits: Credit[];
 	dcInstitution: string[];
 	dcSubject: string[];
 	dcLanguage: string[];
@@ -93,8 +93,7 @@ export interface Edition {
 	dcDescription: string | null;
 
 	// Dublin Core - People/Orgs
-	dcCreator: string[];
-	dcContributor: string[];
+	credits: Credit[];
 	dcInstitution: string[];
 	dcContact: string | null;
 

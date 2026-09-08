@@ -1,265 +1,57 @@
-# Complete Setup From Scratch
+# Local Setup From Scratch
 
-> Preferred local setup is now the one-command flow in `README.md` and `docs/setup/quick-start.md`:
->
-> ```bash
-> docker compose up -d
-> ```
->
-> That command now starts PocketBase, applies the schema, imports `data/json-output/`, seeds demo users, and starts the frontend automatically.
->
-> Use the instructions below only if you specifically need to regenerate the JSON data from BSON or inspect the manual setup flow.
+Start an isolated development stack without losing legacy authorship intent. This is **local
+provisioning**, not a production migration or an automatic ORCID rollout. For existing data and
+author access, follow [ORCID migration and onboarding](../orcid.md).
 
 ## Prerequisites
 
-- Docker Desktop installed and running
-- Bun installed
-- MongoDB BSON backup in `data/db/` folder
+- Docker with Compose and Bun installed.
+- Protected local superuser credentials in the environment/configuration; never commit `.env`.
+- Optional legacy source JSON in `data/json-output/`. If conversion is needed, run
+  `bun scripts/read-bson.ts` against the intended local `data/db/` backup first and retain originals.
+- For ORCID sandbox testing, separate sandbox credentials/database, with
+  `ORCID_ISSUER=https://sandbox.orcid.org` on PocketBase and `ORCID_ENVIRONMENT=sandbox` for operator commands.
 
-## Step 1: Convert BSON to JSON (One-time)
+## Start the Stack
 
-```bash
-bun scripts/read-bson.ts
+```sh
+docker compose up -d
 ```
 
-**What this does:**
-- Reads all `.bson` files from `data/db/`
-- Converts them to JSON format
-- Saves to `data/json-output/`
-- Creates `_database_structure.json` with schema overview
+The active compose services provision local storage, bootstrap PocketBase through the superuser,
+apply the local schema/documentation setup, import available source JSON, install Voyager assets,
+and start the frontend. They **do not seed demo/password application accounts**. The obsolete
+`scripts/seed-users.js` has been removed. Imported users are unverified onboarding records, not
+demo credentials you can use to sign in.
 
-**Expected output:**
-```
-Found 7 BSON files in data/db
-✅ Saved 76 documents to data/json-output/user.json
-✅ Saved 1 documents to data/json-output/site.json
-...
-✅ Complete database structure saved
-```
+Do not delete `pocketbase/pb_data` or existing volumes to work around an error. To rehearse from an
+empty database, use a separately provisioned disposable workspace/data directory, preserving any
+existing database and backups. Never point this bootstrap chain at production.
 
-## Step 2: Configure Credentials
+## Verify Provisioning
 
-Edit `.env` file:
+- Frontend: `http://localhost:60020`.
+- PocketBase operator UI: `http://localhost:60021/_/`, using protected **superuser** credentials.
+- Review setup logs for imported/skipped records and pending author-assignment counts. Do not assume
+  a fixed source count or that all membership grants completed.
+- Review private `data/import-onboarding/edition-author-onboarding-*.json` reports. The importer
+  preserves each deferred author assignment's original user hash, edition identifier and requested
+  role, without fabricated verification or a role downgrade. Existing author memberships remain untouched.
+- Imports with unresolved person creators remain draft/hidden. Anonymous browsing and author access
+  are different states: successful provisioning does not prove ORCID sign-in or publication readiness.
 
-```bash
-# PocketBase Admin Credentials
-POCKETBASE_ADMIN_EMAIL=your-email@example.com
-POCKETBASE_ADMIN_PASSWORD=your-secure-password
-```
+## Complete Onboarding
 
-⚠️ **Important**: Remember these credentials - you'll use them to access the admin UI later!
+Follow the [current ORCID procedure](../orcid.md): deploy the complete hooks, prepare identity fields
+with `configure-orcid.ts --prepare` where needed, approve/read back exact pending account mappings,
+then perform backup-gated provider cutover. Authors must authenticate with their real ORCID before
+an administrator grants the reviewed author membership. Reports are private review artifacts, not
+automatic permission grants.
 
-## Step 3: Start Fresh PocketBase
+Use the existing ORCID sign-in UI; there are no seeded demo logins. Keep superuser recovery access,
+verify the registered callback and issuer, and test token revocation and readiness before any rollout.
 
-```bash
-# Clean any previous data
-docker compose down
-rm -rf pocketbase/pb_data
-
-# Start PocketBase
-docker compose up -d pocketbase
-```
-
-**Wait for:** `✅ PocketBase is ready` (about 5 seconds)
-
-## Step 4: Run Complete Automated Setup
-
-```bash
-docker compose --profile setup up
-```
-
-**What this does automatically:**
-1. ✅ Creates admin account with credentials from `.env`
-2. ✅ Creates all 7 collections:
-   - site
-   - users
-   - keywords
-   - projects
-   - editions
-   - projectUsers
-   - editionUsers
-3. ✅ Configures all field schemas (Dublin Core metadata, relations, etc.)
-4. ✅ Sets up relationships between collections
-5. ✅ Imports all 832 documents from JSON files
-
-**Expected output:**
-```
-🚀 Complete PocketBase Setup
-✅ PocketBase is ready
-✅ Authenticated successfully
-
-📦 Creating basic collections...
-   ✅ site created
-   ✅ users created
-   ✅ keywords created
-   ✅ projects created
-   ✅ editions created
-   ✅ projectUsers created
-   ✅ editionUsers created
-
-🔗 Updating relation fields...
-   ✅ projects.siteId → site
-   ✅ editions.projectId → projects
-   ...
-
-📥 Starting data import...
-📦 Importing site...
-   ✅ Imported 1/1 site record(s)
-📦 Importing users...
-   ✅ Imported 76/76 users
-📦 Importing keywords...
-   ✅ Imported 305/305 keywords
-📦 Importing projects...
-   ✅ Imported 22/22 projects
-📦 Importing editions...
-   ✅ Imported 110/110 editions
-📦 Importing projectUsers...
-   ✅ Imported 48/48 project-user relationships
-📦 Importing editionUsers...
-   ✅ Imported 270/270 edition-user relationships
-
-✅ COMPLETE SETUP FINISHED!
-
-💡 Database Summary:
-   ✅ site (1 record)
-   ✅ users (76 records)
-   ✅ keywords (305 records)
-   ✅ projects (22 records)
-   ✅ editions (110 records)
-   ✅ projectUsers (48 records)
-   ✅ editionUsers (270 records)
-
-   Total: 832 documents imported!
-
-🎉 Your PocketBase is ready to use!
-```
-
-## Step 5: Verify Setup
-
-1. **Open Admin UI:**
-   ```bash
-   open http://localhost:60021/_/
-   ```
-
-2. **Login with your credentials** (from `.env`)
-
-3. **Check collections** in the sidebar - you should see all 7
-
-4. **Browse data** - click any collection to see imported records
-
-## Step 6: Start Frontend (Optional)
-
-```bash
-docker compose up -d frontend
-```
-
-Access your app at: http://localhost:60020
-
----
-
-## Complete Command Summary
-
-```bash
-# Full setup from scratch
-bun scripts/read-bson.ts                    # Convert BSON → JSON (one-time)
-docker compose down && rm -rf pocketbase/pb_data  # Clean slate
-docker compose up -d pocketbase             # Start PocketBase
-docker compose --profile setup up           # Auto setup (admin + collections + data)
-docker compose up -d frontend               # Start app (optional)
-```
-
----
-
-## Troubleshooting
-
-### "Authentication failed"
-- Check `.env` credentials match exactly
-- Make sure no typos in email/password
-
-### "Collection already exists"
-- This is OK! The script skips existing collections
-- If collections have no fields, do a fresh start:
-  ```bash
-  docker compose down
-  rm -rf pocketbase/pb_data
-  # Then start from Step 3
-  ```
-
-### "Data already exists"
-- The script automatically skips import if data exists
-- To re-import, delete data via Admin UI or start fresh
-
-### Port conflicts
-- Change `POCKETBASE_PORT` in `.env` (default: 60021)
-- Change `FRONTEND_PORT` in `.env` (default: 60020)
-
-### Docker network errors
-- Run: `docker network prune -f`
-- Then restart from Step 3
-
----
-
-## What Gets Created
-
-### Collections with Full Schemas:
-
-1. **site** - Site configuration
-   - 9 fields (name, blog, featured, dates, etc.)
-
-2. **users** - User accounts
-   - 4 fields (user hash, email, nickname, role)
-
-3. **keywords** - Controlled vocabulary
-   - 2 fields (name, value)
-
-4. **projects** - Main projects with Dublin Core
-   - 18 fields (title, metadata, dates, etc.)
-
-5. **editions** - 3D editions with Voyager scenes
-   - 33 fields (full Dublin Core + Voyager config)
-   - **Important**: `sceneFile` field stores path to `.svx` files
-
-6. **projectUsers** - User-project permissions
-   - 4 fields (projectId, userId, user hash, role)
-
-7. **editionUsers** - User-edition permissions
-   - 4 fields (editionId, userId, user hash, role)
-
-### Relationships:
-- site → projects (one-to-many)
-- projects → editions (one-to-many)
-- projects ↔ users (many-to-many via projectUsers)
-- editions ↔ users (many-to-many via editionUsers)
-
----
-
-## Next Steps After Setup
-
-1. **Explore the data** in Admin UI
-2. **Test API endpoints:**
-   ```bash
-   curl http://localhost:60021/api/collections/projects/records
-   ```
-3. **Integrate with SvelteKit** - see `POCKETBASE_SETUP.md` for examples
-4. **Build your frontend** using the PocketBase SDK
-
----
-
-## Files Reference
-
-- `scripts/read-bson.ts` - BSON to JSON converter
-- `scripts/setup-pocketbase-complete.ts` - Complete automated setup
-- `docker-compose.yml` - Docker configuration with setup profile
-- `.env` - Configuration (credentials, ports)
-- `data/json-output/` - Converted JSON data
-- `pocketbase/pb_data/` - PocketBase database (persistent)
-
----
-
-## Support
-
-- Admin UI: http://localhost:60021/_/
-- Health check: http://localhost:60021/api/health
-- Collections API: http://localhost:60021/api/collections
-
-**Everything automated. Just 4 commands. Done! 🚀**
+For current stack commands and asset setup, see [README](../../README.md). For backups, reviewed
+attribution migration, per-record audit results and unresolved-author handling, use
+[ORCID operations](../orcid.md) rather than older bootstrap scripts or destructive reset instructions.

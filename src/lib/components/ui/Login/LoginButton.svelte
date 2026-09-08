@@ -32,7 +32,7 @@
 					<div
 						class="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white ring-primary ring-offset-2 ring-offset-base-100"
 					>
-						{authStore.user?.email?.charAt(0).toUpperCase() || 'U'}
+						{authStore.user?.nickname?.charAt(0).toUpperCase() || 'U'}
 					</div>
 				{/if}
 			</button>
@@ -48,7 +48,9 @@
 			>
 				<ul class="menu w-full p-0">
 					<li class="menu-title px-4 py-2">
-						<span class="truncate text-xs text-base-content/70">{authStore.user?.email}</span>
+						<span class="truncate text-xs text-base-content/70"
+							>{authStore.user?.nickname || 'ORCID account'}</span
+						>
 					</li>
 					{#if authStore.globalRole === GlobalRole.Admin}
 						<li>

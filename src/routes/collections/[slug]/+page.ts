@@ -6,7 +6,7 @@ import {
 	getCollectionCoverUrl,
 	getEditionRoot
 } from '$lib/utils/asset-urls';
-import { profileNames } from '$lib/utils/profile-matching';
+import { creatorNames, readCredits } from '$lib/utils/credits';
 
 export const load: PageLoad = async ({ params }) => {
 	try {
@@ -27,7 +27,7 @@ export const load: PageLoad = async ({ params }) => {
 			isVisible: collectionRecord.isVisible !== false,
 			pubNum: collectionRecord.pubNum || 0,
 			editionIds: [],
-			dcCreator: toArray(collectionRecord.dcCreator),
+			credits: readCredits(collectionRecord.credits),
 			dcInstitution: toArray(collectionRecord.dcInstitution),
 			dcSubject: toArray(collectionRecord.dcSubject),
 			dcLanguage: toArray(collectionRecord.dcLanguage),
@@ -62,7 +62,8 @@ export const load: PageLoad = async ({ params }) => {
 				slug: record.id,
 				title: record.dcTitle || record.title,
 				description: record.dcAbstract || '',
-				authors: Array.isArray(record.dcCreator) ? record.dcCreator.join(', ') : '',
+				authors: creatorNames(record.credits),
+				credits: readCredits(record.credits),
 				thumbnail: editionThumbnail,
 				voyagerUrl,
 				usageConditions: record.dcRightsLicense || '',
@@ -78,16 +79,7 @@ export const load: PageLoad = async ({ params }) => {
 			};
 		});
 
-		const collectionUsers = await pb.collection('collectionUsers').getList(1, 100, {
-			filter: `collection = "${collectionRecord.id}"`,
-			expand: 'userId'
-		});
-		const creatorProfiles = collectionUsers.items
-			.map((item) => item.expand?.userId)
-			.filter(Boolean)
-			.map((user) => ({ id: user.id, names: profileNames(user) }));
-
-		return { collection, editions, creatorProfiles };
+		return { collection, editions };
 	} catch (e) {
 		throw error(404, 'Collection not found');
 	}

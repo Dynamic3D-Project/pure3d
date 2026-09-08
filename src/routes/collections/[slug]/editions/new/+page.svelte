@@ -5,7 +5,12 @@
 	import { pb } from '$lib/database/client';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { hasPermission } from '$lib/utils/permissions';
-	import { Permission, CollectionRole, EditionStatus, type UserRoleContext } from '$lib/types/roles';
+	import {
+		Permission,
+		CollectionRole,
+		EditionStatus,
+		type UserRoleContext
+	} from '$lib/types/roles';
 	import toast from 'svelte-french-toast';
 	import type { PageData } from './$types';
 
@@ -52,19 +57,6 @@
 				status: EditionStatus.Draft,
 				isPublished: false
 			});
-			if (authStore.appUserId) {
-				try {
-					await pb.collection('editionUsers').create({
-						edition: record.id,
-						editionId: record.id,
-						user: authStore.appUserId,
-						userId: authStore.appUserId,
-						role: 'author'
-					});
-				} catch {
-					/* non-critical */
-				}
-			}
 			goto(`${base}/editions/${record.id}/workflow`);
 		} catch (e: unknown) {
 			toast.error((e as Error)?.message || 'Failed to create edition');
@@ -82,7 +74,9 @@
 		<ul>
 			<li><a href="{base}/" class="link link-hover">Home</a></li>
 			<li><a href="{base}/collections" class="link link-hover">Collections</a></li>
-			<li><a href="{base}/collections/{collection.id}" class="link link-hover">{collection.title}</a></li>
+			<li>
+				<a href="{base}/collections/{collection.id}" class="link link-hover">{collection.title}</a>
+			</li>
 			<li class="text-base-content/70">New Edition</li>
 		</ul>
 	</nav>
@@ -101,7 +95,13 @@
 				<h1 class="text-2xl font-bold">New Edition</h1>
 				<p class="text-sm text-base-content/60">in <strong>{collection.title}</strong></p>
 			</div>
-			<form onsubmit={(e) => { e.preventDefault(); createDraftAndRedirect(); }} class="space-y-3">
+			<form
+				onsubmit={(e) => {
+					e.preventDefault();
+					createDraftAndRedirect();
+				}}
+				class="space-y-3"
+			>
 				<div class="form-control">
 					<label class="label" for="title">
 						<span class="label-text font-medium">Title *</span>
@@ -121,7 +121,7 @@
 				</div>
 				<div class="flex justify-end gap-2">
 					<a href="{base}/collections/{collection.id}" class="btn btn-ghost btn-sm">Cancel</a>
-					<button type="submit" class="btn btn-primary btn-sm" disabled={creating || !title.trim()}>
+					<button type="submit" class="btn btn-sm btn-primary" disabled={creating || !title.trim()}>
 						{#if creating}
 							<span class="loading loading-xs loading-spinner"></span>
 						{/if}

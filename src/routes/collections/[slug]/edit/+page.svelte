@@ -1,4 +1,7 @@
 <script lang="ts">
+	import CreditsEditor from '$lib/components/ui/CreditsEditor.svelte';
+	import type { Credit } from '$lib/types/credits';
+	import { readCredits, validateCredits } from '$lib/utils/credits';
 	import { base } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -20,8 +23,7 @@
 	let dcTitle = $state('');
 	let dcSubtitle = $state('');
 	let dcAbstract = $state('');
-	let dcCreator = $state('');
-	let dcContributor = $state('');
+	let credits = $state<Credit[]>([]);
 	let dcInstitution = $state('');
 	let dcSubject = $state('');
 	let dcCoveragePeriod = $state('');
@@ -63,8 +65,7 @@
 		dcTitle = record.dcTitle || '';
 		dcSubtitle = record.dcSubtitle || '';
 		dcAbstract = record.dcAbstract || '';
-		dcCreator = jsonArrayToString(record.dcCreator);
-		dcContributor = jsonArrayToString(record.dcContributor);
+		credits = readCredits(record.credits);
 		dcInstitution = jsonArrayToString(record.dcInstitution);
 		dcSubject = jsonArrayToString(record.dcSubject);
 		dcCoveragePeriod = record.dcCoveragePeriod || '';
@@ -103,13 +104,14 @@
 
 		isSaving = true;
 		try {
+			const creditError = validateCredits(credits);
+			if (creditError) throw new Error(creditError);
 			await pb.collection('collections').update(record.id, {
 				title: title.trim(),
 				dcTitle: dcTitle.trim(),
 				dcSubtitle: dcSubtitle.trim(),
 				dcAbstract,
-				dcCreator: stringToJsonArray(dcCreator),
-				dcContributor: stringToJsonArray(dcContributor),
+				credits: readCredits(credits),
 				dcInstitution: stringToJsonArray(dcInstitution),
 				dcSubject: stringToJsonArray(dcSubject),
 				dcCoveragePeriod: dcCoveragePeriod.trim(),
@@ -344,42 +346,7 @@
 						</div>
 					</div>
 
-					<div>
-						<h3 class="mb-3 text-sm font-semibold text-base-content/60 uppercase">People</h3>
-						<div class="grid gap-4 md:grid-cols-2">
-							<div class="form-control">
-								<label class="label pb-1" for="dcCreator">
-									<span class="label-text font-medium">Creators</span>
-								</label>
-								<input
-									id="dcCreator"
-									type="text"
-									class={inputClass}
-									bind:value={dcCreator}
-									placeholder="Author A, Author B"
-								/>
-								<p class="mt-1 text-xs text-base-content/50">
-									Separate multiple names with commas.
-								</p>
-							</div>
-
-							<div class="form-control">
-								<label class="label pb-1" for="dcContributor">
-									<span class="label-text font-medium">Contributors</span>
-								</label>
-								<input
-									id="dcContributor"
-									type="text"
-									class={inputClass}
-									bind:value={dcContributor}
-									placeholder="Contributor A, Contributor B"
-								/>
-								<p class="mt-1 text-xs text-base-content/50">
-									Separate multiple names with commas.
-								</p>
-							</div>
-						</div>
-					</div>
+					<CreditsEditor bind:credits disabled={isSaving} />
 
 					<div>
 						<h3 class="mb-3 text-sm font-semibold text-base-content/60 uppercase">

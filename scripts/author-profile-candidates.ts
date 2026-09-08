@@ -15,16 +15,3 @@ export function profileNames(user: Record<string, unknown>): string[] {
 			return comma ? [name, clean, `${comma[2]} ${comma[1]}`] : [name, clean];
 		});
 }
-
-export function profileDisplayName(user: Record<string, unknown>): string {
-	if (typeof user.name === 'string' && user.name) return user.name;
-
-	const fallback = [user.nickname, user.username, user.email].find(
-		(value): value is string => typeof value === 'string' && !!value
-	);
-	if (!fallback) return 'User';
-
-	const clean = fallback.replace(/\s*\([^)]*\)\s*$/g, '').trim();
-	const comma = clean.match(/^([^,]+),\s+(.+)$/);
-	return comma ? `${comma[2]} ${comma[1]}` : clean;
-}

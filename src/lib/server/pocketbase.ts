@@ -1,4 +1,5 @@
 import PocketBase from 'pocketbase';
+import { creatorNames, readCredits, validateCredits } from '$lib/utils/credits';
 import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
 import {
 	GlobalRole,
@@ -163,8 +164,7 @@ export async function getCollections() {
 				dcSubtitle: record.dcSubtitle || null,
 				dcAbstract: record.dcAbstract || null,
 				dcDescription: record.dcDescription || null,
-				dcCreator: Array.isArray(record.dcCreator) ? record.dcCreator : [],
-				dcContributor: Array.isArray(record.dcContributor) ? record.dcContributor : [],
+				credits: readCredits(record.credits),
 				dcInstitution: Array.isArray(record.dcInstitution) ? record.dcInstitution : [],
 				dcSubject: Array.isArray(record.dcSubject) ? record.dcSubject : [],
 				dcLanguage: Array.isArray(record.dcLanguage) ? record.dcLanguage : [],
@@ -215,8 +215,7 @@ export async function getCollection(id: string) {
 			dcSubtitle: record.dcSubtitle || null,
 			dcAbstract: record.dcAbstract || null,
 			dcDescription: record.dcDescription || null,
-			dcCreator: Array.isArray(record.dcCreator) ? record.dcCreator : [],
-			dcContributor: Array.isArray(record.dcContributor) ? record.dcContributor : [],
+			credits: readCredits(record.credits),
 			dcInstitution: Array.isArray(record.dcInstitution) ? record.dcInstitution : [],
 			dcSubject: Array.isArray(record.dcSubject) ? record.dcSubject : [],
 			dcLanguage: Array.isArray(record.dcLanguage) ? record.dcLanguage : [],
@@ -251,7 +250,7 @@ function transformEditionRecord(record: any, collection?: any) {
 		slug: record.id,
 		title: record.dcTitle || record.title,
 		description: record.dcAbstract || '',
-		authors: Array.isArray(record.dcCreator) ? record.dcCreator.join(', ') : '',
+		authors: creatorNames(record.credits),
 		thumbnail,
 		voyagerUrl,
 		usageConditions: record.dcRightsLicense || '',
@@ -273,8 +272,7 @@ function transformEditionRecord(record: any, collection?: any) {
 		dcDescription: record.dcDescription || null,
 
 		// Dublin Core - People/Orgs
-		dcCreator: Array.isArray(record.dcCreator) ? record.dcCreator : [],
-		dcContributor: Array.isArray(record.dcContributor) ? record.dcContributor : [],
+		credits: readCredits(record.credits),
 		dcInstitution: Array.isArray(record.dcInstitution) ? record.dcInstitution : [],
 		dcContact: record.dcContact || null,
 
@@ -550,6 +548,16 @@ export async function updateEditionStatus(
 ) {
 	const pb = createPocketBaseClient();
 	const isPublished = newStatus === EditionStatus.Published;
+	if (
+		isPublished ||
+		[EditionStatus.ConceptSubmitted, EditionStatus.AlphaReview, EditionStatus.FinalReview].includes(
+			newStatus
+		)
+	) {
+		const record = await pb.collection('editions').getOne(editionId);
+		const creditError = validateCredits(readCredits(record.credits), true);
+		if (creditError) throw new Error(creditError);
+	}
 	const reviewStage = getReviewStage(newStatus);
 
 	const updateData: Record<string, unknown> = {
