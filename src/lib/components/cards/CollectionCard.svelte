@@ -33,8 +33,6 @@
 	let plainDescription = $derived(stripHtml(collection.description || ''));
 	let editionCount = $derived(collection.editionCount ?? collection.editionIds?.length ?? 0);
 
-	// Check if thumbnail is from local static assets
-	const isLocalAsset = $derived(collection.thumbnail?.includes('/project/'));
 </script>
 
 <div id={`collection-card-${collection.id}`} class="collection-stack">
@@ -84,30 +82,16 @@
 					/>
 				</svg>
 			</div>
-			<!-- Actual image with format fallback -->
+			<!-- Actual image -->
 			{#if collection.thumbnail && !imageError}
 				<div class="h-full w-full">
-					{#if isLocalAsset}
-						<picture class="block h-full w-full">
-							<source srcset={collection.thumbnail.replace('.png', '.avif')} type="image/avif" />
-							<source srcset={collection.thumbnail.replace('.png', '.webp')} type="image/webp" />
-							<img
-								src={collection.thumbnail}
-								alt={collection.title}
-								class="card-cover-image h-full w-full object-cover"
-								loading="lazy"
-								onerror={handleImageError}
-							/>
-						</picture>
-					{:else}
-						<img
-							src={collection.thumbnail}
-							alt={collection.title}
-							class="card-cover-image h-full w-full object-cover"
-							loading="lazy"
-							onerror={handleImageError}
-						/>
-					{/if}
+					<img
+						src={collection.thumbnail}
+						alt={collection.title}
+						class="card-cover-image h-full w-full object-cover"
+						loading="lazy"
+						onerror={handleImageError}
+					/>
 				</div>
 			{/if}
 		</figure>

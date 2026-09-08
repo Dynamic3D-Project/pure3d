@@ -11,13 +11,17 @@ const ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD || '1234567890';
 
 const pb = new PocketBase(POCKETBASE_URL);
 
-const openRules = {
-	listRule: '',
-	viewRule: '',
-	createRule: '',
-	updateRule: '',
-	deleteRule: ''
-};
+const adminRule = '@request.auth.role = "admin"';
+
+function adminWriteRules(readRule: string) {
+	return {
+		listRule: readRule,
+		viewRule: readRule,
+		createRule: adminRule,
+		updateRule: adminRule,
+		deleteRule: adminRule
+	};
+}
 
 const globalRoleValues = ['admin', 'editorial_board', 'user'];
 const collectionRoleValues = ['owner', 'editor', 'viewer'];
@@ -250,10 +254,10 @@ function relationField(
 	};
 }
 
-async function setOpenRules(name: string) {
+async function setRules(name: string, readRule: string) {
 	const collection = await pb.collections.getOne(name);
-	await pb.collections.update(collection.id, openRules);
-	console.log(`   ${name}: API rules set to open`);
+	await pb.collections.update(collection.id, adminWriteRules(readRule));
+	console.log(`   ${name}: API rules updated`);
 }
 
 async function dropLegacyUserProfiles() {
@@ -671,33 +675,29 @@ async function main() {
 	console.log('\nPhase 4: Dropping legacy userProfiles (if present)...\n');
 	await dropLegacyUserProfiles();
 
-	console.log('\nPhase 5: Setting open API rules...\n');
+	console.log('\nPhase 5: Setting admin-only write rules...\n');
 
-	for (const name of [
-		'users',
-		'site',
-		'keywords',
-		'collections',
-		'editions',
-		'collectionUsers',
-		'editionUsers',
-		'auditLog',
-		'editionReviews',
-		'reviewAssignments',
-		'reviewFeedback',
-		'notifications',
-		'feedback'
-	]) {
-		await setOpenRules(name);
+	for (const [name, readRule] of Object.entries({
+		users: '',
+		site: '',
+		keywords: '',
+		collections: 'isVisible = true || @request.auth.role = "admin"',
+		editions: 'isPublished = true || @request.auth.role = "admin"',
+		collectionUsers: '',
+		editionUsers: '',
+		auditLog: adminRule,
+		editionReviews: adminRule,
+		reviewAssignments: adminRule,
+		reviewFeedback: adminRule,
+		notifications: adminRule,
+		feedback: adminRule
+	})) {
+		await setRules(name, readRule);
 	}
 
 	const feedbackRecipients = await pb.collections.getOne('feedbackRecipients');
 	await pb.collections.update(feedbackRecipients.id, {
-		listRule: '@request.auth.role = "admin"',
-		viewRule: '@request.auth.role = "admin"',
-		createRule: '@request.auth.role = "admin"',
-		updateRule: '@request.auth.role = "admin"',
-		deleteRule: '@request.auth.role = "admin"',
+		...adminWriteRules(adminRule),
 		indexes: [
 			'CREATE UNIQUE INDEX idx_feedbackRecipients_email ON feedbackRecipients (email COLLATE NOCASE)'
 		]
@@ -711,6 +711,7 @@ async function main() {
 	const r2Bucket = process.env.R2_BUCKET;
 	const r2AccessKey = process.env.R2_ACCESS_KEY_ID;
 	const r2Secret = process.env.R2_SECRET_ACCESS_KEY;
+	const r2Region = process.env.R2_REGION || 'auto';
 
 	if (r2Endpoint && r2Bucket && r2AccessKey && r2Secret) {
 		console.log('📦 Configuring S3-compatible storage');
@@ -719,7 +720,7 @@ async function main() {
 				s3: {
 					enabled: true,
 					bucket: r2Bucket,
-					region: 'auto',
+					region: r2Region,
 					endpoint: r2Endpoint,
 					accessKey: r2AccessKey,
 					secret: r2Secret,
