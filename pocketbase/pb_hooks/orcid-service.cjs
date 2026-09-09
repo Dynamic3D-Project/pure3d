@@ -32,7 +32,7 @@ function verifiedAccount(app, record) {
 		!provider.extra ||
 		provider.userInfoURL ||
 		provider.tokenURL !== issuer + '/oauth/token' ||
-		provider.extra.jwksURL !== issuer + '/oauth/jwks' ||
+		provider.extra.jwksURL !== v.orcidJwksURL($os.getenv('ORCID_JWKS_ORIGIN') || undefined) ||
 		JSON.stringify(provider.extra.issuers) !== JSON.stringify([issuer])
 	)
 		return false;
@@ -119,7 +119,7 @@ function oauth(e) {
 	if (
 		provider.userInfoURL() !== '' ||
 		provider.tokenURL() !== issuer + '/oauth/token' ||
-		extra.jwksURL !== issuer + '/oauth/jwks' ||
+		extra.jwksURL !== v.orcidJwksURL($os.getenv('ORCID_JWKS_ORIGIN') || undefined) ||
 		JSON.stringify(extra.issuers) !== JSON.stringify([issuer])
 	)
 		deny();
@@ -200,7 +200,8 @@ function oauth(e) {
 			new Context(new Context(null, proofContext, true), 'pure3d.actor', 'oauth'),
 			target
 		);
-		e.record = target;
+		// Native OAuth saves again without proof context; reload the saved identity baseline inside this transaction.
+		e.record = tx.findRecordById('users', target.id);
 		e.createData = {};
 		e.oAuth2User.email = '';
 		e.oAuth2User.name = '';
@@ -560,6 +561,22 @@ function pending(e, apply) {
 	return e.json(200, result);
 }
 
+function jwks(e) {
+	const { issuer } = v.orcidEndpoints($os.getenv('ORCID_ISSUER') || 'https://orcid.org');
+	try {
+		const response = $http.send({
+			url: issuer + '/oauth/jwks',
+			headers: { Accept: 'application/json' },
+			timeout: 10
+		});
+		if (response.statusCode !== 200) throw new Error('JWKS fetch failed');
+		e.response.header().set('Cache-Control', 'no-store');
+		return e.json(200, v.normalizeOrcidJwks(response.json));
+	} catch {
+		throw new ApiError(502, 'ORCID signing keys are temporarily unavailable');
+	}
+}
+
 function refresh(e) {
 	const user = actor(e);
 	if (!checked(() => verifiedAccount(e.app, user)))
@@ -611,6 +628,7 @@ function refresh(e) {
 }
 
 module.exports = {
+	jwks,
 	creditUser,
 	admin,
 	roles,

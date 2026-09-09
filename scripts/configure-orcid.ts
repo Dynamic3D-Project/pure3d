@@ -3,6 +3,8 @@
  * Dry-run (offline, no credentials read): bun --no-env-file scripts/configure-orcid.ts
  * Prepare fields first: bun scripts/configure-orcid.ts --prepare
  * Approve pending mappings, then cut over: bun scripts/configure-orcid.ts --apply
+ * Explicit deferral: --apply --defer-unmapped --onboarding-report NEW_PRIVATE_FILE
+ * Existing provider repair: --update-jwks (confirmed backup; no session rotation or client secret required).
  * Requires POCKETBASE_URL, POCKETBASE_ADMIN_EMAIL, POCKETBASE_ADMIN_PASSWORD,
  * ORCID_CLIENT_ID and ORCID_CLIENT_SECRET. Never invokes the bootstrap/import scripts.
  * Deploy pb_hooks first. Existing admins can approve mappings through the private endpoint.
@@ -12,8 +14,14 @@
  */
 import PocketBase from 'pocketbase';
 import { randomBytes } from 'node:crypto';
+import { open } from 'node:fs/promises';
+import { isDeepStrictEqual } from 'node:util';
 import schema from '../pocketbase/pb_schema/collections.json';
-import { canonicalOrcid, orcidEndpoints } from '../pocketbase/pb_hooks/orcid-validation.cjs';
+import {
+	canonicalOrcid,
+	orcidEndpoints,
+	orcidJwksURL
+} from '../pocketbase/pb_hooks/orcid-validation.cjs';
 
 const names = ['users', 'collections', 'editions', 'collectionUsers', 'editionUsers'];
 const workflowNames = [
@@ -115,8 +123,10 @@ export async function alignOrcidSchema(
 	if (!schemaOnly) for (const { id, rules } of updates) await pb.collections.update(id, rules);
 }
 
-async function confirmedBackup(pb: PocketBase) {
-	const backup = 'orcid-config-' + crypto.randomUUID() + '.zip';
+async function confirmedBackup(
+	pb: PocketBase,
+	backup = 'orcid-config-' + crypto.randomUUID() + '.zip'
+) {
 	await pb.backups.create(backup);
 	const backups = await pb.backups.getFullList();
 	if (!backups.some((entry) => entry.key === backup && entry.size > 0))
@@ -145,7 +155,8 @@ export async function prepareOrcidSchema(pb: PocketBase) {
 export function orcidAuthConfig(
 	clientId: string,
 	clientSecret: string,
-	environment = 'production'
+	environment = 'production',
+	jwksURL = orcidJwksURL()
 ) {
 	if (!['production', 'sandbox'].includes(environment))
 		throw new Error('ORCID_ENVIRONMENT must be production or sandbox');
@@ -173,14 +184,18 @@ export function orcidAuthConfig(
 					tokenURL: issuer + '/oauth/token',
 					userInfoURL: '',
 					pkce: true,
-					extra: { issuers: [issuer], jwksURL: issuer + '/oauth/jwks' }
+					extra: { issuers: [issuer], jwksURL }
 				}
 			]
 		}
 	};
 }
 
-export async function preflightPrivilegedAccounts(pb: PocketBase, issuer: string) {
+export async function preflightPrivilegedAccounts(
+	pb: PocketBase,
+	issuer: string,
+	deferUnmapped = false
+) {
 	const status = await pb.send('/api/pure3d/orcid/config', { method: 'GET' });
 	if (status.backend !== 'pure3d-orcid-v1' || status.issuer !== issuer)
 		throw new Error('PocketBase ORCID_ISSUER must match ORCID_ENVIRONMENT');
@@ -192,7 +207,7 @@ export async function preflightPrivilegedAccounts(pb: PocketBase, issuer: string
 		throw new Error('Run --prepare and approve privileged account mappings before --apply');
 	const users = await pb
 		.collection('users')
-		.getFullList({ fields: 'id,role,orcid,orcidVerifiedAt,pendingOrcid' });
+		.getFullList({ fields: 'id,role,orcid,orcidVerifiedAt,pendingOrcid', sort: 'id' });
 	const links = await pb.collection('_externalAuths').getFullList({
 		filter: pb.filter('collectionRef = {:id}', { id: collection.id }),
 		fields: 'recordRef,provider,providerId'
@@ -219,9 +234,37 @@ export async function preflightPrivilegedAccounts(pb: PocketBase, issuer: string
 	const privileged = new Set(
 		users.filter((user) => ['admin', 'editorial_board'].includes(user.role)).map((user) => user.id)
 	);
+	const membershipsByUser = new Map<string, Record<string, unknown>[]>();
+	const targets = new Map<string, Set<string>>();
+	for (const name of ['collections', 'editions'])
+		targets.set(
+			name,
+			new Set((await pb.collection(name).getFullList({ fields: 'id' })).map((record) => record.id))
+		);
 	for (const name of ['collectionUsers', 'editionUsers']) {
-		const memberships = await pb.collection(name).getFullList({ fields: 'userId,role' });
+		const memberships = await pb
+			.collection(name)
+			.getFullList({ fields: 'id,userId,role,collection,editionId', sort: 'id' });
 		for (const member of memberships) {
+			if (
+				!targets
+					.get(name === 'collectionUsers' ? 'collections' : 'editions')!
+					.has(name === 'collectionUsers' ? member.collection : member.editionId)
+			)
+				throw new Error('Membership has no target collection/edition');
+			if (!users.some((user) => user.id === member.userId))
+				throw new Error('Privileged membership has no target account');
+			membershipsByUser.set(member.userId, [
+				...(membershipsByUser.get(member.userId) || []),
+				{
+					id: member.id,
+					userId: member.userId,
+					role: member.role,
+					collection: member.collection,
+					editionId: member.editionId,
+					source: name
+				}
+			]);
 			if (
 				(name === 'collectionUsers' && ['owner', 'editor'].includes(member.role)) ||
 				name === 'editionUsers'
@@ -231,12 +274,52 @@ export async function preflightPrivilegedAccounts(pb: PocketBase, issuer: string
 	}
 	for (const assignment of await pb
 		.collection('reviewAssignments')
-		.getFullList({ fields: 'reviewerId,status' })) {
+		.getFullList({ fields: 'id,reviewerId,status,editionId,reviewStage', sort: 'id' })) {
+		if (!targets.get('editions')!.has(assignment.editionId))
+			throw new Error('Review assignment has no target edition');
+		if (!users.some((user) => user.id === assignment.reviewerId))
+			throw new Error('Review assignment has no target account');
+		membershipsByUser.set(assignment.reviewerId, [
+			...(membershipsByUser.get(assignment.reviewerId) || []),
+			{
+				id: assignment.id,
+				reviewerId: assignment.reviewerId,
+				status: assignment.status,
+				editionId: assignment.editionId,
+				reviewStage: assignment.reviewStage,
+				source: 'reviewAssignments'
+			}
+		]);
 		if (assignment.status !== 'declined') privileged.add(assignment.reviewerId);
 	}
-	for (const id of privileged) {
-		const user = users.find((user) => user.id === id);
-		if (!user) throw new Error('Privileged membership has no target account');
+	const assigned = new Map<string, string>();
+	for (const user of users) {
+		for (const value of [user.orcid, user.pendingOrcid].filter(Boolean)) {
+			if (canonicalOrcid(value) !== value) throw new Error('Existing ORCID must be canonical');
+			if (assigned.has(value) && assigned.get(value) !== user.id)
+				throw new Error('Conflicting duplicate ORCID identity');
+			assigned.set(value, user.id);
+		}
+	}
+	const linked = new Set<string>();
+	for (const link of links) {
+		if (!users.some((user) => user.id === link.recordRef))
+			throw new Error('External identity has no target account');
+		if (link.provider !== 'oidc') throw new Error('Unrelated external identity provider');
+		const value = 'https://orcid.org/' + link.providerId;
+		if (linked.has(value)) throw new Error('Duplicate external ORCID identity');
+		linked.add(value);
+		if (
+			canonicalOrcid(value) !== value ||
+			(assigned.has(value) && assigned.get(value) !== link.recordRef)
+		)
+			throw new Error('Conflicting external ORCID identity');
+		assigned.set(value, link.recordRef);
+	}
+	const deferred = [];
+	let readyAdmin = false;
+	for (const user of users) {
+		const id = user.id;
 		const ownLinks = links.filter((link) => link.recordRef === id);
 		const verified =
 			user.orcidVerifiedAt &&
@@ -253,28 +336,95 @@ export async function preflightPrivilegedAccounts(pb: PocketBase, issuer: string
 			!links.some(
 				(link) => link.provider === 'oidc' && link.providerId === user.pendingOrcid.slice(18)
 			);
-		if (!verified && !approved)
+		if (
+			((user.orcidVerifiedAt || ownLinks.length) && !verified) ||
+			(user.pendingOrcid && !approved)
+		)
+			throw new Error('Invalid verified or approved ORCID identity');
+		if (user.role === 'admin' && (verified || approved)) readyAdmin = true;
+		if (!privileged.has(id) || verified || approved) continue;
+		if (!deferUnmapped)
 			throw new Error(
 				'Every privileged account needs a verified ORCID link or an administrator-approved pending mapping before disabling login'
 			);
+		deferred.push({
+			id,
+			requestedRole: user.role,
+			memberships: membershipsByUser.get(id) || [],
+			orcidCandidates: user.orcid
+				? [{ orcid: user.orcid, source: 'users.orcid', status: 'unapproved' }]
+				: [],
+			status: 'require_identity_linking'
+		});
 	}
+	if (!readyAdmin)
+		throw new Error('At least one verified or approved pending global admin is required');
+	return deferred;
 }
 
 export async function applyOrcidConfiguration(
 	pb: PocketBase,
 	clientId: string,
 	clientSecret: string,
-	environment = 'production'
+	environment = 'production',
+	options: { deferUnmapped?: boolean; onboardingReport?: string } = {}
 ) {
-	const config = orcidAuthConfig(clientId, clientSecret, environment);
+	if (!!options.deferUnmapped !== !!options.onboardingReport)
+		throw new Error(
+			'--defer-unmapped requires --onboarding-report NEW_PRIVATE_FILE and vice versa'
+		);
+	const status = await pb.send('/api/pure3d/orcid/config', { method: 'GET' });
+	if (
+		!status.jwksURL ||
+		orcidJwksURL(status.jwksURL.replace(/\/api\/pure3d\/orcid\/jwks$/, '')) !== status.jwksURL
+	)
+		throw new Error('Deploy the ORCID JWKS bridge hooks first');
+	const config = orcidAuthConfig(clientId, clientSecret, environment, status.jwksURL);
 	const issuer = config.oauth2.providers[0].extra.issuers[0];
 	let backup = '';
+	let guard = '';
 	await alignOrcidSchema(pb, async () => {
-		await preflightPrivilegedAccounts(pb, issuer);
-		backup = await confirmedBackup(pb);
+		const deferred = await preflightPrivilegedAccounts(pb, issuer, options.deferUnmapped);
+		guard = JSON.stringify(deferred);
+		const report = options.onboardingReport
+			? await open(options.onboardingReport, 'wx', 0o600)
+			: null;
+		try {
+			backup = 'orcid-config-' + crypto.randomUUID() + '.zip';
+			if (report) {
+				await report.chmod(0o600);
+				await report.writeFile(
+					JSON.stringify(
+						{
+							version: 1,
+							target: pb.baseURL,
+							issuer,
+							backupId: backup,
+							backupStatus: 'confirmation_required',
+							createdAt: new Date().toISOString(),
+							operatorId: pb.authStore.record?.id,
+							operatorChoice: 'defer-unmapped-preserve-roles-disable-login',
+							status: 'preflight_confirmed',
+							accounts: deferred
+						},
+						null,
+						2
+					) + '\n'
+				);
+				await report.sync();
+			}
+		} finally {
+			await report?.close();
+		}
+		await confirmedBackup(pb, backup);
 	});
 	// Recheck after the schema phase so a newly privileged/unapproved account cannot be silently locked out.
-	await preflightPrivilegedAccounts(pb, issuer);
+	if (
+		JSON.stringify(await preflightPrivilegedAccounts(pb, issuer, options.deferUnmapped)) !== guard
+	)
+		throw new Error(
+			'Onboarding preflight changed; retain report and backup and retry in isolation'
+		);
 	// PB v0.35 accepts a new signing secret; blank is not a request to generate one.
 	// Rotate in the same update that disables legacy login, invalidating all existing users JWTs.
 	await pb.collections.update('users', {
@@ -294,17 +444,56 @@ export async function applyOrcidConfiguration(
 		['name', 'clientId', 'authURL', 'tokenURL', 'userInfoURL', 'pkce'].some(
 			(key) => provider[key] !== expected[key as keyof typeof expected]
 		) ||
-		JSON.stringify(provider.extra) !== JSON.stringify(expected.extra) ||
+		!isDeepStrictEqual(provider.extra, expected.extra) ||
 		Object.values(saved.oauth2.mappedFields).some(Boolean)
 	)
 		throw new Error('ORCID authentication configuration readback failed');
 	return { backup, issuer };
 }
 
+export async function updateOrcidJwks(pb: PocketBase) {
+	const status = await pb.send('/api/pure3d/orcid/config', { method: 'GET' });
+	const saved = await pb.collections.getOne('users');
+	const provider = saved.oauth2?.providers?.[0];
+	if (
+		status.backend !== 'pure3d-orcid-v1' ||
+		!status.jwksURL ||
+		orcidJwksURL(status.jwksURL.replace(/\/api\/pure3d\/orcid\/jwks$/, '')) !== status.jwksURL ||
+		!saved.oauth2.enabled ||
+		saved.oauth2.providers.length !== 1 ||
+		provider.name !== 'oidc' ||
+		provider.userInfoURL ||
+		provider.tokenURL !== orcidEndpoints(status.issuer).issuer + '/oauth/token' ||
+		!isDeepStrictEqual(provider.extra?.issuers, [status.issuer])
+	)
+		throw new Error('Expected an already configured ORCID provider and current bridge hooks');
+	const backup = await confirmedBackup(pb);
+	provider.extra.jwksURL = status.jwksURL;
+	// Only provider metadata: no schema, token secret, identity or onboarding changes.
+	await pb.collections.update(saved.id, { oauth2: saved.oauth2 });
+	const updated = await pb.collections.getOne(saved.id);
+	if (!isDeepStrictEqual(updated.oauth2, saved.oauth2))
+		throw new Error('ORCID JWKS configuration readback failed');
+	return { backup, jwksURL: status.jwksURL };
+}
+
 async function main() {
 	const args = process.argv.slice(2);
-	if (args.length > 1 || args.some((arg) => !['--prepare', '--apply'].includes(arg)))
-		throw new Error('Usage: configure-orcid.ts [--prepare | --apply]');
+	const deferredMode =
+		args.length === 4 &&
+		args[0] === '--apply' &&
+		args[1] === '--defer-unmapped' &&
+		args[2] === '--onboarding-report' &&
+		!!args[3] &&
+		!args[3].startsWith('--');
+	if (
+		!deferredMode &&
+		(args.length > 1 ||
+			args.some((arg) => !['--prepare', '--apply', '--update-jwks'].includes(arg)))
+	)
+		throw new Error(
+			'Usage: configure-orcid.ts [--update-jwks | --prepare | --apply [--defer-unmapped --onboarding-report NEW_PRIVATE_FILE]]'
+		);
 	if (!args.length) {
 		console.log(
 			'DRY RUN (offline): align users profiles/private pendingOrcid, credits, membership indexes and API rules.'
@@ -320,6 +509,9 @@ async function main() {
 		);
 		console.log(
 			'--prepare creates a confirmed backup and adds schema only, preserving legacy login/rules/tokens. Approve and read back pending mappings before --apply; cutover invalidates all existing users sessions.'
+		);
+		console.log(
+			'Explicit --apply --defer-unmapped --onboarding-report NEW_PRIVATE_FILE preserves unmapped roles with login disabled. A verified/approved pending global admin is always required; the private report is flushed before backup/schema/auth operations.'
 		);
 		return;
 	}
@@ -346,6 +538,15 @@ async function main() {
 	await pb
 		.collection('_superusers')
 		.authWithPassword(process.env.POCKETBASE_ADMIN_EMAIL!, process.env.POCKETBASE_ADMIN_PASSWORD!);
+	if (args[0] === '--update-jwks') {
+		const result = await updateOrcidJwks(pb);
+		console.log(
+			'ORCID JWKS URL updated after confirmed backup: ' +
+				result.backup +
+				'. Sessions and identities unchanged.'
+		);
+		return;
+	}
 	if (args[0] === '--prepare') {
 		await prepareOrcidSchema(pb);
 		console.log(
@@ -357,7 +558,8 @@ async function main() {
 		pb,
 		process.env.ORCID_CLIENT_ID!,
 		process.env.ORCID_CLIENT_SECRET!,
-		process.env.ORCID_ENVIRONMENT || 'production'
+		process.env.ORCID_ENVIRONMENT || 'production',
+		deferredMode ? { deferUnmapped: true, onboardingReport: args[3] } : {}
 	);
 	console.log(
 		'ORCID schema/rules applied; users are OAuth-only and previous users sessions are invalidated. Superuser sessions are unchanged. No user identities or attribution records were rewritten.'
@@ -368,7 +570,7 @@ if (import.meta.main)
 	main().catch(() => {
 		// SDK errors can contain submitted credentials and full collection settings.
 		console.error(
-			'ORCID configuration failed. No credentials or server response logged. Check issuer/environment agreement, privileged-account mappings, backup readback, schema compatibility and required environment variables. A partial schema update may need rerunning; retain the backup and use a maintenance window.'
+			'ORCID configuration failed. No credentials or server response logged. Check flags, new private report path, verified/approved global admin, issuer/environment agreement, privileged-account mappings, backup readback, schema compatibility and required environment variables. A partial schema update may need rerunning; retain the report and backup and use a maintenance window.'
 		);
 		process.exitCode = 1;
 	});

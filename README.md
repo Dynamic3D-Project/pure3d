@@ -92,8 +92,10 @@ Out of the box, the app connects to production services:
 
 | Service | URL | Purpose |
 |---------|-----|---------|
-| PocketBase | `https://pure3d-database.ctwhome.com` | Collections, editions, users |
-| R2 CDN | `https://pure3d-assets.ctwhome.com` | 3D models, scenes, thumbnails |
+| PocketBase | `https://main.57-129-98-223.sslip.io` | Collections, editions, users (same-origin `/api`) |
+| Assets | `https://main.57-129-98-223.sslip.io/assets` | 3D models, scenes, thumbnails |
+
+The confirmed OVH target is `ubuntu@57.129.98.223`, with containers under `/opt/pure3d-archive`. `pure3d.eu` DNS has not moved; `pure3d-database.ctwhome.com` points to a different legacy server, not this target.
 
 No `.env` file, credentials, or local data are required for frontend development.
 
@@ -114,12 +116,12 @@ Ask a project maintainer for the seed data files if you need a local database.
 
 ### 3D assets
 
-The 3D project assets (~7.5 GB) are served from a Cloudflare R2 bucket and are not included in the repository. The `static/project/` directory is git-ignored.
+The 3D project assets (~7.5 GB) are served through the OVH `/assets` prefix and are not included in the repository. Legacy `project/...` paths are unchanged. The `static/project/` directory is git-ignored.
 
 To override the default asset source, set `PUBLIC_ASSET_BASE_URL` in your `.env`:
 
-- **Unset or URL** (default): loads from R2 CDN
-- **Empty string** (`PUBLIC_ASSET_BASE_URL=`): serves from local `static/project/`
+- **Unset or empty** (default): loads from the OVH assets endpoint
+- **URL**: overrides the source, including local storage such as `http://localhost:60023/pure3d-assets`
 
 Local asset structure (for offline development):
 
@@ -145,8 +147,8 @@ Build environment:
 
 ```env
 APP_BASE_PATH=/pure3d
-PUBLIC_POCKETBASE_URL=https://pure3d-database.ctwhome.com
-PUBLIC_ASSET_BASE_URL=https://pure3d-assets.ctwhome.com
+PUBLIC_POCKETBASE_URL=https://main.57-129-98-223.sslip.io
+PUBLIC_ASSET_BASE_URL=https://main.57-129-98-223.sslip.io/assets
 ```
 
 # Features

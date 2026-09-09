@@ -1,5 +1,67 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- This fixture runs inside PocketBase Goja. */
 // Test-only fixture, copied into a disposable --hooksDir. Never deploy this file.
+// Loaded before production hooks. Native token exchange/signature verification has already completed.
+onRecordAuthWithOAuth2Request((e) => {
+	const config = e.app.store().get('test.native.oauth');
+	if (config && config.tokenURL && e.providerClient.tokenURL() === config.tokenURL) {
+		e.providerClient.setTokenURL(
+			($os.getenv('ORCID_ISSUER') || 'https://orcid.org') + '/oauth/token'
+		);
+		e.providerClient.setExtra({
+			jwksURL: require(__hooks + '/orcid-validation.cjs').orcidJwksURL(),
+			issuers: [$os.getenv('ORCID_ISSUER') || 'https://orcid.org']
+		});
+	}
+	return e.next();
+}, 'users');
+
+routerAdd(
+	'POST',
+	'/_test/native-oauth',
+	(e) => {
+		e.app.store().set('test.native.oauth', e.requestInfo().body);
+		e.app.store().set('test.native.saves', 0);
+		e.app.store().set('test.native.responses', 0);
+		return e.noContent(204);
+	},
+	$apis.requireSuperuserAuth()
+);
+routerAdd(
+	'GET',
+	'/_test/native-oauth',
+	(e) =>
+		e.json(200, {
+			saves: e.app.store().get('test.native.saves'),
+			responses: e.app.store().get('test.native.responses')
+		}),
+	$apis.requireSuperuserAuth()
+);
+
+onRecordUpdate((e) => {
+	const config = e.app.store().get('test.native.oauth');
+	if (
+		config &&
+		config.tokenURL &&
+		!e.context.value('pure3d.orcid.proof') &&
+		e.record.getString('orcidVerifiedAt')
+	)
+		e.app.store().set('test.native.saves', e.app.store().get('test.native.saves') + 1);
+	return e.next();
+}, 'users');
+
+onRecordAuthRequest((e) => {
+	const config = e.app.store().get('test.native.oauth');
+	if (e.authMethod === 'oauth2' && config && config.tokenURL) {
+		const links = e.app.findRecordsByFilter('_externalAuths', 'recordRef = {:id}', '', 0, 0, {
+			id: e.record.id
+		});
+		if (links.length !== 1) throw new Error('Native external link was not saved');
+		e.app.store().set('test.native.responses', e.app.store().get('test.native.responses') + 1);
+		if (config.fail) throw new BadRequestError('Test native OAuth downstream rollback');
+	}
+	return e.next();
+}, 'users');
+
 onBootstrap((e) => {
 	e.next();
 	if ($os.getenv('PB_TEST_BOOTSTRAP_ONLY') === '1') {
@@ -98,6 +160,31 @@ routerAdd(
 	$apis.requireSuperuserAuth()
 );
 
+routerAdd(
+	'POST',
+	'/_test/jwks',
+	(e) => {
+		e.app.store().set('test.orcid.jwks', JSON.stringify(e.requestInfo().body));
+		return e.noContent(204);
+	},
+	$apis.requireSuperuserAuth()
+);
+
+routerAdd('GET', '/_test/jwks', (e) => {
+	const send = $http.send;
+	try {
+		// Stub only ORCID transport; run the deployed bridge handler and native PB verifier.
+		$http.send = (request) => {
+			if (request.url !== ($os.getenv('ORCID_ISSUER') || 'https://orcid.org') + '/oauth/jwks')
+				throw new Error('Unexpected JWKS source');
+			return { statusCode: 200, json: JSON.parse(e.app.store().get('test.orcid.jwks')) };
+		};
+		return require(__hooks + '/orcid-service.cjs').jwks(e);
+	} finally {
+		$http.send = send;
+	}
+});
+
 // This simulates only the event AFTER upstream token verification, never the verifier itself.
 routerAdd('POST', '/_test/oauth', (e) => {
 	const body = e.requestInfo().body;
@@ -113,7 +200,11 @@ routerAdd('POST', '/_test/oauth', (e) => {
 			tokenURL: () => issuer + '/oauth/token',
 			clientId: () => 'test-client',
 			extra: () => ({
-				jwksURL: body.jwksURL || issuer + '/oauth/jwks',
+				jwksURL:
+					body.jwksURL ||
+					require(__hooks + '/orcid-validation.cjs').orcidJwksURL(
+						$os.getenv('ORCID_JWKS_ORIGIN') || undefined
+					),
 				issuers: [issuer]
 			})
 		},

@@ -1,5 +1,49 @@
 # ORCID Attribution and Rollout
 
+## Missing-Algorithm JWKS Recovery
+
+For an already configured ORCID-only deployment, deploy the current `pocketbase/pb_hooks/`
+files and restart PocketBase first. Then, with superuser credentials injected privately:
+
+```sh
+POCKETBASE_URL=https://main.57-129-98-223.sslip.io bun --no-env-file scripts/configure-orcid.ts --update-jwks
+```
+
+This command confirms a new PocketBase backup, changes only the existing provider's
+`extra.jwksURL`, and checks the saved OAuth configuration. It does not require the ORCID client
+secret, rotate session signing secrets, rerun schema/onboarding dispositions, or change identities.
+Do **not** rerun `--apply` for this repair. Pause concurrent provider-settings edits during the update.
+If operating through SSH, `POCKETBASE_URL=http://127.0.0.1:60131` may address the tunnel;
+the persisted JWKS URL still comes from the backend's authenticated `/api/pure3d/orcid/config`.
+
+The bridge is `GET /api/pure3d/orcid/jwks`. Its expected verifier URL defaults to
+`http://127.0.0.1:8090/api/pure3d/orcid/jwks`, using PocketBase's existing container listener.
+No public-origin environment variable is needed for OVH. For a different backend listener only,
+set **PocketBase's startup environment** `ORCID_JWKS_ORIGIN=http://127.0.0.1:PORT`, restart it,
+then run `--update-jwks`. Only an explicit IPv4 loopback HTTP origin with a valid port is accepted.
+The frontend URL, `meta.appURL`, request Host and operator's tunnel are never used as key sources.
+Full `--apply`, OAuth hooks, linked-account checks and readiness use the same expected bridge URL.
+After repair, check `/api/pure3d/orcid/ready` and perform a real ORCID sign-in separately.
+
+Public-source verification: ORCID's [JWKS](https://orcid.org/oauth/jwks) contains RSA `use: sig`
+keys without `alg`; its [discovery document](https://orcid.org/.well-known/openid-configuration)
+advertises `id_token_signing_alg_values_supported: ["RS256"]`. PocketBase
+[0.40.3 JWK lookup](https://github.com/pocketbase/pocketbase/blob/v0.40.3/tools/auth/internal/jwk/jwk.go)
+requires a matching `kid` **and nonempty `alg`**, explaining the production error.
+
+The bridge fetches only the allowlisted ORCID issuer's `/oauth/jwks` over HTTPS (production or
+explicit sandbox). It validates the key set, rejects private/non-RSA/non-signing keys and explicit
+algorithms other than RS256, and supplies RS256 only when absent. It returns only public signing-key
+fields, with no cache and a ten-second upstream timeout; failures return 502 without upstream bodies.
+PocketBase still performs the actual RS256 signature, audience, issuer and expiry validation;
+the existing stricter identity-proof hooks remain unchanged apart from the expected JWKS location.
+
+The disposable 0.40.3 integration test reproduces the raw missing-alg failure, then runs the actual
+bridge handler with only ORCID HTTP transport stubbed to a generated RSA public key. A valid signed
+token passes native verification and reaches the hook's intentional test-provider rejection;
+tampered signatures, audience, issuer, expiry and an explicit mismatched key algorithm fail earlier.
+This is synthetic regression evidence, **not a live ORCID authentication claim**.
+
 ## Author Requirements
 
 Keep each author's work connected to the right person. **Every individual author needs a valid
@@ -145,7 +189,8 @@ Set the **record** `status` to `approved` only when every indexed entry has evid
 approved or explicitly unresolved. Leave other records `pending` or mark them `blocked`; neither
 will be changed. An approved draft may retain unresolved person creators, but cannot be submitted or
 published until their ORCIDs are resolved. An active record (visible collection or non-draft/published
-edition) with unresolved person creators is rejected before writes; keep it blocked and resolve the queue.
+edition) with unresolved person creators is rejected before writes by default; keep it blocked and
+resolve the queue unless using the explicit PRE-HOOK preservation mode below.
 A contributor without ORCID does not block publication or migration of an otherwise reviewed record. The migration
 does not unpublish, hide, delete, relabel, or overwrite existing identity proof to force progress.
 Zero creators is also a publication blocker. Empty legacy attribution needs separate author review,
@@ -190,6 +235,38 @@ may have succeeded. Keep the original manifest and confirmed backup, run read-on
 and investigate conflicts or hook normalization before retrying. Do not overwrite fingerprints to
 suppress conflicts. For rollback, use PocketBase's supported backup restore procedure only under a
 separately approved maintenance operation; restoring a database can discard later unrelated writes.
+
+### PRE-HOOK Legacy Preservation
+
+`--preserve-unresolved` is an explicit maintenance-only choice to preserve exact legacy attribution
+before deploying ORCID hooks, not author identity approval or a publication exemption. It can retain
+existing active publication states with unresolved creators (or no creators); normal submission and
+publication validation remains unchanged. Do not remove installed hooks to make this mode pass.
+
+```sh
+bun run migrate:orcid-credits --target https://main.57-129-98-223.sslip.io --manifest /PRIVATE_EXISTING_DIRECTORY/orcid-preservation-reviewed.json --preserve-unresolved
+bun run migrate:orcid-credits --target https://main.57-129-98-223.sslip.io --manifest /PRIVATE_EXISTING_DIRECTORY/orcid-preservation-reviewed.json --preserve-unresolved --apply --maintenance-confirmed --audit /PRIVATE_EXISTING_DIRECTORY/orcid-preservation-NEW.jsonl
+```
+
+- The authenticated `GET /api/pure3d/orcid/config` must return **HTTP 404**. A successful response,
+  authentication failure, network error or any other status fails closed. The tool checks at preflight
+  and again immediately before each schema or record write; isolate writers and hook deployments
+  throughout the maintenance window because these checks are not an atomic lock.
+- Every selected record must be `approved`, with original `credits` absent, null or an empty array.
+  Every indexed credit must be `unresolved` with nonempty review evidence and unchanged type, ORCID
+  and account link. The result must exactly equal the legacy `dcCreator`/`dcContributor` conversion:
+  no approved identity mappings or mixed preservation/identity-resolution records in this mode.
+- Names, order, duplicates, legacy source fields and publication states remain intact. The converter's
+  default person type is provisional and still needs person/organization review. No identities,
+  memberships or OAuth proof are created. Pending/blocked records remain skipped.
+- Apply retains the same fresh confirmed backup, exclusive private audit, snapshot checks and exact
+  readback gates described above. The audit and summary record `preserveUnresolved`; publication
+  blockers remain reported. Exact reruns are skipped, not treated as identity approval.
+
+Rehearse on a restored copy, preserve the private manifest/audit and unresolved queue, verify parity,
+then deploy the complete hooks and perform the separately authorized login cutover while traffic is
+restricted. Resolve attribution before subsequent submission/publication. Account deferral below is
+a separate explicit choice and does not resolve author credits.
 
 ### Private Apply Audit
 
@@ -253,8 +330,9 @@ in protected operator storage. Aggregate console counts alone do not establish w
    or a log. Run configuration without shell tracing. Restrict PocketBase superuser and settings access.
 5. The configured provider is PocketBase generic **`oidc`**, with production authorization
    `https://orcid.org/oauth/authorize`, token `https://orcid.org/oauth/token`, issuer
-   `https://orcid.org`, JWKS `https://orcid.org/oauth/jwks`, empty `userInfoURL`, and PKCE enabled.
-   Sandbox uses `https://sandbox.orcid.org` for the issuer and all `/oauth/...` endpoints, with public
+   `https://orcid.org`, JWKS `http://127.0.0.1:8090/api/pure3d/orcid/jwks` (the normalization bridge),
+   empty `userInfoURL`, and PKCE enabled. Sandbox uses `https://sandbox.orcid.org` for the issuer
+   and upstream `/oauth/...` endpoints; the same bridge path fetches sandbox keys, with public
    profile refresh from `https://pub.sandbox.orcid.org`. The client explicitly requests
    **`scopes: ['openid']`**. The current configuration notes that
    PocketBase v0.35 does not persist a scopes setting. Do not assume the generic OIDC defaults work;
@@ -277,6 +355,17 @@ in protected operator storage. Aggregate console counts alone do not establish w
    application storage, telemetry, and default logs.
 
 ## Deployment and Cutover
+
+The confirmed, user-authorized OVH rollout target is `https://main.57-129-98-223.sslip.io`, on
+`ubuntu@57.129.98.223` with containers under `/opt/pure3d-archive`. PocketBase uses that origin's
+`/api`; assets use `/assets/project/...`, retaining all legacy project paths. `pure3d.eu` DNS has
+**not moved**. `pure3d-database.ctwhome.com` points to a different legacy server and must not be used
+for this rollout. GitHub Pages remains a separate frontend build with `APP_BASE_PATH=/pure3d`.
+
+The existing ORCID application needs the exact callback
+`https://main.57-129-98-223.sslip.io/api/oauth2-redirect` registered. Registration is pending the
+main session's browser step; this documentation does not claim it is registered or that cutover has
+executed. Verify the SDK-generated redirect against that registration before enabling sign-in.
 
 The SvelteKit app is a **static SPA**. Deploying the frontend does not deploy PocketBase hooks.
 Production needs a separate deployment of the complete `pocketbase/pb_hooks/` directory, including
@@ -333,10 +422,85 @@ a maintenance window, and investigate any partial failure before retrying.
 
 Privileged accounts include `admin`/`editorial_board` users, collection owners/editors, and **all**
 edition membership accounts. Each must have either matching verified ORCID/external-auth proof or an
-administrator-approved canonical `pendingOrcid` with no conflicting external link. Missing mappings
-block cutover; a pending mapping is not verified ownership until the real user authenticates. Keep
+administrator-approved canonical `pendingOrcid` with no conflicting external link. Non-declined review
+assignments also require a mapped reviewer. Missing mappings block the default strict cutover; a pending
+mapping is not verified ownership until the real user authenticates. Keep
 superuser recovery access and test the backup restore separately. Configuration does not reconcile
 author credits, so complete the reviewed credit workflow separately.
+
+### Explicit Unmapped-Account Cutover (Issue 70)
+
+The operator has authorized an ORCID-only cutover for
+`https://main.57-129-98-223.sslip.io` while preserving the 66 unmapped privileged/member accounts with
+their existing roles and memberships. This is authorization, **not evidence of execution**. The tool
+does not hard-code that target, read a prior private inventory as permission, or contact it by default.
+Jesse must first exist as a real global `admin` with a separately approved, read-back `pendingOrcid`
+(or matching verified ORCID/external-auth proof). Do not fabricate an account or approval to pass this gate.
+
+After the existing preparation, real admin mapping, backup/restore rehearsal and writer isolation,
+an operator can explicitly choose the following mode. Keep credentials in the protected environment:
+
+```sh
+POCKETBASE_URL=https://main.57-129-98-223.sslip.io ORCID_ENVIRONMENT=production bun scripts/configure-orcid.ts --apply --defer-unmapped --onboarding-report /PRIVATE_EXISTING_DIRECTORY/orcid-cutover-NEW.json
+```
+
+- `--apply` alone remains strict. The two new flags must be supplied together, in the order shown,
+  only with `--apply`. Missing paths, duplicate/unknown flags and combinations with `--prepare` fail.
+- Both modes require at least one **global admin** with matching verified identity proof or an
+  administrator-approved canonical pending mapping. A superuser, editorial-board member, candidate
+  ORCID or timestamp without its matching external link does not satisfy this requirement.
+- Only genuinely absent approved/verified mappings can be deferred. Canonical stored but unverified
+  ORCIDs are candidate evidence only. Malformed/duplicate identifiers, mismatched verified identities,
+  invalid pending mappings, unrelated external providers, dangling account or collection/edition
+  references, schema conflicts and issuer mismatches still fail. Deferral never catches and ignores
+  a preflight error. Identity validation includes nonprivileged accounts too.
+- The report contains `version`, exact target/issuer, timestamp, operator superuser ID, explicit
+  `operatorChoice: "defer-unmapped-preserve-roles-disable-login"`, reserved `backupId`, and one entry
+  per deferred account. Entries contain the account ID, `requestedRole` (the existing global role),
+  existing membership/assignment IDs, targets, roles/stages/statuses, stored `orcidCandidates` marked
+  `unapproved`, and `status: "require_identity_linking"`. No names are matched, no external candidate
+  search runs, and no identity verification is asserted or written.
+- The containing directory must already exist and be private. The report is exclusively created
+  (`wx`), mode `0600`, fully written, `fsync`-flushed and closed **before even requesting the backup**,
+  and before schema/auth changes. Existing files and symlinks are not overwritten. File creation,
+  write, flush or close failure prevents those operations. Never put this report in Git or public assets.
+- The immutable report records `status: "preflight_confirmed"` and
+  `backupStatus: "confirmation_required"`: it is an intent snapshot, **not backup or cutover success
+  evidence**. The CLI then creates that exact backup and requires a nonempty backup API readback before
+  schema/auth writes. Confirm the report's backup ID against PocketBase and retain separate execution
+  evidence. A failed backup leaves the report intact; every retry needs a new report path.
+- The final preflight revalidates all identity/admin requirements and compares the deferred-account
+  snapshot, including role/membership/candidate state, before disabling legacy login. The guard is
+  generated only from live trusted preflight; no input report or guard JSON is accepted. A changed
+  snapshot aborts auth cutover, but preceding schema changes may already have occurred. Maintenance
+  isolation is still mandatory because REST checks cannot eliminate the final read/write race.
+- No account, role, membership, pending mapping or verified identity is granted, deleted or downgraded.
+  Password/OTP login is disabled and all old user JWTs are revoked. Deferred accounts cannot regain
+  their existing privileged access until an admin approves the exact pending mapping and the owner
+  signs in with ORCID. The report is never automatically consumed as approval. `_superusers` recovery
+  remains unchanged; content attribution and publication gates remain separate.
+
+### Native Backend Rehearsal
+
+The issue-70 target's operator-specified backend version is PocketBase **0.40.3**. Run the complete
+backend suite on the official native binary against disposable loopback databases, never the OVH origin:
+
+```sh
+PB_TEST_BINARY=/ABSOLUTE/PRIVATE/PATH/pocketbase bun --no-env-file test pocketbase/tests scripts/configure-orcid.test.ts
+PB_TEST_BINARY=/ABSOLUTE/PRIVATE/PATH/pocketbase PB_TEST_ORCID_ENVIRONMENT=sandbox bun --no-env-file test pocketbase/tests scripts/configure-orcid.test.ts
+```
+
+The integration rehearsal exercises strict rejection, missing report/admin gates, exclusive private
+report creation before backup, backup failure, the actual defer CLI with 66 synthetic accounts, exact
+user/membership preservation, and old JWT rejection. Existing tests also exercise backend authorization,
+pending approval, native OIDC/JWKS verification, readiness, trusted activity and strict cutover.
+These are synthetic local checks, not a real ORCID login or production restore test.
+
+The 0.40.x JSON implementation can vary object key ordering. The deferred snapshot is constructed with
+explicit fields and stable ID sorting; provider `extra` readback uses structural equality, not JSON
+key order. The 0.40.3 rehearsal requires no backend-hook or SDK changes for the exercised auth, backup
+and schema APIs. Release notes also state that 0.40.0 backup generation no longer transaction-locks
+the database, reinforcing the requirement to isolate writers rather than treating backup as a lock.
 
 Never use broad
 `create-pocketbase-collections.ts`, `make install`, the compose setup chain, or bootstrap imports to
@@ -346,7 +510,8 @@ The credit migration is independently callable before login cutover, including b
 are deployed. When hooks are already installed, preflight uses their validator and refuses any
 normalization/rejection of reviewed content before writes. The current backend preserves exact names,
 whitespace, contribution-role text and duplicate credit entries. Do not disable validation to push
-through public unresolved authors. Plan the staged migration and hook deployment in the maintenance window.
+through public unresolved authors. The explicit PRE-HOOK preservation mode above must precede hook
+deployment; it is not a post-deployment bypass. Plan both stages in the maintenance window.
 
 ## Local Provisioning and Author Onboarding
 
@@ -429,7 +594,7 @@ recovery, and `report:authors` for private attribution inventory (not a whole-da
 
 ### Current Release Blockers
 
-- Unresolved person creators, missing privileged-account mappings, issuer/environment disagreement,
+- Unresolved person creators (except the explicit PRE-HOOK preservation step above), missing privileged-account mappings (unless explicitly deferred as above), issuer/environment disagreement,
   schema conflicts or an unconfirmed backup block the relevant migration/cutover step. Contributor
   ORCIDs are optional; do not relabel a real author as a contributor to evade the author requirement.
 - The active legacy importer is local bootstrap only and writes canonical credits for new records,
@@ -450,7 +615,7 @@ recovery, and `report:authors` for private attribution inventory (not a whole-da
   and a partial-run retry against a restored isolated database. Verify backup restore independently.
 - Check both record collections: counts, creator/contributor order, exact names, duplicates, canonical
   checksums, approved links, unchanged legacy fields, and unchanged publication states/assets.
-- Resolve every pending/blocked record and every unresolved individual author before cutover; keep
+- Resolve every pending/blocked attribution record and every unresolved individual author before publication; keep
   the reviewed queue as an auditable artifact. Optional missing contributor ORCIDs are not author
   blockers. Review existing canonical credits against legacy fields.
 - Reconcile the private author-assignment onboarding reports separately; verify exact source targets,

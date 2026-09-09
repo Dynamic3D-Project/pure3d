@@ -10,7 +10,11 @@ import {
 	reviewedCredits,
 	validateManifest
 } from './migrate-orcid-credits';
-import { reconcileAuthorProfiles, type AttributionRecord } from './reconcile-author-profiles';
+import {
+	legacyCredits,
+	reconcileAuthorProfiles,
+	type AttributionRecord
+} from './reconcile-author-profiles';
 
 const target = 'https://example.org';
 const orcid = 'https://orcid.org/0000-0002-1825-0097';
@@ -111,6 +115,126 @@ function fakePB(
 }
 
 describe('reviewed ORCID migration', () => {
+	test('pre-hook preservation retains published legacy attribution exactly and is idempotent', async () => {
+		for (const credits of [undefined, null, []]) {
+			const record = {
+				...fixture(true).record,
+				credits,
+				isPublished: true,
+				isVisible: true,
+				dcCreator: [' Doe, Jane ', ' Doe, Jane '],
+				dcContributor: [' Museum, Lab\t']
+			};
+			const manifest = reconcileAuthorProfiles(target, [], [record]);
+			const item = manifest.records[0];
+			item.status = 'approved';
+			for (const credit of item.credits) {
+				credit.status = 'unresolved';
+				credit.evidence = 'Exact preservation only; provisional person/org type needs review';
+			}
+			const fake = fakePB(record, { schemaMissing: true });
+			await expect(migrate(fake.pb, manifest, target)).rejects.toThrow('Unresolved');
+			expect(await migrate(fake.pb, manifest, target, false, false, undefined, true)).toMatchObject(
+				{ hooksInstalled: false, changes: 1 }
+			);
+			expect(fake.events).toEqual([]);
+			await expect(
+				migrate(fake.pb, manifest, target, true, false, newAudit(), true)
+			).rejects.toThrow('maintenance');
+			await expect(migrate(fake.pb, manifest, target, true, true, undefined, true)).rejects.toThrow(
+				'--audit'
+			);
+			await migrate(fake.pb, manifest, target, true, true, newAudit(), true);
+			expect(fake.stored()).toEqual({
+				...record,
+				updated: 'after',
+				credits: legacyCredits(record.dcCreator, record.dcContributor)
+			});
+			expect(fake.stored().credits).toEqual(
+				item.credits.map(({ name, role }) => ({
+					name,
+					role,
+					type: 'person',
+					orcid: null,
+					provenance: 'manual'
+				}))
+			);
+			expect(await migrate(fake.pb, manifest, target, true, true, newAudit(), true)).toMatchObject({
+				changes: 0
+			});
+		}
+	});
+	test('preservation rejects identity approval, canonical sources, evidence gaps and all source changes', () => {
+		for (const mutate of [
+			(item: ReturnType<typeof fixture>['item']) => {
+				item.credits[2].status = 'approved';
+			},
+			(item: ReturnType<typeof fixture>['item']) => {
+				item.credits[0].orcid = orcid;
+			},
+			(item: ReturnType<typeof fixture>['item']) => {
+				item.credits[0].userId = 'user00000000001';
+			},
+			(item: ReturnType<typeof fixture>['item']) => {
+				item.credits[2].type = 'org';
+			},
+			(item: ReturnType<typeof fixture>['item']) => {
+				item.credits[0].evidence = '';
+			},
+			(item: ReturnType<typeof fixture>['item']) => {
+				item.credits[0].index = 1;
+			},
+			(item: ReturnType<typeof fixture>['item']) => {
+				item.status = 'pending';
+			}
+		]) {
+			const { item, record } = fixture(true);
+			mutate(item);
+			expect(() => planRecord(item, record, true, false)).toThrow();
+		}
+		const { item, record } = fixture(true);
+		expect(() => planRecord(item, record, true)).toThrow('PRE-HOOK');
+		for (const change of [
+			{ title: 'Edit' },
+			{ status: 'draft' },
+			{ isPublished: false },
+			{ isVisible: true },
+			{ dcCreator: ['Renamed'] },
+			{ credits: [{ name: 'Canonical' }] }
+		])
+			expect(() => planRecord(item, { ...record, ...change }, true, false)).toThrow('changed');
+		const canonical = { ...record, credits: legacyCredits(record.dcCreator, record.dcContributor) };
+		const review = reconcileAuthorProfiles(target, [], [canonical]).records[0];
+		review.status = 'approved';
+		for (const credit of review.credits) {
+			credit.status = 'unresolved';
+			credit.evidence = 'Preserve';
+		}
+		expect(() => planRecord(review, canonical, true, false)).toThrow('exact legacy');
+	});
+	test('preservation requires HTTP 404 at preflight and immediately before each schema/data write', async () => {
+		for (const failAt of [1, 2, 3, 4]) {
+			for (const status of [200, 401, 403, 500]) {
+				const { record, manifest } = fixture(true);
+				const fake = fakePB(record, { schemaMissing: true });
+				let probes = 0;
+				fake.pb.send = (async () => {
+					if (++probes === failAt) {
+						if (status === 200) return { backend: 'pure3d-orcid-v1' };
+						throw { status };
+					}
+					throw { status: 404 };
+				}) as PocketBase['send'];
+				await expect(
+					migrate(fake.pb, manifest, target, true, true, newAudit(), true)
+				).rejects.toBeDefined();
+				expect(fake.events).toEqual(
+					[[], ['backup'], ['backup', 'schema'], ['backup', 'schema', 'schema']][failAt - 1]
+				);
+				expect(fake.stored().dcCreator).toEqual(record.dcCreator);
+			}
+		}
+	});
 	test('unresolved drafts retain all attribution without identity assignment', () => {
 		const { item, record } = fixture();
 		const plan = planRecord(item, record);

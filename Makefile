@@ -40,8 +40,8 @@ dev:
 	docker compose up frontend
 
 dev-prod:
-	PUBLIC_POCKETBASE_URL=https://pure3d-database.ctwhome.com \
-	PUBLIC_ASSET_BASE_URL=https://pure3d-assets.ctwhome.com \
+	PUBLIC_POCKETBASE_URL=https://main.57-129-98-223.sslip.io \
+	PUBLIC_ASSET_BASE_URL=https://main.57-129-98-223.sslip.io/assets \
 		docker compose up --no-deps frontend
 
 dev-web:

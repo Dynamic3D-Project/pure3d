@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test';
-import { mkdtemp, mkdir, copyFile, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, copyFile, writeFile, readFile, stat, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createServer } from 'node:net';
@@ -10,7 +10,8 @@ import {
 	alignOrcidSchema,
 	orcidAuthConfig,
 	applyOrcidConfiguration,
-	preflightPrivilegedAccounts
+	preflightPrivilegedAccounts,
+	updateOrcidJwks
 } from '../../scripts/configure-orcid';
 
 // Run with PB_TEST_BINARY=/absolute/path/to/pocketbase bun --no-env-file test pocketbase/tests
@@ -54,7 +55,7 @@ beforeAll(async () => {
 		await copyFile(resolve('pocketbase/pb_hooks', file), join(hooks, file));
 	await copyFile(
 		resolve('pocketbase/tests/fixtures/orcid.pb.js'),
-		join(hooks, 'test-fixture.pb.js')
+		join(hooks, '00-test-fixture.pb.js')
 	);
 	await writeFile(
 		join(hooks, 'schema.json'),
@@ -263,6 +264,18 @@ integration(
 				).status
 			).toBe(200);
 			await expect(legacy.collection('users').authRefresh()).resolves.toBeDefined();
+			await expect(
+				applyOrcidConfiguration(root, 'test-client', 'test-secret', environment, {
+					deferUnmapped: true
+				})
+			).rejects.toThrow('--onboarding-report');
+			await expect(
+				applyOrcidConfiguration(root, 'test-client', 'test-secret', environment, {
+					deferUnmapped: true,
+					onboardingReport: join(directory, 'no-admin.json')
+				})
+			).rejects.toThrow('global admin');
+			await expect(stat(join(directory, 'no-admin.json'))).rejects.toBeDefined();
 			const approved = await legacy.send('/api/pure3d/orcid/pending/' + legacyAdmin.id, {
 				method: 'POST',
 				body: { orcid }
@@ -272,7 +285,7 @@ integration(
 				orcid
 			);
 			expect((await root.collection('users').getOne(legacyAdmin.id)).pendingOrcid).toBe(orcid);
-			await expect(preflightPrivilegedAccounts(root, issuer)).resolves.toBeUndefined();
+			await expect(preflightPrivilegedAccounts(root, issuer)).resolves.toEqual([]);
 			const user = await root.collection('users').create({
 				email: 'synthetic-import@example.test',
 				password: 'local-test-password-only',
@@ -344,6 +357,137 @@ integration(
 					.collection('editionUsers')
 					.getFullList({ filter: `editionId = '${published.id}'` })
 			).toHaveLength(0);
+			// Synthetic equivalents only: preserve 66 unmapped accounts and their exact access intent.
+			const deferredIds = [];
+			for (let i = 0; i < 66; i++) {
+				const account = await root.collection('users').create({
+					email: `deferred-${i}@example.test`,
+					password: 'local-test-password-only',
+					passwordConfirm: 'local-test-password-only',
+					role: ['admin', 'editorial_board', 'user'][i % 3]
+				});
+				deferredIds.push(account.id);
+				await root.collection('editionUsers').create({
+					editionId: edition.id,
+					userId: account.id,
+					role: 'collaborator'
+				});
+			}
+			const deferredLogin = new PocketBase(freshOrigin);
+			await deferredLogin
+				.collection('users')
+				.authWithPassword('deferred-0@example.test', 'local-test-password-only');
+			const beforeUsers = await root.collection('users').getFullList({ sort: 'id' });
+			const beforeMembers = await root.collection('editionUsers').getFullList({ sort: 'id' });
+			await expect(
+				applyOrcidConfiguration(root, 'test-client', 'test-secret', environment)
+			).rejects.toThrow('privileged account');
+			const reportPath = join(directory, 'cutover-onboarding.json');
+			await writeFile(reportPath, 'do not overwrite', { mode: 0o600 });
+			await expect(
+				applyOrcidConfiguration(root, 'test-client', 'test-secret', environment, {
+					deferUnmapped: true,
+					onboardingReport: reportPath
+				})
+			).rejects.toThrow();
+			expect(await readFile(reportPath, 'utf8')).toBe('do not overwrite');
+			await rm(reportPath);
+			const definitionBeforeFailure = await root.collections.getOne('users');
+			const createBackup = root.backups.create.bind(root.backups);
+			root.backups.create = async (backupId) => {
+				const report = JSON.parse(await readFile(reportPath, 'utf8'));
+				expect(report.backupId).toBe(backupId);
+				expect(report.accounts).toHaveLength(66);
+				expect((await stat(reportPath)).mode & 0o777).toBe(0o600);
+				throw new Error('Synthetic backup failure after durable report');
+			};
+			try {
+				await expect(
+					applyOrcidConfiguration(root, 'test-client', 'test-secret', environment, {
+						deferUnmapped: true,
+						onboardingReport: reportPath
+					})
+				).rejects.toThrow('Synthetic backup failure');
+				expect(await root.collections.getOne('users')).toEqual(definitionBeforeFailure);
+			} finally {
+				root.backups.create = createBackup;
+			}
+			// Each attempt keeps its own immutable private report, including failed attempts.
+			const failedReport = reportPath;
+			const successReport = reportPath + '.success';
+			const cutover = Bun.spawn(
+				[
+					process.execPath,
+					'--no-env-file',
+					'scripts/configure-orcid.ts',
+					'--apply',
+					'--defer-unmapped',
+					'--onboarding-report',
+					successReport
+				],
+				{
+					env: {
+						POCKETBASE_URL: freshOrigin,
+						POCKETBASE_ADMIN_EMAIL: 'root@example.test',
+						POCKETBASE_ADMIN_PASSWORD: 'local-test-password-only',
+						ORCID_CLIENT_ID: 'test-client',
+						ORCID_CLIENT_SECRET: 'test-secret',
+						ORCID_ENVIRONMENT: environment
+					},
+					stdout: 'pipe',
+					stderr: 'pipe'
+				}
+			);
+			const cutoverErrors = await new Response(cutover.stderr).text();
+			expect(cutoverErrors).toBe('');
+			expect(await cutover.exited).toBe(0);
+			const report = JSON.parse(await readFile(successReport, 'utf8'));
+			expect((await stat(successReport)).mode & 0o777).toBe(0o600);
+			expect(JSON.parse(await readFile(failedReport, 'utf8')).backupId).not.toBe(report.backupId);
+			expect(report).toMatchObject({
+				target: freshOrigin,
+				backupStatus: 'confirmation_required',
+				operatorId: root.authStore.record!.id,
+				operatorChoice: 'defer-unmapped-preserve-roles-disable-login',
+				status: 'preflight_confirmed'
+			});
+			expect(report.accounts.map((account: { id: string }) => account.id).sort()).toEqual(
+				deferredIds.sort()
+			);
+			for (const account of report.accounts) {
+				expect(account.status).toBe('require_identity_linking');
+				expect(account.orcidCandidates).toEqual([]);
+				expect(account.requestedRole).toBe(
+					beforeUsers.find((user) => user.id === account.id)!.role
+				);
+				expect(account.memberships).toMatchObject([
+					{ source: 'editionUsers', role: 'collaborator', editionId: edition.id }
+				]);
+			}
+			expect(
+				(await root.backups.getFullList()).some(
+					(backup) => backup.key === report.backupId && backup.size > 0
+				)
+			).toBe(true);
+			expect(await root.collection('users').getFullList({ sort: 'id' })).toEqual(beforeUsers);
+			expect(await root.collection('editionUsers').getFullList({ sort: 'id' })).toEqual(
+				beforeMembers
+			);
+			for (const token of [originalToken, deferredLogin.authStore.token]) {
+				expect(
+					(
+						await fetch(freshOrigin + '/api/collections/users/auth-refresh', {
+							method: 'POST',
+							headers: { Authorization: token }
+						})
+					).status
+				).toBe(401);
+			}
+			await expect(
+				deferredLogin
+					.collection('users')
+					.authWithPassword('deferred-0@example.test', 'local-test-password-only')
+			).rejects.toBeDefined();
 		} finally {
 			fresh.kill();
 			await fresh.exited;
@@ -1344,7 +1488,7 @@ integration(
 			await expect(preflightPrivilegedAccounts(root, issuer)).rejects.toThrow('privileged account');
 			await admin.collection('users').update(other.authStore.record!.id, { role: 'user' });
 			await admin.collection('users').update('pending00000000', { role: 'editorial_board' });
-			await expect(preflightPrivilegedAccounts(root, issuer)).resolves.toBeUndefined();
+			await expect(preflightPrivilegedAccounts(root, issuer)).resolves.toEqual([]);
 			await expect(
 				preflightPrivilegedAccounts(
 					root,
@@ -1461,14 +1605,13 @@ integration(
 );
 
 integration(
-	'native PB 0.35 OIDC parser verifies issuer, audience, expiry and JWKS signatures before our hook',
+	'native PB OIDC parser verifies missing-alg ORCID keys through the bridge without weakening proof',
 	async () => {
 		const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
 		const jwk = {
 			...publicKey.export({ format: 'jwk' }),
 			kid: 'local-test-key',
-			use: 'sig',
-			alg: 'RS256'
+			use: 'sig'
 		};
 		let mode = 'valid';
 		const provider = Bun.serve({
@@ -1503,8 +1646,27 @@ integration(
 			config.oauth2.providers[0].tokenURL = provider.url.origin + '/token';
 			config.oauth2.providers[0].extra.jwksURL = provider.url.origin + '/jwks';
 			await root.collections.update('users', config);
-			for (const scenario of ['valid', 'signature', 'issuer', 'audience', 'expired']) {
+			for (const scenario of [
+				'missing-alg',
+				'valid',
+				'signature',
+				'issuer',
+				'audience',
+				'expired',
+				'wrong-alg'
+			]) {
 				mode = scenario;
+				if (scenario !== 'missing-alg') {
+					await root.send('/_test/jwks', {
+						method: 'POST',
+						body: { keys: [scenario === 'wrong-alg' ? { ...jwk, alg: 'RS512' } : jwk] }
+					});
+					config.oauth2.providers[0].extra.jwksURL = origin + '/_test/jwks';
+					await root.collections.update('users', config);
+					const bridge = await fetch(origin + '/_test/jwks');
+					expect(bridge.status).toBe(scenario === 'wrong-alg' ? 502 : 200);
+					if (bridge.ok) expect(await bridge.json()).toEqual({ keys: [{ ...jwk, alg: 'RS256' }] });
+				}
 				const response = await fetch(origin + '/api/collections/users/auth-with-oauth2', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -1531,9 +1693,249 @@ integration(
 );
 
 integration(
+	'native OAuth endpoint preserves proof across downstream saves and rolls back failures',
+	async () => {
+		const definition = await root.collections.getOne('users');
+		const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+		const jwk = { ...publicKey.export({ format: 'jwk' }), kid: 'native-save-test', use: 'sig' };
+		const subject = '0000-0000-0000-0001';
+		let invalidSignature = false;
+		let tokenRequests = 0;
+		const provider = Bun.serve({
+			hostname: '127.0.0.1',
+			port: 0,
+			async fetch(request) {
+				expect(new URL(request.url).pathname).toBe('/token');
+				expect((await request.formData()).get('code')).toBe('native-test-code');
+				tokenRequests++;
+				const input = [
+					{ alg: 'RS256', kid: jwk.kid },
+					{
+						sub: subject,
+						iss: issuer,
+						aud: 'test-client',
+						iat: Math.floor(Date.now() / 1000),
+						exp: Math.floor(Date.now() / 1000) + 3600
+					}
+				]
+					.map((value) => Buffer.from(JSON.stringify(value)).toString('base64url'))
+					.join('.');
+				return Response.json({
+					access_token: 'fixture-secret',
+					token_type: 'Bearer',
+					id_token:
+						input +
+						'.' +
+						(invalidSignature
+							? Buffer.alloc(256)
+							: sign('RSA-SHA256', Buffer.from(input), privateKey)
+						).toString('base64url')
+				});
+			}
+		});
+		const pending = await root.collection('users').create({
+			email: 'native-pending-admin@example.test',
+			role: 'admin',
+			nickname: 'Existing admin',
+			password: 'local-test-password-only',
+			passwordConfirm: 'local-test-password-only'
+		});
+		const candidate = 'https://orcid.org/' + subject;
+		const login = async () => {
+			const response = await fetch(origin + '/api/collections/users/auth-with-oauth2', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					provider: 'oidc',
+					code: 'native-test-code',
+					codeVerifier: 'a'.repeat(43),
+					redirectURL: 'http://127.0.0.1/callback',
+					createData: { role: 'admin', nickname: 'Forged', orcidVerifiedAt: '2000-01-01' }
+				})
+			});
+			return { status: response.status, body: await response.json() };
+		};
+		const fixture = (fail: boolean) =>
+			root.send('/_test/native-oauth', {
+				method: 'POST',
+				body: { tokenURL: provider.url.origin + '/token', fail }
+			});
+		const links = (id: string) =>
+			root.collection('_externalAuths').getFullList({ filter: `recordRef = '${id}'` });
+		const createdIds: string[] = [];
+		try {
+			await root.send('/api/pure3d/orcid/pending/' + pending.id, {
+				method: 'POST',
+				body: { orcid: candidate }
+			});
+			const before = await root.collection('users').getOne(pending.id);
+			const config = orcidAuthConfig('test-client', 'test-secret', environment);
+			config.oauth2.providers[0].tokenURL = provider.url.origin + '/token';
+			config.oauth2.providers[0].extra.jwksURL = origin + '/_test/jwks';
+			await root.send('/_test/jwks', { method: 'POST', body: { keys: [jwk] } });
+			await root.collections.update('users', config);
+			await fixture(false);
+			const first = await login();
+			expect(first).toMatchObject({
+				status: 200,
+				body: {
+					record: { id: pending.id, role: 'admin', nickname: 'Existing admin', orcid: candidate },
+					meta: { isNew: false }
+				}
+			});
+			expect(first.body.token).toBeTruthy();
+			const saved = await root.collection('users').getOne(pending.id);
+			expect(saved.pendingOrcid).toBe('');
+			expect(saved.orcidVerifiedAt).toBeTruthy();
+			expect(await links(pending.id)).toMatchObject([{ provider: 'oidc', providerId: subject }]);
+			expect(await root.send('/_test/native-oauth')).toMatchObject({ saves: 1, responses: 1 });
+			const returning = await login();
+			expect(returning).toMatchObject({
+				status: 200,
+				body: {
+					record: { id: pending.id, role: 'admin', orcidVerifiedAt: saved.orcidVerifiedAt },
+					meta: { isNew: false }
+				}
+			});
+			expect(await links(pending.id)).toHaveLength(1);
+			const client = new PocketBase(origin);
+			client.authStore.save(returning.body.token, returning.body.record);
+			await expect(client.collection('users').authRefresh()).resolves.toBeDefined();
+			for (const patch of [
+				{ orcid: 'https://orcid.org/0000-0002-1825-0097' },
+				{ orcidVerifiedAt: '2000-01-01', 'pure3d.orcid.proof': true }
+			])
+				await expect(client.collection('users').update(pending.id, patch)).rejects.toMatchObject({
+					status: 400
+				});
+			// PocketBase ignores non-superuser writes to the hidden pending field.
+			await client.collection('users').update(pending.id, { pendingOrcid: candidate });
+			expect((await root.collection('users').getOne(pending.id)).pendingOrcid).toBe('');
+			invalidSignature = true;
+			expect(await login()).toMatchObject({
+				status: 400,
+				body: { message: 'Failed to fetch OAuth2 user.' }
+			});
+			invalidSignature = false;
+
+			// Recreate the pre-proof pending state through a fresh account, not a privileged identity patch.
+			await root.collection('users').delete(pending.id);
+			await root.collection('users').create({
+				id: pending.id,
+				email: before.email,
+				role: before.role,
+				nickname: before.nickname,
+				password: 'local-test-password-only',
+				passwordConfirm: 'local-test-password-only'
+			});
+			await root.send('/api/pure3d/orcid/pending/' + pending.id, {
+				method: 'POST',
+				body: { orcid: candidate }
+			});
+			const rollbackBefore = await root.collection('users').getOne(pending.id);
+			await fixture(true);
+			expect(await login()).toMatchObject({
+				status: 400,
+				body: { message: 'Test native OAuth downstream rollback.' }
+			});
+			expect(await root.collection('users').getOne(pending.id)).toEqual(rollbackBefore);
+			expect(await links(pending.id)).toHaveLength(0);
+			expect(await root.send('/_test/native-oauth')).toMatchObject({ saves: 1, responses: 1 });
+			await root.collection('users').delete(pending.id);
+			// Same signed subject now has no candidate: new user must also roll back, then get least role.
+			expect(await login()).toMatchObject({
+				status: 400,
+				body: { message: 'Test native OAuth downstream rollback.' }
+			});
+			expect(
+				await root.collection('users').getFullList({ filter: `orcid = '${candidate}'` })
+			).toHaveLength(0);
+			expect(
+				await root.collection('_externalAuths').getFullList({ filter: `providerId = '${subject}'` })
+			).toHaveLength(0);
+			await fixture(false);
+			const fresh = await login();
+			if (fresh.body.record) createdIds.push(fresh.body.record.id);
+			expect(fresh).toMatchObject({
+				status: 200,
+				body: {
+					record: { role: 'user', nickname: '', orcid: candidate, verified: true },
+					meta: { isNew: true }
+				}
+			});
+			expect(await root.collection('users').getOne(fresh.body.record.id)).toMatchObject({
+				orcid: candidate,
+				orcidVerifiedAt: fresh.body.record.orcidVerifiedAt,
+				pendingOrcid: '',
+				role: 'user'
+			});
+			expect(fresh.body.record.orcidVerifiedAt).toBeTruthy();
+			expect(await links(fresh.body.record.id)).toMatchObject([
+				{ provider: 'oidc', providerId: subject }
+			]);
+			expect(await root.send('/_test/native-oauth')).toMatchObject({ saves: 1, responses: 1 });
+			expect(tokenRequests).toBe(6);
+		} finally {
+			await root.send('/_test/native-oauth', { method: 'POST', body: {} });
+			await root.collections.update('users', {
+				oauth2: definition.oauth2,
+				passwordAuth: definition.passwordAuth,
+				otp: definition.otp,
+				authRule: definition.authRule
+			});
+			for (const id of [pending.id, ...createdIds])
+				await root
+					.collection('users')
+					.delete(id)
+					.catch((error) => {
+						if (error.status !== 404) throw error;
+					});
+			provider.stop(true);
+		}
+	}
+);
+
+integration(
+	'JWKS-only update backs up and preserves sessions, identity records and all other configuration',
+	async () => {
+		await root.collections.update(
+			'users',
+			orcidAuthConfig('test-client', 'test-secret', environment)
+		);
+		const before = await root.collections.getOne('users');
+		before.oauth2.providers[0].extra.jwksURL = issuer + '/oauth/jwks';
+		await root.collections.update('users', { oauth2: before.oauth2 });
+		const authenticated = await oauth({ subject: orcid.slice(18) });
+		expect(authenticated.status).toBe(200);
+		const records = await root.collection('users').getFullList();
+		const result = await updateOrcidJwks(root);
+		expect(
+			(await root.backups.getFullList()).some(
+				(backup) => backup.key === result.backup && backup.size > 0
+			)
+		).toBe(true);
+		const after = await root.collections.getOne('users');
+		before.oauth2.providers[0].extra.jwksURL = result.jwksURL;
+		expect(after).toEqual({ ...before, updated: after.updated });
+		expect(await root.collection('users').getFullList()).toEqual(records);
+		expect(
+			(
+				await fetch(origin + '/api/collections/users/auth-refresh', {
+					method: 'POST',
+					headers: { Authorization: authenticated.body.token }
+				})
+			).status
+		).toBe(200);
+	}
+);
+
+integration(
 	'public readiness validates canonical credit presence without freezing retained legacy attribution',
 	async () => {
 		const endpoint = origin + '/api/pure3d/orcid/ready';
+		const invalid = orcidAuthConfig('test-client', 'test-secret', environment);
+		invalid.oauth2.providers[0].extra.jwksURL = issuer + '/oauth/jwks';
+		await root.collections.update('users', invalid);
 		const wrongIssuer = await fetch(endpoint);
 		expect(wrongIssuer.status).toBe(503);
 		expect((await wrongIssuer.json()).checks.auth).toBe(false);

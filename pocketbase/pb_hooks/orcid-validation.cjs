@@ -9,6 +9,48 @@ function orcidEndpoints(issuer) {
 	};
 }
 
+function orcidJwksURL(origin = 'http://127.0.0.1:8090') {
+	// Server-owned loopback listener, never the request Host, frontend URL or an SSH tunnel.
+	if (
+		!/^http:\/\/127\.0\.0\.1:[1-9][0-9]{0,4}$/.test(origin) ||
+		Number(origin.split(':')[2]) > 65535
+	)
+		throw new Error('ORCID_JWKS_ORIGIN must be the PocketBase loopback HTTP origin');
+	return origin + '/api/pure3d/orcid/jwks';
+}
+
+function normalizeOrcidJwks(value) {
+	if (!value || !Array.isArray(value.keys) || !value.keys.length || value.keys.length > 20)
+		throw new Error('Invalid ORCID JWKS');
+	const kids = [];
+	return {
+		keys: value.keys.map((key) => {
+			if (
+				!key ||
+				key.kty !== 'RSA' ||
+				key.use !== 'sig' ||
+				(key.alg !== undefined && key.alg !== 'RS256') ||
+				typeof key.kid !== 'string' ||
+				!key.kid.trim() ||
+				key.kid.length > 256 ||
+				kids.includes(key.kid) ||
+				typeof key.n !== 'string' ||
+				!/^[A-Za-z0-9_-]{342,1366}$/.test(key.n) ||
+				key.n.length % 4 === 1 ||
+				typeof key.e !== 'string' ||
+				!/^[A-Za-z0-9_-]{2,8}$/.test(key.e) ||
+				key.e.length % 4 === 1 ||
+				['d', 'p', 'q', 'dp', 'dq', 'qi', 'oth'].some((field) => field in key) ||
+				(key.key_ops !== undefined && JSON.stringify(key.key_ops) !== '["verify"]')
+			)
+				throw new Error('Invalid ORCID signing key');
+			kids.push(key.kid);
+			// ORCID discovery documents RS256; PB requires alg even though JWK makes it optional.
+			return { kty: key.kty, use: key.use, kid: key.kid, n: key.n, e: key.e, alg: 'RS256' };
+		})
+	};
+}
+
 function canonicalOrcid(value) {
 	if (typeof value !== 'string') throw new Error('Invalid ORCID');
 	const id = value.replace(/^https:\/\/orcid\.org\//, '');
@@ -199,6 +241,8 @@ function publicProfile(person, employments) {
 }
 
 module.exports = {
+	orcidJwksURL,
+	normalizeOrcidJwks,
 	reviewStage,
 	orcidEndpoints,
 	canonicalOrcid,

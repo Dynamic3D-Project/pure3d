@@ -152,9 +152,52 @@ test('configuration uses upstream ID-token verification rather than userinfo', (
 	expect(config.oauth2.providers[0]).toMatchObject({
 		name: 'oidc',
 		userInfoURL: '',
-		extra: { issuers: ['https://orcid.org'], jwksURL: 'https://orcid.org/oauth/jwks' }
+		extra: {
+			issuers: ['https://orcid.org'],
+			jwksURL: 'http://127.0.0.1:8090/api/pure3d/orcid/jwks'
+		}
 	});
 	expect(config.oauth2.mappedFields).toEqual({ id: '', name: '', username: '', avatarURL: '' });
+});
+
+test('JWKS normalization only fills RS256 on public RSA signing keys', () => {
+	const key = {
+		kty: 'RSA',
+		use: 'sig',
+		kid: 'production-orcid-org-example',
+		n: 'x'.repeat(342),
+		e: 'AQAB'
+	};
+	expect(v.normalizeOrcidJwks({ keys: [key] })).toEqual({ keys: [{ ...key, alg: 'RS256' }] });
+	expect(v.normalizeOrcidJwks({ keys: [{ ...key, alg: 'RS256' }] })).toEqual({
+		keys: [{ ...key, alg: 'RS256' }]
+	});
+	for (const patch of [
+		{ alg: 'RS512' },
+		{ alg: '' },
+		{ alg: null },
+		{ kty: 'oct' },
+		{ kty: 'EC' },
+		{ use: 'enc' },
+		{ kid: '' },
+		{ n: '' },
+		{ e: '!' },
+		{ d: 'private' },
+		{ key_ops: ['sign'] }
+	])
+		expect(() => v.normalizeOrcidJwks({ keys: [{ ...key, ...patch }] })).toThrow();
+	for (const value of [null, {}, { keys: [] }, { keys: [key, key] }, { keys: [null] }])
+		expect(() => v.normalizeOrcidJwks(value)).toThrow();
+	expect(v.orcidJwksURL('http://127.0.0.1:12345')).toBe(
+		'http://127.0.0.1:12345/api/pure3d/orcid/jwks'
+	);
+	for (const origin of [
+		'https://evil.test',
+		'http://127.0.0.1:8090/path',
+		'http://127.0.0.1:99999',
+		'http://127.0.0.1:8090@evil.test'
+	])
+		expect(() => v.orcidJwksURL(origin)).toThrow();
 });
 
 test('sandbox endpoints are explicit and arbitrary issuers/environments are rejected', () => {
@@ -164,7 +207,7 @@ test('sandbox endpoints are explicit and arbitrary issuers/environments are reje
 		tokenURL: 'https://sandbox.orcid.org/oauth/token',
 		extra: {
 			issuers: ['https://sandbox.orcid.org'],
-			jwksURL: 'https://sandbox.orcid.org/oauth/jwks'
+			jwksURL: 'http://127.0.0.1:8090/api/pure3d/orcid/jwks'
 		}
 	});
 	expect(v.orcidEndpoints('https://sandbox.orcid.org').publicApi).toBe(
@@ -182,7 +225,17 @@ test('configuration CLI defaults to offline dry-run and never logs credentials o
 		ORCID_CLIENT_ID: 'test-client',
 		ORCID_CLIENT_SECRET: 'do-not-print-test-secret'
 	};
-	for (const args of [[], ['--apply'], ['--prepare'], ['--prepare', '--apply']]) {
+	for (const args of [
+		[],
+		['--apply'],
+		['--prepare'],
+		['--prepare', '--apply'],
+		['--apply', '--defer-unmapped'],
+		['--apply', '--onboarding-report', '/unused'],
+		['--prepare', '--defer-unmapped', '--onboarding-report', '/unused'],
+		['--apply', '--defer-unmapped', '--onboarding-report'],
+		['--apply', '--defer-unmapped', '--onboarding-report', '/unused', '--guard', '{}']
+	]) {
 		const child = Bun.spawn(
 			[process.execPath, '--no-env-file', 'scripts/configure-orcid.ts', ...args],
 			{ env, stdout: 'pipe', stderr: 'pipe' }

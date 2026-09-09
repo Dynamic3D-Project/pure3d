@@ -99,12 +99,19 @@ routerAdd(
 		return e.json(200, {
 			backend: 'pure3d-orcid-v1',
 			issuer,
+			jwksURL: require(__hooks + '/orcid-validation.cjs').orcidJwksURL(
+				$os.getenv('ORCID_JWKS_ORIGIN') || undefined
+			),
 			reviewAccess: 'assignment-scoped-v1',
 			activity: 'trusted-events-v1'
 		});
 	},
 	$apis.requireAuth()
 );
+
+routerAdd('GET', '/api/pure3d/orcid/jwks', (e) => {
+	return require(__hooks + '/orcid-service.cjs').jwks(e);
+});
 
 onRecordAuthWithOAuth2Request((e) => {
 	return require(__hooks + '/orcid-service.cjs').oauth(e);

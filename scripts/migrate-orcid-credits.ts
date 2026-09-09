@@ -8,6 +8,7 @@ import { credits as validateBackendCredits } from '../pocketbase/pb_hooks/orcid-
 import {
 	connect,
 	fingerprint,
+	legacyCredits,
 	sourceCredits,
 	targetOrigin,
 	type AttributionRecord,
@@ -78,7 +79,12 @@ export function publicationBlocked(credits: Credit[]): boolean {
 	);
 }
 
-export function planRecord(item: RecordReview, current: AttributionRecord) {
+export function planRecord(
+	item: RecordReview,
+	current: AttributionRecord,
+	preserveUnresolved = false,
+	hooksInstalled = true
+) {
 	if (
 		item.snapshot.id !== item.id ||
 		current.id !== item.id ||
@@ -86,6 +92,21 @@ export function planRecord(item: RecordReview, current: AttributionRecord) {
 	)
 		throw new Error('Invalid record snapshot');
 	const credits = reviewedCredits(item);
+	if (preserveUnresolved) {
+		if (hooksInstalled) throw new Error('Preservation requires PRE-HOOK deployment (HTTP 404)');
+		if (
+			item.status !== 'approved' ||
+			(item.snapshot.credits != null &&
+				!(Array.isArray(item.snapshot.credits) && item.snapshot.credits.length === 0)) ||
+			item.credits.some((credit) => credit.status !== 'unresolved') ||
+			JSON.stringify(credits) !==
+				JSON.stringify(legacyCredits(item.snapshot.dcCreator, item.snapshot.dcContributor))
+		)
+			throw new Error(
+				'Preservation requires approved exact legacy attribution, all credits unresolved'
+			);
+		// The converter's person default is provisional; person/org classification still needs review.
+	}
 	const expected = fingerprint({ ...item.snapshot, credits });
 	if (fingerprint(current) === expected) return { credits, changed: false, expected };
 	const comparable = { ...current };
@@ -98,7 +119,7 @@ export function planRecord(item: RecordReview, current: AttributionRecord) {
 			? current.isVisible === true
 			: current.isPublished === true ||
 				(typeof current.status === 'string' && !['', 'draft'].includes(current.status));
-	if (active && publicationBlocked(credits))
+	if (active && publicationBlocked(credits) && !preserveUnresolved)
 		throw new Error('Unresolved public attribution blocks migration of this record');
 	return { credits, changed: true, expected };
 }
@@ -151,13 +172,27 @@ async function verifyLinks(pb: PocketBase, credits: Credit[]) {
 	}
 }
 
+async function inspectHooks(pb: PocketBase, preserveUnresolved: boolean): Promise<boolean> {
+	try {
+		const status = await pb.send('/api/pure3d/orcid/config', { method: 'GET' });
+		if (preserveUnresolved)
+			throw new Error('Preservation is PRE-HOOK deployment only; endpoint must return HTTP 404');
+		if (status.backend !== 'pure3d-orcid-v1') throw new Error('Unknown ORCID backend');
+		return true;
+	} catch (error) {
+		if ((error as { status?: number }).status !== 404) throw error;
+		return false;
+	}
+}
+
 export async function migrate(
 	pb: PocketBase,
 	manifest: AuthorReconciliation,
 	target: string,
 	apply = false,
 	maintenanceConfirmed = false,
-	auditPath?: string
+	auditPath?: string,
+	preserveUnresolved = false
 ) {
 	validateManifest(manifest, target);
 	if (apply && !maintenanceConfirmed)
@@ -209,6 +244,7 @@ export async function migrate(
 		audit({
 			event: 'run',
 			status: 'started',
+			preserveUnresolved,
 			target: targetOrigin(target),
 			records: manifest.records.map((item) => ({
 				collection: item.collection,
@@ -217,14 +253,7 @@ export async function migrate(
 				reviewStatus: item.status
 			}))
 		});
-		let hooksInstalled = false;
-		try {
-			const status = await pb.send('/api/pure3d/orcid/config', { method: 'GET' });
-			if (status.backend !== 'pure3d-orcid-v1') throw new Error('Unknown ORCID backend');
-			hooksInstalled = true;
-		} catch (error) {
-			if ((error as { status?: number }).status !== 404) throw error;
-		}
+		const hooksInstalled = await inspectHooks(pb, preserveUnresolved);
 		const definitions = await Promise.all(
 			['collections', 'editions'].map((name) => pb.collections.getOne(name))
 		);
@@ -249,7 +278,7 @@ export async function migrate(
 			}
 			const current = await pb.collection(item.collection).getOne(item.id);
 			readback = current;
-			const plan = planRecord(item, current);
+			const plan = planRecord(item, current, preserveUnresolved, hooksInstalled);
 			expected = plan.expected;
 			await verifyLinks(pb, plan.credits);
 			if (hooksInstalled && plan.changed) {
@@ -283,6 +312,8 @@ export async function migrate(
 		active = undefined;
 		const changes = plans.filter((plan) => plan.changed);
 		const summary = {
+			hooksInstalled,
+			preserveUnresolved,
 			approved: plans.length,
 			changes: changes.length,
 			queued: manifest.records.length - plans.length,
@@ -318,6 +349,7 @@ export async function migrate(
 					throw new Error('Schema changed during preflight');
 				if (!definition.fields.some((field: { name: string }) => field.name === 'credits')) {
 					audit({ event: 'schema', collection: definition.name, status: 'write-started' });
+					if (preserveUnresolved) await inspectHooks(pb, true);
 					await pb.collections.update(definition.id, {
 						fields: [...definition.fields, { name: 'credits', type: 'json', maxSize: 2000000 }]
 					});
@@ -349,6 +381,7 @@ export async function migrate(
 					id: active.id,
 					expectedFingerprint: expected
 				});
+				if (preserveUnresolved) await inspectHooks(pb, true);
 				writeAttempted = true;
 				await pb.collection(active.collection).update(active.id, { credits: plan.credits });
 				writeAcknowledged = true;
@@ -425,13 +458,14 @@ export async function main(args = process.argv.slice(2)) {
 			target: { type: 'string' },
 			manifest: { type: 'string' },
 			apply: { type: 'boolean' },
+			'preserve-unresolved': { type: 'boolean' },
 			audit: { type: 'string' },
 			'maintenance-confirmed': { type: 'boolean' }
 		}
 	});
 	if (!values.target || !values.manifest)
 		throw new Error(
-			'Use --target ORIGIN --manifest FILE [--apply --maintenance-confirmed --audit NEW_PRIVATE_FILE]'
+			'Use --target ORIGIN --manifest FILE [--preserve-unresolved (PRE-HOOK deployment only)] [--apply --maintenance-confirmed --audit NEW_PRIVATE_FILE]'
 		);
 	if (values.apply && !values.audit) throw new Error('--apply requires --audit NEW_PRIVATE_FILE');
 	if (values.audit && !values.apply) throw new Error('--audit requires --apply');
@@ -444,11 +478,16 @@ export async function main(args = process.argv.slice(2)) {
 		target,
 		values.apply,
 		values['maintenance-confirmed'],
-		values.audit
+		values.audit,
+		values['preserve-unresolved']
 	);
 	console.log(
 		`${values.apply ? 'Apply' : 'Read-only preflight'}: ${JSON.stringify(summary)}. Source fields retained. Review queued records; unresolved individual authors block submission/publication. Contributor ORCIDs are optional.`
 	);
+	if (values['preserve-unresolved'])
+		console.log(
+			'PRE-HOOK deployment maintenance only: exact legacy attribution preserved, not identity-approved. Default person types are provisional and need person/org review. Existing publication state is retained; normal application validation is unchanged.'
+		);
 }
 
 if (import.meta.main)

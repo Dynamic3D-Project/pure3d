@@ -1,10 +1,49 @@
-# Synthetic ORCID Browser Evidence
+# ORCID Browser Evidence
+
+## Live OVH Verification
+
+Captured on 2026-09-09 at `https://main.57-129-98-223.sslip.io` after the authorized
+OVH rollout on PocketBase 0.40.3. These four images show the real ORCID flow and
+the requesting user's account, not synthetic identities. Email is masked in
+profile captures; the admin list is filtered to the same public ORCID. No other
+users, client secrets, tokens, or private reconciliation reports are shown.
+
+| Image                                 | Observed state                                                                |
+| ------------------------------------- | ----------------------------------------------------------------------------- |
+| [16](16-live-orcid-consent.png)       | Real ORCID consent requesting only the ORCID iD                               |
+| [17](17-live-orcid-admin-profile.png) | Successful live sign-in, Admin and ORCID verified badges, public profile data |
+| [18](18-live-orcid-admin-access.png)  | Actual admin page access, filtered to the verified account                    |
+| [19](19-live-orcid-admin-mobile.png)  | Verified admin profile at 390px with no horizontal overflow                   |
+
+Live checks: OAuth authorization-code exchange HTTP 200, initial and returning
+sign-in, automatic and explicit public-profile refresh HTTP 200, authenticated
+admin configuration endpoint HTTP 200, exactly one matching external identity,
+and consumption of the approved pending mapping. User password login is disabled
+and `oidc` is the only enabled provider. Readiness reports all checks true.
+
+The live flow exposed two failures absent from the original synthetic smoke:
+ORCID omits the signing key's `alg`, and PocketBase resaves an account after the
+proof-bearing save. Both were fixed without weakening signature/identity guards,
+covered by native endpoint regressions, deployed, and followed by successful
+live sign-ins. Initial failed attempts are not counted as successful checks.
+
+The OVH migration preserved 145 records and 236 ordered credits. All 75 existing
+accounts and their 60 collection/269 edition memberships were preserved; one
+requested admin account was added. A private report retains 67 existing
+privileged accounts requiring approved identity linking (including one with an
+unverified existing ORCID candidate). Historical attribution remains unresolved,
+not silently approved; new submission/publication still requires author ORCIDs.
+
+The older `pure3d-database.ctwhome.com` backend and `pure3d.eu` DNS were not switched
+by this deployment. Use the OVH URL above to exercise this release.
+
+## Synthetic Verification
 
 Captured from the actual rendered application on 2026-09-08 using Playwright,
 Vite static preview at `http://127.0.0.1:60025`, and disposable PocketBase v0.35
 at `http://127.0.0.1:60121`. No application files were edited.
 
-**All accounts, biographies, works, ownership states and mappings are synthetic.**
+**In screenshots 01-15, all accounts, biographies, works, ownership states and mappings are synthetic.**
 The ORCID identifiers are existing integration-test values, not claims about the
 people associated with those identifiers. Accounts use `example.test`. No live
 ORCID sign-in, identity-provider token validation, production data, or production

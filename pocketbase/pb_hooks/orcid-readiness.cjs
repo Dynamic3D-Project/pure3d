@@ -24,7 +24,7 @@ function ready(e) {
 			provider.tokenURL === issuer + '/oauth/token' &&
 			!provider.userInfoURL &&
 			provider.extra &&
-			provider.extra.jwksURL === issuer + '/oauth/jwks' &&
+			provider.extra.jwksURL === v.orcidJwksURL($os.getenv('ORCID_JWKS_ORIGIN') || undefined) &&
 			JSON.stringify(provider.extra.issuers) === JSON.stringify([issuer]) &&
 			!users.passwordAuth.enabled &&
 			!users.otp.enabled &&
