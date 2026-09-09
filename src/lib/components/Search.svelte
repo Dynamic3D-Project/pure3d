@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { creatorNames } from '$lib/utils/credits';
 	import { base } from '$app/paths';
 	import { pb } from '$lib/database';
 	import { debounce } from '$lib/utils/debounce';
@@ -77,18 +78,15 @@
 			}
 
 			// Client-side filtering for more reliable search
-			const lowerQuery = trimmedQuery.toLowerCase();
 
 			const filteredEditions = trimmedQuery
 				? editionsResult.items.filter((edition: any) => editionMatchesQuery(edition, trimmedQuery))
 				: editionsResult.items;
 
 			const filteredCollections = trimmedQuery
-				? collectionsResult.items.filter((collection: any) => {
-						const title = (collection.dcTitle || collection.title || '').toLowerCase();
-						const abstract = (collection.dcAbstract || '').toLowerCase();
-						return title.includes(lowerQuery) || abstract.includes(lowerQuery);
-					})
+				? collectionsResult.items.filter((collection: any) =>
+						editionMatchesQuery(collection, trimmedQuery)
+					)
 				: collectionsResult.items;
 
 			const editions = { items: filteredEditions.slice(0, 8) };
@@ -107,9 +105,7 @@
 					type: 'edition' as const,
 					id: edition.id,
 					title: edition.dcTitle || edition.title || 'Untitled',
-					subtitle:
-						(Array.isArray(edition.dcCreator) ? edition.dcCreator.join(', ') : '') ||
-						edition.dcAbstract?.slice(0, 80),
+					subtitle: creatorNames(edition.credits) || edition.dcAbstract?.slice(0, 80),
 					thumbnail,
 					url: `${base}/editions/${edition.id}`
 				};

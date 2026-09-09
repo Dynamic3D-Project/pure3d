@@ -8,7 +8,7 @@ import {
 	DEFAULT_VOYAGER_VERSION,
 	MIN_DERIVATIVES_VERSION
 } from '$lib/utils/asset-urls';
-import { profileNameKey, profileNames } from '$lib/utils/profile-matching';
+import { creatorNames, readCredits } from '$lib/utils/credits';
 
 /**
  * Compare semver versions (simple comparison for our use case)
@@ -74,7 +74,7 @@ export const load: PageLoad = async ({ params, fetch }) => {
 			slug: record.id,
 			title: record.dcTitle || record.title,
 			description: record.dcAbstract || '',
-			authors: Array.isArray(record.dcCreator) ? record.dcCreator.join(', ') : '',
+			authors: creatorNames(record.credits),
 			thumbnail,
 			voyagerUrl: '',
 			// Voyager direct mode configuration
@@ -95,7 +95,7 @@ export const load: PageLoad = async ({ params, fetch }) => {
 			pubNum: editionPubNum,
 			dcDoi: toArray(record.dcDoi),
 			dcInstitution: toArray(record.dcInstitution),
-			dcCreator: toArray(record.dcCreator),
+			credits: readCredits(record.credits),
 			dcCoveragePeriod: record.dcCoveragePeriod || null,
 			dcCoveragePlace: record.dcCoveragePlace || null,
 			settingsAuthorToolVersion: record.settingsAuthorToolVersion || null,
@@ -107,47 +107,6 @@ export const load: PageLoad = async ({ params, fetch }) => {
 			collectionId: collectionId || null,
 			collectionTitle: collection?.title || ''
 		};
-
-		let creatorProfiles: Array<{ id: string; names: string[] }> = [];
-		try {
-			const [authorResult, userResult] = await Promise.all([
-				pb.collection('editionUsers').getList(1, 50, {
-					filter: `editionId = "${record.id}" && role = "author"`,
-					expand: 'userId',
-					fetch
-				}),
-				pb.collection('users').getList(1, 500, { fetch })
-			]);
-			creatorProfiles = authorResult.items
-				.map((author) => author.expand?.userId)
-				.filter(Boolean)
-				.map((user) => ({
-					id: user.id,
-					names: profileNames(user)
-				}));
-
-			const creatorKeys = new Set(toArray(record.dcCreator).map(profileNameKey));
-			for (const user of userResult.items) {
-				const hasDetails = !!(
-					user.profilePicture ||
-					user.avatar ||
-					user.titleRole ||
-					user.affiliation ||
-					user.orcid ||
-					user.bio
-				);
-				const names = profileNames(user);
-				if (
-					hasDetails &&
-					!creatorProfiles.some((profile) => profile.id === user.id) &&
-					names.some((name) => creatorKeys.has(profileNameKey(name)))
-				) {
-					creatorProfiles.push({ id: user.id, names });
-				}
-			}
-		} catch {
-			creatorProfiles = [];
-		}
 
 		// Fetch sibling editions (version history) for the same collection
 		let siblingEditions: Array<Record<string, unknown>> = [];
@@ -183,7 +142,6 @@ export const load: PageLoad = async ({ params, fetch }) => {
 
 		return {
 			edition,
-			creatorProfiles,
 			siblingEditions,
 			viewerHelp: site?.viewerHelp || null,
 			viewerHelpVideoUrl: site?.viewerHelpVideoUrl || null

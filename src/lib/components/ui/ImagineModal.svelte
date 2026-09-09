@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { readCredits } from '$lib/utils/credits';
 	import toast from 'svelte-french-toast';
 	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
 	import type { Edition } from '$lib/types/collection';
@@ -94,7 +95,8 @@
 
 	async function saveGalleryImage(url: string) {
 		try {
-			const idSuffix = crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+			const idSuffix =
+				crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 			const image: GalleryImage = {
 				id: `${getEditionGalleryKey()}-${idSuffix}`,
 				editionKey: getEditionGalleryKey(),
@@ -280,8 +282,11 @@
 		if (edition.dcSource?.length) parts.push(`Source: ${edition.dcSource.join(', ')}`);
 
 		// Creators & institutions
-		if (edition.dcCreator?.length)
-			parts.push(`Original creator(s): ${edition.dcCreator.join(', ')}`);
+		for (const credit of readCredits(edition.credits)) {
+			parts.push(
+				`${credit.role}: ${credit.name}${credit.orcid ? ` (${credit.orcid})` : ''}${credit.contributionRole ? ` - ${credit.contributionRole}` : ''}`
+			);
+		}
 		if (edition.dcInstitution?.length)
 			parts.push(`Institution: ${edition.dcInstitution.join(', ')}`);
 

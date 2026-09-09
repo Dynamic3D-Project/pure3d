@@ -4,16 +4,27 @@
  * Safe to re-run: existing records are detected and skipped.
  */
 import PocketBase from 'pocketbase';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { parseArgs } from 'node:util';
+import { fingerprint, legacyCredits } from './reconcile-author-profiles';
+import { publicationBlocked } from './migrate-orcid-credits';
 
 const PB_URL = process.env.POCKETBASE_URL || 'http://pocketbase:8090';
 const ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL || 'admin@admin.local';
 const ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD || '1234567890';
 const JSON_DIR = 'data/json-output';
-const PUBLIC_PB_URL = process.env.PUBLIC_POCKETBASE_URL || 'http://localhost:60021';
 
 const pb = new PocketBase(PB_URL);
+
+function requireLocalTarget(target: string) {
+	if (
+		!['http://pocketbase:8090', 'http://localhost:60021', 'http://127.0.0.1:60021'].includes(target)
+	)
+		throw new Error(
+			'Legacy bootstrap import is local-only; use reviewed migrations for existing data'
+		);
+}
 
 function mapGlobalRole(role?: string) {
 	switch (role) {
@@ -56,6 +67,109 @@ function mapEditionRole(role?: string) {
 		default:
 			return role || 'collaborator';
 	}
+}
+
+export type LegacyEditionMembership = Record<string, unknown> & {
+	_id?: string;
+	editionId: string;
+	user: string | null;
+	role?: string;
+};
+
+export async function importEditionMemberships(
+	client: PocketBase,
+	source: LegacyEditionMembership[],
+	editionIds: Map<string, string>,
+	userIds: Map<string, string>,
+	onboardingDirectory: string
+) {
+	requireLocalTarget(client.baseURL);
+	const existing = await client.collection('editionUsers').getFullList();
+	const keys = new Set(
+		existing.map((row) => `${row.editionId || row.edition}|${row.userId || row.user}|${row.role}`)
+	);
+	const pending = [];
+	const ready = [];
+	let skipped = 0;
+	for (const [index, doc] of source.entries()) {
+		if (
+			!doc ||
+			typeof doc.editionId !== 'string' ||
+			!doc.editionId ||
+			(doc.user !== null && (typeof doc.user !== 'string' || !doc.user)) ||
+			(doc.role !== undefined && typeof doc.role !== 'string')
+		)
+			throw new Error('Invalid legacy edition membership source');
+		const editionId = editionIds.get(doc.editionId);
+		const userId = doc.user === null ? undefined : userIds.get(doc.user);
+		const role = mapEditionRole(doc.role);
+		const key = `${editionId}|${userId}|${role}`;
+		if (editionId && userId && keys.has(key)) {
+			skipped++;
+			continue;
+		}
+		if (role === 'author' || !editionId || !userId) {
+			// Author intent is not OAuth proof. Keep every source row for explicit onboarding review.
+			pending.push({
+				sourceIndex: index,
+				source: doc,
+				sourceFingerprint: fingerprint({ id: String(index), source: doc }),
+				legacyEditionId: doc.editionId,
+				legacyUserHash: doc.user,
+				editionId: editionId || null,
+				userId: userId || null,
+				requestedRole: role,
+				status: 'pending',
+				evidence: '',
+				reason: !editionId || !userId ? 'missing-target' : 'author-onboarding-required'
+			});
+			continue;
+		}
+		ready.push({
+			mongoId: doc._id,
+			edition: editionId,
+			editionId,
+			user: userId,
+			userId,
+			userHash: doc.user,
+			role
+		});
+		keys.add(key);
+	}
+	let reportPath: string | null = null;
+	if (pending.length) {
+		mkdirSync(onboardingDirectory, { recursive: true, mode: 0o700 });
+		const directory = lstatSync(onboardingDirectory);
+		if (!directory.isDirectory() || (directory.mode & 0o077) !== 0)
+			throw new Error('Onboarding report directory must be private (0700), not a symlink');
+		reportPath = join(onboardingDirectory, `edition-author-onboarding-${crypto.randomUUID()}.json`);
+		writeFileSync(
+			reportPath,
+			JSON.stringify(
+				{
+					version: 1,
+					target: client.baseURL,
+					createdAt: new Date().toISOString(),
+					sourceFile: 'editionUser.json',
+					pendingAssignments: pending
+				},
+				null,
+				2
+			) + '\n',
+			{ flag: 'wx', mode: 0o600, flush: true }
+		);
+	}
+	const pendingAuthors = pending.filter((item) => item.requestedRole === 'author').length;
+	console.log(
+		`   Pending author assignments: ${pendingAuthors}; other missing-target assignments: ${pending.length - pendingAuthors}. No author roles granted or downgraded.`
+	);
+	if (reportPath)
+		console.log(
+			`   Private onboarding report: ${reportPath}. Review exact source targets, approve pending ORCID mappings, obtain verified sign-in, then grant the requested role explicitly.`
+		);
+	// Persist unresolved intent before any membership writes, including a possible later failure.
+	for (const membership of ready) await client.collection('editionUsers').create(membership);
+	return { imported: ready.length, skipped, pendingAuthors, pending: pending.length, reportPath };
 }
 
 function normalizeEmail(email?: string | null) {
@@ -136,8 +250,7 @@ async function authenticate() {
 	});
 
 	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.message || 'PocketBase authentication failed');
+		throw new Error('PocketBase authentication failed');
 	}
 
 	const authData = await response.json();
@@ -145,10 +258,16 @@ async function authenticate() {
 	console.log('Authenticated successfully\n');
 }
 
-async function main() {
+export async function main(args = process.argv.slice(2)) {
+	// This bootstrap importer is not a production migration or an identity-proof mechanism.
+	requireLocalTarget(PB_URL);
+	const { values } = parseArgs({
+		args,
+		options: {
+			'onboarding-dir': { type: 'string', default: 'data/import-onboarding' }
+		}
+	});
 	console.log('Importing data into PocketBase');
-	console.log(`   URL: ${PB_URL}`);
-	console.log(`   Admin: ${ADMIN_EMAIL}\n`);
 
 	await waitForPocketBase();
 	await authenticate();
@@ -219,7 +338,7 @@ async function main() {
 			continue;
 		}
 
-		const tempPassword = `${doc.user || 'import'}-${Math.random().toString(36).slice(2, 10)}`;
+		const tempPassword = crypto.randomUUID();
 		const result = await pb.collection('users').create({
 			email: doc.email,
 			password: tempPassword,
@@ -298,19 +417,19 @@ async function main() {
 		const thumbnailUrl =
 			projectPubNum > 0 ? `https://editions.pure3d.eu/project/${projectPubNum}/icon.png` : '';
 
+		const credits = legacyCredits(doc.dc?.creator, doc.dc?.contributor);
 		const result = await pb.collection('collections').create({
 			mongoId: doc._id,
 			title: doc.title,
 			site: siteId || null,
 			siteId: siteId || null,
-			isVisible: doc.isVisible !== false,
+			isVisible: !publicationBlocked(credits) && doc.isVisible !== false,
 			lastPublished: doc.lastPublished || null,
 			pubNum: projectPubNum,
 			thumbnail: thumbnailUrl,
 			dcTitle: doc.dc?.title,
 			dcSubtitle: doc.dc?.subtitle,
-			dcCreator: doc.dc?.creator || [],
-			dcContributor: doc.dc?.contributor || [],
+			credits,
 			dcInstitution: doc.dc?.institution || [],
 			dcAbstract: doc.dc?.abstract,
 			dcDescription: doc.dc?.description,
@@ -372,20 +491,22 @@ async function main() {
 				? `https://editions.pure3d.eu/project/${collectionPubNum}/edition/${editionPubNum}/icon.png`
 				: '';
 
+		const credits = legacyCredits(doc.dc?.creator, doc.dc?.contributor);
 		let result;
 		try {
 			result = await pb.collection('editions').create({
 				mongoId: doc._id,
 				title: doc.title,
 				collection: pbCollectionId,
-				isPublished: doc.isPublished === true,
-				status: normalizeStatus(doc.isPublished, doc.status || null),
+				isPublished: !publicationBlocked(credits) && doc.isPublished === true,
+				status: publicationBlocked(credits)
+					? 'draft'
+					: normalizeStatus(doc.isPublished, doc.status || null),
 				pubNum: editionPubNum,
 				thumbnail: thumbnailUrl,
 				dcTitle: doc.dc?.title,
 				dcSubtitle: doc.dc?.subtitle,
-				dcCreator: doc.dc?.creator || [],
-				dcContributor: doc.dc?.contributor || [],
+				credits,
 				dcInstitution: doc.dc?.institution || [],
 				dcAbstract: doc.dc?.abstract,
 				dcDescription: doc.dc?.description,
@@ -414,7 +535,7 @@ async function main() {
 				peerReviewRequested: false,
 				reviewStage: null,
 				peerReviewStamp: false,
-				publishedAt: doc.dc?.datePublished || null,
+				publishedAt: publicationBlocked(credits) ? null : doc.dc?.datePublished || null,
 				authorToolName: doc.settings?.authorTool?.name,
 				authorToolVersion: doc.settings?.authorTool?.version,
 				sceneFile: doc.settings?.authorTool?.sceneFile,
@@ -422,10 +543,8 @@ async function main() {
 				settingsAuthorToolVersion: doc.settings?.authorTool?.version,
 				settingsSceneFile: doc.settings?.authorTool?.sceneFile
 			});
-		} catch (error: any) {
-			console.error(`   Failed edition: ${doc.title} (${doc._id})`);
-			console.error(JSON.stringify(error?.response || error, null, 2));
-			throw error;
+		} catch {
+			throw new Error('Edition import failed; no source data or server response logged');
 		}
 
 		existingEditionKeys.set(`${doc.title}|${pbCollectionId}`, result);
@@ -477,54 +596,25 @@ async function main() {
 	console.log(`   Imported ${importedCollectionUsers}, skipped ${skippedCollectionUsers}`);
 
 	console.log('\nImporting edition users...');
-	const editionUsersData = readJsonArray<any>('editionUser.json');
-	const existingEditionUsers = await pb.collection('editionUsers').getFullList();
-	const editionUserKeys = new Set(
-		existingEditionUsers.map(
-			(record: any) =>
-				`${record.editionId || record.edition}|${record.userId || record.user}|${record.role}`
-		)
+	const editionUsersData = readJsonArray<LegacyEditionMembership>('editionUser.json');
+	const memberships = await importEditionMemberships(
+		pb,
+		editionUsersData,
+		editionIdMap,
+		userHashToId,
+		values['onboarding-dir']
+	);
+	console.log(
+		`   Imported ${memberships.imported}, skipped ${memberships.skipped}, deferred ${memberships.pending}`
 	);
 
-	let importedEditionUsers = 0;
-	let skippedEditionUsers = 0;
-
-	for (const doc of editionUsersData) {
-		const pbEditionId = editionIdMap.get(doc.editionId);
-		const pbUserId = userHashToId.get(doc.user);
-		if (!pbEditionId || !pbUserId) {
-			continue;
-		}
-
-		const role = mapEditionRole(doc.role);
-		const key = `${pbEditionId}|${pbUserId}|${role}`;
-		if (editionUserKeys.has(key)) {
-			skippedEditionUsers++;
-			continue;
-		}
-
-		await pb.collection('editionUsers').create({
-			mongoId: doc._id,
-			edition: pbEditionId,
-			editionId: pbEditionId,
-			user: pbUserId,
-			userId: pbUserId,
-			userHash: doc.user,
-			role
-		});
-
-		editionUserKeys.add(key);
-		importedEditionUsers++;
-	}
-
-	console.log(`   Imported ${importedEditionUsers}, skipped ${skippedEditionUsers}`);
-
 	console.log('\nData import complete.');
-	console.log(`   Admin UI: ${PUBLIC_PB_URL}/_/`);
-	console.log(`   API: ${PUBLIC_PB_URL}/api/\n`);
 }
 
-main().catch((error) => {
-	console.error('Import failed:', error.message || error);
-	process.exit(1);
-});
+if (import.meta.main)
+	main().catch(() => {
+		console.error(
+			'Local import failed. Check local target, source data, schema, credentials and private onboarding directory permissions. Earlier stages may have completed; retain any onboarding report. No server response logged.'
+		);
+		process.exitCode = 1;
+	});

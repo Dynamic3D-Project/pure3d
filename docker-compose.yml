@@ -22,8 +22,8 @@ services:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER:-pure3d}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-pure3d-local-secret}
       - R2_BUCKET=${R2_BUCKET:-pure3d-assets}
-    entrypoint: ["/bin/sh", "/app/scripts/setup-minio.sh"]
-    restart: "no"
+    entrypoint: ['/bin/sh', '/app/scripts/setup-minio.sh']
+    restart: 'no'
 
   pocketbase:
     image: ghcr.io/muchobien/pocketbase:latest
@@ -37,6 +37,7 @@ services:
       - POCKETBASE_ADMIN_EMAIL=${POCKETBASE_ADMIN_EMAIL:-admin@admin.local}
       - POCKETBASE_ADMIN_PASSWORD=${POCKETBASE_ADMIN_PASSWORD:-1234567890}
       - PUBLIC_POCKETBASE_URL=${PUBLIC_POCKETBASE_URL:-http://localhost:60021}
+      - ORCID_ISSUER=${ORCID_ISSUER:-https://orcid.org}
       - SMTP_ENABLED=${SMTP_ENABLED:-false}
       - SMTP_HOST=${SMTP_HOST:-}
       - SMTP_PORT=${SMTP_PORT:-587}
@@ -44,13 +45,14 @@ services:
       - SMTP_PASS=${SMTP_PASS:-}
       - SMTP_FROM=${SMTP_FROM:-}
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8090/api/health']
+      test:
+        ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8090/api/health']
       interval: 10s
       timeout: 5s
       retries: 5
     restart: unless-stopped
-    entrypoint: ["/bin/sh", "/entrypoint.sh"]
-    command: ["pocketbase", "serve", "--http=0.0.0.0:8090", "--dir=/pb/pb_data"]
+    entrypoint: ['/bin/sh', '/entrypoint.sh']
+    command: ['pocketbase', 'serve', '--http=0.0.0.0:8090', '--dir=/pb/pb_data']
 
   pocketbase-setup:
     image: oven/bun:1
@@ -72,8 +74,8 @@ services:
         condition: service_completed_successfully
       pocketbase:
         condition: service_healthy
-    command: sh -c "bun install && bun scripts/create-pocketbase-collections.ts && bun scripts/migrate-documentation.ts && bun scripts/import-data.ts && bun scripts/seed-users.js"
-    restart: "no"
+    command: sh -c "bun install && bun scripts/create-pocketbase-collections.ts && bun scripts/migrate-documentation.ts && bun scripts/import-data.ts --onboarding-dir /app/data/import-onboarding"
+    restart: 'no'
 
   voyager-setup:
     image: alpine:3.20
@@ -83,7 +85,7 @@ services:
     environment:
       - VOYAGER_VERSION=${VOYAGER_VERSION:-latest}
     command: sh /app/scripts/install-voyager-runtime.sh
-    restart: "no"
+    restart: 'no'
 
   frontend:
     image: oven/bun:1

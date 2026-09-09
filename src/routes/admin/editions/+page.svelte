@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { base } from '$app/paths';
+	import { base, resolve } from '$app/paths';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { pb } from '$lib/database/client';
 	import {
@@ -81,10 +81,10 @@
 	async function loadEditions() {
 		try {
 			isLoading = true;
-			const result = await pb.collection('editions').getList(1, 500, {
+			const result = await pb.collection('editions').getFullList({
 				expand: 'collection'
 			});
-			editions = result.items.map((r) => ({
+			editions = result.map((r) => ({
 				id: r.id,
 				title: r.dcTitle || r.title,
 				isPublished: r.isPublished,
@@ -144,7 +144,8 @@
 	<div class="mb-8">
 		<h1 class="text-3xl font-bold">Edition Management</h1>
 		<p class="mt-2 text-base-content/60">
-			Manage edition members, roles, and workflow status. {editions.length} editions.
+			Reconcile creator ORCIDs and linked user IDs separately from access roles. Expand an edition
+			to edit its credits. {editions.length} editions.
 		</p>
 	</div>
 
@@ -251,7 +252,10 @@
 							</div>
 						</button>
 						<div class="flex shrink-0 items-center gap-2">
-							<a href="{base}/editions/{edition.id}" class="btn btn-outline btn-sm">Open</a>
+							<a
+								href={resolve('/editions/[slug]', { slug: edition.id })}
+								class="btn btn-outline btn-sm">Open</a
+							>
 							<button
 								class="btn btn-square btn-ghost btn-sm"
 								onclick={() => toggleExpand(edition.id)}
@@ -280,7 +284,10 @@
 							<div class="mb-4 border-b border-base-300 pb-4">
 								<div class="mb-2 flex flex-wrap items-center justify-between gap-2">
 									<h3 class="text-sm font-semibold text-base-content/60 uppercase">Progress</h3>
-									<a href="{base}/editions/{edition.id}/workflow" class="link text-sm link-primary">
+									<a
+										href={resolve('/editions/[slug]/workflow', { slug: edition.id })}
+										class="link text-sm link-primary"
+									>
 										Open workflow editor
 									</a>
 								</div>
@@ -295,7 +302,6 @@
 								<h3 class="mb-2 text-sm font-semibold text-base-content/60 uppercase">Workflow</h3>
 								<StatusTransitionPanel
 									editionId={edition.id}
-									title={edition.title}
 									status={edition.status}
 									context={adminContext}
 									onchanged={(s) => onStatusChanged(edition, s)}
@@ -311,7 +317,6 @@
 								roleValues={editionRoleValues}
 								roleLabels={EDITION_ROLE_LABELS}
 								defaultRole={EditionRole.Collaborator}
-								auditTargetType="edition"
 								isReadOnly={!canManageAllMembers}
 							/>
 						</div>

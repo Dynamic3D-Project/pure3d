@@ -3,8 +3,6 @@
 	import { pb } from '$lib/database/client';
 	import { FeedbackCategory } from '$lib/types/reviews';
 	import type { ReviewFeedback } from '$lib/types/reviews';
-	import { logAudit } from '$lib/utils/audit';
-	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { ReviewStage } from '$lib/types/roles';
 	import toast from 'svelte-french-toast';
 
@@ -92,12 +90,6 @@
 			await pb.collection('reviewFeedback').update(item.id, { resolved: newResolved });
 			item.resolved = newResolved;
 			feedbackItems = [...feedbackItems];
-
-			if (newResolved) {
-				await logAudit('feedback_resolved', 'edition', editionId, authStore.user?.email || '', {
-					feedbackId: item.id
-				});
-			}
 
 			toast.success(newResolved ? 'Marked as resolved' : 'Marked as unresolved');
 		} catch (error) {

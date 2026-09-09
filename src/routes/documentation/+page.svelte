@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { authStore } from '$lib/database';
 </script>
 
@@ -36,16 +36,22 @@
 			</p>
 			<div class="mt-8 flex flex-wrap gap-3">
 				{#if authStore.isAuthenticated}
-					<a href="{base}/reviews" class="btn border-paper bg-paper text-ink hover:bg-paper/90">
+					<a
+						href={resolve('/reviews')}
+						class="btn border-paper bg-paper text-ink hover:bg-paper/90"
+					>
 						Go to my work <span aria-hidden="true">→</span>
 					</a>
 				{:else}
-					<a href="{base}/register" class="btn border-paper bg-paper text-ink hover:bg-paper/90">
+					<a
+						href={resolve('/register')}
+						class="btn border-paper bg-paper text-ink hover:bg-paper/90"
+					>
 						Create an author account <span aria-hidden="true">→</span>
 					</a>
 				{/if}
 				<a
-					href="{base}/documentation/submission"
+					href={resolve('/documentation/[slug]', { slug: 'submission' })}
 					class="btn border-paper/30 bg-transparent text-paper hover:border-paper hover:bg-paper/10"
 				>
 					Read submission guidelines
@@ -66,6 +72,16 @@
 		<ul class="space-y-4 text-base-content/75">
 			<li class="flex gap-3 border-b border-base-300 pb-4">
 				<span class="font-bold text-vermillion" aria-hidden="true">✓</span>
+				<span>
+					Keep every author's work connected to their identity: every individual author needs an
+					<a href="https://orcid.org/register" class="underline">ORCID iD</a> before submission or publication,
+					including co-authors (person creators). Contributor ORCIDs are optional. Organizations do not
+					receive ORCID iDs. Preserve the credited name and author order; an account or a matching name
+					is not identity proof.
+				</span>
+			</li>
+			<li class="flex gap-3 border-b border-base-300 pb-4">
+				<span class="font-bold text-vermillion" aria-hidden="true">✓</span>
 				<span>A 3D object or dataset that is central to your scholarly argument</span>
 			</li>
 			<li class="flex gap-3 border-b border-base-300 pb-4">
@@ -78,5 +94,18 @@
 			</li>
 		</ul>
 	</section>
-
+	<section class="max-w-3xl space-y-4">
+		<h2 class="text-2xl font-bold tracking-tight">Resolve author identities before review</h2>
+		<p class="leading-relaxed text-base-content/75">
+			Use a canonical ORCID link such as https://orcid.org/0000-0002-1825-0097 for each individual
+			author. Ask co-authors to confirm their own identifier; do not infer it from a name search.
+			Add organizations as organization credits and distinguish creators from contributors.
+		</p>
+		<p class="leading-relaxed text-base-content/75">
+			If a legacy author cannot yet be identified, keep their original credit and contact the Pure
+			3D team for review. An unresolved individual author's ORCID is a submission and publication
+			blocker, not a permanent exemption. ORCID sign-in proves account ownership; a manually
+			confirmed credit does not create a verified account or grant editing access.
+		</p>
+	</section>
 </div>

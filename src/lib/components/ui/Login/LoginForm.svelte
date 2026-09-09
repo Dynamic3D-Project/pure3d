@@ -1,57 +1,97 @@
 <script lang="ts">
-	import EmailLoginForm from './EmailLoginForm.svelte';
-	import RegisterForm from './RegisterForm.svelte';
+	import { authStore, pb } from '$lib/database';
+	import { base } from '$app/paths';
+	import { goto } from '$app/navigation';
+	import { dev } from '$app/environment';
+	import { onMount } from 'svelte';
 
-	type Tab = 'signin' | 'register';
-	let activeTab = $state<Tab>('signin');
+	let loading = $state(false);
+	let error = $state('');
+	let checkingProvider = $state(true);
+	let providerReady = $state(false);
 
-	function handleRegistrationSuccess() {
-		activeTab = 'signin';
+	onMount(() => {
+		void pb
+			.collection('users')
+			.listAuthMethods()
+			.then((methods) => {
+				providerReady =
+					!!methods.oauth2?.enabled &&
+					methods.oauth2.providers.some((provider) => provider.name === 'oidc');
+				if (!providerReady) {
+					error = dev
+						? 'ORCID is not configured for this database. Configure the local PocketBase provider and register its local HTTPS callback. Use make dev-prod only if you intend to access live data. Reload this page after configuration.'
+						: 'ORCID sign-in is currently unavailable. Please contact an administrator.';
+				}
+			})
+			.catch(() => {
+				error =
+					'Cannot reach the sign-in service. Check the backend connection and reload this page.';
+			})
+			.finally(() => {
+				checkingProvider = false;
+			});
+	});
+
+	async function signIn() {
+		if (!providerReady) return;
+		loading = true;
+		error = '';
+		try {
+			await authStore.loginWithOrcid();
+			await goto(`${base}/profile`);
+		} catch {
+			error =
+				'Sign-in was not completed. Allow the ORCID popup and try again. If you already have a PURE3D account, ask an administrator to link your ORCID before signing in.';
+		} finally {
+			loading = false;
+		}
 	}
 </script>
 
-<div id="login-form" class="flex h-full flex-col p-6 sm:p-8">
-	<div class="mb-6">
-		<h1 class="text-2xl font-bold text-base-content">
-			{activeTab === 'signin' ? 'Welcome back' : 'Create your account'}
-		</h1>
-		<p class="mt-1 text-sm text-base-content/60">
-			{activeTab === 'signin'
-				? 'Sign in to access your Pure3D projects'
-				: 'Get started with Pure3D today'}
+<div id="login-form" class="flex h-full flex-col justify-center gap-6 p-6 sm:p-8">
+	<div>
+		<p class="mb-3 text-sm font-semibold text-primary">Your research, connected</p>
+		<h1 class="text-3xl font-bold text-base-content">One identity for your work</h1>
+		<p class="mt-3 text-sm leading-relaxed text-base-content/70">
+			Sign in with ORCID to keep your research profile and author credits connected across PURE3D.
+			Your first sign-in creates your account.
 		</p>
 	</div>
-
-	<div role="tablist" class="tabs tabs-bordered mb-6">
-		<button
-			type="button"
-			role="tab"
-			class="tab {activeTab === 'signin' ? 'tab-active' : ''}"
-			onclick={() => (activeTab = 'signin')}
-		>
-			Sign In
-		</button>
-		<button
-			type="button"
-			role="tab"
-			class="tab {activeTab === 'register' ? 'tab-active' : ''}"
-			onclick={() => (activeTab = 'register')}
-		>
-			Create Account
-		</button>
+	{#if error}
+		<p role="alert" class="rounded-lg border border-error/30 bg-error/10 p-4 text-sm">{error}</p>
+	{/if}
+	<button
+		type="button"
+		class="btn w-full btn-primary"
+		disabled={loading || checkingProvider || !providerReady}
+		aria-busy={loading || checkingProvider}
+		onclick={signIn}
+	>
+		{#if loading}<span class="loading loading-sm loading-spinner" aria-hidden="true"></span>{/if}
+		{checkingProvider
+			? 'Checking ORCID...'
+			: loading
+				? 'Connecting to ORCID...'
+				: 'Sign in with ORCID'}
+	</button>
+	<div class="space-y-3 text-sm leading-relaxed text-base-content/70">
+		<p>
+			ORCID verifies your identity. Your PURE3D permissions remain managed by your project team.
+		</p>
+		<p>
+			Already have a PURE3D account? Ask an administrator to link your existing account to your
+			ORCID so you keep your projects and access.
+		</p>
+		<p>
+			No ORCID yet?
+			<a class="link" href="https://orcid.org/register" target="_blank" rel="noopener noreferrer">
+				Create your free ORCID iD
+			</a>.
+		</p>
 	</div>
-
-	<div class="flex-1 overflow-y-auto">
-		<div class="flex flex-col gap-4">
-			{#if activeTab === 'signin'}
-				<EmailLoginForm />
-			{:else}
-				<RegisterForm onRegistrationSuccess={handleRegistrationSuccess} />
-			{/if}
-		</div>
-	</div>
-
-	<div class="mt-6 border-t border-base-300 pt-4 text-center text-xs text-base-content/40">
-		By continuing, you agree to Pure3D's Terms of Service and Privacy Policy.
-	</div>
+	<p class="border-t border-base-300 pt-4 text-xs leading-relaxed text-base-content/60">
+		PURE3D imports public profile information from ORCID. Private or unavailable details are not
+		required to sign in. You can refresh your profile after signing in.
+	</p>
 </div>

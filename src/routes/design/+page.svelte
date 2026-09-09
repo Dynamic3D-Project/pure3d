@@ -12,12 +12,57 @@
 
 	const PAPER_PRESETS: Record<
 		PaperKey,
-		{ paper: string; p2: string; p3: string; ink: string; i2: string; i3: string; i4: string; bg: string }
+		{
+			paper: string;
+			p2: string;
+			p3: string;
+			ink: string;
+			i2: string;
+			i3: string;
+			i4: string;
+			bg: string;
+		}
 	> = {
-		warm: { paper: '#F4F1EB', p2: '#ECE7DD', p3: '#E2DCCF', ink: '#141413', i2: '#2B2A27', i3: '#555249', i4: '#8A8579', bg: '#FBFAF6' },
-		cool: { paper: '#EEF0F2', p2: '#E4E7EC', p3: '#D6DBE2', ink: '#121416', i2: '#262A2E', i3: '#4E545B', i4: '#848A92', bg: '#F8FAFB' },
-		bright: { paper: '#FCFAF4', p2: '#F5F1E6', p3: '#EBE5D3', ink: '#0F0F0E', i2: '#25241F', i3: '#52503F', i4: '#8D8770', bg: '#FFFFFF' },
-		ink: { paper: '#15130F', p2: '#1D1B16', p3: '#28251F', ink: '#F4F1EB', i2: '#D8D2C4', i3: '#A9A393', i4: '#75705F', bg: '#1A1813' }
+		warm: {
+			paper: '#F4F1EB',
+			p2: '#ECE7DD',
+			p3: '#E2DCCF',
+			ink: '#141413',
+			i2: '#2B2A27',
+			i3: '#555249',
+			i4: '#8A8579',
+			bg: '#FBFAF6'
+		},
+		cool: {
+			paper: '#EEF0F2',
+			p2: '#E4E7EC',
+			p3: '#D6DBE2',
+			ink: '#121416',
+			i2: '#262A2E',
+			i3: '#4E545B',
+			i4: '#848A92',
+			bg: '#F8FAFB'
+		},
+		bright: {
+			paper: '#FCFAF4',
+			p2: '#F5F1E6',
+			p3: '#EBE5D3',
+			ink: '#0F0F0E',
+			i2: '#25241F',
+			i3: '#52503F',
+			i4: '#8D8770',
+			bg: '#FFFFFF'
+		},
+		ink: {
+			paper: '#15130F',
+			p2: '#1D1B16',
+			p3: '#28251F',
+			ink: '#F4F1EB',
+			i2: '#D8D2C4',
+			i3: '#A9A393',
+			i4: '#75705F',
+			bg: '#1A1813'
+		}
 	};
 
 	let tweaksOpen = $state(false);
@@ -52,7 +97,10 @@
 		s.setProperty('--ds-ink-3', p.i3);
 		s.setProperty('--ds-ink-4', p.i4);
 		s.setProperty('--ds-rule', paper === 'ink' ? 'rgba(244,241,235,0.1)' : 'rgba(20,20,19,0.1)');
-		s.setProperty('--ds-rule-strong', paper === 'ink' ? 'rgba(244,241,235,0.2)' : 'rgba(20,20,19,0.2)');
+		s.setProperty(
+			'--ds-rule-strong',
+			paper === 'ink' ? 'rgba(244,241,235,0.2)' : 'rgba(20,20,19,0.2)'
+		);
 		s.setProperty('--ds-serif', `'${serif}', 'Times New Roman', serif`);
 	}
 
@@ -68,10 +116,10 @@
 
 	let heroParts = $derived.by(() => {
 		const parts = heroHeadline.split(/~([^~]+)~/);
-		if (parts.length === 3) return { before: parts[0], italic: parts[1], after: parts[2], ok: true };
+		if (parts.length === 3)
+			return { before: parts[0], italic: parts[1], after: parts[2], ok: true };
 		return { before: heroHeadline, italic: '', after: '', ok: false };
 	});
-
 
 	const editionShowcase = [
 		{
@@ -113,11 +161,17 @@
 	const editionDataExamples = [
 		{
 			label: 'Identity',
-			fields: ['dcTitle', 'dcCreator[]', 'dcInstitution[]', 'dcDoi[]', 'pubNum']
+			fields: ['dcTitle', 'credits[]', 'dcInstitution[]', 'dcDoi[]', 'pubNum']
 		},
 		{
 			label: 'Object data',
-			fields: ['dcAbstract', 'dcSubject[]', 'dcCoveragePeriod[]', 'dcCoveragePlace', 'dcRightsLicense']
+			fields: [
+				'dcAbstract',
+				'dcSubject[]',
+				'dcCoveragePeriod[]',
+				'dcCoveragePlace',
+				'dcRightsLicense'
+			]
 		},
 		{
 			label: '3D delivery',
@@ -170,7 +224,13 @@
 					stroke-width="2"
 					stroke-linejoin="round"
 				/>
-				<g fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round" stroke-linecap="round">
+				<g
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.25"
+					stroke-linejoin="round"
+					stroke-linecap="round"
+				>
 					<path d="M8 8 L8 56" />
 					<path d="M8 32 L60 32" />
 					<path d="M8 8 L32 8 L8 32" />
@@ -226,7 +286,9 @@
 		<div class="shell topbar-inner">
 			<div class="mark">
 				<span class="wm-inline"
-					>Pure&nbsp;<span class="wm-3">3</span><svg class="wm-d-xs" aria-hidden="true"><use href="#p3d-mark-sm" /></svg></span
+					>Pure&nbsp;<span class="wm-3">3</span><svg class="wm-d-xs" aria-hidden="true"
+						><use href="#p3d-mark-sm" /></svg
+					></span
 				>
 				<small>Design System · v0.1</small>
 			</div>
@@ -276,15 +338,28 @@
 
 				<div class="hero-grid">
 					<p class="hero-lede">
-						Pure 3D publishes cultural-heritage and scientific objects as interactive, citable, long-lived records. The interface should
-						recede — paper, ink, and precise chrome framing the model itself. This document declares the system: the marks, the measures,
-						and the manner.
+						Pure 3D publishes cultural-heritage and scientific objects as interactive, citable,
+						long-lived records. The interface should recede — paper, ink, and precise chrome framing
+						the model itself. This document declares the system: the marks, the measures, and the
+						manner.
 					</p>
 					<dl class="hero-meta">
-						<div><dt>Project</dt><dd>Pure 3D — publishing platform</dd></div>
-						<div><dt>Audience</dt><dd>Curators, researchers, students</dd></div>
-						<div><dt>Stance</dt><dd>Museum-grade · quiet · precise</dd></div>
-						<div><dt>Built for</dt><dd>Web, print catalog, kiosk</dd></div>
+						<div>
+							<dt>Project</dt>
+							<dd>Pure 3D — publishing platform</dd>
+						</div>
+						<div>
+							<dt>Audience</dt>
+							<dd>Curators, researchers, students</dd>
+						</div>
+						<div>
+							<dt>Stance</dt>
+							<dd>Museum-grade · quiet · precise</dd>
+						</div>
+						<div>
+							<dt>Built for</dt>
+							<dd>Web, print catalog, kiosk</dd>
+						</div>
 					</dl>
 				</div>
 			</div>
@@ -298,8 +373,8 @@
 					<div>
 						<h2 class="sec-title">Three <em>principles</em> that govern everything.</h2>
 						<p class="sec-sub">
-							Before colors and type, the stance. Every component in this system should be interrogable against these three
-							questions.
+							Before colors and type, the stance. Every component in this system should be
+							interrogable against these three questions.
 						</p>
 					</div>
 				</div>
@@ -308,17 +383,26 @@
 					<div class="principle">
 						<div class="n">01</div>
 						<h3>The object is the interface.</h3>
-						<p>Chrome is instrument, not ornament. If a control isn't helping the reader see, it doesn't belong in the frame.</p>
+						<p>
+							Chrome is instrument, not ornament. If a control isn't helping the reader see, it
+							doesn't belong in the frame.
+						</p>
 					</div>
 					<div class="principle">
 						<div class="n">02</div>
 						<h3>Precision without coldness.</h3>
-						<p>Grotesk for measure, serif italic for voice. We are rigorous, but the tone is human — this is a scholarly gallery, not a dashboard.</p>
+						<p>
+							Grotesk for measure, serif italic for voice. We are rigorous, but the tone is human —
+							this is a scholarly gallery, not a dashboard.
+						</p>
 					</div>
 					<div class="principle">
 						<div class="n">03</div>
 						<h3>Permanence first.</h3>
-						<p>What we publish outlives us. The system favors quiet defaults and long-read typography — it should still feel current in ten years.</p>
+						<p>
+							What we publish outlives us. The system favors quiet defaults and long-read typography
+							— it should still feel current in ten years.
+						</p>
 					</div>
 				</div>
 			</div>
@@ -332,9 +416,10 @@
 					<div>
 						<h2 class="sec-title">Logo &amp; <em>wordmark</em> lockup.</h2>
 						<p class="sec-sub">
-							The mark is a tetrahedron seen from the front with its interior edge exposed — the simplest volumetric solid, a single
-							vertex anchored by a vermillion point. "Pure 3D" is set in the system grotesk; the superscript "3D" is a serif italic,
-							borrowed from the body voice, to signal that this is scholarship.
+							The mark is a tetrahedron seen from the front with its interior edge exposed — the
+							simplest volumetric solid, a single vertex anchored by a vermillion point. "Pure 3D"
+							is set in the system grotesk; the superscript "3D" is a serif italic, borrowed from
+							the body voice, to signal that this is scholarship.
 						</p>
 					</div>
 				</div>
@@ -347,28 +432,44 @@
 						<span class="crosshair br">+ 16.00, 10.00</span>
 
 						<div class="logo-hero">
-							<div class="logo-wm">Pure <span class="wm-num">3</span><svg class="wm-d-lg" aria-hidden="true"><use href="#p3d-mark" /></svg></div>
+							<div class="logo-wm">
+								Pure <span class="wm-num">3</span><svg class="wm-d-lg" aria-hidden="true"
+									><use href="#p3d-mark" /></svg
+								>
+							</div>
 						</div>
 					</div>
 
 					<div class="lockup-variants">
 						<div class="lvar">
 							<div class="lg">
-								<div class="wm">Pure <span class="wm-num-sm">3</span><svg class="wm-d-sm" aria-hidden="true"><use href="#p3d-mark" /></svg></div>
+								<div class="wm">
+									Pure <span class="wm-num-sm">3</span><svg class="wm-d-sm" aria-hidden="true"
+										><use href="#p3d-mark" /></svg
+									>
+								</div>
 							</div>
 							<span class="lab">Primary / Paper</span>
 						</div>
 
 						<div class="lvar ink">
 							<div class="lg">
-								<div class="wm">Pure <span class="wm-num-sm">3</span><svg class="wm-d-sm" aria-hidden="true"><use href="#p3d-mark" /></svg></div>
+								<div class="wm">
+									Pure <span class="wm-num-sm">3</span><svg class="wm-d-sm" aria-hidden="true"
+										><use href="#p3d-mark" /></svg
+									>
+								</div>
 							</div>
 							<span class="lab">Inverse / Ink</span>
 						</div>
 
 						<div class="lvar vermillion">
 							<div class="lg">
-								<div class="wm">Pure <span class="wm-num-sm">3</span><svg class="wm-d-sm" aria-hidden="true"><use href="#p3d-mark" /></svg></div>
+								<div class="wm">
+									Pure <span class="wm-num-sm">3</span><svg class="wm-d-sm" aria-hidden="true"
+										><use href="#p3d-mark" /></svg
+									>
+								</div>
 							</div>
 							<span class="lab">Accent / Signal</span>
 						</div>
@@ -378,22 +479,75 @@
 				<div class="construction">
 					<div class="constr-board">
 						<div class="grid-bg"></div>
-						<svg viewBox="0 0 320 220" width="100%" height="100%" style="position:relative;z-index:1;" aria-hidden="true">
-							<rect x="20" y="40" width="280" height="140" fill="none" stroke="var(--ds-vermillion)" stroke-width="1" stroke-dasharray="3 4" />
+						<svg
+							viewBox="0 0 320 220"
+							width="100%"
+							height="100%"
+							style="position:relative;z-index:1;"
+							aria-hidden="true"
+						>
+							<rect
+								x="20"
+								y="40"
+								width="280"
+								height="140"
+								fill="none"
+								stroke="var(--ds-vermillion)"
+								stroke-width="1"
+								stroke-dasharray="3 4"
+							/>
 							<g transform="translate(55,82)">
-								<path d="M30 4 L54 52 L6 52 Z" stroke="var(--ds-ink)" stroke-width="1.6" fill="none" stroke-linejoin="round" />
+								<path
+									d="M30 4 L54 52 L6 52 Z"
+									stroke="var(--ds-ink)"
+									stroke-width="1.6"
+									fill="none"
+									stroke-linejoin="round"
+								/>
 								<path d="M30 4 L30 52" stroke="var(--ds-ink)" stroke-width="1.6" />
-								<path d="M6 52 L30 28 L54 52" stroke="var(--ds-ink)" stroke-width="1.6" fill="none" stroke-linejoin="round" />
+								<path
+									d="M6 52 L30 28 L54 52"
+									stroke="var(--ds-ink)"
+									stroke-width="1.6"
+									fill="none"
+									stroke-linejoin="round"
+								/>
 								<circle cx="30" cy="28" r="3.2" fill="var(--ds-vermillion)" />
 							</g>
-							<text x="140" y="125" font-family="Inter Tight" font-weight="500" font-size="42" letter-spacing="-1" fill="var(--ds-ink)">Pure</text>
-							<text x="238" y="108" font-family="Fraunces" font-style="italic" font-size="22" fill="var(--ds-vermillion-ink)">3D</text>
-							<text x="20" y="32" font-family="JetBrains Mono" font-size="9" fill="var(--ds-ink-4)">x — CLEAR SPACE</text>
-							<text x="20" y="200" font-family="JetBrains Mono" font-size="9" fill="var(--ds-ink-4)">MINIMUM SIZE · MARK 16PX · LOCKUP 112PX</text>
+							<text
+								x="140"
+								y="125"
+								font-family="Inter Tight"
+								font-weight="500"
+								font-size="42"
+								letter-spacing="-1"
+								fill="var(--ds-ink)">Pure</text
+							>
+							<text
+								x="238"
+								y="108"
+								font-family="Fraunces"
+								font-style="italic"
+								font-size="22"
+								fill="var(--ds-vermillion-ink)">3D</text
+							>
+							<text x="20" y="32" font-family="JetBrains Mono" font-size="9" fill="var(--ds-ink-4)"
+								>x — CLEAR SPACE</text
+							>
+							<text x="20" y="200" font-family="JetBrains Mono" font-size="9" fill="var(--ds-ink-4)"
+								>MINIMUM SIZE · MARK 16PX · LOCKUP 112PX</text
+							>
 							<line x1="55" y1="30" x2="109" y2="30" stroke="var(--ds-ink)" stroke-width=".6" />
 							<line x1="55" y1="26" x2="55" y2="34" stroke="var(--ds-ink)" stroke-width=".6" />
 							<line x1="109" y1="26" x2="109" y2="34" stroke="var(--ds-ink)" stroke-width=".6" />
-							<text x="77" y="24" font-family="JetBrains Mono" font-size="9" fill="var(--ds-ink)" text-anchor="middle">2x</text>
+							<text
+								x="77"
+								y="24"
+								font-family="JetBrains Mono"
+								font-size="9"
+								fill="var(--ds-ink)"
+								text-anchor="middle">2x</text
+							>
 						</svg>
 					</div>
 
@@ -403,7 +557,12 @@
 							<div class="misuse">
 								<div class="misuse-sample dim italic-sample">
 									<svg width="20" height="20" viewBox="0 0 28 28" fill="none">
-										<path d="M14 3 L25 22 L3 22 Z" stroke="currentColor" stroke-width="1.4" fill="var(--ds-paper-3)" />
+										<path
+											d="M14 3 L25 22 L3 22 Z"
+											stroke="currentColor"
+											stroke-width="1.4"
+											fill="var(--ds-paper-3)"
+										/>
 									</svg>
 									<span>Pure3D</span>
 								</div>
@@ -430,7 +589,11 @@
 							<div class="misuse">
 								<div class="misuse-sample solid">
 									<svg width="22" height="22" viewBox="0 0 28 28" fill="none"
-										><path d="M14 3 L25 22 L3 22 Z" fill="var(--ds-vermillion)" stroke="none" /></svg
+										><path
+											d="M14 3 L25 22 L3 22 Z"
+											fill="var(--ds-vermillion)"
+											stroke="none"
+										/></svg
 									>
 									<span>Pure 3D</span>
 								</div>
@@ -450,8 +613,9 @@
 					<div>
 						<h2 class="sec-title">A grotesk <em>for measure</em>, a serif for voice.</h2>
 						<p class="sec-sub">
-							Inter Tight handles all structural type — titles, UI, metadata. Fraunces italic is reserved for emphasis, quotations, and
-							the "3D" in the wordmark. JetBrains Mono carries labels and technical readouts. Three families, clear roles.
+							Inter Tight handles all structural type — titles, UI, metadata. Fraunces italic is
+							reserved for emphasis, quotations, and the "3D" in the wordmark. JetBrains Mono
+							carries labels and technical readouts. Three families, clear roles.
 						</p>
 					</div>
 				</div>
@@ -495,16 +659,18 @@
 					<div class="type-row">
 						<div class="meta">Lede</div>
 						<div class="t-lede">
-							The object is not illustrated by the interface — it is held in it. Every control exists to widen the reader's view.
+							The object is not illustrated by the interface — it is held in it. Every control
+							exists to widen the reader's view.
 						</div>
 						<div class="spec">Fraunces · 400<br />22/32</div>
 					</div>
 					<div class="type-row">
 						<div class="meta">Body</div>
 						<div class="t-body">
-							Captured on a TRITOP handheld photogrammetry rig in the conservation studio at the Rijksmuseum, December 2025. Geometry
-							reduced to 240,000 triangles; textures baked to 4k PBR. Provenance notes and surface annotations were contributed by Dr.
-							Leila Haddad and the curator of Islamic metalwork.
+							Captured on a TRITOP handheld photogrammetry rig in the conservation studio at the
+							Rijksmuseum, December 2025. Geometry reduced to 240,000 triangles; textures baked to
+							4k PBR. Provenance notes and surface annotations were contributed by Dr. Leila Haddad
+							and the curator of Islamic metalwork.
 						</div>
 						<div class="spec">Inter Tight · 400<br />15/23</div>
 					</div>
@@ -525,8 +691,9 @@
 					<div>
 						<h2 class="sec-title">Paper, ink, and a single <em>vermillion</em>.</h2>
 						<p class="sec-sub">
-							The palette is pulled from archive — unbleached card stock, ink, and the red of a museum accession label. Neutrals do
-							95% of the work. The vermillion is reserved: links, annotation pins, critical state. Never decorative.
+							The palette is pulled from archive — unbleached card stock, ink, and the red of a
+							museum accession label. Neutrals do 95% of the work. The vermillion is reserved:
+							links, annotation pins, critical state. Never decorative.
 						</p>
 					</div>
 				</div>
@@ -534,51 +701,87 @@
 				<div class="color-grid">
 					<div class="sw" style="background:#F4F1EB;color:#141413;">
 						<div class="role">Surface · primary</div>
-						<div><div class="name">Paper</div><div class="hex">#F4F1EB · oklch(94% .01 80)</div></div>
+						<div>
+							<div class="name">Paper</div>
+							<div class="hex">#F4F1EB · oklch(94% .01 80)</div>
+						</div>
 					</div>
 					<div class="sw" style="background:#ECE7DD;color:#141413;">
 						<div class="role">Surface · secondary</div>
-						<div><div class="name">Paper 2</div><div class="hex">#ECE7DD</div></div>
+						<div>
+							<div class="name">Paper 2</div>
+							<div class="hex">#ECE7DD</div>
+						</div>
 					</div>
 					<div class="sw" style="background:#E2DCCF;color:#141413;">
 						<div class="role">Surface · tertiary</div>
-						<div><div class="name">Paper 3</div><div class="hex">#E2DCCF</div></div>
+						<div>
+							<div class="name">Paper 3</div>
+							<div class="hex">#E2DCCF</div>
+						</div>
 					</div>
 					<div class="sw" style="background:#8A8579;color:#141413;">
 						<div class="role">Text · quiet</div>
-						<div><div class="name">Ink 4</div><div class="hex">#8A8579</div></div>
+						<div>
+							<div class="name">Ink 4</div>
+							<div class="hex">#8A8579</div>
+						</div>
 					</div>
 					<div class="sw" style="background:#555249;color:#F4F1EB;">
 						<div class="role">Text · body</div>
-						<div><div class="name">Ink 3</div><div class="hex">#555249</div></div>
+						<div>
+							<div class="name">Ink 3</div>
+							<div class="hex">#555249</div>
+						</div>
 					</div>
 					<div class="sw" style="background:#2B2A27;color:#F4F1EB;">
 						<div class="role">Text · heading</div>
-						<div><div class="name">Ink 2</div><div class="hex">#2B2A27</div></div>
+						<div>
+							<div class="name">Ink 2</div>
+							<div class="hex">#2B2A27</div>
+						</div>
 					</div>
 					<div class="sw" style="background:#141413;color:#F4F1EB;">
 						<div class="role">Text · strong · viewer</div>
-						<div><div class="name">Ink</div><div class="hex">#141413</div></div>
+						<div>
+							<div class="name">Ink</div>
+							<div class="hex">#141413</div>
+						</div>
 					</div>
 					<div class="sw" style="background:oklch(62% 0.19 35);color:#fff;">
 						<div class="role">Accent · signal</div>
-						<div><div class="name">Vermillion</div><div class="hex">oklch(62% .19 35)</div></div>
+						<div>
+							<div class="name">Vermillion</div>
+							<div class="hex">oklch(62% .19 35)</div>
+						</div>
 					</div>
 					<div class="sw" style="background:oklch(40% 0.15 35);color:#fff;">
 						<div class="role">Accent · ink</div>
-						<div><div class="name">Vermillion Ink</div><div class="hex">oklch(40% .15 35)</div></div>
+						<div>
+							<div class="name">Vermillion Ink</div>
+							<div class="hex">oklch(40% .15 35)</div>
+						</div>
 					</div>
 					<div class="sw" style="background:oklch(95% 0.035 35);color:#141413;">
 						<div class="role">Accent · wash</div>
-						<div><div class="name">Vermillion Wash</div><div class="hex">oklch(95% .035 35)</div></div>
+						<div>
+							<div class="name">Vermillion Wash</div>
+							<div class="hex">oklch(95% .035 35)</div>
+						</div>
 					</div>
 					<div class="sw" style="background:#EAF0E4;color:#141413;">
 						<div class="role">Semantic · open</div>
-						<div><div class="name">Sage Wash</div><div class="hex">#EAF0E4</div></div>
+						<div>
+							<div class="name">Sage Wash</div>
+							<div class="hex">#EAF0E4</div>
+						</div>
 					</div>
 					<div class="sw" style="background:#2F5D3A;color:#F4F1EB;">
 						<div class="role">Semantic · success</div>
-						<div><div class="name">Verdigris</div><div class="hex">#2F5D3A</div></div>
+						<div>
+							<div class="name">Verdigris</div>
+							<div class="hex">#2F5D3A</div>
+						</div>
 					</div>
 				</div>
 
@@ -596,13 +799,21 @@
 					</div>
 					<div class="acc-notes">
 						<ul>
-							<li><span>01</span>Active annotation pin, active viewer tool, primary link-on-paper.</li>
-							<li><span>02</span>Never used as a background behind body copy. Headers only, or under UI chrome.</li>
 							<li>
-								<span>03</span>The superscript "3D" of the wordmark uses <em>Vermillion Ink</em>, not the base accent, to hold its
-								weight beside the grotesk.
+								<span>01</span>Active annotation pin, active viewer tool, primary link-on-paper.
 							</li>
-							<li><span>04</span>Error and warning states borrow the accent temporarily, with the semantic "!" glyph.</li>
+							<li>
+								<span>02</span>Never used as a background behind body copy. Headers only, or under
+								UI chrome.
+							</li>
+							<li>
+								<span>03</span>The superscript "3D" of the wordmark uses <em>Vermillion Ink</em>,
+								not the base accent, to hold its weight beside the grotesk.
+							</li>
+							<li>
+								<span>04</span>Error and warning states borrow the accent temporarily, with the
+								semantic "!" glyph.
+							</li>
 						</ul>
 					</div>
 				</div>
@@ -617,9 +828,9 @@
 					<div>
 						<h2 class="sec-title">Twelve columns. <em>Eight</em>-pixel rhythm.</h2>
 						<p class="sec-sub">
-							All layouts resolve to a 12-column grid with a 16px gutter and a 64px margin at 1440+. Every spacing, radius, and
-							line-height snaps to the 8-pixel baseline. Radii are small — 2px for buttons, 4px for surfaces, 8px rare and only on the
-							viewer shell.
+							All layouts resolve to a 12-column grid with a 16px gutter and a 64px margin at 1440+.
+							Every spacing, radius, and line-height snaps to the 8-pixel baseline. Radii are small
+							— 2px for buttons, 4px for surfaces, 8px rare and only on the viewer shell.
 						</p>
 					</div>
 				</div>
@@ -642,11 +853,26 @@
 				</div>
 
 				<div class="space-grid">
-					<div class="sp"><div class="bar" style="height:4px;"></div><div class="lbl"><b>s-1</b><span>4</span></div></div>
-					<div class="sp"><div class="bar" style="height:8px;"></div><div class="lbl"><b>s-2</b><span>8</span></div></div>
-					<div class="sp"><div class="bar" style="height:16px;"></div><div class="lbl"><b>s-4</b><span>16</span></div></div>
-					<div class="sp"><div class="bar" style="height:32px;"></div><div class="lbl"><b>s-6</b><span>32</span></div></div>
-					<div class="sp"><div class="bar" style="height:64px;"></div><div class="lbl"><b>s-8</b><span>64</span></div></div>
+					<div class="sp">
+						<div class="bar" style="height:4px;"></div>
+						<div class="lbl"><b>s-1</b><span>4</span></div>
+					</div>
+					<div class="sp">
+						<div class="bar" style="height:8px;"></div>
+						<div class="lbl"><b>s-2</b><span>8</span></div>
+					</div>
+					<div class="sp">
+						<div class="bar" style="height:16px;"></div>
+						<div class="lbl"><b>s-4</b><span>16</span></div>
+					</div>
+					<div class="sp">
+						<div class="bar" style="height:32px;"></div>
+						<div class="lbl"><b>s-6</b><span>32</span></div>
+					</div>
+					<div class="sp">
+						<div class="bar" style="height:64px;"></div>
+						<div class="lbl"><b>s-8</b><span>64</span></div>
+					</div>
 				</div>
 			</div>
 		</section>
@@ -659,9 +885,10 @@
 					<div>
 						<h2 class="sec-title">The viewer <em>is</em> the product.</h2>
 						<p class="sec-sub">
-							Everything inward of the viewer shell is ink-on-ink: a near-black studio backdrop, off-white type, and the accent
-							reserved for active annotations and the current tool. Metadata floats as labels, not a sidebar. The model is always
-							composed into the optical center — never aligned to a panel.
+							Everything inward of the viewer shell is ink-on-ink: a near-black studio backdrop,
+							off-white type, and the accent reserved for active annotations and the current tool.
+							Metadata floats as labels, not a sidebar. The model is always composed into the
+							optical center — never aligned to a panel.
 						</p>
 					</div>
 				</div>
@@ -676,7 +903,11 @@
 
 					<div class="model-shadow"></div>
 					<div class="model">
-						<svg viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg" aria-label="3D model preview placeholder">
+						<svg
+							viewBox="0 0 200 220"
+							xmlns="http://www.w3.org/2000/svg"
+							aria-label="3D model preview placeholder"
+						>
 							<defs>
 								<linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
 									<stop offset="0%" stop-color="#C9B88E" />
@@ -692,12 +923,25 @@
 									<stop offset="100%" stop-color="#6E5C38" />
 								</linearGradient>
 							</defs>
-							<path d="M60 80 C 50 100, 48 160, 70 190 L 130 190 C 152 160, 150 100, 140 80 Z" fill="url(#metal)" />
-							<path d="M70 85 C 62 105, 60 155, 78 182 L 96 182 C 88 155, 86 105, 86 85 Z" fill="url(#metal3)" opacity=".6" />
+							<path
+								d="M60 80 C 50 100, 48 160, 70 190 L 130 190 C 152 160, 150 100, 140 80 Z"
+								fill="url(#metal)"
+							/>
+							<path
+								d="M70 85 C 62 105, 60 155, 78 182 L 96 182 C 88 155, 86 105, 86 85 Z"
+								fill="url(#metal3)"
+								opacity=".6"
+							/>
 							<path d="M78 80 L 78 50 L 122 50 L 122 80 Z" fill="url(#metal2)" />
 							<ellipse cx="100" cy="48" rx="24" ry="6" fill="#6E5C38" />
 							<ellipse cx="100" cy="46" rx="24" ry="6" fill="url(#metal)" />
-							<path d="M140 90 C 175 95, 175 155, 140 160" stroke="url(#metal2)" stroke-width="8" fill="none" stroke-linecap="round" />
+							<path
+								d="M140 90 C 175 95, 175 155, 140 160"
+								stroke="url(#metal2)"
+								stroke-width="8"
+								fill="none"
+								stroke-linecap="round"
+							/>
 							<ellipse cx="100" cy="192" rx="32" ry="6" fill="#2B2414" />
 							<path d="M60 120 L 140 120" stroke="#3F331F" stroke-width="1" opacity=".6" />
 							<path d="M60 124 L 140 124" stroke="#C9B88E" stroke-width=".5" opacity=".6" />
@@ -723,24 +967,38 @@
 
 					<div class="viewer-metadata">
 						<h3 class="vm-title">Bronze Ewer<br /><em>Khorasan, c. 1180</em></h3>
-						<p class="vm-sub">"The face of the vessel turns three ways — toward the hand, the eye, and the altar."</p>
+						<p class="vm-sub">
+							"The face of the vessel turns three ways — toward the hand, the eye, and the altar."
+						</p>
 						<dl class="vm-dl">
-							<dt>Acc. No.</dt><dd>P3D-2026-0142</dd>
-							<dt>Material</dt><dd>Cast &amp; engraved bronze</dd>
-							<dt>H × Ø</dt><dd>38.2 × 18.4 cm</dd>
-							<dt>Capture</dt><dd>Photogrammetry · 240k △</dd>
-							<dt>License</dt><dd>CC-BY-NC-SA 4.0</dd>
+							<dt>Acc. No.</dt>
+							<dd>P3D-2026-0142</dd>
+							<dt>Material</dt>
+							<dd>Cast &amp; engraved bronze</dd>
+							<dt>H × Ø</dt>
+							<dd>38.2 × 18.4 cm</dd>
+							<dt>Capture</dt>
+							<dd>Photogrammetry · 240k △</dd>
+							<dt>License</dt>
+							<dd>CC-BY-NC-SA 4.0</dd>
 						</dl>
 					</div>
 
-					<div class="pin" style="left:57%;top:37%;">1<div class="pin-label">Inlaid silver medallion</div></div>
+					<div class="pin" style="left:57%;top:37%;">
+						1
+						<div class="pin-label">Inlaid silver medallion</div>
+					</div>
 					<div class="pin" style="left:63%;top:54%;">2</div>
 					<div class="pin" style="left:45%;top:74%;">3</div>
 
 					<div class="viewer-toolbar">
 						<div class="vt-btn active" title="Orbit">
 							<svg width="16" height="16" viewBox="0 0 16 16" fill="none"
-								><path d="M8 2.5 A 5.5 3 0 1 0 8 8.5 A 5.5 3 0 1 0 8 2.5" stroke="currentColor" stroke-width="1.2" /><path
+								><path
+									d="M8 2.5 A 5.5 3 0 1 0 8 8.5 A 5.5 3 0 1 0 8 2.5"
+									stroke="currentColor"
+									stroke-width="1.2"
+								/><path
 									d="M2.5 8 A 3 5.5 0 1 0 8.5 8 A 3 5.5 0 1 0 2.5 8"
 									stroke="currentColor"
 									stroke-width="1.2"
@@ -759,7 +1017,12 @@
 						</div>
 						<div class="vt-btn" title="Measure">
 							<svg width="16" height="16" viewBox="0 0 16 16" fill="none"
-								><path d="M3 11 L11 3 L13 5 L5 13 Z" stroke="currentColor" stroke-width="1.2" fill="none" /><path
+								><path
+									d="M3 11 L11 3 L13 5 L5 13 Z"
+									stroke="currentColor"
+									stroke-width="1.2"
+									fill="none"
+								/><path
 									d="M5 9 L6 10 M7 7 L8.5 8.5 M9 5 L10 6"
 									stroke="currentColor"
 									stroke-width=".8"
@@ -788,7 +1051,13 @@
 
 						<div class="vt-btn" title="Reset view">
 							<svg width="16" height="16" viewBox="0 0 16 16" fill="none"
-								><path d="M13 3 L13 6 L10 6" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" /><path
+								><path
+									d="M13 3 L13 6 L10 6"
+									stroke="currentColor"
+									stroke-width="1.2"
+									fill="none"
+									stroke-linecap="round"
+								/><path
 									d="M13 6 A 5 5 0 1 0 11 11.5"
 									stroke="currentColor"
 									stroke-width="1.2"
@@ -819,21 +1088,27 @@
 								<span class="pn">1</span>
 								<div>
 									<div class="pt">Inlaid silver medallion</div>
-									<div class="pd">Openwork Kufic script around the shoulder — an inscription of praise.</div>
+									<div class="pd">
+										Openwork Kufic script around the shoulder — an inscription of praise.
+									</div>
 								</div>
 							</div>
 							<div class="vp-item">
 								<span class="pn">2</span>
 								<div>
 									<div class="pt">Engraved band</div>
-									<div class="pd">Friezes of animals in roundels, a motif characteristic of Khorasani metalwork.</div>
+									<div class="pd">
+										Friezes of animals in roundels, a motif characteristic of Khorasani metalwork.
+									</div>
 								</div>
 							</div>
 							<div class="vp-item">
 								<span class="pn">3</span>
 								<div>
 									<div class="pt">Foot, repaired c. 1890</div>
-									<div class="pd">Later solder visible under raking light — earlier restoration, stable.</div>
+									<div class="pd">
+										Later solder visible under raking light — earlier restoration, stable.
+									</div>
 								</div>
 							</div>
 						</div>
@@ -860,8 +1135,8 @@
 					<div>
 						<h2 class="sec-title">A small <em>vocabulary,</em> spoken consistently.</h2>
 						<p class="sec-sub">
-							The system is deliberately narrow: four button roles, three badge states, one input. Anything outside this vocabulary
-							needs a case made for it.
+							The system is deliberately narrow: four button roles, three badge states, one input.
+							Anything outside this vocabulary needs a case made for it.
 						</p>
 					</div>
 				</div>
@@ -882,39 +1157,54 @@
 					</div>
 
 					<div class="plate">
-						<div class="plate-label"><span>Badges / Status</span><span class="pl-r">Object states</span></div>
-						<div class="row-wrap">
-							<span class="badge verified"><span class="d"></span>Verified</span>
-							<span class="badge open"><span class="d"></span>Open access</span>
-							<span class="badge draft"><span class="d"></span>Draft record</span>
-							<span class="badge embargo"><span class="d"></span>Embargoed · 2027</span>
+						<div class="plate-label">
+							<span>Badges / Status</span><span class="pl-r">Object states</span>
 						</div>
-						<div class="plate-note">Status always sits beside the object title, never after it in a sentence.</div>
+						<div class="row-wrap">
+							<span class="verified badge"><span class="d"></span>Verified</span>
+							<span class="open badge"><span class="d"></span>Open access</span>
+							<span class="draft badge"><span class="d"></span>Draft record</span>
+							<span class="embargo badge"><span class="d"></span>Embargoed · 2027</span>
+						</div>
+						<div class="plate-note">
+							Status always sits beside the object title, never after it in a sentence.
+						</div>
 					</div>
 
 					<div class="plate">
-						<div class="plate-label"><span>Input · Search</span><span class="pl-r">Catalog</span></div>
+						<div class="plate-label">
+							<span>Input · Search</span><span class="pl-r">Catalog</span>
+						</div>
 						<label class="input-label" for="ds-search">Search the catalog</label>
 						<div class="search-wrap">
-							<input id="ds-search" class="input" placeholder="e.g. Khorasan, ewer, bronze" value="Khorasan ewer" />
+							<input
+								id="ds-search"
+								class="input"
+								placeholder="e.g. Khorasan, ewer, bronze"
+								value="Khorasan ewer"
+							/>
 							<span class="search-kbd">⌘K</span>
 						</div>
 						<div class="chips">
-							<span class="badge quiet">+ Bronze</span>
-							<span class="badge quiet">+ 12th c.</span>
-							<span class="badge quiet">+ Metalwork</span>
+							<span class="quiet badge">+ Bronze</span>
+							<span class="quiet badge">+ 12th c.</span>
+							<span class="quiet badge">+ Metalwork</span>
 						</div>
 					</div>
 
 					<div class="plate">
-						<div class="plate-label"><span>Catalog card</span><span class="pl-r">Default surface</span></div>
+						<div class="plate-label">
+							<span>Catalog card</span><span class="pl-r">Default surface</span>
+						</div>
 						<div class="catalog-card">
 							<div class="cat-thumb">
-								<svg class="cat-mark" viewBox="0 0 24 24" aria-hidden="true"><use href="#p3d-mark-sm" /></svg>
+								<svg class="cat-mark" viewBox="0 0 24 24" aria-hidden="true"
+									><use href="#p3d-mark-sm" /></svg
+								>
 							</div>
 							<div>
 								<div class="cat-row">
-									<span class="badge verified sm"><span class="d"></span>Verified</span>
+									<span class="verified sm badge"><span class="d"></span>Verified</span>
 									<span class="cat-acc">P3D-2026-0142</span>
 								</div>
 								<div class="cat-title">Bronze Ewer, <em>Khorasan</em></div>
@@ -934,8 +1224,9 @@
 					<div>
 						<h2 class="sec-title">Four curves. <em>Short</em> durations.</h2>
 						<p class="sec-sub">
-							Motion is almost always 180–240ms. Pages fade through; panels slide 8px; the viewer settles with a gentle overshoot.
-							Never bounce, never spring unless touching a 3D transform.
+							Motion is almost always 180–240ms. Pages fade through; panels slide 8px; the viewer
+							settles with a gentle overshoot. Never bounce, never spring unless touching a 3D
+							transform.
 						</p>
 					</div>
 				</div>
@@ -977,9 +1268,10 @@
 					<div>
 						<h2 class="sec-title">Objects <em>gathered</em> by a curator's hand.</h2>
 						<p class="sec-sub">
-							A collection is not a folder — it is an argument. The pattern leads with the curator's voice, surfaces the essay, and
-							only then lays out the objects. Cards tile asymmetrically so the eye moves through the collection the way it would
-							through a gallery.
+							A collection is not a folder — it is an argument. The pattern leads with the curator's
+							voice, surfaces the essay, and only then lays out the objects. Cards tile
+							asymmetrically so the eye moves through the collection the way it would through a
+							gallery.
 						</p>
 					</div>
 				</div>
@@ -989,38 +1281,69 @@
 						<div class="coll-kicker">Collection · 14 objects · Curated by Dr. Leila Haddad</div>
 						<h3 class="coll-h">Bronze &amp; <em>Breath</em></h3>
 						<p class="coll-lede">
-							A reading of twelfth-century Khorasani metalwork through the objects that held, poured, and were held. Fourteen vessels,
-							three workshops, one argument about the human hand.
+							A reading of twelfth-century Khorasani metalwork through the objects that held,
+							poured, and were held. Fourteen vessels, three workshops, one argument about the human
+							hand.
 						</p>
 					</div>
 					<dl class="coll-stats">
-						<div><dt>Objects</dt><dd>14</dd></div>
-						<div><dt>Centuries</dt><dd>11–13</dd></div>
-						<div><dt>Verified</dt><dd class="accented">12/14</dd></div>
-						<div><dt>Updated</dt><dd class="mono">2026-04-18</dd></div>
+						<div>
+							<dt>Objects</dt>
+							<dd>14</dd>
+						</div>
+						<div>
+							<dt>Centuries</dt>
+							<dd>11–13</dd>
+						</div>
+						<div>
+							<dt>Verified</dt>
+							<dd class="accented">12/14</dd>
+						</div>
+						<div>
+							<dt>Updated</dt>
+							<dd class="mono">2026-04-18</dd>
+						</div>
 					</dl>
 				</div>
 
 				<div class="coll-grid">
 					<div class="coll-card feature">
 						<div class="coll-img">
-							<svg viewBox="0 0 200 220" width="58%" style="filter:drop-shadow(0 20px 30px #00000066);">
+							<svg
+								viewBox="0 0 200 220"
+								width="58%"
+								style="filter:drop-shadow(0 20px 30px #00000066);"
+							>
 								<defs
 									><linearGradient id="cg1" x1="0" y1="0" x2="1" y2="1"
-										><stop offset="0%" stop-color="#C9B88E" /><stop offset="100%" stop-color="#3F331F" /></linearGradient
+										><stop offset="0%" stop-color="#C9B88E" /><stop
+											offset="100%"
+											stop-color="#3F331F"
+										/></linearGradient
 									></defs
 								>
-								<path d="M60 80 C 50 100, 48 160, 70 190 L 130 190 C 152 160, 150 100, 140 80 Z" fill="url(#cg1)" />
+								<path
+									d="M60 80 C 50 100, 48 160, 70 190 L 130 190 C 152 160, 150 100, 140 80 Z"
+									fill="url(#cg1)"
+								/>
 								<path d="M78 80 L 78 50 L 122 50 L 122 80 Z" fill="#5A4A2C" />
 								<ellipse cx="100" cy="48" rx="24" ry="6" fill="#8A7549" />
-								<path d="M140 90 C 175 95, 175 155, 140 160" stroke="#5A4A2C" stroke-width="8" fill="none" stroke-linecap="round" />
+								<path
+									d="M140 90 C 175 95, 175 155, 140 160"
+									stroke="#5A4A2C"
+									stroke-width="8"
+									fill="none"
+									stroke-linecap="round"
+								/>
 							</svg>
 							<span class="coll-tag">01 · Keystone</span>
 						</div>
 						<div class="coll-meta">
-							<span class="badge verified sm"><span class="d"></span>Verified</span>
+							<span class="verified sm badge"><span class="d"></span>Verified</span>
 							<div class="coll-title">Bronze Ewer, <em>Khorasan</em></div>
-							<div class="coll-sub">c. 1180 · Rijksmuseum · <span class="read-essay">Read essay →</span></div>
+							<div class="coll-sub">
+								c. 1180 · Rijksmuseum · <span class="read-essay">Read essay →</span>
+							</div>
 						</div>
 					</div>
 
@@ -1037,24 +1360,39 @@
 								/></svg
 							>
 						</div>
-						<div class="coll-meta"><div class="coll-title">Incense Burner</div><div class="coll-sub">c. 1150 · Herat</div></div>
+						<div class="coll-meta">
+							<div class="coll-title">Incense Burner</div>
+							<div class="coll-sub">c. 1150 · Herat</div>
+						</div>
 					</div>
 					<div class="coll-card">
 						<div class="coll-img dim">
 							<svg viewBox="0 0 120 140" width="60%"
-								><ellipse cx="60" cy="78" rx="44" ry="32" fill="#8A7549" /><ellipse cx="60" cy="72" rx="44" ry="32" fill="#C9B88E" /></svg
+								><ellipse cx="60" cy="78" rx="44" ry="32" fill="#8A7549" /><ellipse
+									cx="60"
+									cy="72"
+									rx="44"
+									ry="32"
+									fill="#C9B88E"
+								/></svg
 							>
 						</div>
-						<div class="coll-meta"><div class="coll-title">Shallow Dish</div><div class="coll-sub">c. 1200 · Nishapur</div></div>
+						<div class="coll-meta">
+							<div class="coll-title">Shallow Dish</div>
+							<div class="coll-sub">c. 1200 · Nishapur</div>
+						</div>
 					</div>
 					<div class="coll-card">
 						<div class="coll-img dim">
 							<svg viewBox="0 0 120 140" width="45%"
-								><path d="M40 30 L80 30 L90 110 L30 110 Z" fill="#6E5C38" /><path d="M50 30 L50 20 L70 20 L70 30" fill="#3F331F" /></svg
+								><path d="M40 30 L80 30 L90 110 L30 110 Z" fill="#6E5C38" /><path
+									d="M50 30 L50 20 L70 20 L70 30"
+									fill="#3F331F"
+								/></svg
 							>
 						</div>
 						<div class="coll-meta">
-							<span class="badge draft sm"><span class="d"></span>Draft</span>
+							<span class="draft sm badge"><span class="d"></span>Draft</span>
 							<div class="coll-title">Covered Tankard</div>
 							<div class="coll-sub">c. 1210 · Private coll.</div>
 						</div>
@@ -1062,15 +1400,18 @@
 					<div class="coll-card">
 						<div class="coll-img dim">
 							<svg viewBox="0 0 120 140" width="55%"
-								><circle cx="60" cy="70" r="36" fill="#8A7549" /><circle cx="60" cy="70" r="26" fill="#3F331F" /><circle
+								><circle cx="60" cy="70" r="36" fill="#8A7549" /><circle
 									cx="60"
 									cy="70"
-									r="6"
-									fill="#C9B88E"
-								/></svg
+									r="26"
+									fill="#3F331F"
+								/><circle cx="60" cy="70" r="6" fill="#C9B88E" /></svg
 							>
 						</div>
-						<div class="coll-meta"><div class="coll-title">Mirror, engraved</div><div class="coll-sub">c. 1170 · Mosul</div></div>
+						<div class="coll-meta">
+							<div class="coll-title">Mirror, engraved</div>
+							<div class="coll-sub">c. 1170 · Mosul</div>
+						</div>
 					</div>
 					<div class="coll-card">
 						<div class="coll-img dim">
@@ -1078,7 +1419,10 @@
 								><path d="M45 30 L75 30 L85 70 L75 110 L45 110 L35 70 Z" fill="#8A7549" /></svg
 							>
 						</div>
-						<div class="coll-meta"><div class="coll-title">Pilgrim Flask</div><div class="coll-sub">c. 1190 · Louvre</div></div>
+						<div class="coll-meta">
+							<div class="coll-title">Pilgrim Flask</div>
+							<div class="coll-sub">c. 1190 · Louvre</div>
+						</div>
 					</div>
 					<div class="coll-card">
 						<div class="coll-img dim">
@@ -1093,7 +1437,7 @@
 							>
 						</div>
 						<div class="coll-meta">
-							<span class="badge embargo sm"><span class="d"></span>Embargoed · 2027</span>
+							<span class="embargo sm badge"><span class="d"></span>Embargoed · 2027</span>
 							<div class="coll-title">Inkwell, silver-inlaid</div>
 							<div class="coll-sub">c. 1220 · Met</div>
 						</div>
@@ -1107,7 +1451,8 @@
 				</div>
 
 				<div class="labeled-rule">
-					<span class="lbl">Index pattern — a reader's list of collections</span><span class="rl"></span>
+					<span class="lbl">Index pattern — a reader's list of collections</span><span class="rl"
+					></span>
 				</div>
 
 				<div class="coll-index">
@@ -1163,16 +1508,21 @@
 					<div>
 						<h2 class="sec-title">Every capture, a <em>citable</em> edition.</h2>
 						<p class="sec-sub">
-							A 3D record is never finished. A new scan, a corrected annotation, a re-bake of textures — each becomes a numbered
-							edition with its own permalink and DOI. Older editions remain citable forever; the current one is marked, and changes
-							are legible in a quiet changelog.
+							A 3D record is never finished. A new scan, a corrected annotation, a re-bake of
+							textures — each becomes a numbered edition with its own permalink and DOI. Older
+							editions remain citable forever; the current one is marked, and changes are legible in
+							a quiet changelog.
 						</p>
 					</div>
 				</div>
 
 				<div class="ed-showcase">
 					<div class="ed-hero-card">
-						<div class="plate-label plate-label-head"><span>Edition card · catalog hero</span><span class="pl-r">Featured current edition</span></div>
+						<div class="plate-label plate-label-head">
+							<span>Edition card · catalog hero</span><span class="pl-r"
+								>Featured current edition</span
+							>
+						</div>
 						<div class="ed-hero-grid">
 							<div class="ed-object-frame" aria-label="Wireframe preview of a 3D edition thumbnail">
 								<div class="ed-wire-object">
@@ -1181,14 +1531,17 @@
 									<div class="ed-wire-foot"></div>
 								</div>
 								<div class="ed-object-badge">Interactive 3D</div>
-								<div class="ed-object-actions"><span>Orbit</span><span>Annotate</span><span>Cite</span></div>
+								<div class="ed-object-actions">
+									<span>Orbit</span><span>Annotate</span><span>Cite</span>
+								</div>
 							</div>
 
 							<div class="ed-hero-copy">
 								<div class="ed-kicker">P3D-2026-0142 · Ed. 03 · Current</div>
 								<h3>Bronze Ewer, <em>Khorasan, c. 1180</em></h3>
 								<p>
-									The edition card should sell the object first: large square visual, scholarly title, quiet citation metadata, then a compact change summary.
+									The edition card should sell the object first: large square visual, scholarly
+									title, quiet citation metadata, then a compact change summary.
 								</p>
 								<div class="ed-facts">
 									<div><span>Creator</span>Dr. Leila Haddad</div>
@@ -1207,7 +1560,11 @@
 
 					<div class="ed-wire-grid">
 						<div class="plate ed-plate">
-							<div class="plate-label plate-label-head"><span>Edition history · timeline/card hybrid</span><span class="pl-r">Most recent first</span></div>
+							<div class="plate-label plate-label-head">
+								<span>Edition history · timeline/card hybrid</span><span class="pl-r"
+									>Most recent first</span
+								>
+							</div>
 							<div class="ed-list">
 								{#each editionShowcase as edition, index (edition.number)}
 									<article class="edition-card" class:current={edition.current}>
@@ -1217,12 +1574,19 @@
 										</div>
 										<div class="ed-card-body">
 											<div class="ed-head">
-												<div><span class="ed-num">Ed. {edition.number}</span><span class="ed-label" class:current-tag={edition.current}>{edition.status}</span></div>
+												<div>
+													<span class="ed-num">Ed. {edition.number}</span><span
+														class="ed-label"
+														class:current-tag={edition.current}>{edition.status}</span
+													>
+												</div>
 												<div class="ed-date">{edition.date}</div>
 											</div>
 											<div class="ed-title">{edition.title}</div>
 											<div class="ed-meta-row">
-												<span>{edition.doi}</span><span>{edition.mesh}</span><span>{edition.texture}</span><span>{edition.change}</span>
+												<span>{edition.doi}</span><span>{edition.mesh}</span><span
+													>{edition.texture}</span
+												><span>{edition.change}</span>
 											</div>
 											<div class="ed-note">{edition.note}</div>
 										</div>
@@ -1233,7 +1597,11 @@
 
 						<div class="ed-side">
 							<div class="plate">
-								<div class="plate-label"><span>Data structure · editor groups</span><span class="pl-r">What the form edits</span></div>
+								<div class="plate-label">
+									<span>Data structure · editor groups</span><span class="pl-r"
+										>What the form edits</span
+									>
+								</div>
 								<div class="data-groups">
 									{#each editionDataExamples as group (group.label)}
 										<div class="data-group">
@@ -1247,39 +1615,65 @@
 							</div>
 
 							<div class="plate">
-								<div class="plate-label"><span>Editor wireframe · recommended layout</span><span class="pl-r">Object-first, metadata second</span></div>
+								<div class="plate-label">
+									<span>Editor wireframe · recommended layout</span><span class="pl-r"
+										>Object-first, metadata second</span
+									>
+								</div>
 								<div class="edit-wireframe">
-									<div class="wf-top"><span>Title + status</span><span>Save draft / Publish</span></div>
+									<div class="wf-top">
+										<span>Title + status</span><span>Save draft / Publish</span>
+									</div>
 									<div class="wf-body">
 										<div class="wf-preview">3D preview<br /><small>scene.svx.json</small></div>
 										<div class="wf-fields">
-											<div></div><div></div><div></div><div></div><div class="short"></div>
+											<div></div>
+											<div></div>
+											<div></div>
+											<div></div>
+											<div class="short"></div>
 										</div>
 									</div>
-									<div class="wf-tabs"><span>Identity</span><span>Object</span><span>Rights</span><span>Review</span></div>
+									<div class="wf-tabs">
+										<span>Identity</span><span>Object</span><span>Rights</span><span>Review</span>
+									</div>
 								</div>
 							</div>
 
 							<div class="plate">
-								<div class="plate-label"><span>Citation + inline edition reference</span><span class="pl-r">Chicago · BibTeX · prose</span></div>
+								<div class="plate-label">
+									<span>Citation + inline edition reference</span><span class="pl-r"
+										>Chicago · BibTeX · prose</span
+									>
+								</div>
 								<div class="cite-body">
 									Haddad, L. <em>Bronze Ewer, Khorasan, c. 1180.</em> Pure 3D, ed. 03 (2026). doi:10.60131/p3d.0142.03.
 								</div>
 								<div class="cite-actions">
-									<button class="btn btn-secondary sm">Copy citation</button>
-									<button class="btn btn-ghost sm">Download .bib</button>
+									<button class="sm btn btn-secondary">Copy citation</button>
+									<button class="sm btn btn-ghost">Download .bib</button>
 								</div>
 								<div class="chip-body mt-4">
-									"…the medallion's inscription (see <span class="ed-chip"><span class="ed-chip-n">Ed.</span> 03 <span class="ed-chip-dot"></span></span>) now reads as a dedication…"
+									"…the medallion's inscription (see <span class="ed-chip"
+										><span class="ed-chip-n">Ed.</span> 03 <span class="ed-chip-dot"></span></span
+									>) now reads as a dedication…"
 								</div>
 							</div>
 
 							<div class="plate">
-								<div class="plate-label"><span>Diff · what changed</span><span class="pl-r">Ed. 02 → 03</span></div>
+								<div class="plate-label">
+									<span>Diff · what changed</span><span class="pl-r">Ed. 02 → 03</span>
+								</div>
 								<div class="diff">
-									<div class="diff-row add"><span>+</span><span class="serif">Annotation 3 · Foot, repaired c. 1890</span></div>
-									<div class="diff-row mod"><span>~</span><span class="serif">Annotation 1 · Medallion re-transcribed</span></div>
-									<div class="diff-row del"><span>−</span><span class="serif">Legacy mesh (180k △) retired</span></div>
+									<div class="diff-row add">
+										<span>+</span><span class="serif">Annotation 3 · Foot, repaired c. 1890</span>
+									</div>
+									<div class="diff-row mod">
+										<span>~</span><span class="serif">Annotation 1 · Medallion re-transcribed</span>
+									</div>
+									<div class="diff-row del">
+										<span>−</span><span class="serif">Legacy mesh (180k △) retired</span>
+									</div>
 								</div>
 							</div>
 						</div>
@@ -1301,24 +1695,34 @@
 					<div>
 						<div class="foot-mark">
 							<span class="wm-inline"
-								>Pure&nbsp;<span class="wm-3">3</span><svg class="wm-d-xs" aria-hidden="true"><use href="#p3d-mark-sm" /></svg></span
+								>Pure&nbsp;<span class="wm-3">3</span><svg class="wm-d-xs" aria-hidden="true"
+									><use href="#p3d-mark-sm" /></svg
+								></span
 							>
 						</div>
 						<p class="colophon">
-							A design system for a scholarly publishing platform of interactive 3D objects. The marks and measures above are a
-							<em>working draft</em> — built to be interrogated, pressure-tested, and, in places, disagreed with.
+							A design system for a scholarly publishing platform of interactive 3D objects. The
+							marks and measures above are a
+							<em>working draft</em> — built to be interrogated, pressure-tested, and, in places, disagreed
+							with.
 						</p>
 					</div>
 					<dl class="meta">
 						<div>
-							<dt>System</dt><dd>Pure 3D · v0.1</dd>
-							<dt>Released</dt><dd>April 2026</dd>
-							<dt>Type</dt><dd>Inter Tight · Fraunces · JetBrains Mono</dd>
+							<dt>System</dt>
+							<dd>Pure 3D · v0.1</dd>
+							<dt>Released</dt>
+							<dd>April 2026</dd>
+							<dt>Type</dt>
+							<dd>Inter Tight · Fraunces · JetBrains Mono</dd>
 						</div>
 						<div>
-							<dt>Primary</dt><dd>Paper · Ink · Vermillion</dd>
-							<dt>Grid</dt><dd>12 col · 16 gutter · 8px baseline</dd>
-							<dt>Next</dt><dd>Dark mode · data viz · iconography</dd>
+							<dt>Primary</dt>
+							<dd>Paper · Ink · Vermillion</dd>
+							<dt>Grid</dt>
+							<dd>12 col · 16 gutter · 8px baseline</dd>
+							<dt>Next</dt>
+							<dd>Dark mode · data viz · iconography</dd>
 						</div>
 					</dl>
 				</footer>
@@ -1354,7 +1758,9 @@
 				<div class="tw-lbl"><b>Paper</b><span>{paper[0].toUpperCase() + paper.slice(1)}</span></div>
 				<div class="tw-seg">
 					{#each ['warm', 'cool', 'bright', 'ink'] as const as p (p)}
-						<button type="button" class:active={paper === p} onclick={() => (paper = p)}>{p[0].toUpperCase() + p.slice(1)}</button>
+						<button type="button" class:active={paper === p} onclick={() => (paper = p)}
+							>{p[0].toUpperCase() + p.slice(1)}</button
+						>
 					{/each}
 				</div>
 			</div>
@@ -1363,7 +1769,9 @@
 				<div class="tw-lbl"><b>Density</b><span>Spacing rhythm</span></div>
 				<div class="tw-seg">
 					{#each ['dense', 'default', 'airy'] as const as d (d)}
-						<button type="button" class:active={density === d} onclick={() => (density = d)}>{d[0].toUpperCase() + d.slice(1)}</button>
+						<button type="button" class:active={density === d} onclick={() => (density = d)}
+							>{d[0].toUpperCase() + d.slice(1)}</button
+						>
 					{/each}
 				</div>
 			</div>
@@ -1372,7 +1780,9 @@
 				<div class="tw-lbl"><b>Voice font</b><span>Italic emphasis</span></div>
 				<div class="tw-seg">
 					{#each ['Fraunces', 'EB Garamond', 'Playfair Display'] as const as s (s)}
-						<button type="button" class:active={serif === s} onclick={() => (serif = s)}>{s.split(' ')[0]}</button>
+						<button type="button" class:active={serif === s} onclick={() => (serif = s)}
+							>{s.split(' ')[0]}</button
+						>
 					{/each}
 				</div>
 			</div>
@@ -1434,9 +1844,7 @@
 
 		/* shadow */
 		--shadow-1: 0 1px 0 #14141314;
-		--shadow-2:
-			0 20px 40px -24px #14141333,
-			0 2px 0 #1414130f;
+		--shadow-2: 0 20px 40px -24px #14141333, 0 2px 0 #1414130f;
 
 		background: var(--ds-paper);
 		color: var(--ds-ink);
@@ -3520,7 +3928,10 @@
 			linear-gradient(90deg, var(--ds-rule) 1px, transparent 1px),
 			linear-gradient(0deg, var(--ds-rule) 1px, transparent 1px),
 			linear-gradient(145deg, var(--ds-paper-2), var(--ds-paper-bg));
-		background-size: 32px 32px, 32px 32px, auto;
+		background-size:
+			32px 32px,
+			32px 32px,
+			auto;
 		border-right: 1px solid var(--ds-rule);
 	}
 	.ed-wire-object {
@@ -3549,7 +3960,12 @@
 		width: 140px;
 		height: 185px;
 		border-radius: 52px 52px 28px 28px;
-		background-image: linear-gradient(90deg, transparent 48%, var(--ds-rule-strong) 49%, transparent 51%);
+		background-image: linear-gradient(
+			90deg,
+			transparent 48%,
+			var(--ds-rule-strong) 49%,
+			transparent 51%
+		);
 	}
 	.ed-wire-body::after {
 		content: '';

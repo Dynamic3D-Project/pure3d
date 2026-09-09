@@ -60,8 +60,3 @@ declare module 'vanilla-tilt' {
 	const VanillaTilt: any;
 	export default VanillaTilt;
 }
-
-declare module '@auth/sveltekit/client' {
-	export const signIn: any;
-	export const signOut: any;
-}

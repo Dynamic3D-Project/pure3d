@@ -1,4 +1,7 @@
 <script lang="ts">
+	import CreditsEditor from '$lib/components/ui/CreditsEditor.svelte';
+	import type { Credit } from '$lib/types/credits';
+	import { readCredits, validateCredits } from '$lib/utils/credits';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
@@ -16,10 +19,7 @@
 	import { ReviewDecision } from '$lib/types/reviews';
 	import type { EditionReview, ReviewAssignment } from '$lib/types/reviews';
 	import { updateEditionStatus } from '$lib/database/edition-helpers';
-	import { logAudit } from '$lib/utils/audit';
-	import { notifyMany } from '$lib/utils/notifications';
-	import { NotificationType } from '$lib/types/notifications';
-	import { anonymizeReviews, getAdminUserIds } from '$lib/utils/review-helpers';
+	import { anonymizeReviews } from '$lib/utils/review-helpers';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
 	import ReviewForm from '$lib/components/workflow/ReviewForm.svelte';
 	import CollaboratorManager from '$lib/components/workflow/CollaboratorManager.svelte';
@@ -68,8 +68,7 @@
 	let conceptDescription = $state('');
 	let conceptPeerReview = $state(false);
 	let conceptDcSubtitle = $state('');
-	let conceptDcCreator = $state('');
-	let conceptDcContributor = $state('');
+	let credits = $state<Credit[]>([]);
 	let conceptDcInstitution = $state('');
 	let conceptDcSubject = $state('');
 	let conceptDcKeyword = $state('');
@@ -312,8 +311,7 @@
 			conceptDescription = edition.description;
 			conceptPeerReview = edition.peerReviewRequested;
 			conceptDcSubtitle = edRecord.dcSubtitle || '';
-			conceptDcCreator = jsonArrayToString(edRecord.dcCreator);
-			conceptDcContributor = jsonArrayToString(edRecord.dcContributor);
+			credits = readCredits(edRecord.credits);
 			conceptDcInstitution = jsonArrayToString(edRecord.dcInstitution);
 			conceptDcSubject = jsonArrayToString(edRecord.dcSubject);
 			conceptDcKeyword = jsonArrayToString(edRecord.dcKeyword);
@@ -426,8 +424,7 @@
 			dcSubtitle: conceptDcSubtitle.trim(),
 			dcAbstract: conceptDescription,
 			dcDescription: conceptDescription,
-			dcCreator: stringToJsonArray(conceptDcCreator),
-			dcContributor: stringToJsonArray(conceptDcContributor),
+			credits: readCredits(credits),
 			dcInstitution: stringToJsonArray(conceptDcInstitution),
 			dcSubject: stringToJsonArray(conceptDcSubject),
 			dcKeyword: stringToJsonArray(conceptDcKeyword),
@@ -458,42 +455,53 @@
 	}
 
 	async function persistDraft({ showToast }: { showToast: boolean }) {
-		if (!edition) return;
+		if (!edition || isSubmitting) return false;
+		const creditError = validateCredits(credits, edition.status === EditionStatus.Published);
+		if (creditError) {
+			saveStatus = 'error';
+			saveError = creditError;
+			if (showToast) toast.error(creditError);
+			return false;
+		}
 		if (!conceptTitle.trim()) {
 			saveStatus = 'unsaved';
-			return;
+			return false;
 		}
 		if (isSaving) {
 			pendingSaveAfterCurrent = true;
-			return;
+			return false;
 		}
 
 		clearAutosaveTimer();
 		isSaving = true;
 		saveStatus = 'saving';
 		saveError = '';
-		const savedSnapshot = formSnapshot();
+		const data = buildEditionData();
+		const savedSnapshot = JSON.stringify(data);
 
 		try {
-			const updated = await pb.collection('editions').update(edition.id, buildEditionData());
+			const updated = await pb.collection('editions').update(edition.id, data);
 			editionRecord = updated;
-			edition.title = conceptTitle;
-			edition.description = conceptDescription;
-			edition.peerReviewRequested = conceptPeerReview;
+			edition.title = data.title;
+			edition.description = data.dcAbstract;
+			edition.peerReviewRequested = data.peerReviewRequested;
 			lastSavedSnapshot = savedSnapshot;
 
 			if (formSnapshot() === savedSnapshot) {
+				clearAutosaveTimer();
 				saveStatus = 'saved';
 			} else {
 				scheduleAutosave();
 			}
 
 			if (showToast) toast.success('Draft saved');
+			return true;
 		} catch (error) {
 			console.error('Error saving draft:', error);
 			saveStatus = 'error';
 			saveError = 'Save failed';
 			if (showToast) toast.error('Failed to save draft');
+			return false;
 		} finally {
 			isSaving = false;
 			if (pendingSaveAfterCurrent) {
@@ -507,18 +515,20 @@
 		await persistDraft({ showToast: true });
 	}
 
+	async function saveCollaboratorCredits(nextCredits: Credit[]) {
+		if (isSaving || isSubmitting) throw new Error('Wait for the current save to finish.');
+		credits = readCredits(nextCredits);
+		if (!(await persistDraft({ showToast: false }))) {
+			throw new Error(saveError || 'Credits are unsaved. Check the form and save again.');
+		}
+	}
+
 	async function deleteEdition() {
 		if (!edition || isDeleting) return;
 		isDeleting = true;
 		try {
 			const deletedId = edition.id;
-			const deletedTitle = edition.title;
-			const deletedStatus = edition.status;
 			await pb.collection('editions').delete(deletedId);
-			await logAudit('edition_deleted', 'edition', deletedId, authStore.user?.email || '', {
-				title: deletedTitle,
-				status: deletedStatus
-			});
 			toast.success('Edition deleted');
 			showDeleteModal = false;
 			goto(`${base}/editions`);
@@ -531,6 +541,15 @@
 
 	async function submitConcept() {
 		if (!edition) return;
+		const creditError = validateCredits(credits, true);
+		if (creditError) {
+			toast.error(creditError);
+			return;
+		}
+		if (isSaving) {
+			toast.error('Wait for the current save to finish, then submit again.');
+			return;
+		}
 		if (!conceptTitle.trim()) {
 			toast.error('Title is required');
 			return;
@@ -543,23 +562,6 @@
 			saveStatus = 'saved';
 
 			await updateEditionStatus(edition.id, EditionStatus.ConceptSubmitted);
-
-			await logAudit('status_transition', 'edition', edition.id, authStore.user?.email || '', {
-				from: edition.status,
-				to: EditionStatus.ConceptSubmitted,
-				title: conceptTitle
-			});
-
-			// Notify admins
-			const adminIds = await getAdminUserIds();
-			await notifyMany(
-				adminIds,
-				NotificationType.ConceptSubmitted,
-				'New proposal submitted',
-				`"${conceptTitle}" has been submitted for review.`,
-				edition.id,
-				`${base}/admin/workflow`
-			);
 
 			edition.status = EditionStatus.ConceptSubmitted;
 			edition.title = conceptTitle;
@@ -576,29 +578,27 @@
 	// --- Resubmit after revisions ---
 	async function resubmit() {
 		if (!edition) return;
+		const creditError = validateCredits(credits, true);
+		if (creditError) {
+			toast.error(creditError);
+			return;
+		}
+		if (isSaving) {
+			toast.error('Wait for the current save to finish, then submit again.');
+			return;
+		}
+		clearAutosaveTimer();
 		isSubmitting = true;
 		try {
+			await pb.collection('editions').update(edition.id, buildEditionData());
+			lastSavedSnapshot = formSnapshot();
+			saveStatus = 'saved';
 			const targetStatus =
 				edition.status === EditionStatus.AlphaRevisions
 					? EditionStatus.AlphaReview
 					: EditionStatus.FinalReview;
 
 			await updateEditionStatus(edition.id, targetStatus);
-
-			await logAudit('status_transition', 'edition', edition.id, authStore.user?.email || '', {
-				from: edition.status,
-				to: targetStatus
-			});
-
-			const adminIds = await getAdminUserIds();
-			await notifyMany(
-				adminIds,
-				NotificationType.StatusChanged,
-				'Edition resubmitted',
-				`"${edition.title}" has been resubmitted after revisions.`,
-				edition.id,
-				`${base}/admin/workflow`
-			);
 
 			edition.status = targetStatus;
 			toast.success('Resubmitted for review');
@@ -785,16 +785,7 @@
 								required
 								placeholder="Edition title"
 							/>
-							<label for="concept-authors" class="mt-3 mb-1 block text-sm font-semibold">
-								Authors <span class="font-normal text-base-content/60">comma-separated</span>
-							</label>
-							<input
-								id="concept-authors"
-								type="text"
-								class="input-bordered input w-full text-base-content/70 placeholder:text-base-content/30"
-								bind:value={conceptDcCreator}
-								placeholder="e.g. Jane Doe, John Smith"
-							/>
+							<CreditsEditor bind:credits disabled={isSubmitting} />
 							{#if edition.collectionTitle}
 								<p class="mt-1 text-sm text-base-content/50">in {edition.collectionTitle}</p>
 							{/if}
@@ -897,18 +888,6 @@
 															type="text"
 															class="input-bordered input input-sm"
 															bind:value={conceptDcSubtitle}
-														/>
-													</div>
-													<div class="form-control">
-														<label class="label py-0.5" for="concept-contributor">
-															<span class="label-text text-sm">Contributors</span>
-														</label>
-														<input
-															id="concept-contributor"
-															type="text"
-															class="input-bordered input input-sm"
-															bind:value={conceptDcContributor}
-															placeholder="comma-separated"
 														/>
 													</div>
 													<div class="form-control">
@@ -1017,7 +996,11 @@
 											{:else if activeFormTab === 'team'}
 												<CollaboratorManager
 													editionId={edition.id}
-													isReadOnly={!canManageCollaborators}
+													{credits}
+													oncreditssaved={saveCollaboratorCredits}
+													isReadOnly={(!isAdmin && !canManageCollaborators) ||
+														isSaving ||
+														isSubmitting}
 												/>
 											{/if}
 										</div>
@@ -1272,7 +1255,12 @@
 						class="scroll-mt-24 rounded-box border border-base-300 bg-base-100 p-6"
 					>
 						<h2 class="mb-4 text-lg font-semibold">Collaborators</h2>
-						<CollaboratorManager editionId={edition.id} isReadOnly={!canManageCollaborators} />
+						<CollaboratorManager
+							editionId={edition.id}
+							{credits}
+							oncreditssaved={saveCollaboratorCredits}
+							isReadOnly={(!isAdmin && !canManageCollaborators) || isSaving || isSubmitting}
+						/>
 					</div>
 				{/if}
 

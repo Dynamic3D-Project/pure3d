@@ -4,7 +4,7 @@
 	interface User {
 		id: string;
 		nickname: string;
-		email: string;
+		orcid?: string;
 	}
 
 	interface Props {
@@ -28,7 +28,7 @@
 			? users.filter(
 					(u) =>
 						u.nickname.toLowerCase().includes(query.toLowerCase()) ||
-						u.email.toLowerCase().includes(query.toLowerCase())
+						(u.orcid || '').toLowerCase().includes(query.toLowerCase())
 				)
 			: users
 	);
@@ -36,8 +36,7 @@
 	let selectedUser = $derived(users.find((u) => u.id === value));
 
 	function displayName(user: User): string {
-		if (user.nickname && user.email) return `${user.nickname} (${user.email})`;
-		return user.nickname || user.email;
+		return [user.nickname || 'Unnamed user', user.orcid].filter(Boolean).join(' · ');
 	}
 
 	function open() {
@@ -173,14 +172,14 @@
 					onmouseenter={() => (highlightedIndex = i)}
 					onclick={() => select(user)}
 				>
-					<span class="truncate font-medium">{user.nickname || user.email}</span>
-					{#if user.nickname && user.email}
+					<span class="truncate font-medium">{user.nickname || 'Unnamed user'}</span>
+					{#if user.orcid}
 						<span
 							class="truncate text-xs {highlightedIndex === i
 								? 'opacity-70'
 								: 'text-base-content/50'}"
 						>
-							{user.email}
+							{user.orcid}
 						</span>
 					{/if}
 				</button>

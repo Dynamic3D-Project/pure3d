@@ -1,7 +1,7 @@
 import { PUBLIC_ASSET_BASE_URL } from '$env/static/public';
 import { error, type RequestHandler } from '@sveltejs/kit';
 
-const DEFAULT_ASSET_BASE_URL = 'https://pure3d-assets.ctwhome.com';
+const DEFAULT_ASSET_BASE_URL = 'https://main.57-129-98-223.sslip.io/assets';
 
 function getUpstreamBaseUrl() {
 	const baseUrl = PUBLIC_ASSET_BASE_URL || DEFAULT_ASSET_BASE_URL;

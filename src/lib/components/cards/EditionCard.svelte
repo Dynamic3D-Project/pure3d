@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { creatorNames } from '$lib/utils/credits';
 	import { base } from '$app/paths';
 	import type { Edition } from '$lib/types/collection';
 	import type { RecordModel } from 'pocketbase';
@@ -201,8 +202,8 @@
 				{edition.title}
 			</h3>
 		</a>
-		{#if edition.authors}
-			<p class="mt-2 line-clamp-1 text-sm text-base-content/60">{edition.authors}</p>
+		{#if creatorNames(edition.credits)}
+			<p class="mt-2 line-clamp-1 text-sm text-base-content/60">{creatorNames(edition.credits)}</p>
 		{/if}
 		<div class="mt-auto pt-3 font-mono text-[9px] tracking-[0.12em] text-base-content/45 uppercase">
 			{edition.hasPeerReview ? 'Peer-reviewed 3D edition' : '3D scholarly edition'}

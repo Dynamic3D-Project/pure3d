@@ -12,7 +12,8 @@
  */
 
 import { persisted } from 'svelte-persisted-store';
-import { pb } from '$lib/database/client';
+import { creatorNames, readCredits } from '$lib/utils/credits';
+import { pb, cachePrefix } from '$lib/database/client';
 import type { Edition, Collection } from '$lib/types/collection';
 import { EditionStatus } from '$lib/types/roles';
 import {
@@ -35,17 +36,20 @@ interface CollectionsData {
 }
 
 // Persisted stores with localStorage
-export const editionsStore = persisted<EditionsData>('pure3d:editions', {
+export const editionsStore = persisted<EditionsData>(`${cachePrefix}:editions:credits-v1`, {
 	items: [],
 	total: 0,
 	lastFetched: null
 });
 
-export const collectionsStore = persisted<CollectionsData>('pure3d:collections', {
-	items: [],
-	total: 0,
-	lastFetched: null
-});
+export const collectionsStore = persisted<CollectionsData>(
+	`${cachePrefix}:collections:credits-v1`,
+	{
+		items: [],
+		total: 0,
+		lastFetched: null
+	}
+);
 
 /**
  * Fetches all published editions from Pocketbase and updates the store.
@@ -78,7 +82,7 @@ export async function fetchEditions(): Promise<Edition[]> {
 			slug: record.id,
 			title: record.dcTitle || record.title,
 			description: record.dcAbstract || '',
-			authors: Array.isArray(record.dcCreator) ? record.dcCreator.join(', ') : '',
+			authors: creatorNames(record.credits),
 			thumbnail,
 			coverImage: (record.coverImage as string | undefined) || '',
 			collectionName: record.collectionName || 'editions',
@@ -96,8 +100,7 @@ export async function fetchEditions(): Promise<Edition[]> {
 			dcSubtitle: record.dcSubtitle,
 			dcAbstract: record.dcAbstract,
 			dcDescription: record.dcDescription,
-			dcCreator: record.dcCreator || [],
-			dcContributor: record.dcContributor || [],
+			credits: readCredits(record.credits),
 			dcInstitution: record.dcInstitution || [],
 			dcContact: record.dcContact,
 			dcSubject: record.dcSubject || [],
@@ -192,8 +195,7 @@ export async function fetchCollections(): Promise<(Collection & { editionCount?:
 			dcSubtitle: record.dcSubtitle,
 			dcAbstract: record.dcAbstract,
 			dcDescription: record.dcDescription,
-			dcCreator: record.dcCreator || [],
-			dcContributor: record.dcContributor || [],
+			credits: readCredits(record.credits),
 			dcInstitution: record.dcInstitution || [],
 			dcSubject: record.dcSubject || [],
 			dcLanguage: record.dcLanguage || [],

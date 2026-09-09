@@ -1,4 +1,5 @@
 import type { PageLoad } from './$types';
+import type { Credit } from '$lib/types/credits';
 import {
 	getEditionRoot,
 	getEditionThumbnailUrl,
@@ -27,14 +28,22 @@ export const load: PageLoad = async () => {
 			'This public demo combines the scholarly edition experience with Voyager API controls. Explore the [[view:right|right side of the building]], inspect the [[view:front|front entrance]], compare the [[view:top|street layout from above]], or switch to [[view:street-level|street level]] to understand the historical scene as a spatial argument.',
 		authors:
 			'Susan Schreibman, Kelly Gillikin Schoueri, John Kaulakis, Luca Moine, Sandra Martinez Bohme',
-		dcCreator: [
+		credits: [
 			'Susan Schreibman',
 			'Kelly Gillikin Schoueri',
 			'John Kaulakis',
 			'Luca Moine',
 			'Sandra Martinez Bohme'
-		],
-		dcInstitution: ['Maastricht University', 'King\'s Digital Lab', 'PURE3D'],
+		].map(
+			(name): Credit => ({
+				type: 'person',
+				name,
+				orcid: null,
+				role: 'creator',
+				provenance: 'manual'
+			})
+		),
+		dcInstitution: ['Maastricht University', "King's Digital Lab", 'PURE3D'],
 		dcDoi: ['10.60131/p3d.demo.01'],
 		dcCoveragePeriod: '1916 Easter Rising',
 		dcCoveragePlace: '25 Northumberland Road, Dublin, Ireland',
@@ -74,7 +83,8 @@ export const load: PageLoad = async () => {
 			{
 				title: 'Classroom Worksheet',
 				type: 'PDF handout',
-				description: 'Guided observation prompts for comparing model views with the historical argument.',
+				description:
+					'Guided observation prompts for comparing model views with the historical argument.',
 				size: '2 pages',
 				url: makeTextResource(
 					'Classroom Worksheet',

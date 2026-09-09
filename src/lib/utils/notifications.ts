@@ -1,42 +1,6 @@
 import { pb } from '$lib/database/client';
 import type { NotificationType } from '$lib/types/notifications';
 
-export async function notify(
-	recipientId: string,
-	type: NotificationType,
-	title: string,
-	message?: string,
-	editionId?: string,
-	actionUrl?: string
-): Promise<void> {
-	try {
-		await pb.collection('notifications').create({
-			recipientId,
-			type,
-			title,
-			message: message || '',
-			editionId: editionId || null,
-			actionUrl: actionUrl || null,
-			read: false
-		});
-	} catch (error) {
-		console.error('Failed to create notification:', error);
-	}
-}
-
-export async function notifyMany(
-	recipientIds: string[],
-	type: NotificationType,
-	title: string,
-	message?: string,
-	editionId?: string,
-	actionUrl?: string
-): Promise<void> {
-	await Promise.allSettled(
-		recipientIds.map((id) => notify(id, type, title, message, editionId, actionUrl))
-	);
-}
-
 export async function getUnreadNotifications(recipientId: string) {
 	const result = await pb.collection('notifications').getList(1, 50, {
 		filter: `recipientId = "${recipientId}" && read = false`,

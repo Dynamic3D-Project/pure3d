@@ -2,11 +2,6 @@
 	import { ReviewDecision } from '$lib/types/reviews';
 	import { ReviewStage } from '$lib/types/roles';
 	import { pb } from '$lib/database/client';
-	import { logAudit } from '$lib/utils/audit';
-	import { notifyMany } from '$lib/utils/notifications';
-	import { NotificationType } from '$lib/types/notifications';
-	import { getAdminUserIds } from '$lib/utils/review-helpers';
-	import { authStore } from '$lib/database/stores/auth.svelte';
 	import toast from 'svelte-french-toast';
 
 	let {
@@ -67,22 +62,6 @@
 				decision,
 				comment: comment || ''
 			});
-
-			await logAudit('review_submitted', 'edition', editionId, authStore.user?.email || '', {
-				reviewStage,
-				decision,
-				reviewerId
-			});
-
-			// Notify admins about the submitted review
-			const adminIds = await getAdminUserIds();
-			await notifyMany(
-				adminIds,
-				NotificationType.ReviewSubmitted,
-				'Review submitted',
-				`A reviewer has submitted their review for stage ${reviewStage}.`,
-				editionId
-			);
 
 			toast.success('Review submitted');
 			onSubmitCallback();

@@ -4,6 +4,7 @@
  * Safe to re-run on an existing database.
  */
 import PocketBase from 'pocketbase';
+import { alignOrcidSchema } from './configure-orcid';
 
 const POCKETBASE_URL = process.env.POCKETBASE_URL || 'http://localhost:60021';
 const ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL || 'admin@admin.local';
@@ -494,7 +495,7 @@ async function main() {
 				type: 'select',
 				required: true,
 				maxSelect: 1,
-				values: ['user', 'collection', 'edition']
+				values: ['user', 'collection', 'edition', 'documentation']
 			},
 			{ name: 'targetId', type: 'text', required: true },
 			{ name: 'performedBy', type: 'text', required: true },
@@ -549,7 +550,10 @@ async function main() {
 		name: 'editionReviews',
 		type: 'base',
 		fields: [
-			relationField('editionId', collectionIds['editions'], { required: true, cascadeDelete: true }),
+			relationField('editionId', collectionIds['editions'], {
+				required: true,
+				cascadeDelete: true
+			}),
 			relationField('reviewerId', collectionIds['users'], { required: true }),
 			{ name: 'reviewStage', type: 'number', required: true },
 			{
@@ -567,7 +571,10 @@ async function main() {
 		name: 'reviewAssignments',
 		type: 'base',
 		fields: [
-			relationField('editionId', collectionIds['editions'], { required: true, cascadeDelete: true }),
+			relationField('editionId', collectionIds['editions'], {
+				required: true,
+				cascadeDelete: true
+			}),
 			relationField('reviewerId', collectionIds['users'], { required: true }),
 			relationField('assignedBy', collectionIds['users'], { required: true }),
 			{ name: 'reviewStage', type: 'number', required: true },
@@ -585,7 +592,10 @@ async function main() {
 		name: 'reviewFeedback',
 		type: 'base',
 		fields: [
-			relationField('editionId', collectionIds['editions'], { required: true, cascadeDelete: true }),
+			relationField('editionId', collectionIds['editions'], {
+				required: true,
+				cascadeDelete: true
+			}),
 			relationField('reviewerId', collectionIds['users'], { required: true }),
 			{ name: 'reviewStage', type: 'number', required: true },
 			{
@@ -703,6 +713,10 @@ async function main() {
 		]
 	});
 	console.log('   feedbackRecipients: API rules restricted to admins');
+
+	// Keep ORCID fields and authorization identical to the focused configuration command.
+	// OAuth credentials and password/OTP changes require configure-orcid.ts --apply.
+	await alignOrcidSchema(pb);
 
 	// Configure S3-compatible storage only when all four R2_* env vars are present.
 	// Per-field `maxSize` on file fields gates upload sizes (PocketBase v0.22+

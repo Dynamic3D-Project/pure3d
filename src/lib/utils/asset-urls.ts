@@ -1,8 +1,8 @@
 /**
  * Asset URL utilities for serving 3D edition data.
  *
- * Defaults to the R2 CDN when PUBLIC_ASSET_BASE_URL is not set.
- * Set to empty string to serve from local static/project/ instead.
+ * Defaults to OVH assets when PUBLIC_ASSET_BASE_URL is not set or empty.
+ * Set to a local asset URL to override it.
  */
 
 import type { RecordModel } from 'pocketbase';
@@ -11,11 +11,11 @@ import { base } from '$app/paths';
 import { dev } from '$app/environment';
 import { pb } from '$lib/database/client';
 
-const DEFAULT_ASSET_BASE_URL = 'https://pure3d-assets.ctwhome.com';
+const DEFAULT_ASSET_BASE_URL = 'https://main.57-129-98-223.sslip.io/assets';
 
 /**
  * Returns the base URL for assets.
- * Defaults to R2 CDN. Set PUBLIC_ASSET_BASE_URL="" to use local files.
+ * Defaults to OVH assets. PUBLIC_ASSET_BASE_URL overrides the source.
  */
 export function getAssetBaseUrl(): string {
 	const configuredBaseUrl = PUBLIC_ASSET_BASE_URL || DEFAULT_ASSET_BASE_URL;

@@ -12,19 +12,7 @@
 	import { EditionStatus, GlobalRole } from '$lib/types/roles';
 	import toast from 'svelte-french-toast';
 	import { editionMatchesQuery } from '$lib/utils/edition-search';
-	import { profileNameKey, profileNames } from '$lib/utils/profile-matching';
 	import SearchIcon from '~icons/lucide/search';
-
-	interface UserProfileSummary {
-		id: string;
-		name: string;
-		profilePictureUrl: string;
-		titleRole: string;
-		affiliation: string;
-		orcid: string;
-		bio: string;
-		verified: boolean;
-	}
 
 	let showHiddenEditions = $state(false);
 	let canShowHiddenEditions = $derived(authStore.globalRole === GlobalRole.Admin);
@@ -39,8 +27,6 @@
 	);
 	let hasCachedData = $derived($editionsStore.items.length > 0);
 	let isLoading = $state(true);
-	let selectedUserProfile = $state<UserProfileSummary | null>(null);
-	let selectedUserQuery = $state('');
 
 	onMount(async () => {
 		// If we have fresh cached data, skip loading
@@ -60,19 +46,6 @@
 
 	let searchQuery = $state('');
 	let drawerOpen = $state(false);
-	let hasSelectedUserDetails = $derived(
-		!!selectedUserProfile &&
-		!!(
-			selectedUserProfile.profilePictureUrl ||
-			selectedUserProfile.titleRole ||
-			selectedUserProfile.affiliation ||
-			selectedUserProfile.orcid ||
-			selectedUserProfile.bio
-		)
-	);
-	let showSelectedUserProfile = $derived(
-		hasSelectedUserDetails && normalize(searchQuery) === normalize(selectedUserQuery)
-	);
 
 	// Autocomplete state
 	let showSuggestions = $state(false);
@@ -85,11 +58,8 @@
 		if (query === searchQuery) return;
 
 		searchQuery = query;
-		selectedUserProfile = null;
-		selectedUserQuery = '';
 		showSuggestions = false;
 		selectedIndex = -1;
-		if (query) void loadUserProfileForQuery(query);
 	});
 
 	// Initialize filter state
@@ -142,50 +112,6 @@
 	function handleInput() {
 		showSuggestions = searchQuery.trim().length > 0 && suggestions.length > 0;
 		selectedIndex = -1;
-	}
-
-	function normalize(value: string) {
-		return value.trim().toLowerCase();
-	}
-
-	function plainText(value: string) {
-		return value
-			.replace(/&nbsp;/g, ' ')
-			.replace(/<[^>]*>/g, '')
-			.replace(/\s+/g, ' ')
-			.trim();
-	}
-
-	async function loadUserProfileForQuery(query: string) {
-		const normalizedQuery = profileNameKey(query);
-		if (!normalizedQuery) return;
-
-		try {
-			const result = await pb.collection('users').getList(1, 500, { $autoCancel: false });
-			const user = result.items.find((record) =>
-				profileNames(record).some((name) => profileNameKey(name) === normalizedQuery)
-			);
-
-			if (!user) return;
-
-			const profilePicture = user.profilePicture || user.avatar || '';
-			selectedUserProfile = {
-				id: user.id,
-				name: user.name || query.trim() || user.nickname || user.username || user.email || 'User',
-				profilePictureUrl: profilePicture
-					? pb.files.getURL(user, profilePicture, { thumb: '200x200' })
-					: '',
-				titleRole: user.titleRole || '',
-				affiliation: user.affiliation || '',
-				orcid: user.orcid || '',
-				bio: plainText(user.bio || ''),
-				verified: !!user.verified
-			};
-			selectedUserQuery = query;
-		} catch {
-			selectedUserProfile = null;
-			selectedUserQuery = '';
-		}
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
@@ -250,8 +176,6 @@
 
 	function clearSearch() {
 		searchQuery = '';
-		selectedUserProfile = null;
-		selectedUserQuery = '';
 		showSuggestions = false;
 		selectedIndex = -1;
 		inputElement?.focus();
@@ -280,18 +204,6 @@
 				status: EditionStatus.Draft,
 				isPublished: false
 			});
-
-			try {
-				await pb.collection('editionUsers').create({
-					edition: record.id,
-					editionId: record.id,
-					user: authStore.appUserId,
-					userId: authStore.appUserId,
-					role: 'author'
-				});
-			} catch {
-				// Non-critical
-			}
 
 			goto(`${base}/editions/${record.id}/workflow`);
 		} catch (e: unknown) {
@@ -328,15 +240,17 @@
 				</div>
 				{#if authStore.globalRole === GlobalRole.Admin}
 					<div class="flex flex-none flex-wrap items-center justify-end gap-3">
-						<label class="flex cursor-pointer items-center gap-2 rounded-full border border-base-300 bg-base-100 px-4 py-2 text-sm shadow-sm">
+						<label
+							class="flex cursor-pointer items-center gap-2 rounded-full border border-base-300 bg-base-100 px-4 py-2 text-sm shadow-sm"
+						>
 							<input
 								type="checkbox"
-								class="toggle toggle-sm toggle-primary"
+								class="toggle toggle-primary toggle-sm"
 								bind:checked={showHiddenEditions}
 							/>
 							<span>Show non-public</span>
 							{#if hiddenEditionCount > 0}
-								<span class="badge badge-sm badge-ghost">{hiddenEditionCount}</span>
+								<span class="badge badge-ghost badge-sm">{hiddenEditionCount}</span>
 							{/if}
 						</label>
 						<button class="btn btn-sm btn-primary" onclick={createEdition} disabled={isCreating}>
@@ -481,7 +395,9 @@
 										{/if}
 									</div>
 									{#if suggestion.isPublished === false}
-										<span class="badge badge-sm border-red-800 bg-red-700 text-white">Not public</span>
+										<span class="badge border-red-800 bg-red-700 badge-sm text-white"
+											>Not public</span
+										>
 									{/if}
 									{#if suggestion.hasPeerReview}
 										<span class="badge badge-sm badge-success">Peer reviewed</span>
@@ -516,46 +432,9 @@
 				{/if}
 			</div>
 
-			{#if showSelectedUserProfile && selectedUserProfile}
-				<a
-					href="{base}/profile/{selectedUserProfile.id}"
-					class="group mb-6 flex items-center gap-4 rounded-xl border border-base-300 bg-base-100 p-4 shadow-sm transition hover:border-base-content/30 hover:shadow-md"
-				>
-					{#if selectedUserProfile.profilePictureUrl}
-						<img
-							class="h-16 w-16 shrink-0 rounded-full object-cover"
-							src={selectedUserProfile.profilePictureUrl}
-							alt="{selectedUserProfile.name} profile"
-						/>
-					{:else}
-						<div
-							class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-neutral text-xl font-semibold text-neutral-content"
-						>
-							{selectedUserProfile.name.charAt(0).toUpperCase()}
-						</div>
-					{/if}
-
-					<div class="min-w-0 flex-1">
-						<h2 class="truncate text-lg font-semibold">{selectedUserProfile.name}</h2>
-						{#if selectedUserProfile.titleRole || selectedUserProfile.affiliation}
-							<p class="truncate text-sm text-base-content/60">
-								{[selectedUserProfile.titleRole, selectedUserProfile.affiliation]
-									.filter(Boolean)
-									.join(' at ')}
-							</p>
-						{/if}
-					</div>
-					<span class="text-sm font-medium text-base-content/60 group-hover:text-base-content">
-						View profile →
-					</span>
-				</a>
-			{/if}
-
 			<!-- Editions Grid -->
 			{#if isLoading && !hasCachedData}
-				<div
-					class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-				>
+				<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 					{#each Array(15) as _}
 						<div class="h-64 skeleton rounded-xl"></div>
 					{/each}
