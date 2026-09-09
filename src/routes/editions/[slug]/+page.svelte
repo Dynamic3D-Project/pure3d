@@ -148,13 +148,8 @@
 	// Version history & citation state
 	let citationCopied = $state(false);
 
-	// Get the primary DOI (first in array) or construct from pubNum
 	const primaryDoi = $derived(
-		(edition as any).dcDoi && (edition as any).dcDoi.length > 0
-			? (edition as any).dcDoi[0]
-			: (edition as any).pubNum
-				? `10.60131/p3d.${String((edition as any).collectionId || '0000').slice(-4)}.${String((edition as any).pubNum).padStart(2, '0')}`
-				: ''
+		((edition as any).dcDoi?.[0] || '').replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '')
 	);
 
 	// Format citation (Chicago style)

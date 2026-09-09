@@ -13,7 +13,7 @@
 
 import { persisted } from 'svelte-persisted-store';
 import { creatorNames, readCredits } from '$lib/utils/credits';
-import { pb } from '$lib/database/client';
+import { pb, cachePrefix } from '$lib/database/client';
 import type { Edition, Collection } from '$lib/types/collection';
 import { EditionStatus } from '$lib/types/roles';
 import {
@@ -36,17 +36,20 @@ interface CollectionsData {
 }
 
 // Persisted stores with localStorage
-export const editionsStore = persisted<EditionsData>('pure3d:editions:credits-v1', {
+export const editionsStore = persisted<EditionsData>(`${cachePrefix}:editions:credits-v1`, {
 	items: [],
 	total: 0,
 	lastFetched: null
 });
 
-export const collectionsStore = persisted<CollectionsData>('pure3d:collections:credits-v1', {
-	items: [],
-	total: 0,
-	lastFetched: null
-});
+export const collectionsStore = persisted<CollectionsData>(
+	`${cachePrefix}:collections:credits-v1`,
+	{
+		items: [],
+		total: 0,
+		lastFetched: null
+	}
+);
 
 /**
  * Fetches all published editions from Pocketbase and updates the store.

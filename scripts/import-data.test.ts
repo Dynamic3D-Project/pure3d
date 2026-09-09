@@ -220,6 +220,44 @@ describe('local legacy membership onboarding', () => {
 			fake.close();
 		}
 	});
+	test('preserves null-user legacy rows for review without blocking valid memberships', async () => {
+		const fake = fixture();
+		try {
+			const missingAuthor = {
+				...author,
+				user: null,
+				dateDeleted: '2020-01-01'
+			};
+			const missingCollaborator = { ...author, user: null, role: 'reader' };
+			const result = await importEditionMemberships(
+				fake.pb,
+				[missingAuthor, missingCollaborator, { ...author, role: 'reviewer' }],
+				editionIds,
+				userIds,
+				fake.directory
+			);
+			expect(result).toMatchObject({ imported: 1, pending: 2, pendingAuthors: 1 });
+			const report = JSON.parse(readFileSync(result.reportPath!, 'utf8'));
+			expect(report.pendingAssignments.map((item: { source: unknown }) => item.source)).toEqual([
+				missingAuthor,
+				missingCollaborator
+			]);
+			for (const item of report.pendingAssignments) {
+				expect(item).toMatchObject({
+					legacyUserHash: null,
+					userId: null,
+					editionId: 'edition00000001',
+					status: 'pending',
+					reason: 'missing-target'
+				});
+			}
+			expect(fake.writes).toHaveLength(1);
+			expect(fake.writes[0]).toMatchObject({ userId: 'user00000000001', role: 'reviewer' });
+			expect(statSync(result.reportPath!).mode & 0o777).toBe(0o600);
+		} finally {
+			fake.close();
+		}
+	});
 	test('does not change existing authors or duplicate existing non-author memberships', async () => {
 		const fake = fixture([
 			{ editionId: 'edition00000001', userId: 'user00000000001', role: 'author' }

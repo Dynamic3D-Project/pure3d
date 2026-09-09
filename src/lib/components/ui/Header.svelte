@@ -8,6 +8,9 @@
 	import IconamoonMenuBurgerHorizontalBold from '~icons/iconamoon/menu-burger-horizontal-bold';
 	import menuItems from '$lib/models/menu-itmes';
 	import { page } from '$app/stores';
+	import { pb } from '$lib/database/client';
+
+	const productionDb = dev && new URL(pb.baseURL).origin === 'https://main.57-129-98-223.sslip.io';
 
 	interface Props {
 		showSearch?: boolean;
@@ -31,10 +34,9 @@
 
 		return false;
 	}
-
 </script>
 
-<nav class="bien-nav mb-10">
+<nav id="header" class="bien-nav mb-10">
 	<div class="bien-glass"></div>
 	<div class="bien-glass-edge"></div>
 	<div class="relative container mx-auto py-2">
@@ -48,11 +50,23 @@
 				<IconamoonMenuBurgerHorizontalBold class="size-6" />
 			</button>
 			<a
-				class="no-drag mr-3 h-auto max-w-[140px] flex-initial shrink-0 select-none sm:max-w-[160px]"
+				class="no-drag mr-3 flex h-auto max-w-[140px] flex-initial shrink-0 flex-col items-start gap-1 select-none sm:max-w-[160px]"
 				href="{base}/"
 				data-sveltekit-preload-data="hover"
 			>
 				<Logo />
+				{#if dev}
+					<span
+						class="rounded px-1.5 py-0.5 text-[10px] leading-none font-semibold {productionDb
+							? 'bg-warning text-warning-content'
+							: 'bg-info text-info-content'}"
+						title={productionDb
+							? 'Connected to production: changes affect live data.'
+							: 'Local development environment.'}
+						data-testid={productionDb ? 'production-db-label' : 'dev-db-label'}
+						>{productionDb ? 'production db' : 'dev'}</span
+					>
+				{/if}
 			</a>
 			<div class="flex-1"></div>
 			{#if showSearch}
@@ -122,12 +136,7 @@
 			black var(--cutoff),
 			transparent var(--cutoff)
 		);
-		mask-image: linear-gradient(
-			to bottom,
-			black 0,
-			black var(--cutoff),
-			transparent var(--cutoff)
-		);
+		mask-image: linear-gradient(to bottom, black 0, black var(--cutoff), transparent var(--cutoff));
 	}
 
 	.bien-glass-edge {
@@ -156,11 +165,6 @@
 			black var(--offset),
 			transparent var(--offset)
 		);
-		mask-image: linear-gradient(
-			to bottom,
-			black 0,
-			black var(--offset),
-			transparent var(--offset)
-		);
+		mask-image: linear-gradient(to bottom, black 0, black var(--offset), transparent var(--offset));
 	}
 </style>

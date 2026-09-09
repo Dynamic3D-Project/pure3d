@@ -72,7 +72,7 @@ function mapEditionRole(role?: string) {
 export type LegacyEditionMembership = Record<string, unknown> & {
 	_id?: string;
 	editionId: string;
-	user: string;
+	user: string | null;
 	role?: string;
 };
 
@@ -96,13 +96,12 @@ export async function importEditionMemberships(
 			!doc ||
 			typeof doc.editionId !== 'string' ||
 			!doc.editionId ||
-			typeof doc.user !== 'string' ||
-			!doc.user ||
+			(doc.user !== null && (typeof doc.user !== 'string' || !doc.user)) ||
 			(doc.role !== undefined && typeof doc.role !== 'string')
 		)
 			throw new Error('Invalid legacy edition membership source');
 		const editionId = editionIds.get(doc.editionId);
-		const userId = userIds.get(doc.user);
+		const userId = doc.user === null ? undefined : userIds.get(doc.user);
 		const role = mapEditionRole(doc.role);
 		const key = `${editionId}|${userId}|${role}`;
 		if (editionId && userId && keys.has(key)) {

@@ -6,18 +6,29 @@ author access, follow [ORCID migration and onboarding](../orcid.md).
 
 ## Prerequisites
 
-- Docker with Compose and Bun installed.
+- Docker with Compose, Bun, and mkcert installed (`brew install mkcert` on macOS).
 - Protected local superuser credentials in the environment/configuration; never commit `.env`.
 - Optional legacy source JSON in `data/json-output/`. If conversion is needed, run
   `bun scripts/read-bson.ts` against the intended local `data/db/` backup first and retain originals.
-- For ORCID sandbox testing, separate sandbox credentials/database, with
-  `ORCID_ISSUER=https://sandbox.orcid.org` on PocketBase and `ORCID_ENVIRONMENT=sandbox` for operator commands.
+- For local ORCID sign-in, reuse the existing real ORCID OAuth application and account with an
+  isolated local database. Add `https://127.0.0.1:60020/api/oauth2-redirect` to its allowed callbacks;
+  retain the existing OVH callback and application URL. No sandbox is needed.
 
 ## Start the Stack
 
 ```sh
-docker compose up -d
+make dev
 ```
+
+The Make target selects the explicit local Compose configuration, regardless of production URLs
+in `.env`. Use `make dev-prod` only for intentional access to live data; see
+[development modes](../development.md).
+
+Its `make dev-cert` prerequisite trusts the local mkcert CA and generates missing certificates
+under ignored `.certs/`, covering `localhost`, `127.0.0.1`, and `::1`. Never share the CA private key.
+Restart the browser if trust is not picked up. A custom `FRONTEND_PORT` needs its own exact ORCID
+callback allowlist entry. Provider configuration remains an explicit host operation with the
+real credentials; startup never applies it automatically.
 
 The active compose services provision local storage, bootstrap PocketBase through the superuser,
 apply the local schema/documentation setup, import available source JSON, install Voyager assets,
@@ -31,7 +42,7 @@ existing database and backups. Never point this bootstrap chain at production.
 
 ## Verify Provisioning
 
-- Frontend: `http://localhost:60020`.
+- Frontend: `https://127.0.0.1:60020` (same-origin `/api` and `/assets` proxies).
 - PocketBase operator UI: `http://localhost:60021/_/`, using protected **superuser** credentials.
 - Review setup logs for imported/skipped records and pending author-assignment counts. Do not assume
   a fixed source count or that all membership grants completed.

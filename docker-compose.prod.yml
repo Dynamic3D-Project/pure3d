@@ -1,0 +1,6 @@
+services:
+  frontend:
+    environment:
+      DEV_HTTPS: '0'
+      PUBLIC_POCKETBASE_URL: https://main.57-129-98-223.sslip.io
+      PUBLIC_ASSET_BASE_URL: https://main.57-129-98-223.sslip.io/assets

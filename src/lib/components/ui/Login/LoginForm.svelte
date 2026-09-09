@@ -1,12 +1,40 @@
 <script lang="ts">
-	import { authStore } from '$lib/database';
+	import { authStore, pb } from '$lib/database';
 	import { base } from '$app/paths';
 	import { goto } from '$app/navigation';
+	import { dev } from '$app/environment';
+	import { onMount } from 'svelte';
 
 	let loading = $state(false);
 	let error = $state('');
+	let checkingProvider = $state(true);
+	let providerReady = $state(false);
+
+	onMount(() => {
+		void pb
+			.collection('users')
+			.listAuthMethods()
+			.then((methods) => {
+				providerReady =
+					!!methods.oauth2?.enabled &&
+					methods.oauth2.providers.some((provider) => provider.name === 'oidc');
+				if (!providerReady) {
+					error = dev
+						? 'ORCID is not configured for this database. Configure the local PocketBase provider and register its local HTTPS callback. Use make dev-prod only if you intend to access live data. Reload this page after configuration.'
+						: 'ORCID sign-in is currently unavailable. Please contact an administrator.';
+				}
+			})
+			.catch(() => {
+				error =
+					'Cannot reach the sign-in service. Check the backend connection and reload this page.';
+			})
+			.finally(() => {
+				checkingProvider = false;
+			});
+	});
 
 	async function signIn() {
+		if (!providerReady) return;
 		loading = true;
 		error = '';
 		try {
@@ -36,12 +64,16 @@
 	<button
 		type="button"
 		class="btn w-full btn-primary"
-		disabled={loading}
-		aria-busy={loading}
+		disabled={loading || checkingProvider || !providerReady}
+		aria-busy={loading || checkingProvider}
 		onclick={signIn}
 	>
 		{#if loading}<span class="loading loading-sm loading-spinner" aria-hidden="true"></span>{/if}
-		{loading ? 'Connecting to ORCID...' : 'Sign in with ORCID'}
+		{checkingProvider
+			? 'Checking ORCID...'
+			: loading
+				? 'Connecting to ORCID...'
+				: 'Sign in with ORCID'}
 	</button>
 	<div class="space-y-3 text-sm leading-relaxed text-base-content/70">
 		<p>

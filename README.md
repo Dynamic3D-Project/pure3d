@@ -5,7 +5,6 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Research Software Directory](https://img.shields.io/badge/rsd-Pure_3D_Platform-00a3e3.svg)](https://research-software-directory.org/projects/pure3d-20)
 
-
 A web platform for exploring 3D digital collections and editions in cultural heritage, built with modern web technologies.
 
 ![readme](./README.excalidraw.png)
@@ -29,81 +28,58 @@ Pure3D provides an interactive way to view and explore 3D digitized artifacts, a
 
 ## Quick Start
 
-### Option A: Frontend against production services (recommended for most development)
+### Full local stack (recommended)
 
-No local database setup. The app runs in Docker and connects to the production PocketBase and R2 assets.
+Use local PocketBase and MinIO so development changes stay off live services. Docker Compose, Bun, and mkcert are required for the workflows below (`brew install mkcert` on macOS).
 
 ```sh
 git clone <your-repo-url>
 cd pure3D-26
+make dev
+```
+
+Open `https://127.0.0.1:60020`. `make dev` first runs `make dev-cert` to trust the development CA and generate missing certificates, then selects local endpoints even if an existing `.env` points to production. You do not need to replace that file. For a new checkout, `.env.example` documents optional local settings.
+
+Startup provisions local MinIO, PocketBase schema and available seed data, installs Voyager, and starts the Docker frontend. It does not apply an ORCID OAuth cutover. For a native Bun frontend with the same local services, use `make dev-web` (`make bun-dev` is an alias).
+
+Get private database seed data from a project maintainer and place it in `data/json-output/`. Obtain local 3D assets separately under `static/project/`, then run `make seed-assets` to mirror them into MinIO. `make install` provisions services and seeds available assets without starting the frontend.
+
+- PocketBase admin UI: `http://localhost:60021/_/`
+- MinIO console: `http://localhost:60024`
+- Local assets: `http://localhost:60023/pure3d-assets`
+
+Local ORCID sign-in reuses the **existing real ORCID application and account**, with a separate local application database. Add `https://127.0.0.1:60020/api/oauth2-redirect` to the application's allowed callbacks without replacing the OVH callback or application URL. No sandbox is needed. See [Development](docs/development.md) for certificate trust, custom-port callbacks, and explicit provider configuration.
+
+### Local frontend against live OVH (explicit opt-in)
+
+**Connected to production: changes affect live data.**
+
+```sh
 make dev-prod
 ```
 
-Open `http://localhost:60020` and you're done. The frontend runs in Docker and all data and 3D assets load from the production services automatically.
-
-### Option B: Full local stack with Docker
-
-Use this when you need a local PocketBase instance (e.g., to modify data, test schema changes, or work offline).
-
-```sh
-git clone <your-repo-url>
-cd pure3D-26
-cp .env.example .env
-```
-
-Before starting Docker, get the database seed data from a project maintainer and place it in `data/json-output/`. This data contains user records and is not included in the repository. Without it, the local database will be empty.
-
-```sh
-docker compose up
-```
-
-What happens on startup:
-
-1. Starts a local PocketBase instance
-2. Creates or upgrades the PocketBase schema automatically
-3. Imports seed data from `data/json-output/` (if present)
-4. Seeds demo login accounts
-5. Starts the Vite dev server (with hot reload)
-
-Open the app:
-
-- Frontend: `http://localhost:60020`
-- PocketBase admin UI: `http://localhost:60021/_/`
-
-Demo accounts (created automatically):
-
-- `admin@pure3d.eu` / `1234567890`
-- `editor@pure3d.eu` / `1234567890`
-- `user@pure3d.eu` / `1234567890`
-
-To reset the local database:
-
-```sh
-docker compose down
-rm -rf pocketbase/pb_data
-docker compose up
-```
+Open `http://localhost:60020` in this mode. Only the frontend container starts (`--no-deps`); no certificate prerequisite, local setup, or production service management runs. HTTPS development routing is explicitly disabled. Its endpoints are fixed to the OVH URLs below, regardless of `PUBLIC_*` values in `.env`. Existing local services are not stopped.
 
 ## Data and Assets
 
-### Default behavior (no configuration needed)
+### Explicit service selection
 
-Out of the box, the app connects to production services:
+`make dev` and all local aliases select local services. Only `make dev-prod` selects these live endpoints:
 
-| Service | URL | Purpose |
-|---------|-----|---------|
-| PocketBase | `https://main.57-129-98-223.sslip.io` | Collections, editions, users (same-origin `/api`) |
-| Assets | `https://main.57-129-98-223.sslip.io/assets` | 3D models, scenes, thumbnails |
+| Service    | URL                                          | Purpose                                           |
+| ---------- | -------------------------------------------- | ------------------------------------------------- |
+| PocketBase | `https://main.57-129-98-223.sslip.io`        | Collections, editions, users (same-origin `/api`) |
+| Assets     | `https://main.57-129-98-223.sslip.io/assets` | 3D models, scenes, thumbnails                     |
 
 The confirmed OVH target is `ubuntu@57.129.98.223`, with containers under `/opt/pure3d-archive`. `pure3d.eu` DNS has not moved; `pure3d-database.ctwhome.com` points to a different legacy server, not this target.
 
-No `.env` file, credentials, or local data are required for frontend development.
+`PUBLIC_*` settings do not select the mode of these Make commands. Existing port variables and `R2_BUCKET` still customize local URLs.
 
 ### Database seed data (Docker only)
 
 The `data/` directory is git-ignored because it contains user information. It is only needed when running a local PocketBase with Docker Compose.
 
-- `data/json-output/` - JSON files imported automatically by `docker compose up`
+- `data/json-output/` - JSON files imported automatically by `make dev`
 - `data/db/` - BSON source files for regenerating the JSON seed data
 
 To regenerate JSON from BSON:
@@ -118,10 +94,7 @@ Ask a project maintainer for the seed data files if you need a local database.
 
 The 3D project assets (~7.5 GB) are served through the OVH `/assets` prefix and are not included in the repository. Legacy `project/...` paths are unchanged. The `static/project/` directory is git-ignored.
 
-To override the default asset source, set `PUBLIC_ASSET_BASE_URL` in your `.env`:
-
-- **Unset or empty** (default): loads from the OVH assets endpoint
-- **URL**: overrides the source, including local storage such as `http://localhost:60023/pure3d-assets`
+Local commands force MinIO asset URLs; `make dev-prod` forces the OVH assets endpoint. Neither inherits `PUBLIC_ASSET_BASE_URL` from `.env`. Direct build commands still use their supplied build environment.
 
 Local asset structure (for offline development):
 
@@ -154,12 +127,11 @@ PUBLIC_ASSET_BASE_URL=https://main.57-129-98-223.sslip.io/assets
 # Features
 
 ### Pure3D Frontend
+
 - [-] Fix scrollbar layout shift on navigation (added `scrollbar-gutter: stable`)
 - [x] Optimize Voyager iframe loading with persistent iframe architecture
 - [x] Add SvelteKit prefetching to all navigation links
 - [x] Add Voyager background gradient for seamless loading
-
-
   - [ ] Add next/previous navigation on edition pages
   - [ ] Implement edition comparison view
   - [ ] Add keyboard shortcuts for navigation
@@ -167,12 +139,12 @@ PUBLIC_ASSET_BASE_URL=https://main.57-129-98-223.sslip.io/assets
 ### Pure3D Backend
 
 ### Installation scripts
+
 - [x] Docker compose
 - [ ] Automigration files on first run
 - [ ]
 - Docs
   - [ ] Docker Compose
-
 
 ## Versioning & Releases
 
@@ -186,9 +158,9 @@ This project uses tag-triggered releases with automatic changelog generation.
 
 ### Version Display
 
-| Environment  | Example             | Meaning                                   |
-|-------------|---------------------|-------------------------------------------|
-| On a tag    | `v0.3.0`            | Exactly at release v0.3.0                 |
+| Environment   | Example             | Meaning                                   |
+| ------------- | ------------------- | ----------------------------------------- |
+| On a tag      | `v0.3.0`            | Exactly at release v0.3.0                 |
 | After commits | `v0.3.0-5-ga1b2c3d` | 5 commits after v0.3.0, at commit a1b2c3d |
 
 ### Creating a Release
@@ -206,13 +178,13 @@ git push --tags
 
 ### Conventional Commits
 
-| Prefix | Category        |
-|--------|-----------------|
-| feat:  | Features        |
-| fix:   | Bug Fixes       |
-| docs:  | Documentation   |
-| chore: | Maintenance     |
-| feat!: | Breaking Changes|
+| Prefix | Category         |
+| ------ | ---------------- |
+| feat:  | Features         |
+| fix:   | Bug Fixes        |
+| docs:  | Documentation    |
+| chore: | Maintenance      |
+| feat!: | Breaking Changes |
 
 ## Resources
 
