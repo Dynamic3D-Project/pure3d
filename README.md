@@ -114,7 +114,7 @@ The [Smithsonian Voyager](https://smithsonian.github.io/dpo-voyager/) 3D viewer 
 
 ## Deployment
 
-The app deploys to **GitHub Pages** as a static site. Pushing to `main` triggers an automatic deploy via the GitHub Actions workflow (`.github/workflows/deploy.yml`).
+The app deploys to **GitHub Pages** as a static site. Pushing to `main` triggers checks, semantic release analysis, and deployment through `.github/workflows/release.yml`.
 
 Build environment:
 
@@ -148,43 +148,8 @@ PUBLIC_ASSET_BASE_URL=https://main.57-129-98-223.sslip.io/assets
 
 ## Versioning & Releases
 
-This project uses tag-triggered releases with automatic changelog generation.
-
-### How It Works
-
-- Version comes from git tags (e.g., `v0.3.0`)
-- Pushing a tag triggers GitHub Actions to generate a changelog and create a GitHub Release
-- Dev server shows your exact git state via `git describe --tags`
-
-### Version Display
-
-| Environment   | Example             | Meaning                                   |
-| ------------- | ------------------- | ----------------------------------------- |
-| On a tag      | `v0.3.0`            | Exactly at release v0.3.0                 |
-| After commits | `v0.3.0-5-ga1b2c3d` | 5 commits after v0.3.0, at commit a1b2c3d |
-
-### Creating a Release
-
-```sh
-# Work with conventional commits
-git commit -m "feat: add new feature"
-git commit -m "fix: resolve bug"
-git push origin main
-
-# When ready to release
-git tag v0.4.0
-git push --tags
-```
-
-### Conventional Commits
-
-| Prefix | Category         |
-| ------ | ---------------- |
-| feat:  | Features         |
-| fix:   | Bug Fixes        |
-| docs:  | Documentation    |
-| chore: | Maintenance      |
-| feat!: | Breaking Changes |
+Releases and GitHub Pages deployments are automated from `main`. See
+[docs/releases.md](docs/releases.md).
 
 ## Resources
 

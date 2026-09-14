@@ -9,6 +9,7 @@
 - Keep changes minimal and follow existing SvelteKit 2/Svelte 5 patterns.
 - Do not commit, push, or open a pull request unless explicitly requested.
 - Report failed checks and blockers clearly.
+- Follow [docs/releases.md](docs/releases.md) for release and GitHub Pages behavior.
 
 ## Commands
 

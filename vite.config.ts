@@ -7,8 +7,10 @@ import { defineConfig } from 'vite';
 import Icons from 'unplugin-icons/vite';
 
 const getVersion = (): string => {
+	if (process.env.APP_VERSION) return process.env.APP_VERSION;
+
 	try {
-		return execSync('git describe --tags --always').toString().trim();
+		return `dev+${execSync('git rev-parse --short=12 HEAD').toString().trim()}`;
 	} catch {
 		return 'dev';
 	}
