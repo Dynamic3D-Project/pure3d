@@ -4,8 +4,9 @@
 	import { GlobalRole } from '$lib/types/roles';
 	import FloatingDropdown from '$lib/components/ui/FloatingDropdown.svelte';
 	import LoginForm from './LoginForm.svelte';
-	import LoginMarketingPanel from './LoginMarketingPanel.svelte';
+	import LoginArtwork from './LoginArtwork.svelte';
 
+	let loginOpen = $state(false);
 	let accountMenuOpen = $state(false);
 	let accountButtonElement: HTMLButtonElement | undefined = $state();
 	let avatarUrl = $derived.by(() => {
@@ -155,20 +156,22 @@
 	{:else}
 		<div>
 			<label for="login-modal" class="modal-button btn btn-md btn-primary">Login</label>
-			<input id="login-modal" type="checkbox" class="modal-toggle" />
-			<div class="modal h-screen">
-				<div class="modal-box h-[90vh] w-[95vw] max-w-5xl overflow-hidden p-0">
-					<label for="login-modal" class="btn absolute top-3 right-3 z-20 btn-circle btn-ghost"
-						>✕</label
+			<input id="login-modal" type="checkbox" class="modal-toggle" bind:checked={loginOpen} />
+			<div class="modal modal-middle">
+				<div
+					class="modal-box max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg rounded-xl border border-base-300 p-0 md:max-w-[872px]"
+				>
+					<label
+						for="login-modal"
+						aria-label="Close sign-in"
+						class="btn absolute top-3 right-3 z-20 btn-circle btn-ghost btn-sm">✕</label
 					>
 
-					<div class="grid h-full grid-cols-1 lg:grid-cols-2">
-						<div class="hidden lg:block">
-							<LoginMarketingPanel />
+					<div class="grid md:grid-cols-[minmax(0,360px)_minmax(0,512px)]">
+						<div class="relative hidden overflow-hidden rounded-l-xl md:block">
+							{#if loginOpen}<LoginArtwork />{/if}
 						</div>
-						<div class="overflow-y-auto">
-							<LoginForm />
-						</div>
+						<LoginForm />
 					</div>
 				</div>
 				<label class="modal-backdrop" for="login-modal">Close</label>

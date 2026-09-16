@@ -13,7 +13,7 @@ On a new machine, `docker compose up -d` will:
 1. Start PocketBase
 2. Create or upgrade the PocketBase schema
 3. Import the bundled seed data from `data/json-output/` if those files exist
-4. Seed demo login accounts
+4. Seed local Admin and User demo login accounts
 5. Download Voyager `0.59.0` into `static/voyager/0.59.0/` if it is missing
 6. Start the frontend
 
@@ -27,7 +27,6 @@ On a new machine, `docker compose up -d` will:
 These are created automatically for local development:
 
 - `admin@pure3d.eu` / `1234567890`
-- `editor@pure3d.eu` / `1234567890`
 - `user@pure3d.eu` / `1234567890`
 
 If no content data is available yet, the application still starts correctly. You will get an empty database plus working login, demo users, and role-based access.

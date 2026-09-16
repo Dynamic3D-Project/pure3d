@@ -91,6 +91,7 @@ for (const custom of [false, true]) {
 		expect(setup.ORCID_ISSUER === 'https://orcid.org').toBe(true);
 		expect(setup.ORCID_ENVIRONMENT === 'production').toBe(true);
 		const frontendEnv = services.frontend.environment;
+		expect(frontendEnv.PUBLIC_DEMO_LOGIN === '1').toBe(true);
 		expect(frontendEnv.DEV_HTTPS === '1').toBe(true);
 		expect(frontendEnv.DEV_POCKETBASE_TARGET === 'http://pocketbase:8090').toBe(true);
 		expect(frontendEnv.DEV_ASSET_TARGET === 'http://minio:9000').toBe(true);
@@ -98,6 +99,9 @@ for (const custom of [false, true]) {
 		expect(JSON.stringify(services['pocketbase-setup'].command).includes('configure-orcid')).toBe(
 			false
 		);
+		expect(
+			JSON.stringify(services['pocketbase-setup'].command).includes('seed-local-demo-users.ts')
+		).toBe(true);
 		for (const [name, target, published] of [
 			['pocketbase', 8090, pbPort],
 			['minio', 9000, assetPort],
@@ -122,6 +126,7 @@ test('production frontend pins OVH even when public settings point elsewhere', (
 	expect(services.frontend.environment.PUBLIC_POCKETBASE_URL === production).toBe(true);
 	expect(services.frontend.environment.PUBLIC_ASSET_BASE_URL === `${production}/assets`).toBe(true);
 	expect(services.frontend.environment.DEV_HTTPS === '0').toBe(true);
+	expect(services.frontend.environment.PUBLIC_DEMO_LOGIN === '0').toBe(true);
 });
 
 test('Make targets select explicit overrides; production starts only frontend', () => {
@@ -162,6 +167,7 @@ test('Make targets select explicit overrides; production starts only frontend', 
 				true
 			);
 			expect(output.includes('DEV_ASSET_BUCKET="${R2_BUCKET:-pure3d-assets}"')).toBe(true);
+			expect(output.includes('PUBLIC_DEMO_LOGIN=1')).toBe(true);
 		}
 		expect(output.includes('mkcert -install')).toBe(
 			['dev', 'dev-web', 'bun-dev', 'stack'].includes(target)

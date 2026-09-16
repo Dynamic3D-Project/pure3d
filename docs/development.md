@@ -94,6 +94,8 @@ certificate loading. `make dev-prod` has no certificate prerequisite.
 The development header shows an amber **production db** label underneath the logo when its
 actual PocketBase URL points to OVH, and a blue **dev** label in local mode. Neither label
 appears in production builds. Login sessions and catalogue caches are separated by backend
+URL. Local mode also offers one-click Admin and User demo logins; they are never shown by
+`make dev-prod` or a production build.
 URL during development, so switching modes does not inherit the other mode's
 session or cached data. Existing production-build session storage is unchanged.
 

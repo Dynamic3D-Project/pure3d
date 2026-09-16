@@ -7,6 +7,8 @@ const backendUrl = (PUBLIC_POCKETBASE_URL || 'https://main.57-129-98-223.sslip.i
 	''
 );
 export const cachePrefix = dev ? `pure3d:dev:${backendUrl}` : 'pure3d';
+export const isLocalBackend =
+	dev && ['127.0.0.1', 'localhost', '[::1]'].includes(new URL(backendUrl).hostname);
 
 // Dev modes share a browser origin, but must not share their backend sessions.
 export const pb = new PocketBase(

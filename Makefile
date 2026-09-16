@@ -64,6 +64,7 @@ dev-web: dev-cert
 		export PUBLIC_ASSET_BASE_URL="$$PUBLIC_POCKETBASE_URL/assets"; \
 		export DEV_HTTPS=1 DEV_POCKETBASE_TARGET="http://127.0.0.1:$${POCKETBASE_PORT:-60021}"; \
 		export DEV_ASSET_TARGET="http://127.0.0.1:$${MINIO_API_PORT:-60023}" DEV_ASSET_BUCKET="$${R2_BUCKET:-pure3d-assets}"; \
+		export PUBLIC_DEMO_LOGIN=1; \
 		export ORCID_CLIENT_ID= ORCID_CLIENT_SECRET=; \
 		bun install && bun run dev --host 0.0.0.0 --port "$${FRONTEND_PORT:-60020}"
 

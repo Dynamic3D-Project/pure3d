@@ -18,9 +18,11 @@ services:
       # Explicit empties prevent Bun from loading production credentials from mounted .env.
       ORCID_CLIENT_ID: ''
       ORCID_CLIENT_SECRET: ''
+    command: sh -c "bun install && bun scripts/create-pocketbase-collections.ts && bun scripts/migrate-documentation.ts && bun scripts/import-data.ts --onboarding-dir /app/data/import-onboarding && bun scripts/seed-local-demo-users.ts"
 
   frontend:
     environment:
+      PUBLIC_DEMO_LOGIN: '1'
       PUBLIC_POCKETBASE_URL: https://127.0.0.1:${FRONTEND_PORT:-60020}
       PUBLIC_ASSET_BASE_URL: https://127.0.0.1:${FRONTEND_PORT:-60020}/assets
       DEV_HTTPS: '1'

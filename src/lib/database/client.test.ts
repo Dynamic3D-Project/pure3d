@@ -23,10 +23,10 @@ for (const [dev, backend] of [
 					localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
 					addEventListener() {}
 				};
-				const { pb, cachePrefix } = await import(${JSON.stringify(new URL('./client.ts', import.meta.url).href)});
+				const { pb, cachePrefix, isLocalBackend } = await import(${JSON.stringify(new URL('./client.ts', import.meta.url).href)});
 				const inherited = pb.authStore.record?.id ?? null;
 				pb.authStore.save('synthetic-new', {id: 'current-user'});
-				console.log(JSON.stringify({ cachePrefix, inherited, keys: [...storage.keys()] }));
+				console.log(JSON.stringify({ cachePrefix, inherited, isLocalBackend, keys: [...storage.keys()] }));
 				`
 			],
 			{ env: { PATH: process.env.PATH!, HOME: process.env.HOME! } }
@@ -36,6 +36,7 @@ for (const [dev, backend] of [
 		const expectedPrefix = dev ? `pure3d:dev:${backend}` : 'pure3d';
 		expect(actual.cachePrefix).toBe(expectedPrefix);
 		expect(actual.inherited).toBe(dev ? null : 'production-user');
+		expect(actual.isLocalBackend).toBe(dev && backend === 'https://127.0.0.1:60020');
 		expect(actual.keys).toContain(dev ? `${expectedPrefix}:auth` : 'pocketbase_auth');
 	});
 }

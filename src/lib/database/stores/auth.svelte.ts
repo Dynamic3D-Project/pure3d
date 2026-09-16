@@ -67,6 +67,10 @@ class AuthStore {
 		return authData;
 	}
 
+	async loginWithPassword(email: string, password: string) {
+		return await pb.collection('users').authWithPassword(email, password);
+	}
+
 	logout() {
 		pb.authStore.clear();
 		this.user = null;
