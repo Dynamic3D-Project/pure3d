@@ -25,19 +25,12 @@ function run(command, args, options = {}) {
 
 export async function buildProduction(version, commitSha, archive) {
 	validate(version, commitSha, archive);
-	await run('bun', ['run', 'build'], {
+	await run('bun', ['--no-env-file', 'run', 'build'], {
 		env: { ...process.env, APP_VERSION: version, APP_COMMIT_SHA: commitSha }
 	});
 	await copyFile('build/index.html', 'build/404.html');
 	await writeFile('build/version.json', `${JSON.stringify({ version, commit: commitSha })}\n`);
 	if (archive) await run('tar', ['-czf', archive, '-C', 'build', '.']);
-}
-
-export async function prepare(_pluginConfig, { nextRelease, env, logger }) {
-	const version = `v${nextRelease.version}`;
-	const archive = `pure3d-${version}.tar.gz`;
-	await buildProduction(version, env.GITHUB_SHA, archive);
-	logger.log(`Built ${archive} from ${env.GITHUB_SHA}`);
 }
 
 async function main() {

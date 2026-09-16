@@ -41,3 +41,7 @@ static/voyager/**/ATTRIBUTIONS.md
 static/voyager/**/README.md
 static/voyager/**/3RD_PARTY_LICENSES.txt
 static/voyager/**/*-license.txt
+
+# Local release archives
+/pure3d-v*.tar.gz
+/pure3d-v*.tar.gz.sha256

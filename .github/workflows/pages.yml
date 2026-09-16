@@ -1,0 +1,98 @@
+name: Deploy prebuilt release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  artifact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Download published release and verify archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+          RELEASE_COMMIT: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          archive="pure3d-${TAG}.tar.gz"
+          # Tag push starts this job before local publication finishes. Never rebuild.
+          ready=false
+          for attempt in {1..60}; do
+            if gh api "repos/$GH_REPO/releases/tags/$TAG" > release.json &&
+              jq -e --arg tag "$TAG" --arg archive "$archive" \
+                '.tag_name == $tag and .draft == false and .prerelease == false and
+                 ([.assets[] | select(.state == "uploaded") | .name] | index($archive) != null and index($archive + ".sha256") != null)' release.json; then
+              ready=true
+              break
+            fi
+            sleep 20
+          done
+          "$ready" || { echo 'Release unavailable; finish make release then rerun this job.' >&2; exit 1; }
+          gh release download "$TAG" --repo "$GH_REPO" --pattern "$archive" --pattern "$archive.sha256"
+          export SOURCE_COMMIT
+          SOURCE_COMMIT="$(gh api "repos/$GH_REPO/commits/$RELEASE_COMMIT" --jq '.parents[0].sha')"
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, shutil, tarfile
+          tag = os.environ['TAG']
+          archive = pathlib.Path(f'pure3d-{tag}.tar.gz')
+          checksum = pathlib.Path(f'{archive}.sha256').read_text()
+          digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+          if checksum != f'{digest}  {archive}\n':
+              raise SystemExit('Archive checksum mismatch')
+          with tarfile.open(archive, 'r:gz') as tar:
+              for member in tar.getmembers():
+                  path = pathlib.PurePosixPath(member.name)
+                  if path.is_absolute() or '..' in path.parts or not (member.isfile() or member.isdir()):
+                      raise SystemExit('Unsafe archive member')
+              # Python 3.9+: never restore archive links, permissions or special files.
+              # A fresh destination prevents following pre-existing filesystem links.
+              site = pathlib.Path('site')
+              if site.exists() or site.is_symlink():
+                  raise SystemExit('Extraction destination already exists')
+              site.mkdir()
+              for member in tar.getmembers():
+                  target = site / member.name
+                  if member.isdir():
+                      target.mkdir(parents=True, exist_ok=True)
+                  else:
+                      target.parent.mkdir(parents=True, exist_ok=True)
+                      with tar.extractfile(member) as source, target.open('xb') as output:
+                          shutil.copyfileobj(source, output)
+          version = json.loads(pathlib.Path('site/version.json').read_text())
+          if version != {'version': tag, 'commit': os.environ['SOURCE_COMMIT']}:
+              raise SystemExit('Archive version/source mismatch')
+          for name in ['index.html', '404.html']:
+              if not pathlib.Path('site', name).is_file():
+                  raise SystemExit(f'Missing {name}')
+          PY
+
+      - name: Upload verified Pages artifact
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: site
+
+  deploy:
+    needs: artifact
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

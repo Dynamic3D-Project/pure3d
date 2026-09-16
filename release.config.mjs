@@ -1,41 +1,22 @@
-const parserOpts = {
-	headerPattern: /^(\w*)(?:\((.*)\))?!?: (.*)$/,
-	headerCorrespondence: ['type', 'scope', 'subject'],
-	breakingHeaderPattern: /^(\w*)(?:\((.*)\))?!: (.*)$/,
-	breakingHeaderCorrespondence: ['type', 'scope', 'subject'],
-	noteKeywords: ['BREAKING CHANGE', 'BREAKING CHANGES']
-};
-
-const github = [
-	'@semantic-release/github',
-	{
-		assets: [{ path: 'pure3d-v*.tar.gz', label: 'Production site artifact' }],
-		successComment: false,
-		failComment: false,
-		failTitle: false,
-		labels: false,
-		releasedLabels: false
-	}
-];
-
+// Checks/build run locally; GitHub receives the exact prebuilt archive.
 export default {
-	branches: ['main'],
-	tagFormat: 'v${version}',
-	plugins: [
+	repository: 'Dynamic3D-Project/pure3d',
+	checks: [
+		['bun', '--no-env-file', 'test', 'src', 'scripts', 'pocketbase/tests/orcid.test.ts'],
+		['bun', '--no-env-file', 'run', 'check'],
 		[
-			'@semantic-release/commit-analyzer',
-			{
-				parserOpts,
-				releaseRules: [
-					{ type: '*', release: false },
-					{ breaking: true, release: 'major' },
-					{ type: 'feat', release: 'minor' },
-					{ type: 'fix', release: 'patch' }
-				]
-			}
-		],
-		['@semantic-release/release-notes-generator', { parserOpts }],
-		'./scripts/release-build.mjs',
-		...(process.env.SEMANTIC_RELEASE_LOCAL === '1' ? [] : [github])
-	]
+			'curl',
+			'--fail',
+			'--silent',
+			'--show-error',
+			'--max-time',
+			'30',
+			'https://main.57-129-98-223.sslip.io/api/pure3d/orcid/ready'
+		]
+	],
+	buildEnv: {
+		APP_BASE_PATH: '/pure3d',
+		PUBLIC_POCKETBASE_URL: 'https://main.57-129-98-223.sslip.io',
+		PUBLIC_ASSET_BASE_URL: 'https://main.57-129-98-223.sslip.io/assets'
+	}
 };

@@ -1,10 +1,12 @@
-.PHONY: help install db db-logs db-stop dev-cert dev dev-prod dev-web bun-dev seed-assets stack stack-stop
+.PHONY: release release-dry-run help install db db-logs db-stop dev-cert dev dev-prod dev-web bun-dev seed-assets stack stack-stop
 
 LOCAL_COMPOSE = docker compose -f docker-compose.yml -f docker-compose.local.yml
 PROD_COMPOSE = docker compose -f docker-compose.yml -f docker-compose.prod.yml
 
 help:
 	@echo "Pure3D commands"
+	@echo "  make release     Build locally, commit/tag, atomically push and publish release"
+	@echo "  make release-dry-run  Read-only offline release preview"
 	@echo "  make install     Install deps and provision local MinIO/PocketBase/Voyager"
 	@echo "  make db          Start local MinIO + PocketBase and print URLs"
 	@echo "  make db-logs     Follow PocketBase logs"
@@ -80,3 +82,9 @@ stack: dev-cert
 
 stack-stop:
 	$(LOCAL_COMPOSE) down
+
+release:
+	bun --no-env-file scripts/release.ts
+
+release-dry-run:
+	bun --no-env-file scripts/release.ts --dry-run
