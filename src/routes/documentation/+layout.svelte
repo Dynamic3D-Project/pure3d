@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
+	import type { Snippet } from 'svelte';
 	import type { LayoutData } from './$types';
 
-	let { data, children }: { data: LayoutData; children: any } = $props();
+	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 
 	let pages = $derived(data.pages);
 	let currentSlug = $derived($page.params.slug || '');
@@ -16,7 +17,7 @@
 			<!-- Mobile: horizontal scrollable tabs -->
 			<div class="flex gap-2 overflow-x-auto border-b border-base-300 pb-3 lg:hidden">
 				<a
-					href="{base}/documentation"
+					href={resolve('/documentation')}
 					class="rounded-full border px-4 py-2 text-sm font-semibold whitespace-nowrap transition hover:border-base-content"
 					class:border-ink={!currentSlug}
 					class:bg-ink={!currentSlug}
@@ -27,7 +28,7 @@
 				</a>
 				{#each pages as p (p.id)}
 					<a
-						href="{base}/documentation/{p.slug}"
+						href={resolve('/documentation/[slug]', { slug: p.slug })}
 						class="rounded-full border px-4 py-2 text-sm font-semibold whitespace-nowrap transition hover:border-base-content"
 						class:border-ink={currentSlug === p.slug}
 						class:bg-ink={currentSlug === p.slug}
@@ -41,12 +42,14 @@
 
 			<!-- Desktop: vertical sidebar -->
 			<div class="hidden lg:block">
-				<p class="text-xs font-bold tracking-[0.18em] text-vermillion uppercase">Publish with us</p>
+				<p class="text-xs font-bold tracking-[0.18em] text-vermillion uppercase">
+					{data.root?.title || 'Documentation'}
+				</p>
 				<h2 class="mt-2 mb-5 text-2xl font-bold tracking-tight">Guide contents</h2>
 				<ul class="w-full border-t border-base-300">
 					<li class="border-b border-base-300">
 						<a
-							href="{base}/documentation"
+							href={resolve('/documentation')}
 							class="block border-l-2 border-transparent px-3 py-3 text-sm transition hover:bg-base-200/60"
 							class:border-l-vermillion={!currentSlug}
 							class:bg-base-200={!currentSlug}
@@ -57,8 +60,9 @@
 					{#each pages as p (p.id)}
 						<li class="border-b border-base-300">
 							<a
-								href="{base}/documentation/{p.slug}"
+								href={resolve('/documentation/[slug]', { slug: p.slug })}
 								class="block border-l-2 border-transparent px-3 py-3 text-sm transition hover:bg-base-200/60"
+								style:padding-left={`${12 + p.depth * 14}px`}
 								class:border-l-vermillion={currentSlug === p.slug}
 								class:bg-base-200={currentSlug === p.slug}
 							>

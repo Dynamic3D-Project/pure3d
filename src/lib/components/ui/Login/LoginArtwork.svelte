@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import Logo from '$lib/assets/icons/Logo.svelte';
 
 	let canvas: HTMLCanvasElement;
 	let paused = $state(false);
@@ -93,10 +94,9 @@
 
 <div id="login-artwork">
 	<canvas bind:this={canvas} aria-hidden="true"></canvas>
-	<span class="brand">Pure3D<span class="brand-dot">·</span></span>
+	<div class="brand"><Logo /></div>
 	<div class="caption">
 		<p>Research in<br /><em>every dimension.</em></p>
-		<span>Explore · Connect · Publish</span>
 	</div>
 	<button
 		type="button"
@@ -129,13 +129,7 @@
 		position: absolute;
 		top: 28px;
 		left: 28px;
-		font-size: 21px;
-		font-weight: 700;
-		letter-spacing: -1px;
-	}
-	.brand-dot {
-		color: #c56942;
-		margin-left: 3px;
+		--color-ink: #f4f1e9;
 	}
 	.caption {
 		position: absolute;
@@ -150,15 +144,6 @@
 	}
 	.caption em {
 		color: #dba483;
-	}
-	.caption > span {
-		display: block;
-		margin-top: 14px;
-		font-family: var(--ds-mono);
-		font-size: 8px;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-		color: #b9afa3;
 	}
 	.motion-control {
 		position: absolute;

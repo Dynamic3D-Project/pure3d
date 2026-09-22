@@ -11,9 +11,18 @@
 	import { EditionStatus, GlobalRole, Permission, type UserRoleContext } from '$lib/types/roles';
 	import { hasPermission } from '$lib/utils/permissions';
 	import { resolvePageContext } from '$lib/utils/page-permissions';
+	import BookOpenIcon from '~icons/lucide/book-open';
 	import CopyIcon from '~icons/lucide/copy';
+	import LanguagesIcon from '~icons/lucide/languages';
+	import MapIcon from '~icons/lucide/map';
+	import MessageCircleIcon from '~icons/lucide/message-circle';
 	import PanelRightCloseIcon from '~icons/lucide/panel-right-close';
 	import PanelRightOpenIcon from '~icons/lucide/panel-right-open';
+	import RotateCcwIcon from '~icons/lucide/rotate-ccw';
+	import RulerIcon from '~icons/lucide/ruler';
+	import Share2Icon from '~icons/lucide/share-2';
+	import SmartphoneIcon from '~icons/lucide/smartphone';
+	import WrenchIcon from '~icons/lucide/wrench';
 
 	// View preset type for camera positions
 	interface ViewPreset {
@@ -36,6 +45,8 @@
 
 	// Voyager API reference for controlling the viewer
 	let voyagerAPI = $state<VoyagerAPI | null>(null);
+	let viewerLanguages = $state<string[]>([]);
+	let activeViewerLanguage = $state('EN');
 
 	// Make these reactive so they update when data changes on navigation
 	let edition = $derived(data.edition);
@@ -46,9 +57,8 @@
 	// Get view presets from edition (if available)
 	const viewPresets = $derived<ViewPreset[]>((edition as any).viewPresets || []);
 
-	// Check if Voyager's built-in menu should be shown (default: true for regular editions)
-	// When Voyager menu is hidden, custom controls are shown instead
-	const showVoyagerMenu = $derived<boolean>((edition as any).showVoyagerMenu !== false);
+	// The app owns the viewer chrome by default; an edition can explicitly restore Voyager's menu.
+	const showVoyagerMenu = $derived<boolean>((edition as any).showVoyagerMenu === true);
 
 	// Custom controls are the inverse of Voyager menu visibility
 	const showCustomControls = $derived(!showVoyagerMenu);
@@ -247,6 +257,30 @@
 
 	function handleViewerReady(api: VoyagerAPI) {
 		voyagerAPI = api;
+		viewerLanguages = api.getLanguages();
+		activeViewerLanguage = api.getActiveLanguage();
+	}
+
+	function setViewerLanguage(code: string, event: MouseEvent) {
+		voyagerAPI?.setLanguage(code);
+		activeViewerLanguage = code;
+		(event.currentTarget as HTMLElement).closest('details')?.removeAttribute('open');
+	}
+
+	async function shareEdition() {
+		const shareData = { title: edition.title, url: window.location.href };
+
+		try {
+			if (navigator.share) {
+				await navigator.share(shareData);
+			} else {
+				await navigator.clipboard.writeText(shareData.url);
+			}
+		} catch (error) {
+			if ((error as DOMException).name !== 'AbortError') {
+				console.error('Unable to share edition', error);
+			}
+		}
 	}
 
 	function toggleSidebar() {
@@ -290,19 +324,10 @@
 
 	// --- Manage link visibility ---
 	let permissionContext = $state<UserRoleContext>({ globalRole: GlobalRole.User });
-	let currentStatus = $state<EditionStatus>(
-		((data.edition as unknown as { status?: EditionStatus }).status as EditionStatus) ||
-			EditionStatus.Draft
-	);
-
-	let showDraftBadge = $derived(edition.id !== 'demo' && currentStatus === EditionStatus.Draft);
 	let canManagePage = $derived(hasPermission(permissionContext, Permission.EditionEdit));
 
 	onMount(async () => {
 		if (edition.id === 'demo') return;
-		currentStatus =
-			((edition as unknown as { status?: EditionStatus }).status as EditionStatus) ||
-			EditionStatus.Draft;
 
 		if (!authStore.isAuthenticated || !authStore.appUserId) {
 			permissionContext = { globalRole: authStore.globalRole };
@@ -351,30 +376,6 @@
 		<!-- Title and Authors -->
 		<div class="mb-8 flex items-start justify-between gap-6">
 			<div class="min-w-0 flex-1">
-				<div
-					class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 font-mono text-[10px] tracking-[0.12em] text-base-content/50 uppercase"
-				>
-					<span>3D scholarly edition</span>
-					{#if (edition as any).pubNum}
-						<span>Ed. {String((edition as any).pubNum).padStart(2, '0')}</span>
-					{/if}
-					{#if edition.hasPeerReview}
-						<span class="rounded-full bg-base-200 px-2.5 py-1 text-base-content/70">
-							Peer reviewed
-						</span>
-					{/if}
-					{#if (edition as any).isPublished === false}
-						<span
-							class="rounded-full bg-error px-2.5 py-1 text-error-content"
-							title="This edition is hidden and not visible to public visitors"
-						>
-							Not public
-						</span>
-					{/if}
-					{#if showDraftBadge}
-						<StatusBadge status={EditionStatus.Draft} size="sm" />
-					{/if}
-				</div>
 				<h1 class="max-w-5xl text-3xl leading-tight font-bold md:text-4xl lg:text-5xl">
 					{edition.title}
 				</h1>
@@ -423,7 +424,7 @@
 							direct={useDirectMode}
 							voyagerVersion={edition.voyagerVersion}
 							resourceRoot={edition.voyagerResourceRoot}
-							uiMode="menu|title|language"
+							uiMode={showVoyagerMenu ? 'menu|title|language' : 'none'}
 							onModelLoaded={handleModelLoaded}
 							onReady={handleViewerReady}
 							onFullWindowToggle={toggleFullWindow}
@@ -533,146 +534,115 @@
 						<!-- Custom floating controls (left side) - only visible when enabled and API ready -->
 						{#if showCustomControls && voyagerAPI}
 							<div
-								class="absolute left-3 z-10 flex flex-col gap-2 transition-all duration-300"
+								class="custom-viewer-controls absolute left-3 z-10 flex flex-col gap-2 transition-all duration-300"
 								class:top-3={!isFullWindow}
 								class:top-20={isFullWindow}
 							>
-								<!-- Annotations toggle -->
+								{#if viewerLanguages.length > 1}
+									<details class="dropdown dropdown-right">
+										<summary
+											class="btn btn-circle list-none border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
+											aria-label="Change viewer language"
+											title="Language: {activeViewerLanguage}"
+										>
+											<LanguagesIcon class="h-5 w-5" aria-hidden="true" />
+										</summary>
+										<ul
+											class="dropdown-content menu z-20 ml-2 w-36 rounded-box bg-base-100 p-2 shadow-xl"
+										>
+											{#each viewerLanguages as language}
+												<li>
+													<button
+														type="button"
+														class:menu-active={language === activeViewerLanguage}
+														onclick={(event) => setViewerLanguage(language, event)}
+													>
+														{language.toUpperCase()}
+													</button>
+												</li>
+											{/each}
+										</ul>
+									</details>
+								{/if}
+
 								<button
 									type="button"
 									class="btn btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
 									onclick={() => voyagerAPI?.toggleAnnotations()}
+									aria-label="Toggle annotations"
 									title="Toggle annotations"
 								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke-width="2"
-										stroke="currentColor"
-										class="h-5 w-5"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"
-										/>
-									</svg>
+									<MessageCircleIcon class="h-5 w-5" aria-hidden="true" />
 								</button>
 
-								<!-- Reader toggle -->
 								<button
 									type="button"
 									class="btn btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
 									onclick={() => voyagerAPI?.toggleReader()}
+									aria-label="Toggle reader"
 									title="Toggle reader"
 								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke-width="2"
-										stroke="currentColor"
-										class="h-5 w-5"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"
-										/>
-									</svg>
+									<BookOpenIcon class="h-5 w-5" aria-hidden="true" />
 								</button>
 
-								<!-- Tours toggle -->
 								<button
 									type="button"
 									class="btn btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
 									onclick={() => voyagerAPI?.toggleTours()}
+									aria-label="Toggle tours"
 									title="Toggle tours"
 								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke-width="2"
-										stroke="currentColor"
-										class="h-5 w-5"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
-										/>
-									</svg>
+									<MapIcon class="h-5 w-5" aria-hidden="true" />
 								</button>
 
-								<!-- Tools toggle -->
+								<button
+									type="button"
+									class="btn btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
+									onclick={shareEdition}
+									aria-label="Share edition"
+									title="Share edition"
+								>
+									<Share2Icon class="h-5 w-5" aria-hidden="true" />
+								</button>
+
 								<button
 									type="button"
 									class="btn btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
 									onclick={() => voyagerAPI?.toggleTools()}
+									aria-label="Toggle tools"
 									title="Toggle tools"
 								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke-width="2"
-										stroke="currentColor"
-										class="h-5 w-5"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z"
-										/>
-									</svg>
+									<WrenchIcon class="h-5 w-5" aria-hidden="true" />
 								</button>
 
-								<!-- Measurement toggle -->
 								<button
 									type="button"
 									class="btn btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
 									onclick={() => voyagerAPI?.toggleMeasurement()}
+									aria-label="Toggle measurement"
 									title="Toggle measurement"
 								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke-width="2"
-										stroke="currentColor"
-										class="h-5 w-5"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z"
-										/>
-									</svg>
+									<RulerIcon class="h-5 w-5" aria-hidden="true" />
 								</button>
 
-								<!-- Reset camera -->
 								<button
 									type="button"
 									class="btn btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
-									onclick={() => voyagerAPI?.resetCamera()}
-									title="Reset camera"
+									onclick={() => voyagerAPI?.enableAR()}
+									aria-label="View in augmented reality"
+									title="View in AR (supported devices only)"
 								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke-width="2"
-										stroke="currentColor"
-										class="h-5 w-5"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"
-										/>
-									</svg>
+									<SmartphoneIcon class="h-5 w-5" aria-hidden="true" />
+								</button>
+
+								<button
+									type="button"
+									class="btn btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
+									onclick={() => voyagerAPI?.resetViewer()}
+									aria-label="Reset viewer"
+									title="Reset viewer"
+								>
+									<RotateCcwIcon class="h-5 w-5" aria-hidden="true" />
 								</button>
 							</div>
 						{/if}
@@ -1412,6 +1382,14 @@
 	}
 
 	@media (max-width: 480px) {
+		.custom-viewer-controls {
+			top: auto !important;
+			right: 0.75rem;
+			bottom: 0.75rem;
+			flex-direction: row;
+			flex-wrap: wrap;
+		}
+
 		.metadata-row {
 			grid-template-columns: 5rem minmax(0, 1fr);
 			gap: 0.5rem;

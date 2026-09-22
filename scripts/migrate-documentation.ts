@@ -2,14 +2,15 @@
 /**
  * Migration: Documentation Pages
  *
- * 1. Creates `documentation` collection (title, slug, content, summary, order, isPublished)
- * 2. Seeds the initial documentation pages
+ * Seeds documentation as guide pages in the shared content library.
  *
  * Idempotent — safe to re-run.
  *
  * Run: bun scripts/migrate-documentation.ts
  */
 
+import PocketBase from 'pocketbase';
+import { setupCms } from './cms-schema';
 const PB_URL = process.env.POCKETBASE_URL || 'http://pocketbase:8090';
 const ADMIN_EMAIL =
 	process.env.POCKETBASE_ADMIN_EMAIL || process.env.PB_ADMIN_EMAIL || 'admin@admin.local';
@@ -54,15 +55,6 @@ async function apiRequest(path: string, method = 'GET', body?: unknown) {
 	return text ? JSON.parse(text) : null;
 }
 
-async function collectionExists(name: string): Promise<boolean> {
-	try {
-		await apiRequest(`/api/collections/${name}`);
-		return true;
-	} catch {
-		return false;
-	}
-}
-
 // --- Step 0: Add 'documentation' to auditLog targetType values ---
 async function updateAuditLogTargetType() {
 	console.log('--- Step 0: Update auditLog targetType field ---');
@@ -70,7 +62,7 @@ async function updateAuditLogTargetType() {
 	try {
 		const collection = await apiRequest('/api/collections/auditLog');
 		const fields = collection.fields || [];
-		const targetTypeField = fields.find((f: any) => f.name === 'targetType');
+		const targetTypeField = fields.find((f: { name: string }) => f.name === 'targetType');
 
 		if (!targetTypeField) {
 			console.log('  targetType field not found on auditLog, skipping\n');
@@ -96,17 +88,25 @@ async function updateAuditLogTargetType() {
 async function ensureAutodateFields() {
 	console.log('--- Step 0b: Ensure autodate fields on collections ---');
 
-	for (const name of ['auditLog', 'notifications', 'reviewAssignments', 'editionReviews', 'editionUsers', 'editions', 'collections']) {
+	for (const name of [
+		'auditLog',
+		'notifications',
+		'reviewAssignments',
+		'editionReviews',
+		'editionUsers',
+		'editions',
+		'collections'
+	]) {
 		try {
 			const collection = await apiRequest(`/api/collections/${name}`);
 			const fields = collection.fields || [];
 			let changed = false;
 
-			if (!fields.find((f: any) => f.name === 'created')) {
+			if (!fields.find((f: { name: string }) => f.name === 'created')) {
 				fields.push({ name: 'created', type: 'autodate', onCreate: true, onUpdate: false });
 				changed = true;
 			}
-			if (!fields.find((f: any) => f.name === 'updated')) {
+			if (!fields.find((f: { name: string }) => f.name === 'updated')) {
 				fields.push({ name: 'updated', type: 'autodate', onCreate: true, onUpdate: true });
 				changed = true;
 			}
@@ -126,42 +126,9 @@ async function ensureAutodateFields() {
 
 // --- Step 1: Create documentation collection ---
 async function createDocumentationCollection() {
-	console.log('--- Step 1: Create documentation collection ---');
-	const rules = {
-		listRule: 'isPublished = true || @request.auth.role = "admin"',
-		viewRule: 'isPublished = true || @request.auth.role = "admin"',
-		createRule: '@request.auth.role = "admin"',
-		updateRule: '@request.auth.role = "admin"',
-		deleteRule: '@request.auth.role = "admin"'
-	};
-
-	if (await collectionExists('documentation')) {
-		const collection = await apiRequest('/api/collections/documentation');
-		await apiRequest(`/api/collections/${collection.id}`, 'PATCH', rules);
-		console.log('  documentation already exists, updated access rules\n');
-		return;
-	}
-
-	await apiRequest('/api/collections', 'POST', {
-		name: 'documentation',
-		type: 'base',
-		fields: [
-			{ name: 'title', type: 'text', required: true },
-			{ name: 'slug', type: 'text', required: true },
-			{ name: 'content', type: 'editor', required: false },
-			{ name: 'summary', type: 'text', required: false },
-			{ name: 'order', type: 'number', required: false },
-			{ name: 'isPublished', type: 'bool', required: false }
-		],
-		indexes: [
-			'CREATE UNIQUE INDEX idx_documentation_slug ON documentation (slug)',
-			'CREATE INDEX idx_documentation_order ON documentation ("order")',
-			'CREATE INDEX idx_documentation_published ON documentation (isPublished)'
-		],
-		...rules
-	});
-
-	console.log('  Created documentation collection\n');
+	const pb = new PocketBase(PB_URL);
+	pb.authStore.save(authToken, null);
+	await setupCms(pb);
 }
 
 // --- Step 2: Seed initial documentation pages ---
@@ -336,12 +303,21 @@ const SEED_PAGES = [
 
 async function seedDocumentationPages() {
 	console.log('--- Step 2: Seed documentation pages ---');
+	const root = (
+		await apiRequest(
+			`/api/collections/content/records?filter=${encodeURIComponent('layout = "guide" && slug = "documentation"')}`
+		)
+	).items[0];
+	if (root.documentationSeeded) {
+		console.log('  Guide library already initialised; preserving editorial changes.');
+		return;
+	}
 
 	for (const page of SEED_PAGES) {
 		// Check if page with this slug already exists
 		try {
 			const existing = await apiRequest(
-				`/api/collections/documentation/records?filter=slug="${page.slug}"&fields=id,slug`
+				`/api/collections/content/records?filter=${encodeURIComponent(`layout = "guide" && slug = "${page.slug}"`)}&fields=id,slug`
 			);
 			if (existing.items && existing.items.length > 0) {
 				console.log(`  "${page.title}" (${page.slug}) already exists, skipping`);
@@ -351,10 +327,21 @@ async function seedDocumentationPages() {
 			// Collection might be empty, continue
 		}
 
-		await apiRequest('/api/collections/documentation/records', 'POST', page);
+		const { content, ...fields } = page;
+		await apiRequest('/api/collections/content/records', 'POST', {
+			...fields,
+			kind: 'page',
+			layout: 'guide',
+			body: content,
+			section: 'publish',
+			parent: root.id
+		});
 		console.log(`  Seeded "${page.title}" (${page.slug})`);
 	}
 
+	await apiRequest(`/api/collections/content/records/${root.id}`, 'PATCH', {
+		documentationSeeded: true
+	});
 	console.log('');
 }
 

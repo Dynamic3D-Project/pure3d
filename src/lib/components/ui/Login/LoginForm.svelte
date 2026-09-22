@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { authStore, isLocalBackend, pb } from '$lib/database';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { dev } from '$app/environment';
 	import { env } from '$env/dynamic/public';
@@ -46,7 +46,7 @@
 		error = '';
 		try {
 			await authStore.loginWithOrcid();
-			await goto(`${base}/profile`);
+			await goto(resolve('/profile'));
 		} catch {
 			error =
 				'Sign-in was not completed. Allow the ORCID popup and try again. If you already have a PURE3D account, ask an administrator to link your ORCID before signing in.';
@@ -61,7 +61,7 @@
 		error = '';
 		try {
 			await authStore.loginWithPassword(account.email, '1234567890');
-			await goto(`${base}/profile`);
+			await goto(resolve('/profile'));
 		} catch {
 			error = `Could not sign in as ${account.label}. Rerun make install to provision local demo accounts.`;
 		} finally {
@@ -71,11 +71,8 @@
 	}
 </script>
 
-<div id="login-form" class="flex flex-col gap-5 p-6 sm:p-8">
+<div id="login-form" class="flex flex-col justify-center gap-5 p-6 sm:p-8 md:h-full">
 	<div>
-		<p class="mb-4 pr-8 font-mono text-[10px] tracking-[0.12em] text-base-content/50 uppercase">
-			Your research, connected
-		</p>
 		<h1 class="text-2xl font-bold tracking-tight text-base-content">One identity for your work</h1>
 		<p class="mt-3 text-sm leading-relaxed text-base-content/70">
 			Sign in with ORCID to keep your research profile and author credits connected across PURE3D.
@@ -119,18 +116,17 @@
 		</div>
 	{/if}
 	<div class="space-y-3 text-sm leading-relaxed text-base-content/70">
-		<p>
-			ORCID verifies your identity. Your PURE3D permissions remain managed by your project team.
-		</p>
-		<p>
-			Already have a PURE3D account? Ask an administrator to link your existing account to your
-			ORCID so you keep your projects and access.
-		</p>
-		<p>
-			No ORCID yet?
-			<a class="link" href="https://orcid.org/register" target="_blank" rel="noopener noreferrer">
+		<p class="flex flex-col items-start gap-2">
+			<span>No ORCID yet?</span>
+			<a
+				class="btn w-fit border border-base-content/50 bg-transparent text-base-content btn-sm hover:border-base-content hover:bg-transparent"
+				style="text-decoration: none"
+				href="https://orcid.org/register"
+				target="_blank"
+				rel="noopener noreferrer"
+			>
 				Create your free ORCID iD
-			</a>.
+			</a>
 		</p>
 	</div>
 	<p class="border-t border-base-300 pt-4 text-xs leading-relaxed text-base-content/60">

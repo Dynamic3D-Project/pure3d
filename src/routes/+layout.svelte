@@ -3,6 +3,7 @@
 	import favicon from '$lib/assets/favicon.png';
 	import FeedbackPill from '$lib/components/ui/FeedbackPill.svelte';
 	import Header from '$lib/components/ui/Header.svelte';
+	import SiteFooter from '$lib/components/ui/SiteFooter.svelte';
 	import { Toaster } from 'svelte-french-toast';
 
 	let { children } = $props();
@@ -19,5 +20,7 @@
 </div>
 
 <FeedbackPill />
+
+<SiteFooter />
 
 <Toaster />

@@ -10,7 +10,7 @@ onRecordCreateRequest(
 	'reviewAssignments',
 	'editionReviews',
 	'reviewFeedback',
-	'documentation'
+	'content'
 );
 onRecordUpdateRequest(
 	(e) => require(__hooks + '/activity-service.cjs').request(e),
@@ -22,7 +22,7 @@ onRecordUpdateRequest(
 	'reviewAssignments',
 	'editionReviews',
 	'reviewFeedback',
-	'documentation'
+	'content'
 );
 onRecordDeleteRequest(
 	(e) => require(__hooks + '/activity-service.cjs').request(e),
@@ -34,7 +34,7 @@ onRecordDeleteRequest(
 	'reviewAssignments',
 	'editionReviews',
 	'reviewFeedback',
-	'documentation'
+	'content'
 );
 
 onRecordCreateRequest(
@@ -174,7 +174,7 @@ onRecordCreate(
 	'reviewAssignments',
 	'editionReviews',
 	'reviewFeedback',
-	'documentation'
+	'content'
 );
 onRecordUpdate(
 	(e) => require(__hooks + '/activity-service.cjs').model(e),
@@ -186,7 +186,7 @@ onRecordUpdate(
 	'reviewAssignments',
 	'editionReviews',
 	'reviewFeedback',
-	'documentation'
+	'content'
 );
 onRecordDelete(
 	(e) => require(__hooks + '/activity-service.cjs').model(e),
@@ -198,7 +198,7 @@ onRecordDelete(
 	'reviewAssignments',
 	'editionReviews',
 	'reviewFeedback',
-	'documentation'
+	'content'
 );
 
 onRecordValidate(

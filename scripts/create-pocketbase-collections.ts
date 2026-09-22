@@ -495,7 +495,7 @@ async function main() {
 				type: 'select',
 				required: true,
 				maxSelect: 1,
-				values: ['user', 'collection', 'edition', 'documentation']
+				values: ['user', 'collection', 'edition', 'documentation', 'content']
 			},
 			{ name: 'targetId', type: 'text', required: true },
 			{ name: 'performedBy', type: 'text', required: true },

@@ -1,6 +1,9 @@
 <script lang="ts">
+	/* eslint-disable svelte/no-navigation-without-resolve -- All guide and admin links include the app base. */
 	import { base } from '$app/paths';
 	import type { PageData } from './$types';
+	import { authStore } from '$lib/database/stores/auth.svelte';
+	import { cleanContent } from '$lib/utils/content-html';
 
 	let { data }: { data: PageData } = $props();
 
@@ -24,9 +27,15 @@
 </svelte:head>
 
 <div id="documentation-slug-page">
+	{#if authStore.globalRole === 'admin'}<div class="mb-6 flex items-center justify-between gap-3">
+			<span class="text-sm opacity-60"
+				>{doc.isPublished ? 'Published guide' : 'Draft preview · admins only'}</span
+			><a class="btn btn-outline btn-sm" href={`${base}/admin/pages?edit=${doc.id}`}>Edit page</a>
+		</div>{/if}
 	<article class="prose max-w-none">
 		<h1>{doc.title}</h1>
-		{@html doc.content}
+		<!-- eslint-disable-next-line svelte/no-at-html-tags -- HTML is sanitised with DOMPurify. -->
+		{@html cleanContent(doc.body)}
 	</article>
 
 	<nav class="mt-16 grid grid-cols-2 gap-4 border-t border-base-300 pt-6" aria-label="Guide pages">

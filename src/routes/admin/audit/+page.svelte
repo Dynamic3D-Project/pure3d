@@ -77,6 +77,7 @@
 		{ value: 'collection', label: 'Collections' },
 		{ value: 'edition', label: 'Editions' },
 		{ value: 'documentation', label: 'Documentation' },
+		{ value: 'content', label: 'Pages & posts' },
 		{ value: 'user', label: 'Users' }
 	];
 

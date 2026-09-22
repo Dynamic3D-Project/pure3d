@@ -31,7 +31,7 @@
 					<img src={avatarUrl} alt="Account" class="size-8 rounded-full object-cover" />
 				{:else}
 					<div
-						class="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white ring-primary ring-offset-2 ring-offset-base-100"
+						class="flex size-8 items-center justify-center rounded-full bg-base-200 text-sm font-semibold text-base-content"
 					>
 						{authStore.user?.nickname?.charAt(0).toUpperCase() || 'U'}
 					</div>
@@ -155,7 +155,11 @@
 		</div>
 	{:else}
 		<div>
-			<label for="login-modal" class="modal-button btn btn-md btn-primary">Login</label>
+			<label
+				for="login-modal"
+				class="modal-button btn border-base-content/25 bg-transparent px-5 font-normal shadow-none btn-sm hover:border-base-content/40 hover:bg-base-200"
+				>Login</label
+			>
 			<input id="login-modal" type="checkbox" class="modal-toggle" bind:checked={loginOpen} />
 			<div class="modal modal-middle">
 				<div
@@ -167,7 +171,7 @@
 						class="btn absolute top-3 right-3 z-20 btn-circle btn-ghost btn-sm">✕</label
 					>
 
-					<div class="grid md:grid-cols-[minmax(0,360px)_minmax(0,512px)]">
+					<div class="grid md:min-h-[680px] md:grid-cols-[minmax(0,360px)_minmax(0,512px)]">
 						<div class="relative hidden overflow-hidden rounded-l-xl md:block">
 							{#if loginOpen}<LoginArtwork />{/if}
 						</div>

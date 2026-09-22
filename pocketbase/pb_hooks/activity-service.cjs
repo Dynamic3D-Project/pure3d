@@ -108,7 +108,7 @@ const fields = {
 	reviewAssignments: ['editionId', 'reviewerId', 'reviewStage', 'assignedBy', 'status'],
 	editionReviews: ['editionId', 'reviewerId', 'reviewStage', 'decision'],
 	reviewFeedback: ['editionId', 'reviewerId', 'reviewStage', 'category', 'resolved'],
-	documentation: ['title', 'slug', 'isPublished']
+	content: ['title', 'slug', 'kind', 'layout', 'parent', 'isPublished']
 };
 
 function snapshot(record, name) {
@@ -174,8 +174,8 @@ function model(e) {
 				action = after.pendingOrcid ? 'orcid_mapping_approved' : 'orcid_mapping_cleared';
 			else if (before.role !== after.role) action = 'role_change';
 			else if (changed.length) action = 'user_updated';
-		} else if (name === 'documentation') {
-			targetType = 'documentation';
+		} else if (name === 'content') {
+			targetType = 'content';
 			targetId = id || record.id;
 			if (operation !== 'update' || changed.length)
 				action = { create: 'doc_created', update: 'doc_updated', delete: 'doc_deleted' }[operation];

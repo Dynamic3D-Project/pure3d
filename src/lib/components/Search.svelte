@@ -1,16 +1,18 @@
 <script lang="ts">
 	import { creatorNames } from '$lib/utils/credits';
-	import { base } from '$app/paths';
+	import { base, resolve } from '$app/paths';
+	import type { RecordModel } from 'pocketbase';
+	import { contentPath } from '$lib/cms';
 	import { pb } from '$lib/database';
 	import { debounce } from '$lib/utils/debounce';
 	import { editionMatchesQuery } from '$lib/utils/edition-search';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { computePosition, flip, shift, offset, size, autoUpdate } from '@floating-ui/dom';
 
 	import { getEditionThumbnailUrl, getCollectionThumbnailUrl } from '$lib/utils/asset-urls';
 
-	type SearchResultType = 'edition' | 'collection';
+	type SearchResultType = 'edition' | 'collection' | 'content';
 
 	interface SearchResult {
 		type: SearchResultType;
@@ -49,17 +51,24 @@
 			// Use fetch API directly to avoid PocketBase client issues
 			const baseUrl = pb.baseUrl;
 
-			const [editionsRes, collectionsRes] = await Promise.all([
+			const [editionsRes, collectionsRes, contentResult] = await Promise.all([
 				fetch(
 					`${baseUrl}/api/collections/editions/records?filter=${encodeURIComponent('isPublished=true')}&expand=collection&perPage=500`
 				),
 				fetch(
 					`${baseUrl}/api/collections/collections/records?filter=${encodeURIComponent('isVisible=true')}&perPage=100`
-				)
+				),
+				pb.collection('content').getList(1, 8, {
+					filter: pb.filter('isPublished = true && (title ~ {:query} || summary ~ {:query})', {
+						query: trimmedQuery
+					}),
+					fields: 'id,title,slug,summary,coverUrl,layout',
+					sort: '-publishedAt'
+				})
 			]);
 
-			let editionsResult = { items: [] as any[] };
-			let collectionsResult = { items: [] as any[] };
+			let editionsResult = { items: [] as RecordModel[] };
+			let collectionsResult = { items: [] as RecordModel[] };
 
 			if (editionsRes.ok) {
 				const data = await editionsRes.json();
@@ -80,11 +89,11 @@
 			// Client-side filtering for more reliable search
 
 			const filteredEditions = trimmedQuery
-				? editionsResult.items.filter((edition: any) => editionMatchesQuery(edition, trimmedQuery))
+				? editionsResult.items.filter((edition) => editionMatchesQuery(edition, trimmedQuery))
 				: editionsResult.items;
 
 			const filteredCollections = trimmedQuery
-				? collectionsResult.items.filter((collection: any) =>
+				? collectionsResult.items.filter((collection) =>
 						editionMatchesQuery(collection, trimmedQuery)
 					)
 				: collectionsResult.items;
@@ -93,7 +102,7 @@
 			const collections = { items: filteredCollections.slice(0, 5) };
 
 			// Build combined results using asset-urls helpers (respects R2 / PUBLIC_ASSET_BASE_URL)
-			const editionResults: SearchResult[] = editions.items.map((edition: any) => {
+			const editionResults: SearchResult[] = editions.items.map((edition) => {
 				const collectionPubNum = edition.expand?.collection?.pubNum || 0;
 				const editionPubNum = edition.pubNum || 1;
 				const thumbnail =
@@ -111,7 +120,7 @@
 				};
 			});
 
-			const collectionResults: SearchResult[] = collections.items.map((collection: any) => {
+			const collectionResults: SearchResult[] = collections.items.map((collection) => {
 				const thumbnail =
 					collection.thumbnail && collection.pubNum > 0
 						? getCollectionThumbnailUrl(collection.pubNum)
@@ -128,7 +137,18 @@
 			});
 
 			// Prioritize editions, then collections
-			results = [...editionResults, ...collectionResults];
+			results = [
+				...editionResults,
+				...collectionResults,
+				...contentResult.items.map((item) => ({
+					type: 'content' as const,
+					id: item.id,
+					title: item.title,
+					subtitle: item.summary,
+					thumbnail: item.coverUrl,
+					url: `${base}${contentPath(item)}`
+				}))
+			];
 			selectedIndex = -1;
 			keyboardSelected = false;
 		} catch (err) {
@@ -156,7 +176,7 @@
 		if (containerElement && dropdownElement) {
 			// Set width immediately to prevent jump
 			const containerWidth = containerElement.getBoundingClientRect().width;
-			dropdownElement.style.width = `${Math.max(containerWidth, 400)}px`;
+			dropdownElement.style.width = `${Math.min(window.innerWidth - 24, Math.max(containerWidth, 400))}px`;
 
 			computePosition(containerElement, dropdownElement, {
 				placement: 'bottom-start',
@@ -288,6 +308,7 @@
 		selectedIndex = -1;
 		keyboardSelected = false;
 		searchQuery = '';
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- Result URLs are constructed with base above.
 		await goto(result.url, { invalidateAll: true });
 	}
 
@@ -296,7 +317,8 @@
 		showResults = false;
 		selectedIndex = -1;
 		keyboardSelected = false;
-		await goto(query ? `${base}/editions?q=${encodeURIComponent(query)}` : `${base}/editions`, {
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- The resolved path is followed by a query string.
+		await goto(`${resolve('/editions')}${query ? `?q=${encodeURIComponent(query)}` : ''}`, {
 			invalidateAll: true
 		});
 	}
@@ -318,6 +340,8 @@
 				return 'Editions';
 			case 'collection':
 				return 'Collections';
+			case 'content':
+				return 'Resources';
 		}
 	}
 
@@ -327,6 +351,8 @@
 				return 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4';
 			case 'collection':
 				return 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10';
+			case 'content':
+				return 'M4 3h16v18H4zM8 7h8M8 11h8M8 15h5';
 		}
 	}
 
@@ -336,6 +362,8 @@
 				return 'text-primary';
 			case 'collection':
 				return 'text-secondary';
+			case 'content':
+				return 'text-base-content';
 		}
 	}
 
@@ -363,7 +391,7 @@
 
 <svelte:window onclick={handleClickOutside} />
 
-<div class="search-container relative" bind:this={containerElement}>
+<div id="search" class="search-container relative" bind:this={containerElement}>
 	<label class="input-bordered input flex items-center gap-2">
 		<svg class="h-5 w-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<path
@@ -377,8 +405,8 @@
 			type="text"
 			bind:this={searchInputElement}
 			bind:value={searchQuery}
-			placeholder="Search editions, collections..."
-			aria-label="Search all editions and collections"
+			placeholder="Search editions, collections, resources…"
+			aria-label="Search editions, collections and resources"
 			class="grow border-none outline-none focus:ring-0 focus:outline-none"
 			onfocus={openSearchResults}
 			onclick={openSearchResults}
@@ -416,7 +444,7 @@
 					</div>
 				{:else}
 					<div class="max-h-80 overflow-y-auto overscroll-contain" bind:this={resultsListElement}>
-						{#each groupedResults as group}
+						{#each groupedResults as group (group.type)}
 							<div
 								class="sticky top-0 z-10 flex items-center gap-1.5 border-b border-base-200 bg-base-100 px-3 py-1.5 text-xs font-semibold tracking-wide text-base-content/60 uppercase"
 							>
@@ -435,7 +463,7 @@
 								</svg>
 								{getTypeLabel(group.type)}
 							</div>
-							{#each group.items as item}
+							{#each group.items as item (item.id)}
 								{@const isSelected = selectedIndex === item.globalIndex}
 								<button
 									type="button"

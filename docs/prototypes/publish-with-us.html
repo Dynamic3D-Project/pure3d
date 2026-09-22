@@ -1,0 +1,1784 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Pure3D — Publish with us prototype</title>
+		<style>
+			:root {
+				font-family: 'Inter Tight', Inter, Arial, sans-serif;
+				color: #141413;
+				background: #f4f1eb;
+				font-synthesis: none;
+				--paper: #f4f1eb;
+				--paper-light: #fbf9f4;
+				--ink: #141413;
+				--green: #293e30;
+				--green-light: #dce5d7;
+				--line: #d7d3ca;
+				--muted: #666961;
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+
+			html {
+				scroll-behavior: smooth;
+			}
+
+			body {
+				margin: 0;
+				min-width: 320px;
+			}
+
+			button,
+			input {
+				font: inherit;
+			}
+
+			button,
+			a {
+				-webkit-tap-highlight-color: transparent;
+			}
+
+			button {
+				border: 0;
+				cursor: pointer;
+			}
+
+			a {
+				color: inherit;
+				text-decoration: none;
+			}
+
+			button:focus-visible,
+			a:focus-visible,
+			input:focus-visible {
+				outline: 3px solid #75934f;
+				outline-offset: 3px;
+			}
+
+			[hidden] {
+				display: none !important;
+			}
+
+			.sr-only {
+				position: absolute;
+				width: 1px;
+				height: 1px;
+				padding: 0;
+				overflow: hidden;
+				clip: rect(0, 0, 0, 0);
+				white-space: nowrap;
+				border: 0;
+			}
+
+			.shell {
+				width: min(100% - 80px, 1760px);
+				margin-inline: auto;
+			}
+
+			.prototype-bar {
+				display: flex;
+				justify-content: space-between;
+				gap: 24px;
+				padding: 9px 40px;
+				border-bottom: 1px solid var(--line);
+				background: #fffdf8;
+				color: var(--muted);
+				font-size: 10px;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+			}
+
+			.prototype-bar strong {
+				color: var(--green);
+			}
+
+			.site-header {
+				position: relative;
+				z-index: 10;
+				border-bottom: 1px solid var(--line);
+				background: rgba(244, 241, 235, 0.97);
+			}
+
+			.header-row {
+				display: flex;
+				min-height: 88px;
+				align-items: center;
+				gap: clamp(20px, 2.5vw, 46px);
+			}
+
+			.brand {
+				flex: none;
+				font-size: 25px;
+				font-weight: 750;
+				letter-spacing: -0.07em;
+			}
+
+			.main-nav {
+				display: flex;
+				align-self: stretch;
+				align-items: stretch;
+				gap: clamp(20px, 2vw, 36px);
+			}
+
+			.nav-link,
+			.nav-trigger {
+				position: relative;
+				display: flex;
+				align-items: center;
+				gap: 7px;
+				padding: 0;
+				border-bottom: 3px solid transparent;
+				background: none;
+				color: var(--ink);
+				font-size: 14px;
+				white-space: nowrap;
+			}
+
+			.nav-link:hover,
+			.nav-trigger:hover,
+			.nav-trigger[aria-expanded='true'] {
+				color: var(--green);
+			}
+
+			.nav-trigger.active,
+			.nav-trigger[aria-expanded='true'] {
+				border-bottom-color: var(--green);
+				font-weight: 650;
+			}
+
+			.chevron {
+				font-size: 11px;
+				transition: transform 160ms ease;
+			}
+
+			.nav-trigger[aria-expanded='true'] .chevron {
+				transform: rotate(180deg);
+			}
+
+			.header-actions {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				margin-left: 0;
+			}
+			.header-search {
+				position: relative;
+				flex: 0 1 300px;
+				min-width: 190px;
+				margin-left: auto;
+			}
+			.header-search form {
+				display: flex;
+				align-items: center;
+				border: 1px solid #c9c5bc;
+				border-radius: 8px;
+				background: var(--paper-light);
+			}
+			.header-search input {
+				width: 100%;
+				min-width: 0;
+				border: 0;
+				background: transparent;
+				padding: 13px 12px 13px 0;
+				font-size: 13px;
+			}
+			.header-search form button {
+				padding: 12px;
+				background: transparent;
+				color: var(--muted);
+			}
+			.search-results {
+				position: absolute;
+				top: calc(100% + 9px);
+				left: 0;
+				width: max(100%, 320px);
+				max-width: calc(100vw - 48px);
+				padding: 16px;
+				background: var(--paper-light);
+				border: 1px solid var(--line);
+				border-radius: 8px;
+				box-shadow: 0 12px 30px #14141315;
+				z-index: 15;
+				font-size: 13px;
+			}
+			.search-results small {
+				color: var(--muted);
+			}
+			.search-results button {
+				display: block;
+				width: 100%;
+				padding: 12px 0;
+				background: transparent;
+				text-align: left;
+				border-bottom: 1px solid var(--line);
+			}
+			.nav-split {
+				display: flex;
+				align-items: stretch;
+				border-bottom: 3px solid var(--green);
+			}
+			.nav-split .nav-link,
+			.nav-split .nav-trigger {
+				border-bottom: 0;
+			}
+			.nav-split .nav-trigger {
+				padding-inline: 8px;
+			}
+
+			.icon-button,
+			.mobile-menu {
+				display: grid;
+				width: 42px;
+				height: 42px;
+				place-items: center;
+				border: 1px solid var(--line);
+				border-radius: 50%;
+				background: transparent;
+				color: var(--ink);
+			}
+
+			.icon-button:hover,
+			.mobile-menu:hover {
+				background: var(--green-light);
+			}
+
+			.primary-button,
+			.secondary-button,
+			.text-button {
+				display: inline-flex;
+				min-height: 46px;
+				align-items: center;
+				justify-content: center;
+				gap: 12px;
+				border-radius: 999px;
+				font-size: 13px;
+				font-weight: 650;
+			}
+
+			.primary-button {
+				padding: 0 22px;
+				background: var(--green);
+				color: white;
+			}
+
+			.primary-button:hover {
+				background: #3b5542;
+			}
+
+			.secondary-button {
+				padding: 0 22px;
+				border: 1px solid #9b9d95;
+				background: transparent;
+				color: var(--ink);
+			}
+
+			.secondary-button:hover {
+				border-color: var(--green);
+				background: var(--paper-light);
+			}
+
+			.text-button {
+				min-height: 0;
+				padding: 0;
+				border-bottom: 1px solid currentColor;
+				border-radius: 0;
+				background: transparent;
+				color: var(--green);
+			}
+
+			.mobile-menu {
+				display: none;
+			}
+
+			.mega-menu {
+				position: absolute;
+				top: 100%;
+				left: 0;
+				width: 100%;
+				border-bottom: 1px solid var(--line);
+				background: var(--paper-light);
+				box-shadow: 0 22px 40px rgba(20, 20, 19, 0.08);
+			}
+
+			.mega-inner {
+				display: grid;
+				grid-template-columns: 0.85fr 1fr 1fr;
+				gap: clamp(40px, 7vw, 120px);
+				padding-block: 42px 48px;
+			}
+
+			.mega-intro {
+				max-width: 320px;
+			}
+
+			.mega-kicker,
+			.eyebrow {
+				margin: 0 0 16px;
+				color: #5e6f60;
+				font-size: 10px;
+				font-weight: 750;
+				letter-spacing: 0.16em;
+				text-transform: uppercase;
+			}
+
+			.mega-intro h2 {
+				margin: 0 0 12px;
+				font-family: Fraunces, Georgia, serif;
+				font-size: 28px;
+				font-weight: 450;
+				letter-spacing: -0.03em;
+			}
+
+			.mega-intro p {
+				margin: 0;
+				color: var(--muted);
+				font-size: 13px;
+				line-height: 1.6;
+			}
+
+			.menu-list {
+				display: grid;
+				align-content: start;
+				gap: 5px;
+			}
+
+			.menu-list button {
+				display: flex;
+				width: 100%;
+				align-items: center;
+				justify-content: space-between;
+				padding: 11px 0;
+				border-bottom: 1px solid var(--line);
+				background: none;
+				color: var(--ink);
+				text-align: left;
+			}
+
+			.menu-list button:first-child {
+				font-weight: 700;
+			}
+
+			.menu-list button:hover {
+				color: var(--green);
+			}
+
+			main {
+				overflow: hidden;
+			}
+
+			.landing-view {
+				display: block;
+			}
+
+			.hero {
+				display: grid;
+				grid-template-columns: minmax(0, 1.1fr) minmax(420px, 0.9fr);
+				gap: clamp(64px, 9vw, 150px);
+				align-items: center;
+				padding-block: clamp(78px, 9vw, 150px) clamp(92px, 10vw, 170px);
+			}
+
+			.hero h1 {
+				max-width: 930px;
+				margin: 0 0 30px;
+				font-family: Fraunces, Georgia, serif;
+				font-size: clamp(58px, 6.4vw, 108px);
+				font-weight: 430;
+				letter-spacing: -0.055em;
+				line-height: 0.94;
+			}
+
+			.hero-copy > p:not(.eyebrow) {
+				max-width: 620px;
+				margin: 0;
+				color: #50534e;
+				font-size: clamp(17px, 1.3vw, 21px);
+				line-height: 1.55;
+			}
+
+			.hero-actions {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 12px;
+				margin-top: 38px;
+			}
+
+			.edition-figure {
+				margin: 0;
+			}
+
+			.object-stage {
+				position: relative;
+				aspect-ratio: 4 / 5;
+				overflow: hidden;
+				border: 1px solid #b9beb3;
+				border-radius: 3px;
+				background: #26372d;
+			}
+
+			.object-stage svg {
+				display: block;
+				width: 100%;
+				height: 100%;
+			}
+
+			.figure-label {
+				position: absolute;
+				top: 17px;
+				left: 17px;
+				padding: 8px 10px;
+				border: 1px solid rgba(255, 255, 255, 0.38);
+				background: rgba(20, 20, 19, 0.72);
+				color: white;
+				font-size: 9px;
+				font-weight: 700;
+				letter-spacing: 0.13em;
+				text-transform: uppercase;
+			}
+
+			.annotation-note {
+				position: absolute;
+				right: 7%;
+				bottom: 12%;
+				width: min(55%, 235px);
+				padding: 16px;
+				border-left: 2px solid #d7e2bd;
+				background: rgba(244, 241, 235, 0.92);
+				font-size: 11px;
+				line-height: 1.45;
+			}
+
+			.annotation-note strong {
+				display: block;
+				margin-bottom: 5px;
+				font-size: 12px;
+			}
+
+			.edition-figure figcaption {
+				display: flex;
+				justify-content: space-between;
+				gap: 24px;
+				padding-top: 13px;
+				color: var(--muted);
+				font-size: 10px;
+				letter-spacing: 0.05em;
+				text-transform: uppercase;
+			}
+
+			.section {
+				padding-block: clamp(78px, 9vw, 140px);
+				border-top: 1px solid var(--line);
+			}
+
+			.section-heading {
+				display: grid;
+				grid-template-columns: 1fr 2fr;
+				gap: 40px;
+				margin-bottom: clamp(54px, 7vw, 100px);
+			}
+
+			.section-heading h2,
+			.guide-intro h1,
+			.finale h2 {
+				margin: 0;
+				font-family: Fraunces, Georgia, serif;
+				font-size: clamp(40px, 4.5vw, 72px);
+				font-weight: 430;
+				letter-spacing: -0.045em;
+				line-height: 1;
+			}
+
+			.section-heading p {
+				max-width: 680px;
+				margin: 6px 0 0;
+				color: var(--muted);
+				font-size: 17px;
+				line-height: 1.6;
+			}
+
+			.edition-parts {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				border-top: 1px solid var(--ink);
+			}
+
+			.edition-part {
+				min-height: 260px;
+				padding: 25px clamp(20px, 2.5vw, 44px) 20px 0;
+				border-right: 1px solid var(--line);
+			}
+
+			.edition-part + .edition-part {
+				padding-left: clamp(20px, 2.5vw, 44px);
+			}
+
+			.edition-part:last-child {
+				border-right: 0;
+			}
+
+			.number {
+				display: block;
+				margin-bottom: 70px;
+				color: #6d776b;
+				font-size: 11px;
+			}
+
+			.edition-part h3,
+			.process-step h3,
+			.checklist h3,
+			.guide-card h3 {
+				margin: 0 0 12px;
+				font-family: Fraunces, Georgia, serif;
+				font-size: 25px;
+				font-weight: 500;
+				letter-spacing: -0.025em;
+			}
+
+			.edition-part p,
+			.process-step p,
+			.guide-card p {
+				max-width: 390px;
+				margin: 0;
+				color: var(--muted);
+				font-size: 14px;
+				line-height: 1.65;
+			}
+
+			.process-section {
+				background: var(--green);
+				color: white;
+			}
+
+			.process-section .section-heading p,
+			.process-step p {
+				color: #c8d0c8;
+			}
+
+			.process {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: clamp(36px, 6vw, 100px);
+				counter-reset: process;
+			}
+
+			.process-step {
+				position: relative;
+				padding-top: 58px;
+				border-top: 1px solid #6f7d72;
+				counter-increment: process;
+			}
+
+			.process-step::before {
+				position: absolute;
+				top: 18px;
+				content: '0' counter(process);
+				color: #a9b6a9;
+				font-size: 10px;
+			}
+
+			.before-grid {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: clamp(50px, 9vw, 150px);
+			}
+
+			.before-copy h2 {
+				max-width: 650px;
+				margin: 0 0 24px;
+				font-family: Fraunces, Georgia, serif;
+				font-size: clamp(42px, 4.5vw, 72px);
+				font-weight: 430;
+				letter-spacing: -0.045em;
+				line-height: 1;
+			}
+
+			.before-copy > p:not(.eyebrow) {
+				max-width: 560px;
+				color: var(--muted);
+				line-height: 1.65;
+			}
+
+			.checklist {
+				margin: 0;
+				padding: 0;
+				list-style: none;
+			}
+
+			.checklist li {
+				display: grid;
+				grid-template-columns: 26px 1fr;
+				gap: 16px;
+				padding: 21px 0;
+				border-top: 1px solid var(--line);
+				line-height: 1.5;
+			}
+
+			.checklist li::before {
+				content: '✓';
+				color: var(--green);
+				font-weight: 800;
+			}
+
+			.guide-handoff {
+				background: #e7e2d9;
+			}
+
+			.guide-cards {
+				display: grid;
+				grid-template-columns: repeat(4, 1fr);
+				border-top: 1px solid var(--ink);
+			}
+
+			.guide-card {
+				display: flex;
+				min-height: 235px;
+				flex-direction: column;
+				align-items: flex-start;
+				padding: 25px 28px 24px 0;
+				border-right: 1px solid #c9c4ba;
+				background: transparent;
+				text-align: left;
+			}
+
+			.guide-card + .guide-card {
+				padding-left: 28px;
+			}
+
+			.guide-card:last-child {
+				border-right: 0;
+			}
+
+			.guide-card:hover h3 {
+				color: var(--green);
+			}
+
+			.guide-card .arrow {
+				margin-top: auto;
+				color: var(--green);
+				font-size: 22px;
+			}
+
+			.finale {
+				display: flex;
+				align-items: end;
+				justify-content: space-between;
+				gap: 50px;
+				padding-block: clamp(80px, 10vw, 165px);
+			}
+
+			.finale h2 {
+				max-width: 800px;
+			}
+
+			.guide-view {
+				display: grid;
+				grid-template-columns: 290px minmax(0, 930px);
+				gap: clamp(55px, 9vw, 150px);
+				align-items: start;
+				padding-block: 70px 130px;
+			}
+
+			.guide-sidebar {
+				position: sticky;
+				top: 28px;
+				padding-top: 9px;
+			}
+
+			.guide-sidebar p {
+				margin: 0 0 20px;
+				color: var(--muted);
+				font-size: 10px;
+				font-weight: 750;
+				letter-spacing: 0.14em;
+				text-transform: uppercase;
+			}
+
+			.guide-nav {
+				display: grid;
+				border-top: 1px solid var(--line);
+			}
+
+			.guide-nav button {
+				padding: 15px 6px;
+				border-bottom: 1px solid var(--line);
+				background: transparent;
+				color: #5a5e57;
+				text-align: left;
+			}
+
+			.guide-nav button:hover,
+			.guide-nav button[aria-current='page'] {
+				color: var(--green);
+			}
+
+			.guide-nav button[aria-current='page'] {
+				padding-left: 16px;
+				border-left: 3px solid var(--green);
+				font-weight: 700;
+			}
+
+			.guide-content {
+				min-width: 0;
+			}
+
+			.back-button {
+				margin-bottom: 48px;
+				background: transparent;
+				color: var(--green);
+				font-size: 13px;
+			}
+
+			.guide-intro {
+				padding-bottom: 54px;
+				border-bottom: 1px solid var(--ink);
+			}
+
+			.guide-intro h1 {
+				max-width: 800px;
+			}
+
+			.guide-intro .lede {
+				max-width: 740px;
+				margin: 28px 0 0;
+				color: var(--muted);
+				font-size: 19px;
+				line-height: 1.6;
+			}
+
+			.guide-body {
+				max-width: 780px;
+				padding-top: 52px;
+			}
+
+			.guide-body section {
+				margin-bottom: 58px;
+			}
+
+			.guide-body h2 {
+				margin: 0 0 17px;
+				font-family: Fraunces, Georgia, serif;
+				font-size: 31px;
+				font-weight: 500;
+				letter-spacing: -0.025em;
+			}
+
+			.guide-body p,
+			.guide-body li {
+				color: #4e514c;
+				font-size: 16px;
+				line-height: 1.72;
+			}
+
+			.guide-body ul,
+			.guide-body ol {
+				padding-left: 23px;
+			}
+
+			.guide-body li + li {
+				margin-top: 12px;
+			}
+
+			.guide-note {
+				padding: 22px 25px;
+				border-left: 3px solid var(--green);
+				background: #e7ebe2;
+			}
+
+			.guide-note strong {
+				display: block;
+				margin-bottom: 7px;
+			}
+
+			dialog {
+				width: min(620px, calc(100% - 32px));
+				margin: auto;
+				padding: 0;
+				border: 1px solid #9da49a;
+				border-radius: 8px;
+				background: var(--paper-light);
+				color: var(--ink);
+				box-shadow: 0 30px 90px rgba(20, 20, 19, 0.25);
+			}
+
+			dialog::backdrop {
+				background: rgba(21, 29, 23, 0.55);
+			}
+
+			.dialog-inner {
+				padding: clamp(28px, 5vw, 48px);
+			}
+
+			.dialog-head {
+				display: flex;
+				align-items: start;
+				justify-content: space-between;
+				gap: 25px;
+			}
+
+			.dialog-head h2 {
+				margin: 0;
+				font-family: Fraunces, Georgia, serif;
+				font-size: 35px;
+				font-weight: 500;
+			}
+
+			.dialog-close {
+				width: 36px;
+				height: 36px;
+				border-radius: 50%;
+				background: #e7e4dc;
+			}
+
+			.dialog-inner p {
+				color: var(--muted);
+				line-height: 1.6;
+			}
+
+			.search-field {
+				display: flex;
+				gap: 8px;
+				margin-top: 28px;
+			}
+
+			.search-field input {
+				min-width: 0;
+				flex: 1;
+				padding: 14px 16px;
+				border: 1px solid #aeb2a9;
+				border-radius: 5px;
+				background: white;
+			}
+
+			.mock-result {
+				margin-top: 20px;
+				padding-top: 18px;
+				border-top: 1px solid var(--line);
+				font-size: 13px;
+			}
+
+			@media (max-width: 1180px) {
+				.shell {
+					width: min(100% - 48px, 1760px);
+				}
+
+				.header-row {
+					gap: 20px;
+				}
+
+				.main-nav {
+					gap: 18px;
+				}
+
+				.header-cta {
+					display: none;
+				}
+
+				.hero {
+					grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.75fr);
+					gap: 55px;
+				}
+			}
+
+			@media (max-width: 900px) {
+				.header-search {
+					margin-left: auto;
+				}
+				.prototype-bar {
+					padding-inline: 24px;
+				}
+
+				.header-row {
+					min-height: 74px;
+				}
+
+				.mobile-menu {
+					display: grid;
+				}
+
+				.main-nav {
+					position: absolute;
+					top: 100%;
+					left: 0;
+					width: 100%;
+					align-items: stretch;
+					flex-direction: column;
+					gap: 0;
+					padding: 12px 24px 22px;
+					border-bottom: 1px solid var(--line);
+					background: var(--paper-light);
+					box-shadow: 0 18px 30px rgba(20, 20, 19, 0.08);
+				}
+
+				.main-nav:not(.open) {
+					display: none;
+				}
+
+				.nav-link,
+				.nav-trigger {
+					min-height: 48px;
+					justify-content: space-between;
+					border-bottom: 1px solid var(--line);
+				}
+
+				.nav-trigger.active,
+				.nav-trigger[aria-expanded='true'] {
+					border-bottom-color: var(--green);
+				}
+
+				.mega-menu {
+					position: static;
+					width: auto;
+					margin: 0 -24px -22px;
+					box-shadow: none;
+				}
+
+				.mega-inner {
+					grid-template-columns: 1fr 1fr;
+					gap: 25px;
+					padding: 28px 24px;
+				}
+
+				.mega-intro {
+					display: none;
+				}
+
+				.hero,
+				.before-grid {
+					grid-template-columns: 1fr;
+				}
+
+				.hero-copy {
+					max-width: 760px;
+				}
+
+				.edition-figure {
+					width: min(100%, 610px);
+				}
+
+				.section-heading {
+					grid-template-columns: 1fr;
+					gap: 20px;
+				}
+
+				.guide-cards {
+					grid-template-columns: repeat(2, 1fr);
+				}
+
+				.guide-card:nth-child(2) {
+					border-right: 0;
+				}
+
+				.guide-card:nth-child(n + 3) {
+					border-top: 1px solid #c9c4ba;
+				}
+
+				.guide-card:nth-child(3) {
+					padding-left: 0;
+				}
+
+				.guide-view {
+					grid-template-columns: 230px minmax(0, 1fr);
+					gap: 45px;
+				}
+			}
+
+			@media (max-width: 650px) {
+				.header-row {
+					flex-wrap: wrap;
+					padding-block: 14px;
+				}
+				.header-search {
+					order: 4;
+					flex: 1 0 100%;
+					margin: 0;
+				}
+				.header-search .search-results {
+					width: 100%;
+				}
+				.shell {
+					width: min(100% - 32px, 1760px);
+				}
+
+				.prototype-bar {
+					padding: 8px 16px;
+					font-size: 8px;
+				}
+
+				.prototype-bar span {
+					display: none;
+				}
+
+				.account-button {
+					display: none;
+				}
+
+				.header-actions {
+					gap: 6px;
+				}
+
+				.mega-inner {
+					grid-template-columns: 1fr;
+					gap: 8px;
+				}
+
+				.hero {
+					gap: 48px;
+					padding-block: 62px 85px;
+				}
+
+				.hero h1 {
+					font-size: clamp(46px, 15vw, 68px);
+				}
+
+				.object-stage {
+					aspect-ratio: 4 / 4.7;
+				}
+
+				.edition-parts,
+				.process {
+					grid-template-columns: 1fr;
+				}
+
+				.edition-part,
+				.edition-part + .edition-part {
+					min-height: 0;
+					padding: 24px 0 44px;
+					border-right: 0;
+					border-bottom: 1px solid var(--line);
+				}
+
+				.number {
+					margin-bottom: 38px;
+				}
+
+				.process-step {
+					padding-bottom: 20px;
+				}
+
+				.guide-cards {
+					grid-template-columns: 1fr;
+				}
+
+				.guide-card,
+				.guide-card + .guide-card {
+					min-height: 190px;
+					padding: 24px 0;
+					border-right: 0;
+					border-top: 1px solid #c9c4ba;
+				}
+
+				.finale {
+					align-items: start;
+					flex-direction: column;
+				}
+
+				.guide-view {
+					display: block;
+					padding-block: 42px 85px;
+				}
+
+				.guide-sidebar {
+					position: static;
+					margin-bottom: 55px;
+				}
+
+				.guide-nav {
+					grid-template-columns: 1fr 1fr;
+				}
+
+				.guide-nav button {
+					padding: 12px 8px;
+					font-size: 12px;
+				}
+
+				.guide-nav button[aria-current='page'] {
+					padding-left: 10px;
+				}
+
+				.back-button {
+					margin-bottom: 36px;
+				}
+
+				.guide-intro h1 {
+					font-size: 43px;
+				}
+
+				.search-field {
+					align-items: stretch;
+					flex-direction: column;
+				}
+			}
+
+			@media (prefers-reduced-motion: reduce) {
+				html {
+					scroll-behavior: auto;
+				}
+
+				* {
+					transition: none !important;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="prototype-bar">
+			<strong>Pure3D / design prototype</strong>
+			<span>Illustrative content · no data is saved</span>
+		</div>
+
+		<header class="site-header" id="site-header">
+			<div class="shell header-row">
+				<a class="brand" href="#overview" data-view="overview" aria-label="Pure3D home">Pure3D</a>
+				<div class="header-search">
+					<form id="search-form" role="search">
+						<button type="submit" aria-label="Search">⌕</button>
+						<label class="sr-only" for="search-input"
+							>Search editions, collections and guides</label
+						>
+						<input
+							id="search-input"
+							name="query"
+							type="search"
+							placeholder="Search editions, collections…"
+							autocomplete="off"
+							aria-controls="search-result"
+							aria-expanded="false"
+						/>
+					</form>
+					<div class="search-results" id="search-result" hidden>
+						<small>Prototype · sample guide results only</small>
+						<p id="search-status" role="status"></p>
+						<div id="search-matches"></div>
+					</div>
+				</div>
+				<button
+					class="mobile-menu"
+					id="mobile-menu"
+					type="button"
+					aria-expanded="false"
+					aria-controls="main-nav"
+					aria-label="Open navigation"
+				>
+					☰
+				</button>
+				<nav class="main-nav" id="main-nav" aria-label="Main navigation">
+					<a
+						class="nav-link"
+						href="#"
+						data-notice="Collections is a mock destination in this prototype."
+						>Collections</a
+					>
+					<a
+						class="nav-link"
+						href="#"
+						data-notice="Editions is a mock destination in this prototype."
+						>Editions</a
+					>
+					<div class="nav-split">
+						<a class="nav-link" href="#overview" data-view="overview">Publish with us</a
+						><button
+							class="nav-trigger"
+							type="button"
+							data-menu="publish"
+							aria-label="Open publishing menu"
+							aria-expanded="false"
+							aria-controls="mega-menu"
+						>
+							<span class="chevron" aria-hidden="true">⌄</span>
+						</button>
+					</div>
+					<button
+						class="nav-trigger"
+						type="button"
+						data-menu="resources"
+						aria-expanded="false"
+						aria-controls="mega-menu"
+					>
+						Resources <span class="chevron" aria-hidden="true">⌄</span>
+					</button>
+					<button
+						class="nav-trigger"
+						type="button"
+						data-menu="about"
+						aria-expanded="false"
+						aria-controls="mega-menu"
+					>
+						About <span class="chevron" aria-hidden="true">⌄</span>
+					</button>
+					<div class="mega-menu" id="mega-menu" hidden>
+						<div class="shell mega-inner" id="mega-content"></div>
+					</div>
+				</nav>
+				<div class="header-actions">
+					<button
+						class="icon-button account-button"
+						type="button"
+						aria-label="Account"
+						data-notice="Account access is not connected in this prototype."
+					>
+						○
+					</button>
+				</div>
+			</div>
+		</header>
+
+		<main>
+			<div class="landing-view" id="landing-view">
+				<section class="shell hero" id="overview">
+					<div class="hero-copy">
+						<p class="eyebrow">Publish with Pure3D</p>
+						<h1>Give your 3D research a scholarly home.</h1>
+						<p>
+							Bring a 3D object, its evidence, and your interpretation together in one edition
+							designed to be explored—not flattened into figures.
+						</p>
+						<div class="hero-actions">
+							<button class="primary-button" type="button" data-submission>
+								Start a submission ↗
+							</button>
+							<button class="secondary-button" type="button" data-guide="submission">
+								Read guidelines
+							</button>
+						</div>
+					</div>
+
+					<figure class="edition-figure">
+						<div class="object-stage">
+							<span class="figure-label">Illustrative edition mock</span>
+							<svg viewBox="0 0 560 700" role="img" aria-labelledby="object-title object-desc">
+								<title id="object-title">Abstract 3D object with annotation points</title>
+								<desc id="object-desc">
+									An illustrative geometric object with three labelled evidence markers, not a real
+									published edition.
+								</desc>
+								<defs>
+									<linearGradient id="face-a" x1="0" y1="0" x2="1" y2="1">
+										<stop offset="0" stop-color="#c7d2a6" />
+										<stop offset="1" stop-color="#657a61" />
+									</linearGradient>
+									<linearGradient id="face-b" x1="0" y1="0" x2="1" y2="1">
+										<stop offset="0" stop-color="#e5d9bd" />
+										<stop offset="1" stop-color="#978f77" />
+									</linearGradient>
+								</defs>
+								<rect width="560" height="700" fill="#26372d" />
+								<circle cx="278" cy="333" r="223" fill="none" stroke="#52685a" />
+								<circle cx="278" cy="333" r="173" fill="none" stroke="#3f5347" />
+								<path d="M170 193 348 144 426 270 333 501 157 447 104 306Z" fill="url(#face-a)" />
+								<path d="m170 193 178-49-15 357-176-54Z" fill="#879b78" />
+								<path d="m348 144 78 126-93 231Z" fill="url(#face-b)" />
+								<path d="m104 306 66-113-13 254Z" fill="#d9ceb3" />
+								<g fill="#f4f1eb" stroke="#293e30" stroke-width="4">
+									<circle cx="172" cy="250" r="9" />
+									<circle cx="350" cy="233" r="9" />
+									<circle cx="270" cy="425" r="9" />
+								</g>
+								<g stroke="#d7e2bd" stroke-width="2" fill="none">
+									<path d="M172 250 73 215" />
+									<path d="m350 233 127-52" />
+									<path d="m270 425 72 142" />
+								</g>
+								<g fill="#edf2e8" font-family="Arial, sans-serif" font-size="11">
+									<text x="35" y="209">MATERIAL</text>
+									<text x="462" y="170">DETAIL</text>
+									<text x="322" y="588">CONTEXT</text>
+								</g>
+							</svg>
+							<div class="annotation-note">
+								<strong>Annotation 03 · Context</strong>
+								A reader can connect a precise location on the object to the author’s evidence and
+								interpretation.
+							</div>
+						</div>
+						<figcaption>
+							<span>Object + scholarship</span>
+							<span>Not a real edition</span>
+						</figcaption>
+					</figure>
+				</section>
+
+				<section class="section shell">
+					<div class="section-heading">
+						<p class="eyebrow">What authors publish</p>
+						<div>
+							<h2>More than a model.</h2>
+							<p>
+								A Pure3D edition makes a research object understandable by keeping the model, the
+								scholarly argument, and its supporting record in conversation.
+							</p>
+						</div>
+					</div>
+					<div class="edition-parts">
+						<article class="edition-part">
+							<span class="number">01</span>
+							<h3>A navigable 3D object</h3>
+							<p>
+								A research-ready model that readers can inspect from the viewpoints your argument
+								requires.
+							</p>
+						</article>
+						<article class="edition-part">
+							<span class="number">02</span>
+							<h3>Structured interpretation</h3>
+							<p>
+								Annotations and authored pathways connect features of the object to a clear research
+								question.
+							</p>
+						</article>
+						<article class="edition-part">
+							<span class="number">03</span>
+							<h3>Evidence and provenance</h3>
+							<p>
+								Sources, methods, rights information, and supporting media let readers assess how
+								the edition was made.
+							</p>
+						</article>
+					</div>
+				</section>
+
+				<section class="section process-section">
+					<div class="shell">
+						<div class="section-heading">
+							<p class="eyebrow">The publishing process</p>
+							<div>
+								<h2>From proposal to edition.</h2>
+								<p>
+									Start with the research idea and available materials. The detailed guide explains
+									what to prepare at each stage.
+								</p>
+							</div>
+						</div>
+						<div class="process">
+							<article class="process-step">
+								<h3>Propose</h3>
+								<p>Describe the object, research question, contributors, and materials.</p>
+							</article>
+							<article class="process-step">
+								<h3>Review</h3>
+								<p>The submission is assessed against the published evaluation criteria.</p>
+							</article>
+							<article class="process-step">
+								<h3>Prepare</h3>
+								<p>Approved work is shaped into an edition with its content and evidence.</p>
+							</article>
+						</div>
+					</div>
+				</section>
+
+				<section class="section shell">
+					<div class="before-grid">
+						<div class="before-copy">
+							<p class="eyebrow">Before you begin</p>
+							<h2>A useful first conversation starts here.</h2>
+							<p>
+								You do not need a finished edition to start. You should be able to identify the core
+								research contribution and show that the required materials can be used.
+							</p>
+						</div>
+						<div>
+							<h3>Have these ready</h3>
+							<ul class="checklist">
+								<li>A concise research question and account of why 3D is necessary.</li>
+								<li>A representative model or enough source material to assess feasibility.</li>
+								<li>
+									ORCID iDs for every individual author; contributor ORCIDs are optional.
+									Organisations are listed by name.
+								</li>
+								<li>
+									Evidence that you hold, or can secure, rights and permissions for every asset.
+								</li>
+								<li>Sources and documentation that support the model and interpretation.</li>
+							</ul>
+						</div>
+					</div>
+				</section>
+
+				<section class="section guide-handoff">
+					<div class="shell">
+						<div class="section-heading">
+							<p class="eyebrow">Submission guide</p>
+							<div>
+								<h2>Find the detail when you need it.</h2>
+								<p>
+									Open a focused guide with a persistent navigator for requirements, evaluation,
+									process, and practical help.
+								</p>
+							</div>
+						</div>
+						<div class="guide-cards">
+							<button class="guide-card" type="button" data-guide="submission">
+								<h3>Submission guidelines</h3>
+								<p>Required contributors, rights, files, and evidence.</p>
+								<span class="arrow" aria-hidden="true">↗</span>
+							</button>
+							<button class="guide-card" type="button" data-guide="evaluation">
+								<h3>Evaluation criteria</h3>
+								<p>Questions used to assess scholarly fit and readiness.</p>
+								<span class="arrow" aria-hidden="true">↗</span>
+							</button>
+							<button class="guide-card" type="button" data-guide="process">
+								<h3>Review process</h3>
+								<p>A compact view of the stages and author responsibilities.</p>
+								<span class="arrow" aria-hidden="true">↗</span>
+							</button>
+							<button class="guide-card" type="button" data-guide="examples">
+								<h3>Examples</h3>
+								<p>Illustrative patterns for connecting objects and arguments.</p>
+								<span class="arrow" aria-hidden="true">↗</span>
+							</button>
+						</div>
+					</div>
+				</section>
+
+				<section class="shell finale">
+					<h2>Ready to shape your research into an edition?</h2>
+					<button class="primary-button" type="button" data-submission>
+						Start a submission ↗
+					</button>
+				</section>
+			</div>
+
+			<div class="guide-view shell" id="guide-view" hidden>
+				<aside class="guide-sidebar" aria-label="Publish with us guide">
+					<p>In this guide</p>
+					<nav class="guide-nav" id="guide-nav" aria-label="Guide sections"></nav>
+				</aside>
+				<article class="guide-content">
+					<button class="back-button" type="button" data-view="overview">← Overview landing</button>
+					<div class="guide-intro">
+						<p class="eyebrow" id="guide-kicker">Publish with us guide</p>
+						<h1 id="guide-title" tabindex="-1"></h1>
+						<p class="lede" id="guide-lede"></p>
+					</div>
+					<div class="guide-body" id="guide-body"></div>
+				</article>
+			</div>
+		</main>
+
+		<dialog id="notice-dialog" aria-labelledby="notice-title">
+			<div class="dialog-inner">
+				<div class="dialog-head">
+					<h2 id="notice-title">Prototype notice</h2>
+					<button class="dialog-close" type="button" data-close-dialog aria-label="Close notice">
+						×
+					</button>
+				</div>
+				<p id="notice-copy"></p>
+				<button class="primary-button" type="button" data-close-dialog>Continue exploring</button>
+			</div>
+		</dialog>
+
+		<script>
+			const menus = {
+				publish: {
+					label: 'Publish with us',
+					title: 'Turn 3D research into an edition.',
+					copy: 'Start with the overview, then use the guide for requirements and practical detail.',
+					columns: [
+						[
+							['Overview', 'overview'],
+							['Submission guidelines', 'submission'],
+							['Evaluation criteria', 'evaluation'],
+							['Review process', 'process'],
+							['Start a submission', 'submission-start']
+						],
+						[
+							['Platform guide', 'platform'],
+							['FAQ', 'faq'],
+							['Tutorials', 'tutorials'],
+							['Examples', 'examples']
+						]
+					]
+				},
+				resources: {
+					label: 'Resources',
+					title: 'Learn how to work with 3D scholarship.',
+					copy: 'Practical help for reading, creating, and preparing research editions.',
+					columns: [
+						[
+							['Platform guide', 'platform'],
+							['Tutorials', 'tutorials']
+						],
+						[
+							['Frequently asked questions', 'faq'],
+							['Examples', 'examples']
+						]
+					]
+				},
+				about: {
+					label: 'About',
+					title: 'About the platform and its approach.',
+					copy: 'Explore this prototype’s shortened publishing overview or mock institutional pages.',
+					columns: [
+						[
+							['About publishing', 'about'],
+							['Pure3D mission', 'notice:Mission is a mock destination in this prototype.']
+						],
+						[
+							['Contact', 'notice:Contact is a mock destination in this prototype.'],
+							['Policies', 'notice:Policies is a mock destination in this prototype.']
+						]
+					]
+				}
+			};
+
+			const guides = {
+				about: {
+					label: 'About',
+					lede: 'Pure3D editions bring an explorable 3D object together with authored interpretation and supporting evidence.',
+					body: `
+						<section><h2>What belongs here</h2><p>An edition should use 3D as part of the research argument, not only as an illustration. The object, annotations, sources, and prose should help a reader inspect and assess the work together.</p></section>
+						<section><h2>Who can propose</h2><p>Researchers and collaborative teams can prepare a proposal. Every individual author needs an ORCID iD, including co-authors. Contributor ORCIDs are optional; organisations are credited by their organisation name, not assigned an ORCID.</p></section>`
+				},
+				submission: {
+					label: 'Submission Guidelines',
+					lede: 'A shortened sample of the information and evidence authors should prepare before starting a proposal.',
+					body: `
+						<section><h2>Contributors and identity</h2><ul><li>Provide an ORCID iD for every individual author, including co-authors. Name other contributors and their roles; their ORCID iDs are optional.</li><li>List contributing organisations by their official name. Do not enter an ORCID for an organisation.</li><li>Confirm that everyone named has agreed to the submitted roles and attribution.</li></ul></section>
+						<section><h2>Rights and permissions</h2><p>Identify who owns each 3D model, image, audio file, dataset, and text contribution. Provide permission or licence evidence for material you did not create.</p><div class="guide-note"><strong>Evidence matters</strong>Keep source records, written permissions, and licence details with the submission materials. A link to an asset without rights information is not sufficient.</div></section>
+						<section><h2>Research materials</h2><ul><li>A concise statement of the research question and contribution.</li><li>A representative 3D object or source material suitable for feasibility review.</li><li>Documentation of creation methods, transformations, and known limitations.</li><li>Citations and supporting evidence for interpretive claims.</li></ul></section>`
+				},
+				evaluation: {
+					label: 'Evaluation Criteria',
+					lede: 'A proposal should make clear why the research needs an interactive 3D edition and how readers can assess its evidence.',
+					body: `
+						<section><h2>Scholarly contribution</h2><p>Does the proposal state a focused research question, place it in context, and explain the contribution the edition would make?</p></section>
+						<section><h2>Purposeful use of 3D</h2><p>Would navigating, comparing, or annotating the object let readers understand something that static figures alone would not show?</p></section>
+						<section><h2>Evidence and feasibility</h2><p>Are the source materials, methods, permissions, and available expertise sufficient to assess and prepare the proposed edition?</p></section>`
+				},
+				process: {
+					label: 'Review Process',
+					lede: 'This sample view separates the proposal, assessment, and edition-preparation stages so authors know what each asks of them.',
+					body: `
+						<section><h2>1. Proposal</h2><p>Authors describe the research question, object, contributors, rights position, evidence, and available materials.</p></section>
+						<section><h2>2. Assessment</h2><p>The proposal is considered against the published evaluation criteria. Authors may be asked for clarification or additional evidence.</p></section>
+						<section><h2>3. Edition preparation</h2><p>If the project proceeds, authors organise the model, annotations, text, media, citations, and rights records into an edition.</p></section>`
+				},
+				platform: {
+					label: 'Platform Guide',
+					lede: 'A brief orientation to the parts of an edition that authors prepare and readers explore.',
+					body: `
+						<section><h2>Object workspace</h2><p>The 3D object is the central reading surface. Viewpoints and annotations direct attention without preventing independent exploration.</p></section>
+						<section><h2>Edition content</h2><p>Authored pathways, captions, media, citations, and supporting records connect the visible object to the scholarly argument.</p></section>`
+				},
+				faq: {
+					label: 'FAQ',
+					lede: 'Short answers to common preparation questions. These are illustrative prototype samples, not final policy.',
+					body: `
+						<section><h2>Does the model need to be finished?</h2><p>No for an initial proposal, but there should be enough material to judge the research idea and technical feasibility.</p></section>
+						<section><h2>Does an organisation need an ORCID?</h2><p>No. ORCID iDs identify individual researchers. Record an organisation by its official name.</p></section>
+						<section><h2>What rights evidence should I keep?</h2><p>Keep licences, written permissions, ownership records, and source details for every submitted asset.</p></section>`
+				},
+				tutorials: {
+					label: 'Tutorials',
+					lede: 'A compact sample index for practical authoring help; tutorial destinations are not built in this prototype.',
+					body: `
+						<section><h2>Preparing an object</h2><ol><li>Document the source and creation method.</li><li>Check scale, orientation, and visible detail.</li><li>Record transformations and known limitations.</li></ol></section>
+						<section><h2>Planning annotations</h2><p>Begin with the claims a reader must assess, then connect each claim to the relevant object location and supporting evidence.</p></section>`
+				},
+				examples: {
+					label: 'Examples',
+					lede: 'Illustrative patterns—not real editions—show how an object, a question, and evidence might work together.',
+					body: `
+						<section><h2>Material comparison</h2><p>An author marks comparable surfaces on an object, explains the observed differences, and links each interpretation to imaging records and sources.</p></section>
+						<section><h2>Reconstruction argument</h2><p>A series of viewpoints shows the evidence behind a proposed reconstruction while documenting uncertainty and alternative readings.</p><div class="guide-note"><strong>Illustrative only</strong>These patterns are invented to explain the interface. They do not represent published Pure3D editions or outcomes.</div></section>`
+				}
+			};
+
+			const guideOrder = [
+				'about',
+				'submission',
+				'evaluation',
+				'process',
+				'platform',
+				'faq',
+				'tutorials',
+				'examples'
+			];
+			const navigation = document.querySelector('#main-nav');
+			const mobileMenu = document.querySelector('#mobile-menu');
+			const mega = document.querySelector('#mega-menu');
+			const megaContent = document.querySelector('#mega-content');
+			const landing = document.querySelector('#landing-view');
+			const guideView = document.querySelector('#guide-view');
+			const searchInput = document.querySelector('#search-input');
+			const searchResults = document.querySelector('#search-result');
+			function closeSearch() {
+				searchResults.hidden = true;
+				searchInput.setAttribute('aria-expanded', 'false');
+			}
+			const noticeDialog = document.querySelector('#notice-dialog');
+			let openMenu = null;
+
+			function closeMenu(focusTrigger = false) {
+				const trigger = openMenu && document.querySelector(`[data-menu="${openMenu}"]`);
+				openMenu = null;
+				mega.hidden = true;
+				document
+					.querySelectorAll('[data-menu]')
+					.forEach((button) => button.setAttribute('aria-expanded', 'false'));
+				if (focusTrigger) trigger?.focus();
+			}
+
+			function renderMenu(name) {
+				const menu = menus[name];
+				megaContent.innerHTML = `
+					<div class="mega-intro"><p class="mega-kicker">${menu.label}</p><h2>${menu.title}</h2><p>${menu.copy}</p></div>
+					${menu.columns
+						.map(
+							(column) =>
+								`<div class="menu-list">${column
+									.map(
+										([label, target]) =>
+											`<button type="button" data-menu-target="${target}">${label}<span aria-hidden="true">↗</span></button>`
+									)
+									.join('')}</div>`
+						)
+						.join('')}`;
+			}
+
+			function toggleMenu(name) {
+				closeSearch();
+				const trigger = document.querySelector(`[data-menu="${name}"]`);
+				if (openMenu === name) {
+					closeMenu();
+					return;
+				}
+				closeMenu();
+				openMenu = name;
+				renderMenu(name);
+				mega.hidden = false;
+				trigger.setAttribute('aria-expanded', 'true');
+			}
+
+			function closeMobileNavigation() {
+				navigation.classList.remove('open');
+				mobileMenu.setAttribute('aria-expanded', 'false');
+				mobileMenu.setAttribute('aria-label', 'Open navigation');
+			}
+
+			function showOverview() {
+				landing.hidden = false;
+				guideView.hidden = true;
+				closeMenu();
+				closeMobileNavigation();
+				document.querySelector('#overview').scrollIntoView();
+			}
+
+			function showGuide(key) {
+				const guide = guides[key] || guides.about;
+				landing.hidden = true;
+				guideView.hidden = false;
+				document.querySelector('#guide-title').textContent = guide.label;
+				document.querySelector('#guide-lede').textContent = guide.lede;
+				document.querySelector('#guide-body').innerHTML = guide.body;
+				document.querySelector('#guide-nav').innerHTML = guideOrder
+					.map(
+						(id) =>
+							`<button type="button" data-guide="${id}" ${id === key ? 'aria-current="page"' : ''}>${guides[id].label}</button>`
+					)
+					.join('');
+				closeMenu();
+				closeMobileNavigation();
+				window.scrollTo({ top: 0, behavior: 'auto' });
+				document.querySelector('#guide-title').focus?.();
+			}
+
+			function showNotice(copy) {
+				document.querySelector('#notice-copy').textContent = copy;
+				noticeDialog.showModal();
+			}
+
+			document.addEventListener('click', (event) => {
+				const menuTrigger = event.target.closest('[data-menu]');
+				const guideTrigger = event.target.closest('[data-guide]');
+				const viewTrigger = event.target.closest('[data-view]');
+				const noticeTrigger = event.target.closest('[data-notice]');
+				const submissionTrigger = event.target.closest('[data-submission]');
+
+				if (menuTrigger) toggleMenu(menuTrigger.dataset.menu);
+				if (guideTrigger) showGuide(guideTrigger.dataset.guide);
+				if (!event.target.closest('.header-search') || guideTrigger) closeSearch();
+				if (viewTrigger) {
+					event.preventDefault();
+					showOverview();
+				}
+				if (noticeTrigger) {
+					event.preventDefault();
+					showNotice(noticeTrigger.dataset.notice);
+				}
+				if (submissionTrigger) {
+					showNotice(
+						'Submission is intentionally not connected in this prototype. Read the guidelines to see what authors would prepare.'
+					);
+				}
+				if (event.target.closest('[data-close-dialog]')) event.target.closest('dialog').close();
+				if (openMenu && !event.target.closest('.main-nav')) closeMenu();
+			});
+
+			megaContent.addEventListener('click', (event) => {
+				const target = event.target.closest('[data-menu-target]')?.dataset.menuTarget;
+				if (!target) return;
+				closeMenu();
+				if (target === 'overview') showOverview();
+				else if (target === 'submission-start')
+					showNotice('Submission is not connected in this prototype.');
+				else if (target.startsWith('notice:')) showNotice(target.slice(7));
+				else showGuide(target);
+			});
+
+			mobileMenu.addEventListener('click', () => {
+				const isOpen = navigation.classList.toggle('open');
+				mobileMenu.setAttribute('aria-expanded', String(isOpen));
+				mobileMenu.setAttribute('aria-label', isOpen ? 'Close navigation' : 'Open navigation');
+				if (!isOpen) closeMenu();
+			});
+
+			function search() {
+				closeMenu();
+				const query = searchInput.value.trim().toLowerCase();
+				if (!query) {
+					closeSearch();
+					return;
+				}
+				const matches = Object.entries(guides).filter(([, guide]) =>
+					(guide.label + ' ' + guide.lede).toLowerCase().includes(query)
+				);
+				document.querySelector('#search-status').textContent = matches.length
+					? `${matches.length} sample guide results`
+					: 'No sample guides match. Edition and collection search is not connected in this sketch.';
+				document.querySelector('#search-matches').innerHTML = matches
+					.map(
+						([key, guide]) => `<button type="button" data-guide="${key}">${guide.label} ↗</button>`
+					)
+					.join('');
+				searchResults.hidden = false;
+				searchInput.setAttribute('aria-expanded', 'true');
+			}
+			searchInput.addEventListener('input', search);
+			document.querySelector('#search-form').addEventListener('submit', (event) => {
+				event.preventDefault();
+				search();
+			});
+			document.querySelector('.header-search').addEventListener('focusout', (event) => {
+				if (!event.currentTarget.contains(event.relatedTarget)) closeSearch();
+			});
+
+			document.addEventListener('keydown', (event) => {
+				if (event.key === 'Escape' && openMenu) closeMenu(true);
+				if (event.key === 'Escape' && !searchResults.hidden) {
+					closeSearch();
+					searchInput.focus();
+				}
+			});
+
+			window.addEventListener('resize', () => {
+				if (window.innerWidth > 900) closeMobileNavigation();
+			});
+		</script>
+	</body>
+</html>

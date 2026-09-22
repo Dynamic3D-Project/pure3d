@@ -520,14 +520,16 @@
 					<div class="-mt-12 shrink-0">
 						<div class="placeholder avatar block">
 							{#if profilePicturePreviewUrl || profileData.profilePictureUrl}
-								<div class="w-32 rounded-full ring-4 ring-base-100">
+								<div class="w-32 rounded-full bg-base-200 ring-4 ring-base-100">
 									<img
 										src={profilePicturePreviewUrl || profileData.profilePictureUrl}
 										alt="{profileData.displayName} profile"
 									/>
 								</div>
 							{:else}
-								<div class="w-32 rounded-full bg-neutral text-neutral-content ring-4 ring-base-100">
+								<div
+									class="flex size-32 items-center justify-center rounded-full bg-base-200 text-base-content ring-4 ring-base-100"
+								>
 									<span class="text-4xl">{profileData.displayName.charAt(0).toUpperCase()}</span>
 								</div>
 							{/if}

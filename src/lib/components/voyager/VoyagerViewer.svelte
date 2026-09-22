@@ -83,7 +83,10 @@
 		toggleMeasurement: () => void;
 		enableAR: () => void;
 		setLanguage: (code: string) => void;
+		getLanguages: () => string[];
+		getActiveLanguage: () => string;
 		resetCamera: () => void;
+		resetViewer: () => void;
 		getAnnotations: () => any[];
 		getArticles: () => any[];
 		getTours: () => any[];
@@ -418,7 +421,11 @@
 					toggleMeasurement,
 					enableAR,
 					setLanguage,
+					getLanguages: () => (voyagerElement as any)?.getLanguages?.() ?? [],
+					getActiveLanguage: () =>
+						(voyagerElement as any)?.getActiveLanguage?.() ?? selectedLanguage,
 					resetCamera,
+					resetViewer,
 					getAnnotations: () => annotations,
 					getArticles: () => articles,
 					getTours: () => tours,
@@ -528,13 +535,9 @@
 					.sv-content-view > .ff-title-bar,
 					.sv-title-bar,
 					.ff-title-bar,
-					.sv-tool-bar-container,
-					.sv-bottom-bar-container,
 					.sv-menu,
 					.sv-nav-container,
-					.sv-top-bar-container,
-					.ff-dock-view,
-					.sv-panel-container {
+					.sv-top-bar-container {
 						display: none !important;
 					}
 				`;
@@ -768,6 +771,12 @@
 		cameraOffsetZ = 0;
 		setCameraOrbitInternal();
 		applyCameraOffset();
+	}
+
+	function resetViewer() {
+		if (!voyagerElement) return;
+		cancelCameraAnimation();
+		(voyagerElement as any).resetViewer?.();
 	}
 
 	function getCurrentCameraPosition() {

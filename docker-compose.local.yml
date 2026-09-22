@@ -1,14 +1,14 @@
 services:
   pocketbase:
     environment:
-      PUBLIC_POCKETBASE_URL: https://127.0.0.1:${FRONTEND_PORT:-60020}
+      PUBLIC_POCKETBASE_URL: https://localhost:${FRONTEND_PORT:-60020}
       ORCID_ISSUER: https://orcid.org
 
   pocketbase-setup:
     environment:
       POCKETBASE_URL: http://pocketbase:8090
-      PUBLIC_POCKETBASE_URL: https://127.0.0.1:${FRONTEND_PORT:-60020}
-      PUBLIC_ASSET_BASE_URL: https://127.0.0.1:${FRONTEND_PORT:-60020}/assets
+      PUBLIC_POCKETBASE_URL: https://localhost:${FRONTEND_PORT:-60020}
+      PUBLIC_ASSET_BASE_URL: https://localhost:${FRONTEND_PORT:-60020}/assets
       R2_ENDPOINT: http://minio:9000
       R2_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-pure3d}
       R2_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-pure3d-local-secret}
@@ -23,8 +23,8 @@ services:
   frontend:
     environment:
       PUBLIC_DEMO_LOGIN: '1'
-      PUBLIC_POCKETBASE_URL: https://127.0.0.1:${FRONTEND_PORT:-60020}
-      PUBLIC_ASSET_BASE_URL: https://127.0.0.1:${FRONTEND_PORT:-60020}/assets
+      PUBLIC_POCKETBASE_URL: https://localhost:${FRONTEND_PORT:-60020}
+      PUBLIC_ASSET_BASE_URL: https://localhost:${FRONTEND_PORT:-60020}/assets
       DEV_HTTPS: '1'
       DEV_POCKETBASE_TARGET: http://pocketbase:8090
       DEV_ASSET_TARGET: http://minio:9000
