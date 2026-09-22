@@ -606,7 +606,8 @@
 	.add,
 	.dialog-actions button {
 		border: 1px solid var(--color-base-300);
-		border-radius: 4px;
+		border-radius: var(--radius-control);
+		min-height: 36px;
 		padding: 6px 8px;
 		font-size: 12px;
 	}
@@ -621,7 +622,7 @@
 		flex: 0 0 390px;
 		min-width: 0;
 		border: 1px solid #cbd3c0;
-		border-radius: 7px;
+		border-radius: var(--radius-surface);
 		background: color-mix(in srgb, var(--color-base-100) 86%, #edf2e8);
 		padding: 15px;
 	}
@@ -642,7 +643,7 @@
 		flex: 0 0 160px;
 		min-height: 170px;
 		border: 1px dashed #c1cbb6;
-		border-radius: 7px;
+		border-radius: var(--radius-surface);
 		font-size: 12px;
 		color: #506244;
 	}
@@ -704,7 +705,7 @@
 		max-height: calc(100dvh - 32px);
 		overflow-y: auto;
 		border: 1px solid var(--color-base-300);
-		border-radius: 10px;
+		border-radius: var(--radius-surface);
 		background: var(--color-base-100);
 		color: var(--color-base-content);
 		box-shadow: 0 24px 80px #14241030;
@@ -739,7 +740,7 @@
 	dialog textarea,
 	dialog select {
 		border: 1px solid var(--color-base-300);
-		border-radius: 4px;
+		border-radius: var(--radius-control);
 		background: var(--color-base-100);
 		padding: 9px;
 	}

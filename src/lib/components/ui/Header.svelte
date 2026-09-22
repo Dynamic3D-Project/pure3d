@@ -514,6 +514,7 @@
 	.desktop-links .publishing-cta {
 		align-self: center;
 		align-items: stretch;
+		min-height: 44px;
 		border-radius: var(--radius-field);
 		background: #293e30;
 		gap: 0;
@@ -608,7 +609,8 @@
 	}
 	.editorbar button {
 		border: 1px solid color-mix(in srgb, #fff 35%, transparent);
-		border-radius: 5px;
+		border-radius: var(--radius-control);
+		min-height: 36px;
 		padding: 7px 10px;
 		color: #fff;
 		white-space: nowrap;
@@ -716,7 +718,7 @@
 	}
 	.edit-entry {
 		border: 1px solid #9da58f;
-		border-radius: 5px;
+		border-radius: var(--radius-control);
 		padding: 9px 12px;
 		font-size: 12px;
 		white-space: nowrap;
@@ -819,7 +821,7 @@
 		padding: 18px 20px;
 		background: #e8eadf;
 		color: #43523c;
-		border-radius: 6px;
+		border-radius: var(--radius-surface);
 		height: 112px;
 		display: flex;
 		flex-direction: column;

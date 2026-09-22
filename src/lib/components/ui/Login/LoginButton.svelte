@@ -163,7 +163,7 @@
 			<input id="login-modal" type="checkbox" class="modal-toggle" bind:checked={loginOpen} />
 			<div class="modal modal-middle">
 				<div
-					class="modal-box max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg rounded-xl border border-base-300 p-0 md:max-w-[872px]"
+					class="modal-box max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg rounded-box border border-base-300 p-0 md:max-w-[872px]"
 				>
 					<label
 						for="login-modal"
@@ -172,7 +172,7 @@
 					>
 
 					<div class="grid md:min-h-[680px] md:grid-cols-[minmax(0,360px)_minmax(0,512px)]">
-						<div class="relative hidden overflow-hidden rounded-l-xl md:block">
+						<div class="relative hidden overflow-hidden rounded-l-box md:block">
 							{#if loginOpen}<LoginArtwork />{/if}
 						</div>
 						<LoginForm />

@@ -664,7 +664,7 @@
 		display: block;
 		overflow: hidden;
 		border: 1px solid var(--rule-strong);
-		border-radius: 3px;
+		border-radius: var(--radius-control);
 		background: var(--color-paper-2);
 		box-shadow: 0 12px 28px rgba(16, 16, 15, 0.08);
 		transform: translateY(0);
@@ -717,13 +717,15 @@
 	.btn {
 		display: inline-flex;
 		align-items: center;
+		min-height: 44px;
+		box-sizing: border-box;
 		gap: 10px;
 		font-family: var(--font-sans);
 		font-weight: 500;
 		font-size: 14px;
 		letter-spacing: -0.005em;
 		padding: 12px 18px;
-		border-radius: 2px;
+		border-radius: var(--radius-control);
 		cursor: pointer;
 		border: 1px solid transparent;
 		background: transparent;
@@ -885,7 +887,7 @@
 		background: transparent;
 		color: var(--color-ink-3);
 		border: 1px solid var(--rule-strong);
-		border-radius: 2px;
+		border-radius: var(--radius-control);
 		cursor: pointer;
 		transition:
 			color 0.15s,
@@ -922,7 +924,7 @@
 		justify-content: space-between;
 		padding: clamp(24px, 4vw, 40px);
 		border: 1px solid var(--rule);
-		border-radius: 28px;
+		border-radius: var(--radius-surface);
 		background: linear-gradient(
 			145deg,
 			var(--color-paper),
@@ -1016,7 +1018,7 @@
 		overflow: hidden;
 		padding: clamp(24px, 4vw, 48px);
 		border: 1px solid var(--rule);
-		border-radius: 34px;
+		border-radius: var(--radius-surface);
 		background: linear-gradient(
 			145deg,
 			color-mix(in srgb, var(--color-paper) 72%, transparent),
@@ -1112,7 +1114,7 @@
 	.publish-plate {
 		background: var(--color-ink);
 		color: var(--color-paper);
-		border-radius: 8px;
+		border-radius: var(--radius-surface);
 		padding: 80px 64px;
 		display: grid;
 		grid-template-columns: 1.1fr 1fr;
@@ -1241,7 +1243,7 @@
 		gap: 16px;
 		padding: 16px;
 		border: 1px solid rgba(244, 241, 235, 0.14);
-		border-radius: 8px;
+		border-radius: var(--radius-surface);
 		background: rgba(244, 241, 235, 0.055);
 		color: #f4f1eb;
 		font-family: var(--font-sans);
@@ -1295,7 +1297,7 @@
 		height: 88px;
 		padding: 18px;
 		border: 1px solid var(--rule);
-		border-radius: 12px;
+		border-radius: var(--radius-surface);
 		background: color-mix(in srgb, var(--color-paper) 84%, transparent);
 		transition:
 			border-color 0.15s ease,
@@ -1337,7 +1339,7 @@
 	}
 	.skeleton {
 		background: var(--color-base-300);
-		border-radius: 4px;
+		border-radius: var(--radius-control);
 		animation: pulse 1.6s ease-in-out infinite;
 	}
 	@keyframes pulse {

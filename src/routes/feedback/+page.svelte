@@ -117,7 +117,7 @@
 </svelte:head>
 
 <div class="container mx-auto max-w-5xl px-4 py-10">
-	<div class="mb-8 rounded-3xl bg-primary/10 p-6 ring-1 ring-primary/20 md:p-8">
+	<div class="mb-8 rounded-box bg-primary/10 p-6 ring-1 ring-primary/20 md:p-8">
 		<p class="mb-2 text-sm font-semibold uppercase tracking-wide text-primary">Feedback</p>
 		<h1 class="text-3xl font-bold md:text-4xl">Tell us what you notice</h1>
 		<p class="mt-3 max-w-3xl text-base-content/70">

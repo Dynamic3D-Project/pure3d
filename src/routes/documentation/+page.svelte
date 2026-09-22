@@ -13,7 +13,7 @@
 
 <div id="documentation-page" class="space-y-16 pb-8">
 	<section
-		class="relative overflow-hidden rounded-3xl bg-ink px-6 py-12 text-paper sm:px-10 sm:py-16"
+		class="relative overflow-hidden rounded-box bg-ink px-6 py-12 text-paper sm:px-10 sm:py-16"
 	>
 		<div
 			class="absolute -top-24 -right-20 size-72 rounded-full border border-paper/15"
@@ -60,7 +60,7 @@
 		</div>
 	</section>
 
-	<section class="grid gap-8 rounded-3xl bg-base-200 p-6 sm:p-10 lg:grid-cols-[1fr_1.15fr]">
+	<section class="grid gap-8 rounded-box bg-base-200 p-6 sm:p-10 lg:grid-cols-[1fr_1.15fr]">
 		<div>
 			<p class="mb-3 text-xs font-bold tracking-[0.18em] text-vermillion uppercase">
 				Before you begin

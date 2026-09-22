@@ -514,7 +514,7 @@
 		</div>
 	{:else if authStore.isAuthenticated && profileData}
 		<div class="container mx-auto max-w-5xl px-4 py-8">
-			<section class="overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm">
+			<section class="overflow-hidden rounded-box border border-base-300 bg-base-100 shadow-sm">
 				<div class="h-24 bg-gradient-to-r from-base-300 via-base-200 to-base-100"></div>
 				<div class="flex flex-col gap-6 p-6 pt-0 sm:flex-row sm:items-end">
 					<div class="-mt-12 shrink-0">
@@ -753,7 +753,7 @@
 				</div>
 			</section>
 
-			<section class="mt-10 rounded-2xl border border-base-300 bg-base-100 p-6 shadow-sm">
+			<section class="mt-10 rounded-box border border-base-300 bg-base-100 p-6 shadow-sm">
 				<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
 					<div>
 						<h2 class="text-2xl font-semibold">My Work</h2>
@@ -953,7 +953,7 @@
 					</div>
 				{:else}
 					<p
-						class="rounded-2xl border border-base-300 bg-base-100 p-6 text-base-content/60 shadow-sm"
+						class="rounded-box border border-base-300 bg-base-100 p-6 text-base-content/60 shadow-sm"
 					>
 						No accessible editions credit your user ID yet.
 					</p>
@@ -973,7 +973,7 @@
 					</div>
 				{:else}
 					<p
-						class="rounded-2xl border border-base-300 bg-base-100 p-6 text-base-content/60 shadow-sm"
+						class="rounded-box border border-base-300 bg-base-100 p-6 text-base-content/60 shadow-sm"
 					>
 						No accessible collections credit your user ID yet.
 					</p>

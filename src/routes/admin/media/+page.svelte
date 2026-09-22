@@ -123,7 +123,7 @@
 		<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
 			{#each filtered as row (row.id)}<button
 					type="button"
-					class="group min-w-0 overflow-hidden rounded-xl border border-base-300 bg-base-100 text-left transition hover:border-base-content/40 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+					class="group min-w-0 overflow-hidden rounded-xl border border-base-300 bg-base-100 text-left transition [contain-intrinsic-size:auto_320px] [content-visibility:auto] hover:border-base-content/40 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
 					onclick={() => open(row)}
 				>
 					{#if /\.(avif|png|jpg|jpeg|webp|gif)$/i.test(row.file)}<img

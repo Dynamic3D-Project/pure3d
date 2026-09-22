@@ -19,6 +19,10 @@
   --font-serif: 'Fraunces', 'Times New Roman', serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
+  --radius-control: 0.5rem;
+  --radius-surface: 0.75rem;
+  --radius-round: 9999px;
+
   --color-paper: #f4f1eb;
   --color-paper-2: #ece7dd;
   --color-paper-3: #e2dccf;
@@ -59,14 +63,24 @@
   --color-warning-content: var(--color-ink);
   --color-error: oklch(55% 0.2 25);
   --color-error-content: var(--color-paper);
-  --radius-selector: 0.5rem;
-  --radius-field: 0.5rem;
-  --radius-box: 0.75rem;
+  --radius-selector: var(--radius-control);
+  --radius-field: var(--radius-control);
+  --radius-box: var(--radius-surface);
   --size-selector: 0.25rem;
   --size-field: 0.28125rem;
   --border: 1px;
   --depth: 0;
   --noise: 0;
+}
+
+@layer components {
+  .btn:not(.btn-circle):not(.rounded-full),
+  .input,
+  .select,
+  .textarea,
+  .file-input {
+    border-radius: var(--radius-control);
+  }
 }
 
 

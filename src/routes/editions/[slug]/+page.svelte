@@ -1,9 +1,15 @@
 <script lang="ts">
 	import { creditHref, creatorNames, readCredits } from '$lib/utils/credits';
+	import { cleanContent } from '$lib/utils/content-html';
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
-	import VoyagerViewer, { type VoyagerAPI } from '$lib/components/voyager/VoyagerViewer.svelte';
+	import VoyagerViewer, {
+		type VoyagerAPI,
+		type VoyagerCapabilities,
+		type VoyagerFeatureNeeds,
+		type VoyagerPanel
+	} from '$lib/components/voyager/VoyagerViewer.svelte';
 	import ReviewFeedbackList from '$lib/components/workflow/ReviewFeedbackList.svelte';
 	import ImagineModal from '$lib/components/ui/ImagineModal.svelte';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
@@ -12,7 +18,9 @@
 	import { hasPermission } from '$lib/utils/permissions';
 	import { resolvePageContext } from '$lib/utils/page-permissions';
 	import BookOpenIcon from '~icons/lucide/book-open';
+	import CircleHelpIcon from '~icons/lucide/circle-help';
 	import CopyIcon from '~icons/lucide/copy';
+	import EllipsisIcon from '~icons/lucide/ellipsis';
 	import LanguagesIcon from '~icons/lucide/languages';
 	import MapIcon from '~icons/lucide/map';
 	import MessageCircleIcon from '~icons/lucide/message-circle';
@@ -20,8 +28,9 @@
 	import PanelRightOpenIcon from '~icons/lucide/panel-right-open';
 	import RotateCcwIcon from '~icons/lucide/rotate-ccw';
 	import RulerIcon from '~icons/lucide/ruler';
-	import Share2Icon from '~icons/lucide/share-2';
+	import SparklesIcon from '~icons/lucide/sparkles';
 	import SmartphoneIcon from '~icons/lucide/smartphone';
+	import Volume2Icon from '~icons/lucide/volume-2';
 	import WrenchIcon from '~icons/lucide/wrench';
 
 	// View preset type for camera positions
@@ -45,8 +54,29 @@
 
 	// Voyager API reference for controlling the viewer
 	let voyagerAPI = $state<VoyagerAPI | null>(null);
+	let activeVoyagerPanel = $state<VoyagerPanel | null>(null);
 	let viewerLanguages = $state<string[]>([]);
 	let activeViewerLanguage = $state('EN');
+	let viewerCapabilities = $state<VoyagerCapabilities>({
+		annotations: false,
+		reader: false,
+		tours: false,
+		tools: false,
+		measurement: false,
+		ar: false,
+		reset: false,
+		audio: false
+	});
+	let viewerFeatureNeeds = $state<VoyagerFeatureNeeds>({
+		annotations: false,
+		reader: false,
+		tours: false,
+		tools: true,
+		measurement: true,
+		ar: true,
+		reset: true,
+		audio: false
+	});
 
 	// Make these reactive so they update when data changes on navigation
 	let edition = $derived(data.edition);
@@ -153,7 +183,6 @@
 	let imagineModalOpen = $state(false);
 	let loadedModelSize = $state<number | null>(null);
 	let isFullWindow = $state(false);
-	let detailsPanelElement: HTMLDivElement | undefined = $state();
 
 	// Version history & citation state
 	let citationCopied = $state(false);
@@ -257,8 +286,19 @@
 
 	function handleViewerReady(api: VoyagerAPI) {
 		voyagerAPI = api;
+		activeVoyagerPanel = null;
 		viewerLanguages = api.getLanguages();
 		activeViewerLanguage = api.getActiveLanguage();
+		viewerCapabilities = api.getCapabilities();
+		viewerFeatureNeeds = api.getFeatureNeeds();
+	}
+
+	function closeVoyagerPanel() {
+		if (!voyagerAPI || !activeVoyagerPanel) return;
+		if (activeVoyagerPanel === 'annotations') voyagerAPI.toggleAnnotations();
+		if (activeVoyagerPanel === 'reader') voyagerAPI.toggleReader();
+		if (activeVoyagerPanel === 'tours') voyagerAPI.toggleTours();
+		if (activeVoyagerPanel === 'tools') voyagerAPI.toggleTools();
 	}
 
 	function setViewerLanguage(code: string, event: MouseEvent) {
@@ -267,34 +307,8 @@
 		(event.currentTarget as HTMLElement).closest('details')?.removeAttribute('open');
 	}
 
-	async function shareEdition() {
-		const shareData = { title: edition.title, url: window.location.href };
-
-		try {
-			if (navigator.share) {
-				await navigator.share(shareData);
-			} else {
-				await navigator.clipboard.writeText(shareData.url);
-			}
-		} catch (error) {
-			if ((error as DOMException).name !== 'AbortError') {
-				console.error('Unable to share edition', error);
-			}
-		}
-	}
-
 	function toggleSidebar() {
 		isSidebarCollapsed = !isSidebarCollapsed;
-	}
-
-	function showMetadata() {
-		activeTab = 'metadata';
-		isSidebarCollapsed = false;
-		if (window.innerWidth < 1024) {
-			requestAnimationFrame(() =>
-				detailsPanelElement?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-			);
-		}
 	}
 
 	function toggleFullWindow() {
@@ -427,8 +441,8 @@
 							uiMode={showVoyagerMenu ? 'menu|title|language' : 'none'}
 							onModelLoaded={handleModelLoaded}
 							onReady={handleViewerReady}
+							onPanelVisibilityChange={(panel) => (activeVoyagerPanel = panel)}
 							onFullWindowToggle={toggleFullWindow}
-							showEditorSwitch
 							{isFullWindow}
 							{showVoyagerMenu}
 						/>
@@ -439,79 +453,13 @@
 							class:top-3={!isFullWindow}
 							class:top-20={isFullWindow}
 						>
-							<!-- Fullscreen toggle button -->
-							<button
-								type="button"
-								class="btn btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
-								onclick={toggleFullWindow}
-								aria-label={isFullWindow ? 'Exit full window' : 'Full window'}
-								title={isFullWindow ? 'Exit full window' : 'Full window'}
-							>
-								{#if isFullWindow}
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke-width="2"
-										stroke="currentColor"
-										class="h-5 w-5"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="M9 9V4.5M9 9H4.5M9 9 3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5 5.25 5.25"
-										/>
-									</svg>
-								{:else}
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke-width="2"
-										stroke="currentColor"
-										class="h-5 w-5"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"
-										/>
-									</svg>
-								{/if}
-							</button>
-
-							<!-- Imagine AI button -->
-							<button
-								type="button"
-								class="btn btn-circle border-0 bg-primary/80 text-primary-content shadow-lg btn-sm hover:bg-primary"
-								onclick={() => (imagineModalOpen = true)}
-								aria-label="Imagine — AI image generation"
-								title="Imagine — Generate AI image from this view"
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke-width="2"
-									stroke="currentColor"
-									class="h-5 w-5"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"
-									/>
-								</svg>
-							</button>
-
-							<!-- Help info button -->
-							{#if viewerHelp || viewerHelpVideoUrl}
+							{#if activeVoyagerPanel}
 								<button
 									type="button"
-									class="btn btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
-									onclick={() => (helpModalOpen = true)}
-									aria-label="How to use the 3D viewer"
-									title="How to use the 3D viewer"
+									class="viewer-glass-action viewer-glass-action-icon"
+									onclick={closeVoyagerPanel}
+									aria-label={`Close ${activeVoyagerPanel}`}
+									title={`Close ${activeVoyagerPanel}`}
 								>
 									<svg
 										xmlns="http://www.w3.org/2000/svg"
@@ -520,167 +468,206 @@
 										stroke-width="2"
 										stroke="currentColor"
 										class="h-5 w-5"
+										aria-hidden="true"
 									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"
-										/>
+										<path stroke-linecap="round" d="M6 6l12 12M18 6 6 18" />
 									</svg>
 								</button>
 							{/if}
 						</div>
 
-						<!-- Custom floating controls (left side) - only visible when enabled and API ready -->
-						{#if showCustomControls && voyagerAPI}
-							<div
-								class="custom-viewer-controls absolute left-3 z-10 flex flex-col gap-2 transition-all duration-300"
-								class:top-3={!isFullWindow}
-								class:top-20={isFullWindow}
-							>
-								{#if viewerLanguages.length > 1}
-									<details class="dropdown dropdown-right">
-										<summary
-											class="btn btn-circle list-none border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
-											aria-label="Change viewer language"
-											title="Language: {activeViewerLanguage}"
+						<!-- Custom command bar - only visible when enabled and API ready -->
+						{#if showCustomControls && voyagerAPI && !activeVoyagerPanel}
+							<div class="viewer-command-bar" role="toolbar" aria-label="3D viewer controls">
+								{#if viewerFeatureNeeds.annotations}
+									<button
+										type="button"
+										class="viewer-command-item"
+										onclick={() => voyagerAPI?.toggleAnnotations()}
+										disabled={!viewerCapabilities.annotations}
+										aria-label="Toggle annotations"
+									>
+										<MessageCircleIcon class="h-5 w-5" aria-hidden="true" />
+										<span class="viewer-command-label"
+											>{viewerCapabilities.annotations
+												? 'Annotations'
+												: 'Annotations unavailable'}</span
 										>
-											<LanguagesIcon class="h-5 w-5" aria-hidden="true" />
-										</summary>
-										<ul
-											class="dropdown-content menu z-20 ml-2 w-36 rounded-box bg-base-100 p-2 shadow-xl"
+									</button>
+								{/if}
+
+								{#if viewerFeatureNeeds.reader}
+									<button
+										type="button"
+										class="viewer-command-item"
+										onclick={() => voyagerAPI?.toggleReader()}
+										disabled={!viewerCapabilities.reader}
+										aria-label="Toggle reader"
+									>
+										<BookOpenIcon class="h-5 w-5" aria-hidden="true" />
+										<span class="viewer-command-label"
+											>{viewerCapabilities.reader ? 'Reader' : 'Reader unavailable'}</span
 										>
-											{#each viewerLanguages as language}
-												<li>
-													<button
-														type="button"
-														class:menu-active={language === activeViewerLanguage}
-														onclick={(event) => setViewerLanguage(language, event)}
-													>
-														{language.toUpperCase()}
-													</button>
-												</li>
-											{/each}
-										</ul>
-									</details>
+									</button>
+								{/if}
+
+								{#if viewerFeatureNeeds.tours}
+									<button
+										type="button"
+										class="viewer-command-item"
+										onclick={() => voyagerAPI?.toggleTours()}
+										disabled={!viewerCapabilities.tours}
+										aria-label="Toggle tours"
+									>
+										<MapIcon class="h-5 w-5" aria-hidden="true" />
+										<span class="viewer-command-label"
+											>{viewerCapabilities.tours ? 'Tours' : 'Tours unavailable'}</span
+										>
+									</button>
 								{/if}
 
 								<button
 									type="button"
-									class="btn btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
-									onclick={() => voyagerAPI?.toggleAnnotations()}
-									aria-label="Toggle annotations"
-									title="Toggle annotations"
+									class="viewer-command-item"
+									onclick={toggleFullWindow}
+									aria-label={isFullWindow ? 'Exit full window' : 'Full window'}
 								>
-									<MessageCircleIcon class="h-5 w-5" aria-hidden="true" />
+									{#if isFullWindow}
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke-width="2"
+											stroke="currentColor"
+											class="h-5 w-5"
+											aria-hidden="true"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												d="M9 9V4.5M9 9H4.5M9 9 3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5 5.25 5.25"
+											/>
+										</svg>
+									{:else}
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke-width="2"
+											stroke="currentColor"
+											class="h-5 w-5"
+											aria-hidden="true"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"
+											/>
+										</svg>
+									{/if}
+									<span class="viewer-command-label"
+										>{isFullWindow ? 'Exit full screen' : 'Full screen'}</span
+									>
 								</button>
 
-								<button
-									type="button"
-									class="btn btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
-									onclick={() => voyagerAPI?.toggleReader()}
-									aria-label="Toggle reader"
-									title="Toggle reader"
-								>
-									<BookOpenIcon class="h-5 w-5" aria-hidden="true" />
-								</button>
+								<details class="viewer-more">
+									<summary class="viewer-command-item" aria-label="More viewer controls">
+										<EllipsisIcon class="h-5 w-5" aria-hidden="true" />
+										<span class="viewer-command-label">More</span>
+									</summary>
 
-								<button
-									type="button"
-									class="btn btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
-									onclick={() => voyagerAPI?.toggleTours()}
-									aria-label="Toggle tours"
-									title="Toggle tours"
-								>
-									<MapIcon class="h-5 w-5" aria-hidden="true" />
-								</button>
+									<div class="viewer-more-menu">
+										<button
+											type="button"
+											onclick={() => (imagineModalOpen = true)}
+											title="Generate an AI image from this view"
+										>
+											<SparklesIcon class="h-5 w-5" aria-hidden="true" />
+											<span>Imagine</span>
+										</button>
+										{#if viewerHelp || viewerHelpVideoUrl}
+											<button type="button" onclick={() => (helpModalOpen = true)}>
+												<CircleHelpIcon class="h-5 w-5" aria-hidden="true" />
+												<span>Viewer help</span>
+											</button>
+										{/if}
+										<button
+											type="button"
+											onclick={() => voyagerAPI?.toggleTools()}
+											disabled={!viewerCapabilities.tools}
+											title={viewerCapabilities.tools
+												? 'Toggle tools'
+												: 'Unavailable in this Voyager API version'}
+										>
+											<WrenchIcon class="h-5 w-5" aria-hidden="true" />
+											<span>Tools</span>
+										</button>
+										<button
+											type="button"
+											onclick={() => voyagerAPI?.toggleMeasurement()}
+											disabled={!viewerCapabilities.measurement}
+											title={viewerCapabilities.measurement
+												? 'Toggle measurement'
+												: 'Unavailable in this Voyager API version'}
+										>
+											<RulerIcon class="h-5 w-5" aria-hidden="true" />
+											<span>Measure</span>
+										</button>
+										<button
+											type="button"
+											onclick={() => voyagerAPI?.enableAR()}
+											disabled={!viewerCapabilities.ar}
+											title={viewerCapabilities.ar
+												? 'View in AR (supported devices only)'
+												: 'Unavailable in this Voyager API version'}
+										>
+											<SmartphoneIcon class="h-5 w-5" aria-hidden="true" />
+											<span>View in AR</span>
+										</button>
+										<button
+											type="button"
+											onclick={() => voyagerAPI?.resetViewer()}
+											disabled={!viewerCapabilities.reset}
+											title={viewerCapabilities.reset
+												? 'Reset viewer'
+												: 'Unavailable in this Voyager API version'}
+										>
+											<RotateCcwIcon class="h-5 w-5" aria-hidden="true" />
+											<span>Reset</span>
+										</button>
+										{#if viewerFeatureNeeds.audio}
+											<button
+												type="button"
+												disabled={!viewerCapabilities.audio}
+												title="Audio controls are not exposed by the Voyager Explorer API"
+											>
+												<Volume2Icon class="h-5 w-5" aria-hidden="true" />
+												<span>Audio · API unavailable</span>
+											</button>
+										{/if}
 
-								<button
-									type="button"
-									class="btn btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
-									onclick={shareEdition}
-									aria-label="Share edition"
-									title="Share edition"
-								>
-									<Share2Icon class="h-5 w-5" aria-hidden="true" />
-								</button>
-
-								<button
-									type="button"
-									class="btn btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
-									onclick={() => voyagerAPI?.toggleTools()}
-									aria-label="Toggle tools"
-									title="Toggle tools"
-								>
-									<WrenchIcon class="h-5 w-5" aria-hidden="true" />
-								</button>
-
-								<button
-									type="button"
-									class="btn btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
-									onclick={() => voyagerAPI?.toggleMeasurement()}
-									aria-label="Toggle measurement"
-									title="Toggle measurement"
-								>
-									<RulerIcon class="h-5 w-5" aria-hidden="true" />
-								</button>
-
-								<button
-									type="button"
-									class="btn btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
-									onclick={() => voyagerAPI?.enableAR()}
-									aria-label="View in augmented reality"
-									title="View in AR (supported devices only)"
-								>
-									<SmartphoneIcon class="h-5 w-5" aria-hidden="true" />
-								</button>
-
-								<button
-									type="button"
-									class="btn btn-circle border-0 bg-base-100/80 shadow-lg btn-sm hover:bg-base-100"
-									onclick={() => voyagerAPI?.resetViewer()}
-									aria-label="Reset viewer"
-									title="Reset viewer"
-								>
-									<RotateCcwIcon class="h-5 w-5" aria-hidden="true" />
-								</button>
+										{#if viewerLanguages.length > 1}
+											<div class="viewer-language-options">
+												<span>Language</span>
+												<div>
+													{#each viewerLanguages as language}
+														<button
+															type="button"
+															class:active={language === activeViewerLanguage}
+															onclick={(event) => setViewerLanguage(language, event)}
+														>
+															<LanguagesIcon class="h-4 w-4" aria-hidden="true" />
+															{language.toUpperCase()}
+														</button>
+													{/each}
+												</div>
+											</div>
+										{/if}
+									</div>
+								</details>
 							</div>
 						{/if}
 					</div>
-
-					{#if !isFullWindow}
-						<div
-							class="flex flex-wrap items-center justify-between gap-x-5 gap-y-2 px-1 pt-3 text-xs"
-						>
-							<div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-base-content/60">
-								{#if edition.usageConditions}
-									<span>
-										<span class="font-mono text-[9px] tracking-[0.1em] uppercase">License</span>
-										<span class="ml-1 font-medium text-base-content/80"
-											>{edition.usageConditions}</span
-										>
-									</span>
-								{/if}
-								{#if primaryDoi}
-									<a
-										href={`https://doi.org/${primaryDoi}`}
-										target="_blank"
-										rel="noreferrer"
-										class="font-medium text-base-content/80 underline decoration-base-content/25 underline-offset-4 hover:decoration-base-content"
-									>
-										Cite this edition
-									</a>
-								{/if}
-							</div>
-							<button
-								type="button"
-								class="min-h-8 font-medium text-base-content/60 transition-colors hover:text-base-content"
-								onclick={showMetadata}
-							>
-								View full metadata →
-							</button>
-						</div>
-					{/if}
 				</div>
 			</div>
 
@@ -690,7 +677,7 @@
 				class:lg:w-96={!isSidebarCollapsed}
 				class:lg:w-12={isSidebarCollapsed}
 			>
-				<div bind:this={detailsPanelElement} class="scroll-mt-24 lg:sticky lg:top-24">
+				<div class="scroll-mt-24 lg:sticky lg:top-24">
 					{#if isSidebarCollapsed}
 						<button
 							type="button"
@@ -788,10 +775,11 @@
 							<!-- Tab Content -->
 							<div class="prose prose-sm max-h-[75vh] max-w-none overflow-y-auto p-5">
 								{#if activeTab === 'description'}
-									<p class="leading-relaxed text-base-content/80">
+									<div class="leading-relaxed text-base-content/80">
 										{#each descriptionSegments as segment}
 											{#if segment.type === 'text'}
-												{segment.content}
+												<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitised with DOMPurify -->
+												{@html cleanContent(segment.content)}
 											{:else if segment.type === 'view-link'}
 												<button
 													type="button"
@@ -803,7 +791,7 @@
 												</button>
 											{/if}
 										{/each}
-									</p>
+									</div>
 
 									<!-- Tags -->
 									<div class="mt-6">
@@ -1381,18 +1369,282 @@
 		background: var(--color-base-200);
 	}
 
+	.viewer-glass-action {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.45rem;
+		min-height: 2.5rem;
+		padding: 0 0.8rem;
+		border: 1px solid rgb(255 255 255 / 16%);
+		border-radius: 0.75rem;
+		background:
+			linear-gradient(145deg, rgb(255 255 255 / 13%), rgb(255 255 255 / 3%)), rgb(10 17 20 / 30%);
+		box-shadow:
+			0 0.5rem 1.5rem rgb(0 0 0 / 22%),
+			inset 0 1px 0 rgb(255 255 255 / 28%),
+			inset 0 -1px 0 rgb(0 0 0 / 18%);
+		-webkit-backdrop-filter: blur(14px) saturate(165%);
+		backdrop-filter: blur(14px) saturate(165%);
+		color: white;
+		font-size: 0.75rem;
+		font-weight: 600;
+		transition:
+			border-color 160ms ease,
+			background 160ms ease,
+			transform 160ms ease;
+	}
+
+	.viewer-glass-action:hover,
+	.viewer-glass-action:focus-visible {
+		border-color: rgb(130 170 140 / 75%);
+		background: rgb(35 63 48 / 88%);
+		outline: none;
+		transform: translateY(-1px);
+	}
+
+	.viewer-glass-action-icon {
+		width: 2.5rem;
+		padding: 0;
+	}
+
+	.viewer-command-bar {
+		position: absolute;
+		top: 50%;
+		left: 0.75rem;
+		z-index: 20;
+		display: flex;
+		flex-direction: column;
+		align-items: stretch;
+		width: 3.25rem;
+		max-height: calc(100% - 1.5rem);
+		padding: 0.25rem;
+		border: 1px solid rgb(255 255 255 / 16%);
+		border-radius: 1.1rem;
+		background:
+			linear-gradient(145deg, rgb(255 255 255 / 13%), rgb(255 255 255 / 3%) 52%), rgb(8 14 17 / 30%);
+		box-shadow:
+			0 0.75rem 2rem rgb(0 0 0 / 28%),
+			inset 0 1px 0 rgb(255 255 255 / 14%),
+			inset 0 -1px 0 rgb(0 0 0 / 22%);
+		-webkit-backdrop-filter: blur(14px) saturate(165%);
+		backdrop-filter: blur(14px) saturate(165%);
+		transform: translateY(-50%);
+		animation: viewer-command-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+	}
+
+	.viewer-command-item {
+		position: relative;
+		display: flex;
+		flex: 0 0 2.75rem;
+		min-width: 0;
+		width: 2.75rem;
+		min-height: 2.75rem;
+		align-items: center;
+		justify-content: center;
+		padding: 0;
+		border-radius: 0.85rem;
+		color: rgb(255 255 255 / 82%);
+		transition:
+			background 160ms ease,
+			color 160ms ease;
+	}
+
+	.viewer-command-label {
+		position: absolute;
+		top: 50%;
+		left: calc(100% + 0.7rem);
+		z-index: 30;
+		width: max-content;
+		max-width: 12rem;
+		padding: 0.42rem 0.6rem;
+		border: 1px solid rgb(255 255 255 / 14%);
+		border-radius: 0.6rem;
+		background: rgb(8 14 17 / 66%);
+		box-shadow:
+			0 0.5rem 1.25rem rgb(0 0 0 / 26%),
+			inset 0 1px 0 rgb(255 255 255 / 18%);
+		-webkit-backdrop-filter: blur(12px) saturate(160%);
+		backdrop-filter: blur(12px) saturate(160%);
+		color: white;
+		font-size: 0.6875rem;
+		font-weight: 550;
+		line-height: 1;
+		opacity: 0;
+		pointer-events: none;
+		transform: translate(-0.2rem, -50%) scale(0.96);
+		transform-origin: left center;
+		transition:
+			opacity 130ms ease,
+			transform 130ms ease;
+	}
+
+	.viewer-command-item:hover > .viewer-command-label,
+	.viewer-command-item:focus-visible > .viewer-command-label {
+		opacity: 1;
+		transform: translate(0, -50%) scale(1);
+	}
+
+	.viewer-more[open] > .viewer-command-item > .viewer-command-label {
+		opacity: 0;
+	}
+
+	.viewer-command-item:hover,
+	.viewer-command-item:focus-visible,
+	.viewer-more[open] > .viewer-command-item {
+		background: linear-gradient(145deg, rgb(104 154 119 / 58%), rgb(45 84 60 / 44%));
+		box-shadow: inset 0 1px 0 rgb(255 255 255 / 22%);
+		color: white;
+		outline: none;
+	}
+
+	.viewer-command-item:disabled,
+	.viewer-command-item:disabled:hover {
+		cursor: not-allowed;
+		background: transparent;
+		color: rgb(255 255 255 / 28%);
+		filter: grayscale(1);
+	}
+
+	.viewer-more {
+		position: relative;
+		display: flex;
+		flex: 0 0 2.75rem;
+		min-width: 0;
+	}
+
+	.viewer-more > .viewer-command-item {
+		flex: 1;
+	}
+
+	.viewer-more > summary {
+		width: 100%;
+		list-style: none;
+		cursor: pointer;
+	}
+
+	.viewer-more > summary::-webkit-details-marker {
+		display: none;
+	}
+
+	.viewer-more-menu {
+		position: absolute;
+		bottom: 0;
+		left: calc(100% + 0.75rem);
+		display: grid;
+		width: 12rem;
+		padding: 0.45rem;
+		border: 1px solid rgb(255 255 255 / 16%);
+		border-radius: 0.9rem;
+		background:
+			linear-gradient(145deg, rgb(255 255 255 / 13%), rgb(255 255 255 / 3%)), rgb(8 14 17 / 52%);
+		box-shadow:
+			0 1rem 2.5rem rgb(0 0 0 / 32%),
+			inset 0 1px 0 rgb(255 255 255 / 12%);
+		-webkit-backdrop-filter: blur(18px) saturate(165%);
+		backdrop-filter: blur(18px) saturate(165%);
+		color: white;
+		transform-origin: left bottom;
+		animation: viewer-menu-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+	}
+
+	@keyframes viewer-command-in {
+		from {
+			opacity: 0;
+			transform: translate(-0.4rem, -50%) scale(0.98);
+		}
+	}
+
+	@keyframes viewer-menu-in {
+		from {
+			opacity: 0;
+			transform: translateX(-0.35rem) scale(0.98);
+		}
+	}
+
+	.viewer-more-menu > button {
+		display: flex;
+		min-height: 2.65rem;
+		align-items: center;
+		gap: 0.65rem;
+		padding: 0 0.7rem;
+		border-radius: 0.6rem;
+		font-size: 0.78rem;
+		font-weight: 550;
+	}
+
+	.viewer-more-menu > button:hover,
+	.viewer-more-menu > button:focus-visible {
+		background: rgb(61 101 74 / 78%);
+		outline: none;
+	}
+
+	.viewer-more-menu > button:disabled,
+	.viewer-more-menu > button:disabled:hover {
+		cursor: not-allowed;
+		background: transparent;
+		color: rgb(255 255 255 / 30%);
+		filter: grayscale(1);
+	}
+
+	.viewer-language-options {
+		margin-top: 0.35rem;
+		padding: 0.65rem 0.7rem 0.3rem;
+		border-top: 1px solid rgb(255 255 255 / 12%);
+		font-size: 0.65rem;
+		color: rgb(255 255 255 / 58%);
+	}
+
+	.viewer-language-options > div {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.3rem;
+		margin-top: 0.45rem;
+	}
+
+	.viewer-language-options button {
+		display: inline-flex;
+		min-height: 1.9rem;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0 0.45rem;
+		border-radius: 0.45rem;
+		background: rgb(255 255 255 / 7%);
+		color: white;
+	}
+
+	.viewer-language-options button:hover,
+	.viewer-language-options button:focus-visible,
+	.viewer-language-options button.active {
+		background: rgb(61 101 74 / 78%);
+		outline: none;
+	}
+
 	@media (max-width: 480px) {
-		.custom-viewer-controls {
-			top: auto !important;
-			right: 0.75rem;
-			bottom: 0.75rem;
-			flex-direction: row;
-			flex-wrap: wrap;
+		.viewer-glass-action {
+			width: 2.35rem;
+			min-height: 2.35rem;
+			padding: 0;
+		}
+
+		.viewer-command-bar {
+			left: 0.5rem;
+		}
+
+		.viewer-more-menu {
+			width: min(12rem, calc(100vw - 5rem));
 		}
 
 		.metadata-row {
 			grid-template-columns: 5rem minmax(0, 1fr);
 			gap: 0.5rem;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.viewer-command-bar,
+		.viewer-more-menu {
+			animation: none;
 		}
 	}
 

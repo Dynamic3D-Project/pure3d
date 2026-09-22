@@ -63,6 +63,8 @@
 		isFullWindow?: boolean;
 		/** Callback when viewer is ready, provides API methods */
 		onReady?: (api: VoyagerAPI) => void;
+		/** Callback when Voyager's native annotations, reader, tours, or tools UI changes */
+		onPanelVisibilityChange?: (panel: VoyagerPanel | null) => void;
 		/** Callback to toggle full-window mode from the embedded editor controls */
 		onFullWindowToggle?: () => void;
 		/** Height of the viewer (e.g., "500px", "60vh", "100%"). Defaults to aspect-ratio 4/3 with max-height 90dvh */
@@ -85,6 +87,8 @@
 		setLanguage: (code: string) => void;
 		getLanguages: () => string[];
 		getActiveLanguage: () => string;
+		getCapabilities: () => VoyagerCapabilities;
+		getFeatureNeeds: () => VoyagerFeatureNeeds;
 		resetCamera: () => void;
 		resetViewer: () => void;
 		getAnnotations: () => any[];
@@ -106,6 +110,30 @@
 		}) => void;
 	}
 
+	export type VoyagerPanel = 'annotations' | 'reader' | 'tours' | 'tools';
+
+	export interface VoyagerCapabilities {
+		annotations: boolean;
+		reader: boolean;
+		tours: boolean;
+		tools: boolean;
+		measurement: boolean;
+		ar: boolean;
+		reset: boolean;
+		audio: false;
+	}
+
+	export interface VoyagerFeatureNeeds {
+		annotations: boolean;
+		reader: boolean;
+		tours: boolean;
+		tools: true;
+		measurement: true;
+		ar: true;
+		reset: true;
+		audio: boolean;
+	}
+
 	let {
 		url,
 		document: documentPath,
@@ -125,6 +153,7 @@
 		onModelLoaded,
 		isFullWindow = false,
 		onReady,
+		onPanelVisibilityChange,
 		onFullWindowToggle,
 		height,
 		showVoyagerMenu = false,
@@ -151,6 +180,15 @@
 	let totalBytes = $state(0);
 	let loadedBytes = $state(0);
 	let cleanupFetchInterceptor: (() => void) | null = null;
+	let chromeObserver: MutationObserver | null = null;
+	let toolsVisibilityFrame: number | null = null;
+	let lastVisiblePanel: VoyagerPanel | null = null;
+	let sceneFeatureNeeds = {
+		annotations: false,
+		reader: false,
+		tours: false,
+		audio: false
+	};
 
 	// Camera orbit state
 	let cameraYaw = $state(0);
@@ -352,6 +390,7 @@
 				loadingPhase = 'document';
 				setTimeout(loadContent, 500);
 				return () => {
+					cleanupChromeObserver();
 					if (cleanupFetchInterceptor) {
 						cleanupFetchInterceptor();
 						cleanupFetchInterceptor = null;
@@ -371,6 +410,7 @@
 			document.head.appendChild(script);
 
 			return () => {
+				cleanupChromeObserver();
 				// Cleanup fetch interceptor
 				if (cleanupFetchInterceptor) {
 					cleanupFetchInterceptor();
@@ -388,9 +428,10 @@
 
 		// Fix Voyager modal z-index to appear above sticky header (Shadow DOM)
 		fixVoyagerModalZIndex();
+		observeVoyagerChrome();
 
 		// Handler for when model is ready
-		function handleModelReady() {
+		async function handleModelReady() {
 			if (loadingPhase === 'complete') return; // Already handled
 
 			hasError = false;
@@ -410,6 +451,7 @@
 
 			// Load available content
 			getContent();
+			sceneFeatureNeeds = await detectSceneFeatures();
 
 			// Expose API to parent
 			if (onReady) {
@@ -424,6 +466,8 @@
 					getLanguages: () => (voyagerElement as any)?.getLanguages?.() ?? [],
 					getActiveLanguage: () =>
 						(voyagerElement as any)?.getActiveLanguage?.() ?? selectedLanguage,
+					getCapabilities,
+					getFeatureNeeds,
 					resetCamera,
 					resetViewer,
 					getAnnotations: () => annotations,
@@ -516,6 +560,45 @@
 		}
 	}
 
+	function cleanupChromeObserver() {
+		chromeObserver?.disconnect();
+		chromeObserver = null;
+		if (toolsVisibilityFrame !== null) cancelAnimationFrame(toolsVisibilityFrame);
+		toolsVisibilityFrame = null;
+	}
+
+	function observeVoyagerChrome() {
+		const shadowRoot = (voyagerElement as any)?.shadowRoot as ShadowRoot | undefined;
+		if (!shadowRoot || !onPanelVisibilityChange) return;
+
+		cleanupChromeObserver();
+		const notify = () => {
+			toolsVisibilityFrame = null;
+			const panel: VoyagerPanel | null = shadowRoot.querySelector('.sv-reader-container')
+				? 'reader'
+				: shadowRoot.querySelector('.sv-bottom-bar-container')
+					? 'annotations'
+					: shadowRoot.querySelector('.sv-tour-menu')
+						? 'tours'
+						: shadowRoot.querySelector('.sv-tool-bar-container')
+							? 'tools'
+							: null;
+			if (panel === lastVisiblePanel) return;
+			lastVisiblePanel = panel;
+			onPanelVisibilityChange(panel);
+		};
+		chromeObserver = new MutationObserver(() => {
+			if (toolsVisibilityFrame === null) toolsVisibilityFrame = requestAnimationFrame(notify);
+		});
+		chromeObserver.observe(shadowRoot, {
+			childList: true,
+			subtree: true,
+			attributes: true,
+			attributeFilter: ['class', 'style']
+		});
+		notify();
+	}
+
 	// Optionally hide Voyager's built-in UI via CSS injection
 	// Note: Voyager API doesn't support runtime UI toggling for menu/title,
 	// only the uiMode attribute at initial render. We use Shadow DOM CSS injection
@@ -570,6 +653,56 @@
 			if (toursData) tours = toursData;
 		} catch (err) {
 			console.error('Error loading content:', err);
+		}
+	}
+
+	function getCapabilities(): VoyagerCapabilities {
+		const element = voyagerElement as any;
+
+		return {
+			annotations: typeof element?.toggleAnnotations === 'function',
+			reader: typeof element?.toggleReader === 'function',
+			tours: typeof element?.toggleTours === 'function',
+			tools: typeof element?.toggleTools === 'function',
+			measurement: typeof element?.toggleMeasurement === 'function',
+			ar: typeof element?.enableAR === 'function',
+			reset: typeof element?.resetViewer === 'function',
+			audio: false
+		};
+	}
+
+	function getFeatureNeeds(): VoyagerFeatureNeeds {
+		return {
+			annotations: annotations.length > 0 || sceneFeatureNeeds.annotations,
+			reader: articles.length > 0 || sceneFeatureNeeds.reader,
+			tours: tours.length > 0 || sceneFeatureNeeds.tours,
+			tools: true,
+			measurement: true,
+			ar: true,
+			reset: true,
+			audio: sceneFeatureNeeds.audio
+		};
+	}
+
+	async function detectSceneFeatures() {
+		const none = { annotations: false, reader: false, tours: false, audio: false };
+		if (model || geometry) return none;
+
+		try {
+			const rootUrl = new URL(url, window.location.href);
+			const documentUrl = new URL(documentPath || 'scene.svx.json', rootUrl);
+			const response = await fetch(documentUrl);
+			if (!response.ok) return none;
+			const scene = await response.text();
+
+			return {
+				annotations: /"annotations"\s*:\s*\[\s*\{/.test(scene),
+				reader: /"articles"\s*:\s*\[\s*\{/.test(scene),
+				tours: /"tours"\s*:\s*\[\s*\{/.test(scene),
+				audio: /"audio"\s*:\s*\[\s*\{/.test(scene)
+			};
+		} catch {
+			return none;
 		}
 	}
 

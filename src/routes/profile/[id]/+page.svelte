@@ -31,7 +31,7 @@
 </script>
 
 <div id="page" class="container mx-auto max-w-6xl px-4 py-8">
-	<section class="mb-8 overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm">
+	<section class="mb-8 overflow-hidden rounded-box border border-base-300 bg-base-100 shadow-sm">
 		{#if data.profile.profilePictureUrl}
 			<div class="h-24 bg-gradient-to-r from-base-300 via-base-200 to-base-100"></div>
 		{/if}
@@ -71,7 +71,7 @@
 	</section>
 
 	{#if hasProfileDetails}
-		<section class="mb-10 rounded-2xl border border-base-300 bg-base-100 p-6 shadow-sm">
+		<section class="mb-10 rounded-box border border-base-300 bg-base-100 p-6 shadow-sm">
 			<div class="grid gap-6 lg:grid-cols-[1fr_18rem]">
 				<div>
 					<h2 class="text-2xl font-semibold">Profile</h2>

@@ -234,8 +234,8 @@
 		right: max(1rem, env(safe-area-inset-right));
 		bottom: max(1rem, env(safe-area-inset-bottom));
 		z-index: 60;
-		border-radius: 999px;
-		min-height: 2.5rem;
+		border-radius: var(--radius-control);
+		min-height: 2.75rem;
 		padding-inline: 1.25rem;
 	}
 
@@ -272,7 +272,7 @@
 		.feedback-pill {
 			right: 0.75rem;
 			bottom: 0.75rem;
-			min-height: 2.25rem;
+			min-height: 2.75rem;
 			padding-inline: 1rem;
 		}
 	}
