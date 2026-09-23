@@ -19,6 +19,7 @@
 	import { base } from '$app/paths';
 	import toast from 'svelte-french-toast';
 	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
+	import { parseAnnotationCategories } from './edition-content';
 	import { DEFAULT_VOYAGER_VERSION, getVoyagerResourceRoot } from '$lib/utils/asset-urls';
 
 	interface Props {
@@ -63,6 +64,10 @@
 		isFullWindow?: boolean;
 		/** Callback when viewer is ready, provides API methods */
 		onReady?: (api: VoyagerAPI) => void;
+		/** Callback when scene content becomes available or refreshes */
+		onContentChange?: (content: VoyagerContent) => void;
+		/** Keep external categories in sync with native tag buttons and tour changes */
+		onAnnotationCategoriesChange?: (categories: string[]) => void;
 		/** Callback when Voyager's native annotations, reader, tours, or tools UI changes */
 		onPanelVisibilityChange?: (panel: VoyagerPanel | null) => void;
 		/** Callback to toggle full-window mode from the embedded editor controls */
@@ -94,6 +99,11 @@
 		getAnnotations: () => any[];
 		getArticles: () => any[];
 		getTours: () => any[];
+		getActiveTags: () => string[];
+		setActiveTags: (categories: string[]) => void;
+		setActiveAnnotation: (id: string) => void;
+		setActiveArticle: (id: string) => void;
+		setTourStep: (tourIdx: number, stepIdx: number, interpolate?: boolean) => void;
 		/** Set camera orbit position (yaw in degrees, pitch in degrees) */
 		setCameraOrbit: (yaw: number, pitch: number) => void;
 		/** Set camera offset position */
@@ -108,6 +118,22 @@
 			animate?: boolean;
 			durationMs?: number;
 		}) => void;
+	}
+
+	export interface VoyagerContent {
+		annotations: unknown[];
+		articles: unknown[];
+		tours: unknown[];
+	}
+
+	interface CategoryViewer extends HTMLElement {
+		viewer?: {
+			ins?: {
+				activeTags?: { value: unknown };
+				annotationsVisible?: { value: boolean };
+			};
+		};
+		setActiveTags?: (tags: string) => void;
 	}
 
 	export type VoyagerPanel = 'annotations' | 'reader' | 'tours' | 'tools';
@@ -153,6 +179,8 @@
 		onModelLoaded,
 		isFullWindow = false,
 		onReady,
+		onContentChange,
+		onAnnotationCategoriesChange,
 		onPanelVisibilityChange,
 		onFullWindowToggle,
 		height,
@@ -183,6 +211,7 @@
 	let chromeObserver: MutationObserver | null = null;
 	let toolsVisibilityFrame: number | null = null;
 	let lastVisiblePanel: VoyagerPanel | null = null;
+	let lastActiveCategories: string | null = null;
 	let sceneFeatureNeeds = {
 		annotations: false,
 		reader: false,
@@ -473,6 +502,11 @@
 					getAnnotations: () => annotations,
 					getArticles: () => articles,
 					getTours: () => tours,
+					getActiveTags,
+					setActiveTags,
+					setActiveAnnotation,
+					setActiveArticle,
+					setTourStep,
 					setCameraOrbit: setCameraOrbitValues,
 					setCameraOffset,
 					setView
@@ -484,6 +518,7 @@
 		voyagerElement.addEventListener('model-load', () => {
 			handleModelReady();
 		});
+		voyagerElement.addEventListener('scene-content-load', getContent);
 
 		// Check if model is already loaded (e.g., from cache)
 		// Poll for the presence of models/annotations as indicator
@@ -569,23 +604,24 @@
 
 	function observeVoyagerChrome() {
 		const shadowRoot = (voyagerElement as any)?.shadowRoot as ShadowRoot | undefined;
-		if (!shadowRoot || !onPanelVisibilityChange) return;
+		if (!shadowRoot || (!onPanelVisibilityChange && !onAnnotationCategoriesChange)) return;
 
 		cleanupChromeObserver();
 		const notify = () => {
 			toolsVisibilityFrame = null;
+			notifyAnnotationCategories();
 			const panel: VoyagerPanel | null = shadowRoot.querySelector('.sv-reader-container')
 				? 'reader'
-				: shadowRoot.querySelector('.sv-bottom-bar-container')
-					? 'annotations'
-					: shadowRoot.querySelector('.sv-tour-menu')
-						? 'tours'
+				: shadowRoot.querySelector('.sv-tour-menu, .sv-tour-navigator')
+					? 'tours'
+					: shadowRoot.querySelector('.sv-bottom-bar-container')
+						? 'annotations'
 						: shadowRoot.querySelector('.sv-tool-bar-container')
 							? 'tools'
 							: null;
 			if (panel === lastVisiblePanel) return;
 			lastVisiblePanel = panel;
-			onPanelVisibilityChange(panel);
+			onPanelVisibilityChange?.(panel);
 		};
 		chromeObserver = new MutationObserver(() => {
 			if (toolsVisibilityFrame === null) toolsVisibilityFrame = requestAnimationFrame(notify);
@@ -644,13 +680,13 @@
 
 		try {
 			const annots = (voyagerElement as any).getAnnotations();
-			if (annots) annotations = annots;
-
 			const arts = (voyagerElement as any).getArticles();
-			if (arts) articles = arts;
-
 			const toursData = (voyagerElement as any).getTours?.();
-			if (toursData) tours = toursData;
+			annotations = Array.isArray(annots) ? [...annots] : [];
+			articles = Array.isArray(arts) ? [...arts] : [];
+			tours = Array.isArray(toursData) ? [...toursData] : [];
+			onContentChange?.({ annotations, articles, tours });
+			notifyAnnotationCategories();
 		} catch (err) {
 			console.error('Error loading content:', err);
 		}
@@ -922,14 +958,47 @@
 	}
 
 	// API Methods - Annotations
+	function getActiveTags(): string[] {
+		return parseAnnotationCategories(
+			(voyagerElement as CategoryViewer)?.viewer?.ins?.activeTags?.value
+		);
+	}
+
+	function notifyAnnotationCategories() {
+		const categories = getActiveTags();
+		const key = JSON.stringify(categories);
+		if (key === lastActiveCategories) return;
+		lastActiveCategories = key;
+		onAnnotationCategoriesChange?.(categories);
+	}
+
+	function setActiveTags(categories: string[]) {
+		const element = voyagerElement as CategoryViewer | undefined;
+		if (!element) return;
+		element.setActiveTags?.(categories.join(','));
+		if (categories.length && element.viewer?.ins?.annotationsVisible?.value === false) {
+			toggleAnnotations();
+		}
+		notifyAnnotationCategories();
+	}
+
 	function setActiveAnnotation(id: string) {
 		if (!voyagerElement) return;
-		// Make sure annotations are visible first
-		const annotationsVisible = (voyagerElement as any).getAnnotationsVisible?.();
-		if (annotationsVisible === false) {
-			(voyagerElement as any).toggleAnnotations?.();
+		const element = voyagerElement as any;
+		// A scene's tag filter can hide an otherwise active annotation.
+		const annotation = annotations.find((item) => item.id === id);
+		if (
+			annotation?.tags?.length &&
+			!annotation.tags.some((tag: string) => getActiveTags().includes(tag))
+		) {
+			setActiveTags(annotation.tags);
 		}
-		(voyagerElement as any).setActiveAnnotation?.(id);
+		const annotationsVisible =
+			element.getAnnotationsVisible?.() ?? element.viewer?.ins?.annotationsVisible?.value;
+		if (annotationsVisible === false) {
+			element.toggleAnnotations?.();
+		}
+		element.setActiveAnnotation?.(id);
 	}
 
 	function toggleAnnotations() {
@@ -941,8 +1010,8 @@
 	function setActiveArticle(id: string) {
 		if (!voyagerElement) return;
 		// Show reader if hidden, then set active article
-		const readerElement = (voyagerElement as any).querySelector?.('.sv-reader');
-		if (!readerElement || readerElement.style.display === 'none') {
+		const readerElement = (voyagerElement as any).shadowRoot?.querySelector('.sv-reader-container');
+		if (!readerElement) {
 			(voyagerElement as any).toggleReader?.();
 		}
 		(voyagerElement as any).setActiveArticle?.(id);
@@ -969,6 +1038,9 @@
 	// API Methods - Tours
 	function setTourStep(tourIdx: number, stepIdx: number, interpolate?: boolean) {
 		if (!voyagerElement) return;
+		if (!voyagerElement.shadowRoot?.querySelector('.sv-tour-menu, .sv-tour-navigator')) {
+			toggleTours();
+		}
 		(voyagerElement as any).setTourStep?.(tourIdx, stepIdx, interpolate);
 	}
 

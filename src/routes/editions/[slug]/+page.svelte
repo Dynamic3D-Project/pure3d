@@ -7,9 +7,11 @@
 	import VoyagerViewer, {
 		type VoyagerAPI,
 		type VoyagerCapabilities,
+		type VoyagerContent,
 		type VoyagerFeatureNeeds,
 		type VoyagerPanel
 	} from '$lib/components/voyager/VoyagerViewer.svelte';
+	import EditionContentTabs from '$lib/components/voyager/EditionContentTabs.svelte';
 	import ReviewFeedbackList from '$lib/components/workflow/ReviewFeedbackList.svelte';
 	import ImagineModal from '$lib/components/ui/ImagineModal.svelte';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
@@ -57,6 +59,9 @@
 	let activeVoyagerPanel = $state<VoyagerPanel | null>(null);
 	let viewerLanguages = $state<string[]>([]);
 	let activeViewerLanguage = $state('EN');
+	let viewerContent = $state<VoyagerContent>({ annotations: [], articles: [], tours: [] });
+	let activeAnnotationCategories = $state<string[]>([]);
+	let viewerSurface: HTMLDivElement;
 	let viewerCapabilities = $state<VoyagerCapabilities>({
 		annotations: false,
 		reader: false,
@@ -286,11 +291,24 @@
 
 	function handleViewerReady(api: VoyagerAPI) {
 		voyagerAPI = api;
+		activeAnnotationCategories = api.getActiveTags();
 		activeVoyagerPanel = null;
 		viewerLanguages = api.getLanguages();
 		activeViewerLanguage = api.getActiveLanguage();
 		viewerCapabilities = api.getCapabilities();
 		viewerFeatureNeeds = api.getFeatureNeeds();
+	}
+
+	function handleViewerContent(content: VoyagerContent) {
+		viewerContent = content;
+	}
+
+	function openViewerContent(action: () => void) {
+		action();
+		const bounds = viewerSurface?.getBoundingClientRect();
+		if (bounds && (bounds.top < 80 || bounds.bottom > window.innerHeight)) {
+			viewerSurface.scrollIntoView({ block: 'start' });
+		}
 	}
 
 	function closeVoyagerPanel() {
@@ -306,6 +324,13 @@
 		activeViewerLanguage = code;
 		(event.currentTarget as HTMLElement).closest('details')?.removeAttribute('open');
 	}
+
+	$effect(() => {
+		void edition.id;
+		viewerContent = { annotations: [], articles: [], tours: [] };
+		activeAnnotationCategories = [];
+		voyagerAPI = null;
+	});
 
 	function toggleSidebar() {
 		isSidebarCollapsed = !isSidebarCollapsed;
@@ -430,22 +455,30 @@
 					class="ds-card-frame viewer-frame p-3 transition-all duration-300"
 					class:full-window-viewer={isFullWindow}
 				>
-					<div class="relative overflow-hidden rounded-lg bg-base-200">
-						<VoyagerViewer
-							url={useDirectMode ? edition.voyagerRoot : edition.voyagerUrl}
-							document={edition.sceneFile}
-							title={edition.title}
-							direct={useDirectMode}
-							voyagerVersion={edition.voyagerVersion}
-							resourceRoot={edition.voyagerResourceRoot}
-							uiMode={showVoyagerMenu ? 'menu|title|language' : 'none'}
-							onModelLoaded={handleModelLoaded}
-							onReady={handleViewerReady}
-							onPanelVisibilityChange={(panel) => (activeVoyagerPanel = panel)}
-							onFullWindowToggle={toggleFullWindow}
-							{isFullWindow}
-							{showVoyagerMenu}
-						/>
+					<div
+						bind:this={viewerSurface}
+						class="relative scroll-mt-24 overflow-hidden rounded-lg bg-base-200"
+					>
+						{#key edition.id}
+							<VoyagerViewer
+								url={useDirectMode ? edition.voyagerRoot : edition.voyagerUrl}
+								document={edition.sceneFile}
+								title={edition.title}
+								direct={useDirectMode}
+								voyagerVersion={edition.voyagerVersion}
+								resourceRoot={edition.voyagerResourceRoot}
+								uiMode={showVoyagerMenu ? 'menu|title|language' : 'none'}
+								onModelLoaded={handleModelLoaded}
+								onReady={handleViewerReady}
+								onContentChange={handleViewerContent}
+								onAnnotationCategoriesChange={(categories) =>
+									(activeAnnotationCategories = categories)}
+								onPanelVisibilityChange={(panel) => (activeVoyagerPanel = panel)}
+								onFullWindowToggle={toggleFullWindow}
+								{isFullWindow}
+								{showVoyagerMenu}
+							/>
+						{/key}
 
 						<!-- Top right controls -->
 						<div
@@ -668,6 +701,20 @@
 							</div>
 						{/if}
 					</div>
+
+					{#if useDirectMode && !isFullWindow && voyagerAPI && (viewerContent.annotations.length || viewerContent.articles.length || viewerContent.tours.length)}
+						<EditionContentTabs
+							annotations={viewerContent.annotations}
+							articles={viewerContent.articles}
+							tours={viewerContent.tours}
+							language={activeViewerLanguage}
+							activeCategories={activeAnnotationCategories}
+							onCategories={(categories) => voyagerAPI?.setActiveTags(categories)}
+							onAnnotation={(id) => openViewerContent(() => voyagerAPI?.setActiveAnnotation(id))}
+							onArticle={(id) => openViewerContent(() => voyagerAPI?.setActiveArticle(id))}
+							onTour={(index) => openViewerContent(() => voyagerAPI?.setTourStep(index, 0, true))}
+						/>
+					{/if}
 				</div>
 			</div>
 
@@ -694,25 +741,20 @@
 						class:lg:hidden={isSidebarCollapsed}
 					>
 						<div class="overflow-hidden rounded-lg bg-base-200">
-							<div class="flex min-h-11 items-center justify-between gap-3 bg-base-100 px-3 py-2">
-								<span class="font-mono text-[9px] tracking-[0.12em] text-base-content/45 uppercase">
-									Edition record
-								</span>
+							<!-- Tabs -->
+							<div
+								role="tablist"
+								class="scrollbar-hide flex overflow-x-auto border-b border-base-300 bg-base-100 px-2"
+							>
 								<button
 									type="button"
-									class="hidden h-8 w-8 items-center justify-center rounded-md text-base-content/50 transition-colors hover:bg-base-200 hover:text-base-content lg:flex"
+									class="hidden min-h-11 shrink-0 items-center justify-center px-2 text-base-content/50 transition-colors hover:text-base-content lg:flex"
 									onclick={toggleSidebar}
 									aria-label="Hide edition details"
 									title="Hide edition details"
 								>
 									<PanelRightCloseIcon class="h-4 w-4" aria-hidden="true" />
 								</button>
-							</div>
-							<!-- Tabs -->
-							<div
-								role="tablist"
-								class="scrollbar-hide flex overflow-x-auto border-b border-base-300 bg-base-100 px-2"
-							>
 								<button
 									role="tab"
 									aria-selected={activeTab === 'description'}
