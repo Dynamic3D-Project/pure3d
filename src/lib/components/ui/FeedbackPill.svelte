@@ -130,7 +130,7 @@
 </script>
 
 {#if !isFeedbackPage}
-	<button type="button" class="feedback-pill btn btn-primary shadow-lg" onclick={openFeedback}>
+	<button type="button" class="feedback-pill btn shadow-lg btn-primary" onclick={openFeedback}>
 		Send Feedback
 	</button>
 {/if}
@@ -140,13 +140,15 @@
 		<div class="border-b border-base-300 bg-base-200/60 px-5 py-4">
 			<div class="flex items-start justify-between gap-4">
 				<div>
-					<p class="text-xs font-semibold uppercase tracking-wide text-primary">Send Feedback</p>
+					<p class="text-xs font-semibold tracking-wide text-primary uppercase">Send Feedback</p>
 					<h2 class="text-xl font-bold">What did you notice?</h2>
 					<p class="mt-1 text-sm text-base-content/60">
 						Bugs, confusion, screenshots, slow moments, and ideas are all useful.
 					</p>
 				</div>
-				<button type="button" class="btn btn-circle btn-ghost btn-sm" onclick={closeFeedback}>✕</button>
+				<button type="button" class="btn btn-circle btn-ghost btn-sm" onclick={closeFeedback}
+					>✕</button
+				>
 			</div>
 		</div>
 
@@ -162,13 +164,17 @@
 					<div class="grid gap-4 md:grid-cols-2">
 						<label class="form-control gap-1">
 							<span class="label-text text-xs font-medium text-base-content/70">Name</span>
-							<input class="feedback-field input input-bordered input-sm w-full" bind:value={participantName} />
+							<input
+								class="feedback-field input-bordered input input-sm w-full"
+								bind:value={participantName}
+							/>
 						</label>
 
 						<label class="form-control gap-1">
-							<span class="label-text text-xs font-medium text-base-content/70">Email optional</span>
+							<span class="label-text text-xs font-medium text-base-content/70">Email optional</span
+							>
 							<input
-								class="feedback-field input input-bordered input-sm w-full"
+								class="feedback-field input-bordered input input-sm w-full"
 								type="email"
 								bind:value={participantEmail}
 							/>
@@ -176,12 +182,18 @@
 
 						<label class="form-control gap-1 md:col-span-2">
 							<span class="label-text text-xs font-medium text-base-content/70">Related page</span>
-							<input class="feedback-field input input-bordered input-sm w-full" bind:value={relatedUrl} />
+							<input
+								class="feedback-field input-bordered input input-sm w-full"
+								bind:value={relatedUrl}
+							/>
 						</label>
 
 						<label class="form-control gap-1">
 							<span class="label-text text-xs font-medium text-base-content/70">Category</span>
-							<select class="feedback-field select select-bordered select-sm w-full" bind:value={category}>
+							<select
+								class="feedback-field select-bordered select w-full select-sm"
+								bind:value={category}
+							>
 								{#each categoryOptions as option}
 									<option value={option.value}>{option.label}</option>
 								{/each}
@@ -190,7 +202,10 @@
 
 						<label class="form-control gap-1">
 							<span class="label-text text-xs font-medium text-base-content/70">Severity</span>
-							<select class="feedback-field select select-bordered select-sm w-full" bind:value={severity}>
+							<select
+								class="feedback-field select-bordered select w-full select-sm"
+								bind:value={severity}
+							>
 								{#each severityOptions as option}
 									<option value={option.value}>{option.label}</option>
 								{/each}
@@ -213,9 +228,11 @@
 				<div class="flex items-center justify-between gap-3 border-t border-base-300 pt-4">
 					<a class="link text-sm link-primary" href="{base}/feedback">Open feedback page</a>
 					<div class="flex gap-2">
-						<button type="button" class="btn btn-ghost btn-sm" onclick={closeFeedback}>Cancel</button>
-						<button class="btn btn-primary btn-sm" disabled={isSubmitting}>
-							{#if isSubmitting}<span class="loading loading-spinner loading-xs"></span>{/if}
+						<button type="button" class="btn btn-ghost btn-sm" onclick={closeFeedback}
+							>Cancel</button
+						>
+						<button class="btn btn-sm btn-primary" disabled={isSubmitting}>
+							{#if isSubmitting}<span class="loading loading-xs loading-spinner"></span>{/if}
 							Submit
 						</button>
 					</div>

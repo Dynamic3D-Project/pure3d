@@ -1,9 +1,12 @@
 #!/usr/bin/env bun
 import PocketBase from 'pocketbase';
 
-const POCKETBASE_URL = process.env.POCKETBASE_URL || process.env.PUBLIC_POCKETBASE_URL || 'http://localhost:60021';
-const ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL || process.env.PB_ADMIN_EMAIL || 'admin@admin.local';
-const ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD || process.env.PB_ADMIN_PASSWORD || '1234567890';
+const POCKETBASE_URL =
+	process.env.POCKETBASE_URL || process.env.PUBLIC_POCKETBASE_URL || 'http://localhost:60021';
+const ADMIN_EMAIL =
+	process.env.POCKETBASE_ADMIN_EMAIL || process.env.PB_ADMIN_EMAIL || 'admin@admin.local';
+const ADMIN_PASSWORD =
+	process.env.POCKETBASE_ADMIN_PASSWORD || process.env.PB_ADMIN_PASSWORD || '1234567890';
 
 const pb = new PocketBase(POCKETBASE_URL);
 
@@ -26,8 +29,12 @@ async function main() {
 	console.log(`Migrating global role value at ${POCKETBASE_URL}`);
 	await pb.collection('_superusers').authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
 
-	const existingUserDemo = await pb.collection('users').getFullList({ filter: 'email = "user@pure3d.eu"' });
-	const viewerDemo = await pb.collection('users').getFullList({ filter: 'email = "viewer@pure3d.eu"' });
+	const existingUserDemo = await pb
+		.collection('users')
+		.getFullList({ filter: 'email = "user@pure3d.eu"' });
+	const viewerDemo = await pb
+		.collection('users')
+		.getFullList({ filter: 'email = "viewer@pure3d.eu"' });
 	if (viewerDemo.length > 0 && existingUserDemo.length === 0) {
 		await pb.collection('users').update(viewerDemo[0].id, {
 			email: 'user@pure3d.eu',
@@ -57,7 +64,9 @@ async function main() {
 
 	const updated = await pb.collections.getOne('users');
 	const { field: updatedField } = roleField(updated);
-	console.log(`users.role values: ${(updatedField.values || updatedField.options?.values || []).join(', ')}`);
+	console.log(
+		`users.role values: ${(updatedField.values || updatedField.options?.values || []).join(', ')}`
+	);
 }
 
 main().catch((error) => {

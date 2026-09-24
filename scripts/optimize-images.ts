@@ -75,7 +75,9 @@ async function optimizeImage(inputPath: string): Promise<OptimizationResult | nu
 
 	if (dryRun) {
 		console.log(`[DRY RUN] Would process: ${inputPath}`);
-		console.log(`  - Original: ${(originalSize / 1024).toFixed(1)} KB, ${metadata.width}x${metadata.height}`);
+		console.log(
+			`  - Original: ${(originalSize / 1024).toFixed(1)} KB, ${metadata.width}x${metadata.height}`
+		);
 		console.log(`  - Would create: ${avifPath}`);
 		console.log(`  - Would create: ${webpPath}`);
 		if (needsResize) {
@@ -94,17 +96,11 @@ async function optimizeImage(inputPath: string): Promise<OptimizationResult | nu
 	}
 
 	// Convert to AVIF
-	const avifBuffer = await processedImage
-		.clone()
-		.avif({ quality: AVIF_QUALITY })
-		.toBuffer();
+	const avifBuffer = await processedImage.clone().avif({ quality: AVIF_QUALITY }).toBuffer();
 	await Bun.write(avifPath, avifBuffer);
 
 	// Convert to WebP
-	const webpBuffer = await processedImage
-		.clone()
-		.webp({ quality: WEBP_QUALITY })
-		.toBuffer();
+	const webpBuffer = await processedImage.clone().webp({ quality: WEBP_QUALITY }).toBuffer();
 	await Bun.write(webpPath, webpBuffer);
 
 	return {
@@ -158,7 +154,9 @@ async function main() {
 				// Progress indicator
 				const savings = ((1 - result.avifSize / result.originalSize) * 100).toFixed(0);
 				console.log(`[${processedCount}/${iconFiles.length}] ${iconFile}`);
-				console.log(`  PNG: ${(result.originalSize / 1024).toFixed(0)} KB -> AVIF: ${(result.avifSize / 1024).toFixed(0)} KB (${savings}% smaller)`);
+				console.log(
+					`  PNG: ${(result.originalSize / 1024).toFixed(0)} KB -> AVIF: ${(result.avifSize / 1024).toFixed(0)} KB (${savings}% smaller)`
+				);
 			} else if (dryRun) {
 				processedCount++;
 			}
@@ -180,7 +178,7 @@ async function main() {
 		const totalOriginal = results.reduce((sum, r) => sum + r.originalSize, 0);
 		const totalAvif = results.reduce((sum, r) => sum + r.avifSize, 0);
 		const totalWebp = results.reduce((sum, r) => sum + r.webpSize, 0);
-		const resizedCount = results.filter(r => r.resized).length;
+		const resizedCount = results.filter((r) => r.resized).length;
 
 		console.log(`Processed: ${processedCount} files`);
 		console.log(`Skipped:   ${skippedCount} files`);
@@ -188,8 +186,12 @@ async function main() {
 		console.log('');
 		console.log('Size comparison:');
 		console.log(`  Original (PNG): ${(totalOriginal / 1024 / 1024).toFixed(2)} MB`);
-		console.log(`  AVIF:           ${(totalAvif / 1024 / 1024).toFixed(2)} MB (${((1 - totalAvif / totalOriginal) * 100).toFixed(0)}% smaller)`);
-		console.log(`  WebP:           ${(totalWebp / 1024 / 1024).toFixed(2)} MB (${((1 - totalWebp / totalOriginal) * 100).toFixed(0)}% smaller)`);
+		console.log(
+			`  AVIF:           ${(totalAvif / 1024 / 1024).toFixed(2)} MB (${((1 - totalAvif / totalOriginal) * 100).toFixed(0)}% smaller)`
+		);
+		console.log(
+			`  WebP:           ${(totalWebp / 1024 / 1024).toFixed(2)} MB (${((1 - totalWebp / totalOriginal) * 100).toFixed(0)}% smaller)`
+		);
 	}
 }
 

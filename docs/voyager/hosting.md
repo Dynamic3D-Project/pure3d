@@ -67,11 +67,11 @@ Update `VoyagerViewer.svelte` to use local Voyager:
 
 ```svelte
 <script lang="ts">
-  // Change this line:
-  // script.src = 'https://3d-api.si.edu/resources/js/voyager-explorer.min.js';
+	// Change this line:
+	// script.src = 'https://3d-api.si.edu/resources/js/voyager-explorer.min.js';
 
-  // To this:
-  script.src = '/voyager/js/voyager-explorer.min.js';
+	// To this:
+	script.src = '/voyager/js/voyager-explorer.min.js';
 </script>
 ```
 
@@ -123,11 +123,11 @@ static/
 
 ```svelte
 <VoyagerViewer
-  url="/models/apollo-11/"
-  document="document.json"
-  title="Apollo 11 Command Module"
-  direct={true}
-  showControls={true}
+	url="/models/apollo-11/"
+	document="document.json"
+	title="Apollo 11 Command Module"
+	direct={true}
+	showControls={true}
 />
 ```
 
@@ -141,15 +141,12 @@ static/
 
 ```svelte
 <script>
-  const script = document.createElement('script');
-  script.src = 'https://3d-api.si.edu/resources/js/voyager-explorer.min.js';
-  document.head.appendChild(script);
+	const script = document.createElement('script');
+	script.src = 'https://3d-api.si.edu/resources/js/voyager-explorer.min.js';
+	document.head.appendChild(script);
 </script>
 
-<voyager-explorer
-  root="/models/apollo-11/"
-  document="document.json"
-/>
+<voyager-explorer root="/models/apollo-11/" document="document.json" />
 ```
 
 ## ✅ Recommended Approach
@@ -157,11 +154,13 @@ static/
 **For your use case, I recommend:**
 
 ### For Smithsonian Content (Current editions pages)
+
 - ✅ Keep using iframe mode
 - ✅ No setup needed
 - ✅ Works perfectly as-is
 
 ### For Your Own Custom Content (Future)
+
 1. ✅ Keep using Smithsonian's CDN for the Voyager component
 2. ✅ Host only your SVX documents in `static/models/`
 3. ✅ Use Direct Mode with the VoyagerViewer component
@@ -171,68 +170,84 @@ static/
 To create the `document.json` files:
 
 ### Option 1: Use Voyager Story (GUI)
+
 1. Download and run Voyager Story
 2. Import your 3D models
 3. Add annotations, articles, tours
 4. Export as SVX
 
 ### Option 2: Manual JSON (Advanced)
+
 Create a `document.json` file:
 
 ```json
 {
-  "asset": {
-    "type": "application/si-dpo-3d.document+json",
-    "version": "1.0"
-  },
-  "scene": 0,
-  "scenes": [{
-    "units": "cm",
-    "name": "Main Scene",
-    "nodes": [0],
-    "setup": 0
-  }],
-  "nodes": [{
-    "name": "Model",
-    "model": 0
-  }],
-  "models": [{
-    "units": "cm",
-    "derivatives": [{
-      "usage": "Web3D",
-      "quality": "High",
-      "assets": [{
-        "uri": "models/model.glb",
-        "type": "Model",
-        "mimeType": "model/gltf-binary"
-      }]
-    }]
-  }],
-  "setups": [{
-    "units": "cm",
-    "interface": {
-      "visible": true,
-      "logo": true,
-      "menu": true
-    },
-    "viewer": {
-      "shader": "Default",
-      "exposure": 1.0,
-      "gamma": 2.0
-    }
-  }]
+	"asset": {
+		"type": "application/si-dpo-3d.document+json",
+		"version": "1.0"
+	},
+	"scene": 0,
+	"scenes": [
+		{
+			"units": "cm",
+			"name": "Main Scene",
+			"nodes": [0],
+			"setup": 0
+		}
+	],
+	"nodes": [
+		{
+			"name": "Model",
+			"model": 0
+		}
+	],
+	"models": [
+		{
+			"units": "cm",
+			"derivatives": [
+				{
+					"usage": "Web3D",
+					"quality": "High",
+					"assets": [
+						{
+							"uri": "models/model.glb",
+							"type": "Model",
+							"mimeType": "model/gltf-binary"
+						}
+					]
+				}
+			]
+		}
+	],
+	"setups": [
+		{
+			"units": "cm",
+			"interface": {
+				"visible": true,
+				"logo": true,
+				"menu": true
+			},
+			"viewer": {
+				"shader": "Default",
+				"exposure": 1.0,
+				"gamma": 2.0
+			}
+		}
+	]
 }
 ```
 
 ## 📝 Summary
 
 **You DON'T need:**
+
 - ❌ SvelteKit API routes
 - ❌ Server-side endpoints
 - ❌ Node.js backend
 - ❌ Special hosting
 
 **You DO need:**
+
 - ✅ Static file hosting (you already have this)
 - ✅ Your 3D model files (GLB/GLTF)
 - ✅ SVX document files (JSON)
@@ -243,6 +258,7 @@ Your current implementation using Smithsonian's iframes is **perfect** for displ
 
 **For Full API Control:**
 When you want to add your own models with custom controls:
+
 1. Create SVX documents for your models
 2. Put them in `static/models/`
 3. Use the VoyagerViewer component with `direct={true}`

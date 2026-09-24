@@ -9,6 +9,7 @@ Start at `/feedback`. From there, open Pure3D in a new tab and return to the fee
 Use the test account provided by the workshop host. Please do not upload private, sensitive, copyrighted, or very large files.
 
 Recommended upload set:
+
 - **Cover image:** `.jpg`, `.png`, `.webp`, or `.avif`, under 20 MB.
 - **3D model:** preferably a single `.glb` file. `.gltf`, `.obj`, and `.ply` are also accepted, but `.obj` may not show textures correctly unless companion files are included.
 - **Optional Voyager scene:** `scene.svx.json`, if you already have one. This can contain camera position, annotations, tours, and scene settings.
@@ -49,6 +50,7 @@ Return to `/feedback` and submit the feedback form. You can paste screenshots di
 ## 6. Feedback Questions
 
 Please answer these after the exercise:
+
 - What did you expect to happen when creating a collection or edition?
 - Which labels or buttons were unclear?
 - Did the upload instructions make sense? Which file types did you try?

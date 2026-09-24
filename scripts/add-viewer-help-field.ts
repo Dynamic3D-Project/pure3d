@@ -113,10 +113,7 @@ async function main() {
 
 	if (result) {
 		console.log('✅ Migration complete!');
-		console.log(
-			'   Fields:',
-			(result.fields || result.schema)?.map((f: any) => f.name).join(', ')
-		);
+		console.log('   Fields:', (result.fields || result.schema)?.map((f: any) => f.name).join(', '));
 		console.log('\n📌 Next steps:');
 		console.log('   1. Go to PocketBase admin → site collection');
 		console.log('   2. Edit the site record');

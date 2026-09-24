@@ -4,7 +4,7 @@
 @import 'tailwindcss';
 
 @plugin "daisyui" {
-  themes: all;
+	themes: all;
 }
 
 @plugin "@tailwindcss/typography";
@@ -15,77 +15,75 @@
    Exposed as both Tailwind theme tokens (usable via font-sans/font-serif/font-mono)
    and raw CSS custom properties for non-Tailwind consumers. */
 @theme {
-  --font-sans: 'Inter Tight', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  --font-serif: 'Fraunces', 'Times New Roman', serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+	--font-sans: 'Inter Tight', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+	--font-serif: 'Fraunces', 'Times New Roman', serif;
+	--font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
-  --radius-control: 0.5rem;
-  --radius-surface: 0.75rem;
-  --radius-round: 9999px;
+	--radius-control: 0.5rem;
+	--radius-surface: 0.75rem;
+	--radius-round: 9999px;
 
-  --color-paper: #f4f1eb;
-  --color-paper-2: #ece7dd;
-  --color-paper-3: #e2dccf;
-  --color-ink: #141413;
-  --color-ink-2: #2b2a27;
-  --color-ink-3: #555249;
-  --color-ink-4: #8a8579;
-  --color-forest: #293e30;
-  --color-forest-hover: #40553b;
-  --color-vermillion: oklch(62% 0.19 35);
-  --color-vermillion-ink: oklch(40% 0.15 35);
-  --color-vermillion-wash: oklch(95% 0.035 35);
+	--color-paper: #f4f1eb;
+	--color-paper-2: #ece7dd;
+	--color-paper-3: #e2dccf;
+	--color-ink: #141413;
+	--color-ink-2: #2b2a27;
+	--color-ink-3: #555249;
+	--color-ink-4: #8a8579;
+	--color-forest: #293e30;
+	--color-forest-hover: #40553b;
+	--color-vermillion: oklch(62% 0.19 35);
+	--color-vermillion-ink: oklch(40% 0.15 35);
+	--color-vermillion-wash: oklch(95% 0.035 35);
 }
 
 @plugin "daisyui/theme" {
-  name: "pure3d";
-  default: false;
-  prefersdark: false;
-  color-scheme: "light";
-  /* Pure 3D — paper · ink · forest · vermillion.
+	name: 'pure3d';
+	default: false;
+	prefersdark: false;
+	color-scheme: 'light';
+	/* Pure 3D — paper · ink · forest · vermillion.
      Primary = forest (dominant actions).
      Accent  = vermillion (reserved for signal: pins, links, active tool). */
-  --color-base-100: var(--color-paper);
-  --color-base-200: var(--color-paper-2);
-  --color-base-300: var(--color-paper-3);
-  --color-base-content: var(--color-ink);
-  --color-primary: var(--color-forest);
-  --color-primary-content: #ffffff;
-  --color-secondary: var(--color-ink-3);
-  --color-secondary-content: var(--color-paper);
-  --color-accent: var(--color-vermillion);
-  --color-accent-content: #ffffff;
-  --color-neutral: var(--color-ink-2);
-  --color-neutral-content: var(--color-paper);
-  --color-info: oklch(55% 0.15 220);
-  --color-info-content: var(--color-paper);
-  --color-success: oklch(45% 0.12 150);
-  --color-success-content: var(--color-paper);
-  --color-warning: oklch(72% 0.16 70);
-  --color-warning-content: var(--color-ink);
-  --color-error: oklch(55% 0.2 25);
-  --color-error-content: var(--color-paper);
-  --radius-selector: var(--radius-control);
-  --radius-field: var(--radius-control);
-  --radius-box: var(--radius-surface);
-  --size-selector: 0.25rem;
-  --size-field: 0.28125rem;
-  --border: 1px;
-  --depth: 0;
-  --noise: 0;
+	--color-base-100: var(--color-paper);
+	--color-base-200: var(--color-paper-2);
+	--color-base-300: var(--color-paper-3);
+	--color-base-content: var(--color-ink);
+	--color-primary: var(--color-forest);
+	--color-primary-content: #ffffff;
+	--color-secondary: var(--color-ink-3);
+	--color-secondary-content: var(--color-paper);
+	--color-accent: var(--color-vermillion);
+	--color-accent-content: #ffffff;
+	--color-neutral: var(--color-ink-2);
+	--color-neutral-content: var(--color-paper);
+	--color-info: oklch(55% 0.15 220);
+	--color-info-content: var(--color-paper);
+	--color-success: oklch(45% 0.12 150);
+	--color-success-content: var(--color-paper);
+	--color-warning: oklch(72% 0.16 70);
+	--color-warning-content: var(--color-ink);
+	--color-error: oklch(55% 0.2 25);
+	--color-error-content: var(--color-paper);
+	--radius-selector: var(--radius-control);
+	--radius-field: var(--radius-control);
+	--radius-box: var(--radius-surface);
+	--size-selector: 0.25rem;
+	--size-field: 0.28125rem;
+	--border: 1px;
+	--depth: 0;
+	--noise: 0;
 }
 
 @layer components {
-  .btn:not(.btn-circle):not(.rounded-full),
-  .input,
-  .select,
-  .textarea,
-  .file-input {
-    border-radius: var(--radius-control);
-  }
+	.btn:not(.btn-circle):not(.rounded-full),
+	.input,
+	.select,
+	.textarea,
+	.file-input {
+		border-radius: var(--radius-control);
+	}
 }
-
-
 
 /*
   The default border color has changed to `currentcolor` in Tailwind CSS v4,
@@ -96,162 +94,161 @@
   color utility to any element that depends on these defaults.
 */
 @layer base {
+	*,
+	::after,
+	::before,
+	::backdrop,
+	::file-selector-button {
+		border-color: var(--color-gray-200, currentcolor);
+	}
 
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
-  }
-
-  html {
-    scrollbar-gutter: stable;
-  }
+	html {
+		scrollbar-gutter: stable;
+	}
 }
 
 div {
-  color: var(--color-base-content);
+	color: var(--color-base-content);
 }
 
 pre code {
-  @apply font-mono text-base;
+	@apply font-mono text-base;
 }
 
 a[target='_blank'] {
-  @apply underline;
+	@apply underline;
 }
 
 /* Target tables within prose to make them scrollable */
 .prose {
-  overflow-x: auto;
-  /* Allows horizontal scrolling on the prose container */
+	overflow-x: auto;
+	/* Allows horizontal scrolling on the prose container */
 }
 
 .prose table {
-  min-width: 100%;
-  /* Ensures tables are not less than the width of their container */
-  display: block;
-  /* Changes table display from table to block to work with overflow */
-  white-space: nowrap;
-  /* Prevents wrapping within the table cells */
+	min-width: 100%;
+	/* Ensures tables are not less than the width of their container */
+	display: block;
+	/* Changes table display from table to block to work with overflow */
+	white-space: nowrap;
+	/* Prevents wrapping within the table cells */
 }
 
 .prose table td,
 .prose table th {
-  white-space: normal;
-  /* Allows text to wrap within the cell */
-  word-wrap: break-word;
-  /* Breaks long words if necessary to fit within the cell */
-  min-width: 120px;
-  /* Ensures a minimum width for smaller content */
-  max-width: 250px;
-  /* Limits the width to prevent extremely wide cells */
+	white-space: normal;
+	/* Allows text to wrap within the cell */
+	word-wrap: break-word;
+	/* Breaks long words if necessary to fit within the cell */
+	min-width: 120px;
+	/* Ensures a minimum width for smaller content */
+	max-width: 250px;
+	/* Limits the width to prevent extremely wide cells */
 }
 
 /* Global toast styles */
 .toaster {
-  margin-top: 60px;
+	margin-top: 60px;
 }
 
 .ds-card,
 .ds-card-frame {
-  border: 1px solid var(--color-base-300);
-  border-radius: var(--radius-box);
-  background: var(--color-base-100);
-  box-shadow:
-    0 1px 2px oklch(0% 0 0 / 0.06),
-    0 5px 14px oklch(0% 0 0 / 0.035);
-  transition:
-    border-color 180ms ease-out,
-    box-shadow 180ms ease-out,
-    transform 180ms ease-out;
+	border: 1px solid var(--color-base-300);
+	border-radius: var(--radius-box);
+	background: var(--color-base-100);
+	box-shadow:
+		0 1px 2px oklch(0% 0 0 / 0.06),
+		0 5px 14px oklch(0% 0 0 / 0.035);
+	transition:
+		border-color 180ms ease-out,
+		box-shadow 180ms ease-out,
+		transform 180ms ease-out;
 }
 
 .ds-card:hover {
-  border-color: color-mix(in oklch, var(--color-base-content) 22%, var(--color-base-300));
-  box-shadow:
-    0 2px 5px oklch(0% 0 0 / 0.08),
-    0 9px 24px oklch(0% 0 0 / 0.06);
-  transform: translateY(-2px);
+	border-color: color-mix(in oklch, var(--color-base-content) 22%, var(--color-base-300));
+	box-shadow:
+		0 2px 5px oklch(0% 0 0 / 0.08),
+		0 9px 24px oklch(0% 0 0 / 0.06);
+	transform: translateY(-2px);
 }
 
 .catalogue-card .card-title {
-  color: var(--color-base-content);
+	color: var(--color-base-content);
 }
 
 .catalogue-card:hover .card-title {
-  color: var(--color-vermillion-ink);
+	color: var(--color-vermillion-ink);
 }
 
 @keyframes card-image-parallax {
-  from {
-    transform: translate3d(0, -21%, 0) scale(1.5);
-  }
+	from {
+		transform: translate3d(0, -21%, 0) scale(1.5);
+	}
 
-  to {
-    transform: translate3d(0, 21%, 0) scale(1.5);
-  }
+	to {
+		transform: translate3d(0, 21%, 0) scale(1.5);
+	}
 }
 
 @supports (animation-timeline: view()) {
-  .card-parallax-image {
-    animation: card-image-parallax linear both;
-    animation-timeline: view();
-    animation-range: cover 0% cover 100%;
-    will-change: transform;
-  }
+	.card-parallax-image {
+		animation: card-image-parallax linear both;
+		animation-timeline: view();
+		animation-range: cover 0% cover 100%;
+		will-change: transform;
+	}
 }
 
 .card-cover-image {
-  transition: opacity 180ms ease-out;
+	transition: opacity 180ms ease-out;
 }
 
 .group:hover .card-cover-image {
-  opacity: 0.9;
+	opacity: 0.9;
 }
 
 .card-masonry-image {
-  aspect-ratio: auto 4 / 3;
+	aspect-ratio: auto 4 / 3;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ds-card {
-    transition: none;
-  }
+	.ds-card {
+		transition: none;
+	}
 
-  .ds-card:hover {
-    transform: none;
-  }
+	.ds-card:hover {
+		transform: none;
+	}
 
-  .card-parallax-image {
-    animation: none;
-    transform: none;
-  }
+	.card-parallax-image {
+		animation: none;
+		transform: none;
+	}
 
-  .card-cover-image {
-    transition: none;
-  }
+	.card-cover-image {
+		transition: none;
+	}
 }
 
 /* Floating label form styles */
 .form-control-float {
-  @apply relative;
+	@apply relative;
 }
 
 .form-control-float input {
-  @apply border-base-300 h-12 w-full rounded-lg border bg-transparent px-3 pt-4 pb-1;
+	@apply h-12 w-full rounded-lg border border-base-300 bg-transparent px-3 pt-4 pb-1;
 }
 
 .form-control-float label {
-  @apply text-base-content/70 pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm transition-all duration-200;
+	@apply pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-base-content/70 transition-all duration-200;
 }
 
-.form-control-float input:focus-within~label,
-.form-control-float input:not(:placeholder-shown)~label {
-  @apply text-primary -translate-y-3/4 transform text-xs;
+.form-control-float input:focus-within ~ label,
+.form-control-float input:not(:placeholder-shown) ~ label {
+	@apply -translate-y-3/4 transform text-xs text-primary;
 }
 
 .form-control-float input:focus-within {
-  @apply border-primary outline-none;
+	@apply border-primary outline-none;
 }

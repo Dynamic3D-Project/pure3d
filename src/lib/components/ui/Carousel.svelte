@@ -50,7 +50,7 @@
 		{#each gallery_items as item, i (i)}
 			<button
 				type="button"
-				class="cursor-pointer {currentSlideItem === i && 'border-primary border ring-offset-0 '}"
+				class="cursor-pointer {currentSlideItem === i && 'border border-primary ring-offset-0 '}"
 				onclick={() => (currentSlideItem = i)}
 				onkeydown={(e) => e.key === 'Enter' && (currentSlideItem = i)}
 				style="background: none; border: none; padding: 0;"

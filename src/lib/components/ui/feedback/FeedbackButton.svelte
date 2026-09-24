@@ -155,7 +155,7 @@
 			placeholder="Write your feedback here"
 			rows="6"
 		></textarea>
-		<div class="text-base-content/50 mt-2 text-xs">
+		<div class="mt-2 text-xs text-base-content/50">
 			<div>Page: {browserInfo.currentPath}</div>
 			<div>Browser: {browserInfo.browser} • Platform: {browserInfo.platform}</div>
 		</div>

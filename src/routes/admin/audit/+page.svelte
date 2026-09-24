@@ -147,8 +147,10 @@
 	<div class="mb-6 rounded-box border border-base-300 bg-base-100 p-4 shadow-sm">
 		<div class="mb-3 flex items-center justify-between gap-3">
 			<div>
-				<h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/70">Filters</h2>
-				<p class="text-xs text-base-content/50">Inspect activity by action, target, or performer.</p>
+				<h2 class="text-sm font-semibold tracking-wide text-base-content/70 uppercase">Filters</h2>
+				<p class="text-xs text-base-content/50">
+					Inspect activity by action, target, or performer.
+				</p>
 			</div>
 			{#if hasActiveFilters}
 				<button
@@ -167,16 +169,16 @@
 		</div>
 		<div class="grid gap-3 md:grid-cols-[minmax(16rem,1fr)_13rem_13rem]">
 			<label class="form-control">
-				<span class="label pb-1 pt-0"><span class="label-text text-xs">Search</span></span>
+				<span class="label pt-0 pb-1"><span class="label-text text-xs">Search</span></span>
 				<input
 					type="text"
 					placeholder="Performer, target ID, or details..."
-					class="input input-bordered w-full bg-base-200/40"
+					class="input-bordered input w-full bg-base-200/40"
 					bind:value={searchQuery}
 				/>
 			</label>
 			<label class="form-control">
-				<span class="label pb-1 pt-0"><span class="label-text text-xs">Action</span></span>
+				<span class="label pt-0 pb-1"><span class="label-text text-xs">Action</span></span>
 				<FloatingSelect
 					id="filter-action"
 					value={filterAction}
@@ -189,7 +191,7 @@
 				/>
 			</label>
 			<label class="form-control">
-				<span class="label pb-1 pt-0"><span class="label-text text-xs">Target</span></span>
+				<span class="label pt-0 pb-1"><span class="label-text text-xs">Target</span></span>
 				<FloatingSelect
 					id="filter-target"
 					value={filterTargetType}

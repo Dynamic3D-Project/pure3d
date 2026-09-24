@@ -81,7 +81,9 @@ async function getOrCreateAdminUser(pb: PocketBase): Promise<string> {
 		console.error('Error fetching user:', err);
 	}
 
-	throw new Error(`User with email "${userEmail}" not found. Please create this user first in the PocketBase admin panel.`);
+	throw new Error(
+		`User with email "${userEmail}" not found. Please create this user first in the PocketBase admin panel.`
+	);
 }
 
 function generateTodo(userId: string): Todo {
@@ -135,7 +137,11 @@ function generatePost(): Post {
 		}),
 		() => ({
 			title:
-				faker.word.adjective() + ' ' + faker.word.noun() + ' in ' + faker.number.int({ min: 2020, max: 2025 }),
+				faker.word.adjective() +
+				' ' +
+				faker.word.noun() +
+				' in ' +
+				faker.number.int({ min: 2020, max: 2025 }),
 			content: `${faker.lorem.paragraph()}\n\n${faker.lorem.paragraphs(4, '\n\n')}`
 		})
 	];

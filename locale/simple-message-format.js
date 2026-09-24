@@ -78,7 +78,9 @@ export default {
 				$schema: 'https://inlang.com/schema/inlang-message-format'
 			};
 			for (const bundle of bundles) {
-				const message = messages.find((item) => item.bundleId === bundle.id && item.locale === locale);
+				const message = messages.find(
+					(item) => item.bundleId === bundle.id && item.locale === locale
+				);
 				const variant = variants.find((item) => item.messageId === message?.id);
 				if (!variant) continue;
 				entries[bundle.id] = variant.pattern

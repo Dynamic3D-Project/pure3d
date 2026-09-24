@@ -128,13 +128,13 @@ Production uses Cloudflare R2 as the S3-compatible backend.
 
 ```json
 [
-  {
-    "AllowedOrigins": ["https://<your-frontend-domain>"],
-    "AllowedMethods": ["GET", "PUT"],
-    "AllowedHeaders": ["*"],
-    "ExposeHeaders": ["ETag"],
-    "MaxAgeSeconds": 3600
-  }
+	{
+		"AllowedOrigins": ["https://<your-frontend-domain>"],
+		"AllowedMethods": ["GET", "PUT"],
+		"AllowedHeaders": ["*"],
+		"ExposeHeaders": ["ETag"],
+		"MaxAgeSeconds": 3600
+	}
 ]
 ```
 

@@ -12,14 +12,12 @@ export const load: PageLoad = async ({ params, fetch }) => {
 			});
 		return {
 			item,
-			children: await pb
-				.collection('content')
-				.getFullList({
-					filter: pb.filter('parent = {:id}', { id: item.id }),
-					sort: 'order,title',
-					fields: 'id,title,slug,layout,isPublished',
-					fetch
-				})
+			children: await pb.collection('content').getFullList({
+				filter: pb.filter('parent = {:id}', { id: item.id }),
+				sort: 'order,title',
+				fields: 'id,title,slug,layout,isPublished',
+				fetch
+			})
 		};
 	} catch (e) {
 		if (e instanceof ClientResponseError && e.status === 404)

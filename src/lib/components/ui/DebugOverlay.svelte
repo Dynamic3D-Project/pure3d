@@ -107,7 +107,7 @@
 </script>
 
 <div
-	class="debug-overlay bg-base-100/95 border-base-300 fixed z-50 max-w-2xl min-w-80 rounded-lg border shadow-2xl backdrop-blur-md"
+	class="debug-overlay fixed z-50 max-w-2xl min-w-80 rounded-lg border border-base-300 bg-base-100/95 shadow-2xl backdrop-blur-md"
 	style="left: {position.x}px; top: {position.y}px"
 	onpointerdown={handlePointerDown}
 	onpointermove={handlePointerMove}
@@ -115,11 +115,11 @@
 >
 	<!-- Header -->
 	<div
-		class="drag-handle border-base-300 flex cursor-move items-center justify-between border-b p-3"
+		class="drag-handle flex cursor-move items-center justify-between border-b border-base-300 p-3"
 	>
 		<div class="flex items-center gap-2">
-			<IconChevronUpDown class="text-base-content/50 h-4 w-4" />
-			<h3 class="text-base-content text-sm font-semibold">{title}</h3>
+			<IconChevronUpDown class="h-4 w-4 text-base-content/50" />
+			<h3 class="text-sm font-semibold text-base-content">{title}</h3>
 		</div>
 
 		<div class="flex items-center gap-1">
@@ -160,7 +160,7 @@
 			<!-- Close button -->
 			<button
 				onclick={onClose}
-				class="btn btn-ghost btn-xs text-error hover:bg-error hover:text-error-content"
+				class="btn text-error btn-ghost btn-xs hover:bg-error hover:text-error-content"
 				title="Close debug overlay"
 			>
 				<IconX class="h-3 w-3" />

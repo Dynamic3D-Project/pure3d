@@ -15,6 +15,7 @@
 ## Task 1: Add schema fields to `editions` via setup script
 
 **Files:**
+
 - Modify: `scripts/create-pocketbase-collections.ts` (around the editions fields block near line 317)
 
 - [ ] **Step 1: Add three file-field entries inside the `editions` fields array**
@@ -84,6 +85,7 @@ git commit -m "feat: add coverImage, modelFile, sceneDocument file fields to edi
 ## Task 2: Export updated schema snapshot
 
 **Files:**
+
 - Modify: `pocketbase/pb_schema/collections.json`
 
 - [ ] **Step 1: Re-export the schema**
@@ -114,6 +116,7 @@ git commit -m "chore: refresh editions schema snapshot"
 ## Task 3: Configure PocketBase S3 + upload size in the setup script
 
 **Files:**
+
 - Modify: `scripts/create-pocketbase-collections.ts` (end of `main()`)
 - Modify: `docker-compose.yml` (env block of `pocketbase-setup`)
 - Modify: `.env.example`
@@ -123,10 +126,10 @@ git commit -m "chore: refresh editions schema snapshot"
 Inside the `pocketbase-setup` service's `environment:` block (which currently lists `POCKETBASE_URL` through `POCKETBASE_ADMIN_PASSWORD`), append:
 
 ```yaml
-      - R2_ENDPOINT=${R2_ENDPOINT:-}
-      - R2_BUCKET=${R2_BUCKET:-}
-      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
-      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
+- R2_ENDPOINT=${R2_ENDPOINT:-}
+- R2_BUCKET=${R2_BUCKET:-}
+- R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
+- R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
 ```
 
 - [ ] **Step 2: Update `.env.example`**
@@ -146,38 +149,38 @@ R2_SECRET_ACCESS_KEY=
 Open `scripts/create-pocketbase-collections.ts`. Locate the final `console.log` line inside `main()` (before the closing brace). Insert this block immediately before that final log:
 
 ```ts
-	// Configure storage + upload limits. Missing R2_* env vars → local disk (dev).
-	const maxUploadBytes = 500 * 1024 * 1024;
-	const settingsPayload: Record<string, unknown> = {
-		meta: { bodyLimit: maxUploadBytes }
+// Configure storage + upload limits. Missing R2_* env vars → local disk (dev).
+const maxUploadBytes = 500 * 1024 * 1024;
+const settingsPayload: Record<string, unknown> = {
+	meta: { bodyLimit: maxUploadBytes }
+};
+
+const r2Endpoint = process.env.R2_ENDPOINT;
+const r2Bucket = process.env.R2_BUCKET;
+const r2AccessKey = process.env.R2_ACCESS_KEY_ID;
+const r2Secret = process.env.R2_SECRET_ACCESS_KEY;
+
+if (r2Endpoint && r2Bucket && r2AccessKey && r2Secret) {
+	console.log('📦 Configuring S3 storage (R2)');
+	settingsPayload.s3 = {
+		enabled: true,
+		bucket: r2Bucket,
+		region: 'auto',
+		endpoint: r2Endpoint,
+		accessKey: r2AccessKey,
+		secret: r2Secret,
+		forcePathStyle: true
 	};
+} else {
+	console.log('📁 Using local-disk storage (R2 env vars not set)');
+}
 
-	const r2Endpoint = process.env.R2_ENDPOINT;
-	const r2Bucket = process.env.R2_BUCKET;
-	const r2AccessKey = process.env.R2_ACCESS_KEY_ID;
-	const r2Secret = process.env.R2_SECRET_ACCESS_KEY;
-
-	if (r2Endpoint && r2Bucket && r2AccessKey && r2Secret) {
-		console.log('📦 Configuring S3 storage (R2)');
-		settingsPayload.s3 = {
-			enabled: true,
-			bucket: r2Bucket,
-			region: 'auto',
-			endpoint: r2Endpoint,
-			accessKey: r2AccessKey,
-			secret: r2Secret,
-			forcePathStyle: true
-		};
-	} else {
-		console.log('📁 Using local-disk storage (R2 env vars not set)');
-	}
-
-	try {
-		// @ts-expect-error — pb.settings.update exists at runtime on the SDK
-		await pb.settings.update(settingsPayload);
-	} catch (err) {
-		console.warn('⚠️  Could not apply storage settings:', (err as Error).message);
-	}
+try {
+	// @ts-expect-error — pb.settings.update exists at runtime on the SDK
+	await pb.settings.update(settingsPayload);
+} catch (err) {
+	console.warn('⚠️  Could not apply storage settings:', (err as Error).message);
+}
 ```
 
 - [ ] **Step 4: Run the setup script and confirm it applies settings without error**
@@ -224,6 +227,7 @@ git commit -m "feat: configure PocketBase S3 + upload size from env on startup"
 ## Task 4: Write failing test for SVX URI rewriter
 
 **Files:**
+
 - Create: `src/lib/utils/svx-uri-rewriter.test.ts`
 
 - [ ] **Step 1: Create the test file**
@@ -263,10 +267,7 @@ describe('rewriteSceneJson', () => {
 		const scene = {
 			scenes: [
 				{
-					nodes: [
-						{ model: { uri: 'model.glb' } },
-						{ annotations: [{ uri: 'note.html' }] }
-					]
+					nodes: [{ model: { uri: 'model.glb' } }, { annotations: [{ uri: 'note.html' }] }]
 				}
 			]
 		};
@@ -307,6 +308,7 @@ Expected: FAIL with "Cannot find module './svx-uri-rewriter'" or equivalent.
 ## Task 5: Implement SVX URI rewriter to pass tests
 
 **Files:**
+
 - Create: `src/lib/utils/svx-uri-rewriter.ts`
 
 - [ ] **Step 1: Write the implementation**
@@ -363,6 +365,7 @@ git commit -m "feat: add pure SVX scene URI rewriter with tests"
 ## Task 6: Generic `FileUploadField.svelte` component
 
 **Files:**
+
 - Create: `src/lib/components/uploads/FileUploadField.svelte`
 
 - [ ] **Step 1: Implement the generic component**
@@ -558,7 +561,9 @@ git commit -m "feat: add pure SVX scene URI rewriter with tests"
 		</div>
 	{:else if uploading}
 		<div class="space-y-1">
-			<div class="text-xs text-base-content/60">Uploading {humanSize(pendingFile?.size ?? 0)}...</div>
+			<div class="text-xs text-base-content/60">
+				Uploading {humanSize(pendingFile?.size ?? 0)}...
+			</div>
 			<progress class="progress w-full progress-primary" value={progress} max="100"></progress>
 			<div class="text-xs text-base-content/40">{progress}%</div>
 		</div>
@@ -566,13 +571,13 @@ git commit -m "feat: add pure SVX scene URI rewriter with tests"
 		{#if emptyPreview}
 			{@render emptyPreview()}
 		{/if}
-		<button type="button" class="btn btn-outline btn-sm w-full" onclick={pick} {disabled}>
+		<button type="button" class="btn w-full btn-outline btn-sm" onclick={pick} {disabled}>
 			Choose file
 		</button>
 	{/if}
 
 	{#if errorMsg}
-		<div class="alert alert-sm alert-error">
+		<div class="alert-sm alert alert-error">
 			<span class="text-xs">{errorMsg}</span>
 			{#if pendingFile}
 				<button type="button" class="btn btn-ghost btn-xs" onclick={retry}>Retry</button>
@@ -602,6 +607,7 @@ git commit -m "feat: add generic FileUploadField component"
 ## Task 7: Specialised upload wrappers
 
 **Files:**
+
 - Create: `src/lib/components/uploads/CoverImageUpload.svelte`
 - Create: `src/lib/components/uploads/ModelFileUpload.svelte`
 - Create: `src/lib/components/uploads/SceneDocumentUpload.svelte`
@@ -643,7 +649,9 @@ git commit -m "feat: add generic FileUploadField component"
 		</div>
 	{/snippet}
 	{#snippet emptyPreview()}
-		<div class="flex aspect-[4/3] items-center justify-center rounded-lg border-2 border-dashed border-base-300 bg-base-200">
+		<div
+			class="flex aspect-[4/3] items-center justify-center rounded-lg border-2 border-dashed border-base-300 bg-base-200"
+		>
 			<div class="text-center text-base-content/40">
 				<p class="text-xs">Cover Image</p>
 				<p class="mt-1 text-xs">JPG, PNG, WebP, AVIF (max 20 MB)</p>
@@ -686,7 +694,9 @@ git commit -m "feat: add generic FileUploadField component"
 		</div>
 	{/snippet}
 	{#snippet emptyPreview()}
-		<div class="flex items-center gap-2 rounded-lg border border-dashed border-base-300 bg-base-200 px-3 py-2.5">
+		<div
+			class="flex items-center gap-2 rounded-lg border border-dashed border-base-300 bg-base-200 px-3 py-2.5"
+		>
 			<span class="text-xs text-base-content/40">No model file</span>
 		</div>
 	{/snippet}
@@ -723,11 +733,13 @@ git commit -m "feat: add generic FileUploadField component"
 	{#snippet preview({ filename })}
 		<div class="flex items-center gap-2 rounded-lg border border-base-300 bg-base-200 px-3 py-2.5">
 			<span class="truncate text-xs">{filename}</span>
-			<span class="badge badge-sm badge-ghost">SVX</span>
+			<span class="badge badge-ghost badge-sm">SVX</span>
 		</div>
 	{/snippet}
 	{#snippet emptyPreview()}
-		<div class="flex items-center gap-2 rounded-lg border border-dashed border-base-300 bg-base-200 px-3 py-2.5">
+		<div
+			class="flex items-center gap-2 rounded-lg border border-dashed border-base-300 bg-base-200 px-3 py-2.5"
+		>
 			<span class="text-xs text-base-content/40">No scene file</span>
 		</div>
 	{/snippet}
@@ -748,6 +760,7 @@ git commit -m "feat: add cover/model/scene upload wrapper components"
 ## Task 8: `VoyagerPreview.svelte` with resolution order + rewriter
 
 **Files:**
+
 - Create: `src/lib/components/uploads/VoyagerPreview.svelte`
 
 - [ ] **Step 1: Create the component**
@@ -758,10 +771,7 @@ git commit -m "feat: add cover/model/scene upload wrapper components"
 	import type { RecordModel } from 'pocketbase';
 	import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
 	import { rewriteSceneJson, type FileMap } from '$lib/utils/svx-uri-rewriter';
-	import {
-		getEditionRoot,
-		DEFAULT_VOYAGER_VERSION
-	} from '$lib/utils/asset-urls';
+	import { getEditionRoot, DEFAULT_VOYAGER_VERSION } from '$lib/utils/asset-urls';
 
 	type Props = {
 		edition: RecordModel;
@@ -856,7 +866,18 @@ git commit -m "feat: add cover/model/scene upload wrapper components"
 			scene: 0,
 			scenes: [{ name: 'Scene', units: 'cm', nodes: [0] }],
 			nodes: [{ name: 'Model', model: 0 }],
-			models: [{ units: 'cm', derivatives: [{ usage: 'Web3D', quality: 'High', assets: [{ uri: modelUrl, type: 'Model', byteSize: 0 }] }] }]
+			models: [
+				{
+					units: 'cm',
+					derivatives: [
+						{
+							usage: 'Web3D',
+							quality: 'High',
+							assets: [{ uri: modelUrl, type: 'Model', byteSize: 0 }]
+						}
+					]
+				}
+			]
 		};
 		const blob = new Blob([JSON.stringify(minimalScene)], { type: 'application/json' });
 		activeBlobUrl = URL.createObjectURL(blob);
@@ -887,7 +908,9 @@ git commit -m "feat: add cover/model/scene upload wrapper components"
 </script>
 
 {#if mode === 'empty'}
-	<div class="flex aspect-video items-center justify-center rounded-lg border-2 border-dashed border-base-300 bg-base-200">
+	<div
+		class="flex aspect-video items-center justify-center rounded-lg border-2 border-dashed border-base-300 bg-base-200"
+	>
 		<div class="text-center text-base-content/40">
 			<p class="text-sm font-medium">3D Model Preview</p>
 			<p class="mt-1 text-xs">Upload a model to see it here</p>
@@ -896,7 +919,7 @@ git commit -m "feat: add cover/model/scene upload wrapper components"
 {:else}
 	<div class="space-y-2">
 		{#if warnMissingModel}
-			<div class="alert alert-warning alert-sm">
+			<div class="alert-sm alert alert-warning">
 				<span class="text-xs">Scene references a missing model</span>
 			</div>
 		{/if}
@@ -927,6 +950,7 @@ git commit -m "feat: add VoyagerPreview with scene/model/legacy fallback"
 ## Task 9: Compose `EditionAssetsPanel.svelte`
 
 **Files:**
+
 - Create: `src/lib/components/uploads/EditionAssetsPanel.svelte`
 
 - [ ] **Step 1: Create the composed panel**
@@ -961,10 +985,15 @@ git commit -m "feat: add VoyagerPreview with scene/model/legacy fallback"
 </script>
 
 <div class="space-y-4">
-	<VoyagerPreview {edition} {collectionPubNum} {editionPubNum} title={edition.title || 'Edition preview'} />
+	<VoyagerPreview
+		{edition}
+		{collectionPubNum}
+		{editionPubNum}
+		title={edition.title || 'Edition preview'}
+	/>
 
 	<div class="rounded-xl border border-base-300 bg-base-100 p-5">
-		<h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">
+		<h3 class="mb-3 text-sm font-semibold tracking-wide text-base-content/50 uppercase">
 			3D Model Files
 		</h3>
 		<div class="space-y-3">
@@ -990,15 +1019,10 @@ git commit -m "feat: add VoyagerPreview with scene/model/legacy fallback"
 	</div>
 
 	<div class="rounded-xl border border-base-300 bg-base-100 p-5">
-		<h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/50">
+		<h3 class="mb-3 text-sm font-semibold tracking-wide text-base-content/50 uppercase">
 			Cover Image
 		</h3>
-		<CoverImageUpload
-			{edition}
-			{disabled}
-			onuploaded={handleUpdated}
-			onremoved={handleUpdated}
-		/>
+		<CoverImageUpload {edition} {disabled} onuploaded={handleUpdated} onremoved={handleUpdated} />
 	</div>
 </div>
 ```
@@ -1021,6 +1045,7 @@ git commit -m "feat: add EditionAssetsPanel composing all edition uploads + prev
 ## Task 10: Convert `/new` into first-interaction bootstrap
 
 **Files:**
+
 - Modify: `src/routes/collections/[slug]/editions/new/+page.svelte`
 
 - [ ] **Step 1: Replace the page contents**
@@ -1035,7 +1060,12 @@ Overwrite the entire file with:
 	import { pb } from '$lib/database/client';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { hasPermission } from '$lib/utils/permissions';
-	import { Permission, CollectionRole, EditionStatus, type UserRoleContext } from '$lib/types/roles';
+	import {
+		Permission,
+		CollectionRole,
+		EditionStatus,
+		type UserRoleContext
+	} from '$lib/types/roles';
 	import toast from 'svelte-french-toast';
 	import type { PageData } from './$types';
 
@@ -1112,7 +1142,9 @@ Overwrite the entire file with:
 		<ul>
 			<li><a href="{base}/" class="link link-hover">Home</a></li>
 			<li><a href="{base}/collections" class="link link-hover">Collections</a></li>
-			<li><a href="{base}/collections/{collection.id}" class="link link-hover">{collection.title}</a></li>
+			<li>
+				<a href="{base}/collections/{collection.id}" class="link link-hover">{collection.title}</a>
+			</li>
 			<li class="text-base-content/70">New Edition</li>
 		</ul>
 	</nav>
@@ -1131,7 +1163,13 @@ Overwrite the entire file with:
 				<h1 class="text-2xl font-bold">New Edition</h1>
 				<p class="text-sm text-base-content/60">in <strong>{collection.title}</strong></p>
 			</div>
-			<form onsubmit={(e) => { e.preventDefault(); createDraftAndRedirect(); }} class="space-y-3">
+			<form
+				onsubmit={(e) => {
+					e.preventDefault();
+					createDraftAndRedirect();
+				}}
+				class="space-y-3"
+			>
 				<div class="form-control">
 					<label class="label" for="title">
 						<span class="label-text font-medium">Title *</span>
@@ -1151,7 +1189,7 @@ Overwrite the entire file with:
 				</div>
 				<div class="flex justify-end gap-2">
 					<a href="{base}/collections/{collection.id}" class="btn btn-ghost btn-sm">Cancel</a>
-					<button type="submit" class="btn btn-primary btn-sm" disabled={creating || !title.trim()}>
+					<button type="submit" class="btn btn-sm btn-primary" disabled={creating || !title.trim()}>
 						{#if creating}
 							<span class="loading loading-xs loading-spinner"></span>
 						{/if}
@@ -1184,6 +1222,7 @@ git commit -m "feat: reduce new-edition route to title + create-draft + redirect
 ## Task 11: Wire `EditionAssetsPanel` into the workflow page
 
 **Files:**
+
 - Modify: `src/routes/editions/[slug]/workflow/+page.svelte`
 
 - [ ] **Step 1: Add the import near the top of the `<script>` block**
@@ -1213,9 +1252,9 @@ In the template, find the block identified earlier (starts around line 538 with 
 <div class="min-w-0 flex-1 space-y-4">
 	{#if edition}
 		<EditionAssetsPanel
-			edition={edition}
-			collectionPubNum={collectionPubNum}
-			editionPubNum={editionPubNum}
+			{edition}
+			{collectionPubNum}
+			{editionPubNum}
 			onupdated={(r) => (edition = r)}
 		/>
 	{/if}
@@ -1251,6 +1290,7 @@ git commit -m "feat: wire EditionAssetsPanel into edition workflow page"
 ## Task 12: Asset URL helper update
 
 **Files:**
+
 - Modify: `src/lib/utils/asset-urls.ts`
 
 - [ ] **Step 1: Add `getEditionCoverUrl` helper**
@@ -1299,12 +1339,12 @@ git commit -m "feat: prefer uploaded coverImage in edition thumbnail resolution"
 ## Task 13: Document R2 setup in DEV.md
 
 **Files:**
+
 - Modify: `DEV.md`
 
 - [ ] **Step 1: Append an R2 section at the end of the file**
 
-```md
-
+````md
 ## R2 storage (production)
 
 In development, PocketBase stores uploaded edition assets on local disk (`pocketbase/pb_data/storage/`). In production we use Cloudflare R2 as an S3-compatible backend.
@@ -1317,15 +1357,16 @@ In development, PocketBase stores uploaded edition assets on local disk (`pocket
 
 ```json
 [
-  {
-    "AllowedOrigins": ["https://<your-frontend-domain>"],
-    "AllowedMethods": ["GET", "PUT"],
-    "AllowedHeaders": ["*"],
-    "ExposeHeaders": ["ETag"],
-    "MaxAgeSeconds": 3600
-  }
+	{
+		"AllowedOrigins": ["https://<your-frontend-domain>"],
+		"AllowedMethods": ["GET", "PUT"],
+		"AllowedHeaders": ["*"],
+		"ExposeHeaders": ["ETag"],
+		"MaxAgeSeconds": 3600
+	}
 ]
 ```
+````
 
 ### Environment variables
 
@@ -1347,14 +1388,15 @@ The `pocketbase-setup` container applies these to PocketBase's storage settings 
 3. The setup service logs `📦 Configuring S3 storage (R2)` when it runs.
 
 Files already on local disk remain there (orphaned). Migrating them is out of scope for this setup — uploads from this point forward flow to R2.
-```
+
+````
 
 - [ ] **Step 2: Commit**
 
 ```bash
 git add DEV.md
 git commit -m "docs: document R2 storage setup for production"
-```
+````
 
 ---
 
@@ -1435,6 +1477,7 @@ git commit -m "fix: resolve manual QA findings"
 ## Self-review notes
 
 Covered against the spec:
+
 - Schema changes (Tasks 1–2)
 - PocketBase S3 + upload-size config (Task 3)
 - URI rewriter with tests (Tasks 4–5)
@@ -1445,6 +1488,7 @@ Covered against the spec:
 - Regression and QA verification (Tasks 14–15)
 
 Deferred to follow-up issues (explicit non-goals):
+
 - `articleFiles` multi-file field for HTML article references inside SVX.
 - Abandoned-draft cleanup job (mitigated via first-interaction creation).
 - Local disk → R2 file migration script.

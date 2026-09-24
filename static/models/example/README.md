@@ -33,21 +33,22 @@ Use the VoyagerViewer component in your Svelte page:
 
 ```svelte
 <script>
-  import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
+	import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
 </script>
 
 <VoyagerViewer
-  url="/models/example/"
-  document="document.json"
-  title="My Example Model"
-  direct={true}
-  showControls={true}
+	url="/models/example/"
+	document="document.json"
+	title="My Example Model"
+	direct={true}
+	showControls={true}
 />
 ```
 
 ### 3. View in Browser
 
 Navigate to your page and you'll see:
+
 - The 3D model loaded in Voyager
 - Camera controls (yaw/pitch sliders)
 - Display toggles (annotations, reader, tours)
@@ -58,6 +59,7 @@ Navigate to your page and you'll see:
 Edit `document.json` to customize:
 
 ### Background Colors
+
 ```json
 "background": {
   "style": "RadialGradient",
@@ -67,6 +69,7 @@ Edit `document.json` to customize:
 ```
 
 ### Camera Settings
+
 ```json
 "navigation": {
   "orbit": {
@@ -79,6 +82,7 @@ Edit `document.json` to customize:
 ```
 
 ### Interface Options
+
 ```json
 "interface": {
   "visible": true,    // Show/hide UI
@@ -106,12 +110,14 @@ Edit `document.json` to customize:
 ## Where to Get 3D Models
 
 ### Free Sources:
+
 - **Sketchfab**: https://sketchfab.com (CC-licensed models)
 - **Smithsonian Open Access**: https://3d.si.edu
 - **Poly Haven**: https://polyhaven.com/models
 - **Google Poly Archive**: Via Internet Archive
 
 ### Your Own Models:
+
 - Export from Blender as GLB/GLTF
 - Convert from OBJ/FBX using Blender
 - Photogrammetry software exports

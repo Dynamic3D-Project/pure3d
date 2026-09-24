@@ -85,7 +85,9 @@
 	let deletingRecipientId = $state<string | null>(null);
 	const perPage = 500;
 
-	let hasActiveFilters = $derived(Boolean(searchQuery || statusFilter || categoryFilter || severityFilter));
+	let hasActiveFilters = $derived(
+		Boolean(searchQuery || statusFilter || categoryFilter || severityFilter)
+	);
 	let statusCounts = $derived(
 		feedback.reduce(
 			(counts, item) => {
@@ -108,7 +110,9 @@
 				}
 
 				try {
-					const record = await pb.collection('feedback').getOne(event.record.id, { expand: 'edition' });
+					const record = await pb
+						.collection('feedback')
+						.getOne(event.record.id, { expand: 'edition' });
 					upsertFeedback(mapFeedback(record));
 				} catch (error) {
 					console.error('Failed to apply realtime feedback update:', error);
@@ -300,7 +304,7 @@
 	<title>Send Feedback | Admin | Pure3D</title>
 </svelte:head>
 
-<div id="admin-feedback-page" class="mx-auto w-full min-w-0 max-w-6xl">
+<div id="admin-feedback-page" class="mx-auto w-full max-w-6xl min-w-0">
 	<div class="mb-8 flex flex-wrap items-start justify-between gap-4">
 		<div>
 			<h1 class="text-3xl font-bold">Send Feedback</h1>
@@ -309,7 +313,7 @@
 			</p>
 		</div>
 		<button class="btn btn-outline btn-sm" onclick={loadFeedback} disabled={isLoading}>
-			{#if isLoading}<span class="loading loading-spinner loading-xs"></span>{/if}
+			{#if isLoading}<span class="loading loading-xs loading-spinner"></span>{/if}
 			Refresh
 		</button>
 	</div>
@@ -334,20 +338,20 @@
 					type="email"
 					required
 					placeholder="notifications@example.org"
-					class="input input-bordered w-full"
+					class="input-bordered input w-full"
 					bind:value={recipientEmail}
 				/>
 			</label>
 			<button class="btn btn-primary" type="submit" disabled={isSavingRecipient}>
-				{#if isSavingRecipient}<span class="loading loading-spinner loading-xs"></span>{/if}
+				{#if isSavingRecipient}<span class="loading loading-xs loading-spinner"></span>{/if}
 				Add recipient
 			</button>
 		</form>
 
 		{#if isLoadingRecipients}
-			<div class="mt-4"><span class="loading loading-spinner loading-sm"></span></div>
+			<div class="mt-4"><span class="loading loading-sm loading-spinner"></span></div>
 		{:else if recipients.length === 0}
-			<div class="alert alert-warning mt-4 text-sm">
+			<div class="mt-4 alert text-sm alert-warning">
 				No recipients configured. Feedback will still be saved, but no email will be sent.
 			</div>
 		{:else}
@@ -357,7 +361,7 @@
 						<span class="min-w-0 truncate">{recipient.email}</span>
 						<button
 							type="button"
-							class="btn btn-ghost btn-xs text-error"
+							class="btn text-error btn-ghost btn-xs"
 							disabled={deletingRecipientId === recipient.id}
 							onclick={() => deleteRecipient(recipient)}
 						>
@@ -372,8 +376,10 @@
 	<div class="mb-6 rounded-box border border-base-300 bg-base-100 p-4 shadow-sm">
 		<div class="mb-3 flex items-center justify-between gap-3">
 			<div>
-				<h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/70">Filters</h2>
-				<p class="text-xs text-base-content/50">Find feedback by category, severity, status, or text.</p>
+				<h2 class="text-sm font-semibold tracking-wide text-base-content/70 uppercase">Filters</h2>
+				<p class="text-xs text-base-content/50">
+					Find feedback by category, severity, status, or text.
+				</p>
 			</div>
 			{#if hasActiveFilters}
 				<button type="button" class="btn btn-ghost btn-xs" onclick={clearFilters}>Clear</button>
@@ -381,16 +387,16 @@
 		</div>
 		<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(16rem,1fr)_12rem_12rem_12rem]">
 			<label class="form-control">
-				<span class="label pb-1 pt-0"><span class="label-text text-xs">Search</span></span>
+				<span class="label pt-0 pb-1"><span class="label-text text-xs">Search</span></span>
 				<input
 					type="text"
 					placeholder="Participant, edition, feedback..."
-					class="input input-bordered w-full bg-base-200/40"
+					class="input-bordered input w-full bg-base-200/40"
 					bind:value={searchQuery}
 				/>
 			</label>
 			<label class="form-control">
-				<span class="label pb-1 pt-0"><span class="label-text text-xs">Status</span></span>
+				<span class="label pt-0 pb-1"><span class="label-text text-xs">Status</span></span>
 				<FloatingSelect
 					id="feedback-status-filter"
 					bind:value={statusFilter}
@@ -400,7 +406,7 @@
 				/>
 			</label>
 			<label class="form-control">
-				<span class="label pb-1 pt-0"><span class="label-text text-xs">Category</span></span>
+				<span class="label pt-0 pb-1"><span class="label-text text-xs">Category</span></span>
 				<FloatingSelect
 					id="feedback-category-filter"
 					bind:value={categoryFilter}
@@ -410,7 +416,7 @@
 				/>
 			</label>
 			<label class="form-control">
-				<span class="label pb-1 pt-0"><span class="label-text text-xs">Severity</span></span>
+				<span class="label pt-0 pb-1"><span class="label-text text-xs">Severity</span></span>
 				<FloatingSelect
 					id="feedback-severity-filter"
 					bind:value={severityFilter}
@@ -425,7 +431,7 @@
 	<div class="mb-6 flex flex-wrap gap-2">
 		<button
 			type="button"
-			class={`btn btn-xs h-auto min-h-0 gap-2 rounded-full px-3 py-2 ${statusFilter === '' ? 'btn-accent' : 'btn-outline'}`}
+			class={`btn h-auto min-h-0 gap-2 rounded-full px-3 py-2 btn-xs ${statusFilter === '' ? 'btn-accent' : 'btn-outline'}`}
 			onclick={() => filterByStatus('')}
 		>
 			<span class="font-medium">Total</span>
@@ -433,7 +439,7 @@
 		</button>
 		<button
 			type="button"
-			class="btn btn-outline btn-xs h-auto min-h-0 gap-2 rounded-full px-3 py-2 opacity-75"
+			class="btn h-auto min-h-0 gap-2 rounded-full px-3 py-2 opacity-75 btn-outline btn-xs"
 			onclick={clearFilters}
 		>
 			<span class="font-medium">Visible</span>
@@ -442,7 +448,7 @@
 		{#each statusOptions.filter((option) => option.value) as option}
 			<button
 				type="button"
-				class={`btn btn-xs h-auto min-h-0 gap-2 rounded-full px-3 py-2 ${statusFilter === option.value ? 'btn-accent' : 'btn-outline opacity-75'}`}
+				class={`btn h-auto min-h-0 gap-2 rounded-full px-3 py-2 btn-xs ${statusFilter === option.value ? 'btn-accent' : 'opacity-75 btn-outline'}`}
 				onclick={() => filterByStatus(option.value)}
 			>
 				<span class="font-medium">{option.label}</span>
@@ -453,7 +459,7 @@
 
 	{#if isLoading}
 		<div class="flex justify-center py-12">
-			<span class="loading loading-spinner loading-lg"></span>
+			<span class="loading loading-lg loading-spinner"></span>
 		</div>
 	{:else if feedback.length === 0}
 		<p class="py-12 text-center text-base-content/60">No full feedback yet.</p>
@@ -471,8 +477,12 @@
 						<div class="min-w-0 flex-1">
 							<div class="flex flex-wrap items-center gap-2">
 								<h2 class="font-semibold">{item.participantName}</h2>
-								<span class="badge badge-outline">{categoryLabels[item.category] || item.category}</span>
-								<span class="badge badge-outline">{severityLabels[item.severity] || item.severity}</span>
+								<span class="badge badge-outline"
+									>{categoryLabels[item.category] || item.category}</span
+								>
+								<span class="badge badge-outline"
+									>{severityLabels[item.severity] || item.severity}</span
+								>
 								<span class={`badge ${statusBadgeClass(item.status)}`}>
 									{statusLabels[item.status] || item.status}
 								</span>
@@ -488,23 +498,34 @@
 						<div class="border-t border-base-300 p-4">
 							<div class="mb-4 flex flex-wrap gap-2">
 								{#if item.editionId}
-									<a class="btn btn-outline btn-xs" href="{base}/editions/{item.editionId}">Open edition</a>
+									<a class="btn btn-outline btn-xs" href="{base}/editions/{item.editionId}"
+										>Open edition</a
+									>
 								{/if}
 								{#if item.editionUrl}
 									<a class="btn btn-outline btn-xs" href={item.editionUrl}>Open submitted URL</a>
 								{/if}
 								{#if item.status !== 'reviewed'}
-									<button class="btn btn-xs btn-info" onclick={() => updateStatus(item, 'reviewed')}>
+									<button
+										class="btn btn-xs btn-info"
+										onclick={() => updateStatus(item, 'reviewed')}
+									>
 										Mark reviewed
 									</button>
 								{/if}
 								{#if item.status !== 'resolved'}
-									<button class="btn btn-xs btn-success" onclick={() => updateStatus(item, 'resolved')}>
+									<button
+										class="btn btn-xs btn-success"
+										onclick={() => updateStatus(item, 'resolved')}
+									>
 										Mark resolved
 									</button>
 								{/if}
 								{#if item.status !== 'submitted'}
-									<button class="btn btn-xs btn-ghost" onclick={() => updateStatus(item, 'submitted')}>
+									<button
+										class="btn btn-ghost btn-xs"
+										onclick={() => updateStatus(item, 'submitted')}
+									>
 										Reopen
 									</button>
 								{/if}
@@ -512,7 +533,7 @@
 
 							<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
 								<div class="space-y-4">
-									<div class="whitespace-pre-wrap rounded-box bg-base-200 p-4 text-sm">
+									<div class="rounded-box bg-base-200 p-4 text-sm whitespace-pre-wrap">
 										{plainText(item.feedbackHtml) || 'No written feedback.'}
 									</div>
 

@@ -68,7 +68,7 @@
 			<a
 				href="https://ctwhome.com"
 				target="_blank"
-				class="hover:text-primary opacity-70 hover:opacity-100"
+				class="opacity-70 hover:text-primary hover:opacity-100"
 			>
 				Latest work
 			</a>

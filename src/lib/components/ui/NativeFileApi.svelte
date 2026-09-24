@@ -109,7 +109,15 @@
 	<!--    file system when reloading. The user needs to grand access once again.-->
 	<!--  </p>-->
 
-	<div class="btn" role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && open()} onclick={open}>Open directory</div>
+	<div
+		class="btn"
+		role="button"
+		tabindex="0"
+		onkeydown={(e) => e.key === 'Enter' && open()}
+		onclick={open}
+	>
+		Open directory
+	</div>
 	<div>
 		<pre>{JSON.stringify(numberFiles, null, 2)}</pre>
 		{#each Object.values(tree) as item}

@@ -20,7 +20,7 @@
 
 <div class="min-h-screen bg-base-100">
 	<div class="container mx-auto max-w-7xl px-4 py-8">
-		<div role="tablist" class="tabs-boxed tabs mb-8 w-full overflow-x-auto bg-base-200 p-1">
+		<div role="tablist" class="tabs-boxed mb-8 tabs w-full overflow-x-auto bg-base-200 p-1">
 			<button
 				role="tab"
 				class="tab shrink-0"
@@ -62,7 +62,11 @@
 				<div class="alert bg-info/10 text-info-content">
 					<div>
 						<p class="font-semibold">API Controls Sandbox</p>
-						<p class="text-sm">This preserves the original `/demo` behavior: a separate Voyager model with the full control panel for testing camera controls, annotations, tours, tools, measurement, and background options.</p>
+						<p class="text-sm">
+							This preserves the original `/demo` behavior: a separate Voyager model with the full
+							control panel for testing camera controls, annotations, tours, tools, measurement, and
+							background options.
+						</p>
 					</div>
 				</div>
 				<VoyagerViewer
@@ -81,7 +85,10 @@
 				<div class="alert bg-base-200">
 					<div>
 						<p class="font-semibold">Integration Examples</p>
-						<p class="text-sm text-base-content/70">Compare direct and iframe integration modes, review API methods, and follow links to Voyager documentation.</p>
+						<p class="text-sm text-base-content/70">
+							Compare direct and iframe integration modes, review API methods, and follow links to
+							Voyager documentation.
+						</p>
 					</div>
 				</div>
 				<VoyagerAPIDemo />

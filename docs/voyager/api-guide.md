@@ -24,16 +24,16 @@ The Smithsonian's DPO Voyager is a powerful 3D viewer with support for annotatio
 
 ### Comparison Table
 
-| Feature | Iframe Mode | Direct Mode |
-|---------|-------------|-------------|
-| Ease of Setup | ✅ Very Easy | ⚠️ Moderate |
-| JavaScript Required | ❌ No | ✅ Yes |
-| Smithsonian Content | ✅ Yes | ❌ No (CORS) |
-| Self-Hosted Content | ✅ Yes | ✅ Yes |
-| Programmatic Control | ❌ No | ✅ Full API |
-| Camera Control | ❌ No | ✅ Yes |
-| Annotation Control | ❌ No | ✅ Yes |
-| Event Listeners | ❌ No | ✅ Yes |
+| Feature              | Iframe Mode  | Direct Mode  |
+| -------------------- | ------------ | ------------ |
+| Ease of Setup        | ✅ Very Easy | ⚠️ Moderate  |
+| JavaScript Required  | ❌ No        | ✅ Yes       |
+| Smithsonian Content  | ✅ Yes       | ❌ No (CORS) |
+| Self-Hosted Content  | ✅ Yes       | ✅ Yes       |
+| Programmatic Control | ❌ No        | ✅ Full API  |
+| Camera Control       | ❌ No        | ✅ Yes       |
+| Annotation Control   | ❌ No        | ✅ Yes       |
+| Event Listeners      | ❌ No        | ✅ Yes       |
 
 ## Iframe Mode (Simple)
 
@@ -48,13 +48,13 @@ The Smithsonian's DPO Voyager is a powerful 3D viewer with support for annotatio
 
 ```svelte
 <script>
-  import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
+	import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
 </script>
 
 <VoyagerViewer
-  url="https://3d-api.si.edu/voyager/3d_package:d8c6443e-4ebc-11ea-b77f-2e728ce88125"
-  title="Apollo 11 Command Module"
-  direct={false}
+	url="https://3d-api.si.edu/voyager/3d_package:d8c6443e-4ebc-11ea-b77f-2e728ce88125"
+	title="Apollo 11 Command Module"
+	direct={false}
 />
 ```
 
@@ -62,11 +62,11 @@ The Smithsonian's DPO Voyager is a powerful 3D viewer with support for annotatio
 
 ```html
 <iframe
-  name="Smithsonian Voyager"
-  src="https://3d-api.si.edu/voyager/3d_package:d8c6443e-4ebc-11ea-b77f-2e728ce88125"
-  width="800"
-  height="450"
-  allow="xr; xr-spatial-tracking; fullscreen"
+	name="Smithsonian Voyager"
+	src="https://3d-api.si.edu/voyager/3d_package:d8c6443e-4ebc-11ea-b77f-2e728ce88125"
+	width="800"
+	height="450"
+	allow="xr; xr-spatial-tracking; fullscreen"
 ></iframe>
 ```
 
@@ -98,15 +98,15 @@ The Smithsonian's DPO Voyager is a powerful 3D viewer with support for annotatio
 
 ```svelte
 <script>
-  import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
+	import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
 </script>
 
 <VoyagerViewer
-  url="https://your-domain.com/content/my-model/"
-  document="document.json"
-  title="My 3D Model"
-  direct={true}
-  showControls={true}
+	url="https://your-domain.com/content/my-model/"
+	document="document.json"
+	title="My 3D Model"
+	direct={true}
+	showControls={true}
 />
 ```
 
@@ -122,41 +122,41 @@ Smithsonian's content is hosted on `3d-api.si.edu`, which has CORS restrictions 
 
 ```typescript
 interface Props {
-  /** URL for iframe mode OR root path for direct mode */
-  url: string;
+	/** URL for iframe mode OR root path for direct mode */
+	url: string;
 
-  /** Document path (only for direct mode) */
-  document?: string;
+	/** Document path (only for direct mode) */
+	document?: string;
 
-  /** Title for accessibility */
-  title: string;
+	/** Title for accessibility */
+	title: string;
 
-  /** Use direct embedding instead of iframe */
-  direct?: boolean;
+	/** Use direct embedding instead of iframe */
+	direct?: boolean;
 
-  /** Show control toolbar (only available in direct mode) */
-  showControls?: boolean;
+	/** Show control toolbar (only available in direct mode) */
+	showControls?: boolean;
 
-  /** UI mode - controls which UI elements are visible initially
-   * Options: "none" (hide all), "none|title" (only title), "all" (show all)
-   * Default: "none" for API-controlled mode
-   */
-  uiMode?: string;
+	/** UI mode - controls which UI elements are visible initially
+	 * Options: "none" (hide all), "none|title" (only title), "all" (show all)
+	 * Default: "none" for API-controlled mode
+	 */
+	uiMode?: string;
 
-  /** Enable/disable camera controls
-   * Default: true
-   */
-  enableControls?: boolean;
+	/** Enable/disable camera controls
+	 * Default: true
+	 */
+	enableControls?: boolean;
 
-  /** Show/hide interaction prompt
-   * Default: false
-   */
-  showPrompt?: boolean;
+	/** Show/hide interaction prompt
+	 * Default: false
+	 */
+	showPrompt?: boolean;
 
-  /** Show/hide reader initially
-   * Default: false
-   */
-  showReader?: boolean;
+	/** Show/hide reader initially
+	 * Default: false
+	 */
+	showReader?: boolean;
 }
 ```
 
@@ -165,29 +165,27 @@ interface Props {
 #### Basic Iframe
 
 ```svelte
-<VoyagerViewer
-  url="https://3d-api.si.edu/voyager/3d_package:abc123"
-  title="My Model"
-/>
+<VoyagerViewer url="https://3d-api.si.edu/voyager/3d_package:abc123" title="My Model" />
 ```
 
 #### Direct with Controls (Clean UI)
 
 ```svelte
 <VoyagerViewer
-  url="https://my-site.com/models/apollo/"
-  document="scene.svx.json"
-  title="Apollo Model"
-  direct={true}
-  showControls={true}
-  uiMode="none"
-  enableControls={true}
-  showPrompt={false}
-  showReader={false}
+	url="https://my-site.com/models/apollo/"
+	document="scene.svx.json"
+	title="Apollo Model"
+	direct={true}
+	showControls={true}
+	uiMode="none"
+	enableControls={true}
+	showPrompt={false}
+	showReader={false}
 />
 ```
 
 This configuration provides:
+
 - ✅ Clean viewer with no UI elements visible
 - ✅ Camera controls enabled (user can orbit/zoom)
 - ✅ Full API control to toggle UI elements
@@ -198,11 +196,11 @@ This configuration provides:
 ```svelte
 <!-- Show only title and menu -->
 <VoyagerViewer
-  url="https://my-site.com/models/apollo/"
-  document="scene.svx.json"
-  title="Apollo Model"
-  direct={true}
-  uiMode="none|title|menu"
+	url="https://my-site.com/models/apollo/"
+	document="scene.svx.json"
+	title="Apollo Model"
+	direct={true}
+	uiMode="none|title|menu"
 />
 ```
 
@@ -257,6 +255,7 @@ The following elements can be combined in `uiMode` using the pipe (`|`) characte
 ### Best Practices
 
 **For API-Controlled Experiences:**
+
 ```svelte
 <VoyagerViewer
   uiMode="none"
@@ -268,19 +267,15 @@ The following elements can be combined in `uiMode` using the pipe (`|`) characte
 ```
 
 **For Standard Viewer:**
+
 ```svelte
-<VoyagerViewer
-  uiMode="all"
-  direct={true}
-/>
+<VoyagerViewer uiMode="all" direct={true} />
 ```
 
 **For Minimal Viewer with Branding:**
+
 ```svelte
-<VoyagerViewer
-  uiMode="none|title"
-  enableControls={true}
-/>
+<VoyagerViewer uiMode="none|title" enableControls={true} />
 ```
 
 ## API Reference
@@ -401,13 +396,13 @@ Listen to events from Voyager:
 
 ```javascript
 voyagerElement.addEventListener('model-load', (event) => {
-  console.log('Model loaded:', event.detail);
-  // event.detail contains model information
+	console.log('Model loaded:', event.detail);
+	// event.detail contains model information
 });
 
 voyagerElement.addEventListener('annotation-active', (event) => {
-  console.log('Active annotation ID:', event.detail);
-  // event.detail contains the annotation ID (or null)
+	console.log('Active annotation ID:', event.detail);
+	// event.detail contains the annotation ID (or null)
 });
 ```
 
@@ -417,27 +412,27 @@ voyagerElement.addEventListener('annotation-active', (event) => {
 
 ```svelte
 <script lang="ts">
-  import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
+	import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
 
-  let voyagerElement: HTMLElement | undefined;
+	let voyagerElement: HTMLElement | undefined;
 
-  function rotateTo(yaw: number, pitch: number) {
-    if (voyagerElement) {
-      (voyagerElement as any).setCameraOrbit(yaw, pitch);
-    }
-  }
+	function rotateTo(yaw: number, pitch: number) {
+		if (voyagerElement) {
+			(voyagerElement as any).setCameraOrbit(yaw, pitch);
+		}
+	}
 </script>
 
 <div>
-  <button onclick={() => rotateTo(0, -25)}>Front View</button>
-  <button onclick={() => rotateTo(90, -25)}>Side View</button>
-  <button onclick={() => rotateTo(180, -25)}>Back View</button>
+	<button onclick={() => rotateTo(0, -25)}>Front View</button>
+	<button onclick={() => rotateTo(90, -25)}>Side View</button>
+	<button onclick={() => rotateTo(180, -25)}>Back View</button>
 
-  <voyager-explorer
-    bind:this={voyagerElement}
-    root="https://my-site.com/models/"
-    document="model.json"
-  />
+	<voyager-explorer
+		bind:this={voyagerElement}
+		root="https://my-site.com/models/"
+		document="model.json"
+	/>
 </div>
 ```
 
@@ -445,39 +440,39 @@ voyagerElement.addEventListener('annotation-active', (event) => {
 
 ```svelte
 <script lang="ts">
-  import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
-  import { onMount } from 'svelte';
+	import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
+	import { onMount } from 'svelte';
 
-  let voyagerElement: HTMLElement | undefined;
-  let annotations = $state<any[]>([]);
+	let voyagerElement: HTMLElement | undefined;
+	let annotations = $state<any[]>([]);
 
-  onMount(() => {
-    if (voyagerElement) {
-      voyagerElement.addEventListener('model-load', () => {
-        annotations = (voyagerElement as any).getAnnotations();
-      });
-    }
-  });
+	onMount(() => {
+		if (voyagerElement) {
+			voyagerElement.addEventListener('model-load', () => {
+				annotations = (voyagerElement as any).getAnnotations();
+			});
+		}
+	});
 
-  function showAnnotation(id: string) {
-    if (voyagerElement) {
-      (voyagerElement as any).setActiveAnnotation(id);
-    }
-  }
+	function showAnnotation(id: string) {
+		if (voyagerElement) {
+			(voyagerElement as any).setActiveAnnotation(id);
+		}
+	}
 </script>
 
 <div class="annotation-list">
-  {#each annotations as annotation}
-    <button onclick={() => showAnnotation(annotation.id)}>
-      {annotation.title}
-    </button>
-  {/each}
+	{#each annotations as annotation}
+		<button onclick={() => showAnnotation(annotation.id)}>
+			{annotation.title}
+		</button>
+	{/each}
 </div>
 
 <voyager-explorer
-  bind:this={voyagerElement}
-  root="https://my-site.com/models/"
-  document="model.json"
+	bind:this={voyagerElement}
+	root="https://my-site.com/models/"
+	document="model.json"
 />
 ```
 
@@ -485,28 +480,28 @@ voyagerElement.addEventListener('annotation-active', (event) => {
 
 ```svelte
 <script lang="ts">
-  import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
+	import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
 
-  let voyagerElement: HTMLElement | undefined;
+	let voyagerElement: HTMLElement | undefined;
 
-  async function autoTour() {
-    if (!voyagerElement) return;
+	async function autoTour() {
+		if (!voyagerElement) return;
 
-    const annotations = (voyagerElement as any).getAnnotations();
+		const annotations = (voyagerElement as any).getAnnotations();
 
-    for (const annotation of annotations) {
-      (voyagerElement as any).setActiveAnnotation(annotation.id);
-      await new Promise(resolve => setTimeout(resolve, 3000)); // 3 sec each
-    }
-  }
+		for (const annotation of annotations) {
+			(voyagerElement as any).setActiveAnnotation(annotation.id);
+			await new Promise((resolve) => setTimeout(resolve, 3000)); // 3 sec each
+		}
+	}
 </script>
 
 <button onclick={autoTour}>Start Auto Tour</button>
 
 <voyager-explorer
-  bind:this={voyagerElement}
-  root="https://my-site.com/models/"
-  document="model.json"
+	bind:this={voyagerElement}
+	root="https://my-site.com/models/"
+	document="model.json"
 />
 ```
 
@@ -520,8 +515,8 @@ voyagerElement.addEventListener('annotation-active', (event) => {
 
 ```javascript
 voyagerElement.addEventListener('model-load', () => {
-  // Now safe to call API methods
-  voyagerElement.setActiveAnnotation('abc123');
+	// Now safe to call API methods
+	voyagerElement.setActiveAnnotation('abc123');
 });
 ```
 
@@ -530,6 +525,7 @@ voyagerElement.addEventListener('model-load', () => {
 **Cause**: Trying to use Direct Mode with cross-origin content.
 
 **Solution**: Either:
+
 1. Use Iframe Mode for cross-origin content
 2. Host your content on the same domain
 3. Configure CORS headers on your content server
@@ -543,6 +539,7 @@ voyagerElement.addEventListener('model-load', () => {
 ### Voyager Not Loading
 
 **Check**:
+
 1. Is the URL correct?
 2. Is the network connection working?
 3. Are you using the correct document path?
@@ -581,11 +578,13 @@ my-model/
 ## Summary
 
 **Use Iframe Mode when:**
+
 - You want to display Smithsonian collection items
 - You don't need programmatic control
 - You want the simplest implementation
 
 **Use Direct Mode when:**
+
 - You have self-hosted Voyager documents
 - You need custom controls and interactions
 - You want to build a guided experience

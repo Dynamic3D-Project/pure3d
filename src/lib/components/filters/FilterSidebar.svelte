@@ -47,7 +47,10 @@
 
 	// Extract unique values for each category with counts (normalized)
 	const categoryOptions = $derived.by(() => {
-		const options: Record<keyof FilterState, Map<string, { count: number; originalValues: Set<string> }>> = {
+		const options: Record<
+			keyof FilterState,
+			Map<string, { count: number; originalValues: Set<string> }>
+		> = {
 			dcSubject: new Map(),
 			dcAudience: new Map(),
 			dcLanguage: new Map(),
@@ -76,7 +79,10 @@
 		});
 
 		// Sort each category by count (descending), then alphabetically
-		const sorted: Record<keyof FilterState, Array<{ value: string; count: number; originalValues: string[] }>> = {
+		const sorted: Record<
+			keyof FilterState,
+			Array<{ value: string; count: number; originalValues: string[] }>
+		> = {
 			dcSubject: [],
 			dcAudience: [],
 			dcLanguage: [],
@@ -86,7 +92,11 @@
 
 		for (const key of Object.keys(options) as (keyof FilterState)[]) {
 			sorted[key] = Array.from(options[key].entries())
-				.map(([value, data]) => ({ value, count: data.count, originalValues: Array.from(data.originalValues) }))
+				.map(([value, data]) => ({
+					value,
+					count: data.count,
+					originalValues: Array.from(data.originalValues)
+				}))
 				.sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
 		}
 
@@ -151,10 +161,10 @@
 
 <aside class="w-full">
 	<!-- Header with clear all -->
-	<div class="flex items-center justify-between mb-4 pb-2 border-b border-base-300">
-		<h2 class="font-semibold text-lg">Filters</h2>
+	<div class="mb-4 flex items-center justify-between border-b border-base-300 pb-2">
+		<h2 class="text-lg font-semibold">Filters</h2>
 		{#if activeFilterCount > 0}
-			<button class="btn btn-ghost btn-xs text-error" onclick={clearAllFilters}>
+			<button class="btn text-error btn-ghost btn-xs" onclick={clearAllFilters}>
 				Clear all ({activeFilterCount})
 			</button>
 		{/if}
@@ -170,15 +180,15 @@
 				{@const isCollapsed = collapsedCategories[category.key]}
 
 				{#if options.length > 0}
-					<div class="border border-base-300 rounded-lg overflow-hidden">
+					<div class="overflow-hidden rounded-lg border border-base-300">
 						<!-- Category header -->
-						<div class="flex items-center justify-between p-3 hover:bg-base-200 transition-colors">
+						<div class="flex items-center justify-between p-3 transition-colors hover:bg-base-200">
 							<button
-								class="flex items-center gap-2 flex-1 text-left"
+								class="flex flex-1 items-center gap-2 text-left"
 								onclick={() => toggleCategory(category.key)}
 							>
 								<svg
-									class="w-4 h-4 transition-transform {isCollapsed ? '' : 'rotate-90'}"
+									class="h-4 w-4 transition-transform {isCollapsed ? '' : 'rotate-90'}"
 									fill="none"
 									stroke="currentColor"
 									viewBox="0 0 24 24"
@@ -192,14 +202,11 @@
 								</svg>
 								<span class="font-medium">{category.label}</span>
 								{#if selectedCount > 0}
-									<span class="badge badge-primary badge-sm">{selectedCount}</span>
+									<span class="badge badge-sm badge-primary">{selectedCount}</span>
 								{/if}
 							</button>
 							{#if selectedCount > 0}
-								<button
-									class="btn btn-ghost btn-xs"
-									onclick={() => clearCategory(category.key)}
-								>
+								<button class="btn btn-ghost btn-xs" onclick={() => clearCategory(category.key)}>
 									Clear
 								</button>
 							{/if}
@@ -207,11 +214,11 @@
 
 						<!-- Options list - no fixed height -->
 						{#if !isCollapsed}
-							<div class="px-3 pb-3 space-y-1">
+							<div class="space-y-1 px-3 pb-3">
 								{#each options as option (option.value)}
 									{@const isSelected = isValueSelected(category.key, option.originalValues)}
 									<label
-										class="flex items-center gap-2 cursor-pointer hover:bg-base-200 rounded px-2 py-1.5 transition-colors"
+										class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 transition-colors hover:bg-base-200"
 									>
 										<input
 											type="checkbox"
@@ -219,7 +226,7 @@
 											checked={isSelected}
 											onchange={() => toggleFilter(category.key, option.originalValues)}
 										/>
-										<span class="flex-1 text-sm truncate" title={option.value}>
+										<span class="flex-1 truncate text-sm" title={option.value}>
 											{option.value}
 										</span>
 										<span class="text-xs text-base-content/50">({option.count})</span>

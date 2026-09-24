@@ -39,10 +39,7 @@ describe('rewriteSceneJson', () => {
 		const scene = {
 			scenes: [
 				{
-					nodes: [
-						{ model: { uri: 'model.glb' } },
-						{ annotations: [{ uri: 'note.html' }] }
-					]
+					nodes: [{ model: { uri: 'model.glb' } }, { annotations: [{ uri: 'note.html' }] }]
 				}
 			]
 		};

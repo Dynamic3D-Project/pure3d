@@ -1,31 +1,37 @@
 # Feature Request: Runtime Lighting and Rendering Controls in Explorer API
 
 ## Summary
+
 Add runtime API methods to control scene lighting and rendering parameters in Voyager Explorer, enabling developers to dynamically adjust visual presentation without modifying document files.
 
 ## Use Cases
 
 **1. Educational Applications**
+
 - Demonstrate how lighting affects artifact appearance
 - Show objects under different lighting conditions (museum lighting vs. natural light)
 - Interactive learning modules about materials and illumination
 
 **2. Accessibility**
+
 - Adjust brightness/contrast for users with visual impairments
 - Provide high-contrast modes for better visibility
 - Customize visual presentation per user preferences
 
 **3. Comparative Analysis**
+
 - Standardize lighting across multiple artifacts for accurate comparison
 - Toggle between different lighting setups dynamically
 - A/B testing of presentation styles
 
 **4. Dynamic Presentations**
+
 - Create guided tours with lighting that changes per stop
 - Dramatic reveals by adjusting exposure
 - Storytelling through visual atmosphere changes
 
 **5. Integration Flexibility**
+
 - Match 3D viewer lighting to surrounding web application theme
 - Synchronize with external controls (sliders, presets)
 - Real-time adjustments during live presentations
@@ -36,12 +42,12 @@ Lighting and rendering parameters can only be configured in `document.json` duri
 
 ```json
 {
-  "viewer": {
-    "shader": "Default",
-    "exposure": 1.0,
-    "gamma": 2.0,
-    "annotationsVisible": true
-  }
+	"viewer": {
+		"shader": "Default",
+		"exposure": 1.0,
+		"gamma": 2.0,
+		"annotationsVisible": true
+	}
 }
 ```
 
@@ -52,6 +58,7 @@ There is **no way to modify these at runtime** through the API, limiting dynamic
 Following the existing API patterns (e.g., `setBackgroundColor()`, `setCameraOrbit()`):
 
 ### Lighting Controls
+
 ```typescript
 /**
  * Sets the scene exposure (brightness)
@@ -79,6 +86,7 @@ getGamma(): number
 ```
 
 ### Shader Controls
+
 ```typescript
 /**
  * Sets the rendering shader mode
@@ -94,6 +102,7 @@ getShaderMode(): string
 ```
 
 ### Shadow Controls
+
 ```typescript
 /**
  * Toggles shadow rendering
@@ -109,6 +118,7 @@ getShadows(): boolean
 ```
 
 ### Optional: Advanced Controls
+
 ```typescript
 /**
  * Sets environment map for image-based lighting
@@ -125,22 +135,26 @@ toggleWireframe(): void
 ## Implementation Notes
 
 **Architecture:**
+
 - Methods would be added to `ExplorerApplication.ts` (public API)
 - Connect to existing `CVViewer` component properties
 - Mirror document schema structure for consistency
 - Emit events on changes (e.g., `lighting-changed`)
 
 **Backward Compatibility:**
+
 - Document-defined settings remain default values
 - API changes override document values temporarily
 - No breaking changes to existing documents
 
 **Validation:**
+
 - Clamp values to safe ranges
 - Provide sensible defaults
 - Handle invalid inputs gracefully
 
 **Documentation:**
+
 - Update API reference
 - Add interactive examples
 - Include in official demos
@@ -152,15 +166,15 @@ toggleWireframe(): void
 const voyager = document.querySelector('voyager-explorer');
 
 // Adjust lighting for presentation
-voyager.setExposure(1.5);  // Brighter
-voyager.setGamma(2.4);     // Adjust midtones
+voyager.setExposure(1.5); // Brighter
+voyager.setGamma(2.4); // Adjust midtones
 
 // Show technical view
-voyager.setShaderMode('Normals');  // Visualize surface normals
+voyager.setShaderMode('Normals'); // Visualize surface normals
 
 // Create dramatic effect
-voyager.setExposure(0.3);  // Dark
-voyager.setShadows(true);  // Strong shadows
+voyager.setExposure(0.3); // Dark
+voyager.setShadows(true); // Strong shadows
 
 // Reset to defaults
 voyager.setExposure(1.0);
@@ -179,6 +193,7 @@ voyager.setGamma(2.2);
 ## Alternative Considered
 
 **Status Quo:** Create multiple document files with different lighting settings
+
 - ❌ Multiplies storage requirements
 - ❌ Complicates asset management
 - ❌ No smooth transitions between states
@@ -198,12 +213,14 @@ I'm willing to implement this feature and submit a PR if it aligns with the proj
 ---
 
 **Environment:**
+
 - Voyager Version: 0.56.1
 - Use Case: Interactive museum exhibitions and educational web applications
 
 ---
 
 **To Submit:**
+
 1. Go to: https://github.com/Smithsonian/dpo-voyager/issues/new
 2. Title: `Feature Request: Runtime Lighting and Rendering Controls in Explorer API`
 3. Copy/paste this content

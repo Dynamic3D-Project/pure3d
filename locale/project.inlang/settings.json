@@ -1,8 +1,6 @@
 {
 	"$schema": "https://inlang.com/schema/project-settings",
-	"modules": [
-		"./simple-message-format.js"
-	],
+	"modules": ["./simple-message-format.js"],
 	"plugin.inlang.messageFormat": {
 		"pathPattern": "./messages/{locale}.json"
 	},

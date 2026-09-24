@@ -5,27 +5,32 @@ Your Pure3D application now has full Voyager integration with both iframe and di
 ## 🎉 What's Been Set Up
 
 ### 1. **Locally Hosted Voyager** ✅
+
 - Location: `static/voyager/`
 - Includes: Explorer, Mini, Story components
 - **No server-side code needed** - purely static files
 - Loads from `/voyager/` in your app
 
 ### 2. **VoyagerViewer Component** ✅
+
 - Location: `src/lib/components/voyager/VoyagerViewer.svelte`
 - Supports two modes:
   - **Iframe Mode**: Simple embedding (current editions pages)
   - **Direct Mode**: Full API control with custom UI
 
 ### 3. **Example Model Structure** ✅
+
 - Location: `static/models/example/`
 - Includes: `document.json` (scene configuration)
 - Ready for your GLB/GLTF files
 
 ### 4. **Demo & Test Pages** ✅
+
 - `/voyager-api-demo` - Full API demonstration
 - `/test-voyager` - Setup verification page
 
 ### 5. **Documentation** ✅
+
 - `VOYAGER_API_GUIDE.md` - Complete API reference
 - `HOSTING_VOYAGER.md` - Hosting setup guide
 - `static/models/example/README.md` - Model setup guide
@@ -35,11 +40,13 @@ Your Pure3D application now has full Voyager integration with both iframe and di
 ### Test Your Setup
 
 1. **Start your dev server** (if not already running):
+
    ```bash
    bun run dev
    ```
 
 2. **Visit the test page**:
+
    ```
    http://localhost:60020/test-voyager
    ```
@@ -52,17 +59,20 @@ Your Pure3D application now has full Voyager integration with both iframe and di
 ### Add Your First 3D Model
 
 1. **Get a GLB file** (any 3D model):
+
    ```bash
    # Download a free test model, or use your own
    # Save it as: static/models/example/models/example.glb
    ```
 
 2. **Create the directory**:
+
    ```bash
    mkdir -p static/models/example/models
    ```
 
 3. **Copy your model**:
+
    ```bash
    cp /path/to/your/model.glb static/models/example/models/example.glb
    ```
@@ -109,10 +119,7 @@ Your editions pages use iframe mode and work perfectly:
 
 ```svelte
 <!-- src/routes/editions/[slug]/+page.svelte -->
-<iframe
-  src={edition.voyagerUrl}
-  title={edition.title}
-  allow="xr; xr-spatial-tracking; fullscreen"
+<iframe src={edition.voyagerUrl} title={edition.title} allow="xr; xr-spatial-tracking; fullscreen"
 ></iframe>
 ```
 
@@ -124,19 +131,20 @@ When you want to add your own 3D models with custom controls:
 
 ```svelte
 <script>
-  import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
+	import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
 </script>
 
 <VoyagerViewer
-  url="/models/my-model/"
-  document="document.json"
-  title="My 3D Model"
-  direct={true}
-  showControls={true}
+	url="/models/my-model/"
+	document="document.json"
+	title="My 3D Model"
+	direct={true}
+	showControls={true}
 />
 ```
 
 This gives you:
+
 - 🎮 Camera control sliders
 - 📍 Clickable annotation buttons
 - 📄 Article viewer
@@ -146,12 +154,14 @@ This gives you:
 ## 📖 Key Concepts
 
 ### Iframe Mode
+
 - ✅ Simple, no setup
 - ✅ Works with any Voyager URL
 - ❌ No programmatic control
 - **Use for**: Smithsonian content, quick embeds
 
 ### Direct Mode
+
 - ✅ Full API control
 - ✅ Custom UI and interactions
 - ❌ Needs self-hosted models
@@ -168,23 +178,28 @@ This gives you:
 When using Direct Mode (`direct={true}`):
 
 ### Camera
+
 - `setCameraOrbit(yaw, pitch)` - Control rotation
 - `getCameraOrbit()` - Get current position
 
 ### Annotations
+
 - `setActiveAnnotation(id)` - Jump to annotation
 - `toggleAnnotations()` - Show/hide all
 - `getAnnotations()` - Get list
 
 ### Articles
+
 - `setActiveArticle(id)` - Open article
 - `toggleReader()` - Show/hide reader
 - `getArticles()` - Get list
 
 ### Tours
+
 - `toggleTours()` - Show/hide tours
 
 ### Language
+
 - `setLanguage(code)` - Change language
 
 ## 📚 Documentation Links
@@ -199,15 +214,18 @@ When using Direct Mode (`direct={true}`):
 ## ✨ What's Next?
 
 ### Option 1: Keep Using Iframe Mode (Simplest)
+
 Your current setup works great! No changes needed.
 
 ### Option 2: Add Your Own Models
+
 1. Get or create GLB/GLTF models
 2. Put them in `static/models/your-model-name/`
 3. Create `document.json` for each model
 4. Use VoyagerViewer with `direct={true}`
 
 ### Option 3: Build Custom Experiences
+
 - Create guided tours with API
 - Add custom camera animations
 - Build interactive learning experiences
@@ -216,21 +234,25 @@ Your current setup works great! No changes needed.
 ## 🎪 Example Use Cases
 
 ### Education
+
 - Add annotations to anatomical models
 - Create step-by-step tours
 - Link to articles and resources
 
 ### Museums
+
 - Display collection items
 - Add contextual information
 - Multi-language support
 
 ### Research
+
 - Annotate research specimens
 - Share findings with collaborators
 - Publish interactive figures
 
 ### Architecture
+
 - Show building models
 - Highlight design features
 - Present different views
@@ -238,19 +260,25 @@ Your current setup works great! No changes needed.
 ## 🐛 Troubleshooting
 
 ### Voyager not loading in Direct Mode?
+
 **Check**:
+
 1. Is the file at `/static/voyager/js/voyager-explorer.min.js`?
 2. Open browser DevTools (F12) and check Console for errors
 3. Try visiting `/voyager/voyager-explorer.html` directly
 
 ### Model not showing in Direct Mode?
+
 **Check**:
+
 1. Does `/static/models/example/models/example.glb` exist?
 2. Is the path in `document.json` correct?
 3. Check browser Console for CORS or 404 errors
 
 ### API methods not working?
+
 **Check**:
+
 1. Are you using `direct={true}`?
 2. Is the model loaded? (wait for `model-load` event)
 3. Check browser Console for errors
@@ -258,16 +286,19 @@ Your current setup works great! No changes needed.
 ## 🎓 Learning Resources
 
 ### Create 3D Models
+
 - **Blender** (free): https://www.blender.org
 - **Tutorials**: YouTube has thousands of free Blender tutorials
 - **Photogrammetry**: Create models from photos (Meshroom, RealityCapture)
 
 ### Find Free Models
+
 - **Smithsonian Open Access**: https://3d.si.edu
 - **Sketchfab**: https://sketchfab.com (filter by downloadable)
 - **Poly Haven**: https://polyhaven.com/models
 
 ### Optimize Models
+
 - Keep under 50MB for web
 - Use Draco compression (Blender export option)
 - Reduce poly count for web viewing
@@ -284,6 +315,7 @@ Your current setup works great! No changes needed.
 ## ✅ Summary
 
 **What works now:**
+
 - ✅ Voyager installed in `static/voyager/`
 - ✅ VoyagerViewer component ready
 - ✅ Iframe mode working (editions pages)
@@ -292,10 +324,12 @@ Your current setup works great! No changes needed.
 - ✅ Complete documentation
 
 **What you need to add:**
+
 - ⚠️ Your own GLB/GLTF models (if you want Direct Mode)
 - ⚠️ Customize `document.json` for your models
 
 **Next steps:**
+
 1. Visit `/test-voyager` to verify setup
 2. Check out `/voyager-api-demo` for inspiration
 3. Add a test model when ready

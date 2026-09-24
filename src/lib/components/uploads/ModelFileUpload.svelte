@@ -28,7 +28,9 @@
 		</div>
 	{/snippet}
 	{#snippet emptyPreview()}
-		<div class="flex items-center gap-2 rounded-lg border border-dashed border-base-300 bg-base-200 px-3 py-2.5">
+		<div
+			class="flex items-center gap-2 rounded-lg border border-dashed border-base-300 bg-base-200 px-3 py-2.5"
+		>
 			<span class="text-xs text-base-content/40">No model file</span>
 		</div>
 	{/snippet}

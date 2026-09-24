@@ -17,7 +17,7 @@
 
 {#if dev}
 	<div
-		class="bg-warning text-warning-content fixed bottom-0 left-0 w-full px-4 py-2 text-xs shadow-lg"
+		class="fixed bottom-0 left-0 w-full bg-warning px-4 py-2 text-xs text-warning-content shadow-lg"
 	>
 		<div class="flex items-center justify-start gap-6">
 			<div class="flex items-center gap-1">

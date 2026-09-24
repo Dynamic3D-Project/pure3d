@@ -1,20 +1,20 @@
 [
-  {
-    "email": "admin@pure3d.eu",
-    "password": "1234567890",
-    "nickname": "Admin",
-    "role": "admin"
-  },
-  {
-    "email": "editor@pure3d.eu",
-    "password": "1234567890",
-    "nickname": "Editorial Board Member",
-    "role": "editorial_board"
-  },
-  {
-    "email": "user@pure3d.eu",
-    "password": "1234567890",
-    "nickname": "User",
-    "role": "user"
-  }
+	{
+		"email": "admin@pure3d.eu",
+		"password": "1234567890",
+		"nickname": "Admin",
+		"role": "admin"
+	},
+	{
+		"email": "editor@pure3d.eu",
+		"password": "1234567890",
+		"nickname": "Editorial Board Member",
+		"role": "editorial_board"
+	},
+	{
+		"email": "user@pure3d.eu",
+		"password": "1234567890",
+		"nickname": "User",
+		"role": "user"
+	}
 ]

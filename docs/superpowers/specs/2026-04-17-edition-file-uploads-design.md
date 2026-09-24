@@ -29,11 +29,11 @@ URLs are resolved through PocketBase (`<pb>/api/files/editions/<record_id>/<file
 
 Three new file fields added to `scripts/create-pocketbase-collections.ts` and `pocketbase/pb_schema/collections.json`:
 
-| Field        | Type | `maxSize`             | `mimeTypes`                                                  | Notes                                                 |
-|--------------|------|-----------------------|--------------------------------------------------------------|-------------------------------------------------------|
-| `coverImage` | file | `20971520` (20 MB)    | `image/jpeg`, `image/png`, `image/webp`, `image/avif`        | Single file.                                          |
-| `modelFile`  | file | `524288000` (500 MB)  | `application/octet-stream` + client-side extension check     | Accepted: `.glb`, `.gltf`, `.obj`, `.ply`.            |
-| `sceneDocument` | file | `0` (unlimited)    | `application/json`                                           | SVX scene JSON. Named `sceneDocument` (not `sceneFile`) because `editions.sceneFile:text` already exists as a legacy path string and is still consulted by the workflow page fallback. |
+| Field           | Type | `maxSize`            | `mimeTypes`                                              | Notes                                                                                                                                                                                  |
+| --------------- | ---- | -------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `coverImage`    | file | `20971520` (20 MB)   | `image/jpeg`, `image/png`, `image/webp`, `image/avif`    | Single file.                                                                                                                                                                           |
+| `modelFile`     | file | `524288000` (500 MB) | `application/octet-stream` + client-side extension check | Accepted: `.glb`, `.gltf`, `.obj`, `.ply`.                                                                                                                                             |
+| `sceneDocument` | file | `0` (unlimited)      | `application/json`                                       | SVX scene JSON. Named `sceneDocument` (not `sceneFile`) because `editions.sceneFile:text` already exists as a legacy path string and is still consulted by the workflow page fallback. |
 
 `thumbnail:url` stays as-is for legacy fallback. Access rules match existing edition fields (author/editor writes own, authenticated reads).
 
@@ -83,7 +83,7 @@ Deferring draft creation to first-interaction avoids orphan drafts from accident
 `src/lib/utils/asset-urls.ts` keeps its current signatures but gains a "uploaded files win" preamble. New helper:
 
 ```ts
-export function getEditionCoverUrl(edition: EditionRecord): string | null
+export function getEditionCoverUrl(edition: EditionRecord): string | null;
 ```
 
 Returns the PocketBase `coverImage` URL if set; else `edition.thumbnail` (legacy string URL); else the derived `getEditionThumbnailUrl(collectionPubNum, editionPubNum)` if `pubNum`s are present; else `null`.

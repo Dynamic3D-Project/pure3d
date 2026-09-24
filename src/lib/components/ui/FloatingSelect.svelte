@@ -76,7 +76,7 @@
 	{id}
 	bind:this={buttonElement}
 	type="button"
-	class="input input-bordered flex items-center justify-between gap-2 bg-base-100 text-left text-base-content {className}"
+	class="input-bordered input flex items-center justify-between gap-2 bg-base-100 text-left text-base-content {className}"
 	aria-haspopup="listbox"
 	aria-expanded={open}
 	{disabled}

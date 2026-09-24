@@ -79,8 +79,7 @@ function parseHeader(buf: ArrayBuffer): PlyHeader | null {
 		} else if (line.startsWith('property ')) {
 			const parts = line.split(/\s+/);
 			if (parts[1] === 'list') {
-				if (current === 'face')
-					face.list = { countType: parts[2], type: parts[3], name: parts[4] };
+				if (current === 'face') face.list = { countType: parts[2], type: parts[3], name: parts[4] };
 			} else if (current === 'vertex') {
 				vertex.props.push({ type: parts[1], name: parts[2] });
 			}

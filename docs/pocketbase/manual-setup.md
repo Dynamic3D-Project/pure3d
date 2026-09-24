@@ -13,6 +13,7 @@ open http://localhost:60021/_/
 ```
 
 Create an admin account when prompted:
+
 - Email: `admin@pure3d.local` (or your preference)
 - Password: (choose a secure password)
 
@@ -26,6 +27,7 @@ Click "New collection" for each of the following:
 **Name:** `users`
 
 **Fields:**
+
 1. `user` - Text
    - Required: Yes
    - Unique: Yes
@@ -43,6 +45,7 @@ Click "New collection" for each of the following:
    - Max select: 1
 
 **API Rules:**
+
 - List rule: `@request.auth.id != ''`
 - View rule: `@request.auth.id != ''`
 - Create rule: `@request.auth.role = 'root' || @request.auth.role = 'admin'`
@@ -57,6 +60,7 @@ Click "New collection" for each of the following:
 **Name:** `site`
 
 **Fields:**
+
 1. `name` - Text (Required)
 2. `blog` - URL
 3. `lastPublished` - Date
@@ -68,6 +72,7 @@ Click "New collection" for each of the following:
 9. `dcDateModified` - Date
 
 **API Rules:**
+
 - List rule: (empty - public)
 - View rule: (empty - public)
 - Create rule: `@request.auth.role = 'root'`
@@ -82,6 +87,7 @@ Click "New collection" for each of the following:
 **Name:** `keywords`
 
 **Fields:**
+
 1. `name` - Select (Required)
    - Values: `country`, `period`, `audience`, `subject`, `language`, `license`, `funder`
    - Max select: 1
@@ -89,6 +95,7 @@ Click "New collection" for each of the following:
 2. `value` - Text (Required, Presentable)
 
 **API Rules:**
+
 - List rule: (empty - public)
 - View rule: (empty - public)
 - Create rule: `@request.auth.role = 'root' || @request.auth.role = 'admin'`
@@ -103,6 +110,7 @@ Click "New collection" for each of the following:
 **Name:** `projects`
 
 **Fields:**
+
 1. `title` - Text (Required, min: 1, max: 500)
 2. `siteId` - Relation
    - Collection: `site`
@@ -125,6 +133,7 @@ Click "New collection" for each of the following:
 18. `dcDateModified` - Date
 
 **API Rules:**
+
 - List rule: `isVisible = true || (@request.auth.id != '' && @request.auth.role != '')`
 - View rule: `isVisible = true || (@request.auth.id != '' && @request.auth.role != '')`
 - Create rule: `@request.auth.role = 'root' || @request.auth.role = 'admin' || @request.auth.role = 'editor'`
@@ -139,6 +148,7 @@ Click "New collection" for each of the following:
 **Name:** `editions`
 
 **Fields:**
+
 1. `title` - Text (Required, min: 1, max: 500)
 2. `projectId` - Relation
    - Collection: `projects`
@@ -177,6 +187,7 @@ Click "New collection" for each of the following:
 33. `sceneFile` - Text
 
 **API Rules:**
+
 - List rule: `isPublished = true || (@request.auth.id != '' && @request.auth.role != '')`
 - View rule: `isPublished = true || (@request.auth.id != '' && @request.auth.role != '')`
 - Create rule: `@request.auth.role = 'root' || @request.auth.role = 'admin' || @request.auth.role = 'editor'`
@@ -191,6 +202,7 @@ Click "New collection" for each of the following:
 **Name:** `projectUsers`
 
 **Fields:**
+
 1. `projectId` - Relation (Required)
    - Collection: `projects`
    - Max select: 1
@@ -201,13 +213,14 @@ Click "New collection" for each of the following:
    - Max select: 1
    - Cascade delete: Yes
 
-3. `user` - Text (Required) *(legacy compatibility)*
+3. `user` - Text (Required) _(legacy compatibility)_
 
 4. `role` - Select (Required)
    - Values: `admin`, `editor`, `viewer`
    - Max select: 1
 
 **API Rules:**
+
 - List rule: `@request.auth.id != ''`
 - View rule: `@request.auth.id != ''`
 - Create rule: `@request.auth.role = 'root' || @request.auth.role = 'admin'`
@@ -222,6 +235,7 @@ Click "New collection" for each of the following:
 **Name:** `editionUsers`
 
 **Fields:**
+
 1. `editionId` - Relation (Required)
    - Collection: `editions`
    - Max select: 1
@@ -232,13 +246,14 @@ Click "New collection" for each of the following:
    - Max select: 1
    - Cascade delete: Yes
 
-3. `user` - Text (Required) *(legacy compatibility)*
+3. `user` - Text (Required) _(legacy compatibility)_
 
 4. `role` - Select (Required)
    - Values: `admin`, `editor`, `viewer`
    - Max select: 1
 
 **API Rules:**
+
 - List rule: `@request.auth.id != ''`
 - View rule: `@request.auth.id != ''`
 - Create rule: `@request.auth.role = 'root' || @request.auth.role = 'admin'`
@@ -262,6 +277,7 @@ If you prefer, I can provide a script that creates collections via the PocketBas
 ## Verification
 
 After creating collections, verify in the admin UI:
+
 1. All 7 collections should be visible in the sidebar
 2. Each collection should have the correct fields
 3. API rules should be set

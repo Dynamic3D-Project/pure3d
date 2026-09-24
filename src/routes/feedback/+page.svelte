@@ -118,15 +118,15 @@
 
 <div class="container mx-auto max-w-5xl px-4 py-10">
 	<div class="mb-8 rounded-box bg-primary/10 p-6 ring-1 ring-primary/20 md:p-8">
-		<p class="mb-2 text-sm font-semibold uppercase tracking-wide text-primary">Feedback</p>
+		<p class="mb-2 text-sm font-semibold tracking-wide text-primary uppercase">Feedback</p>
 		<h1 class="text-3xl font-bold md:text-4xl">Tell us what you notice</h1>
 		<p class="mt-3 max-w-3xl text-base-content/70">
-			Open the platform in a new tab and use it as naturally as possible. Try browsing,
-			creating a 3D edition, uploading files, editing metadata, and viewing the result. You do
-			not need to finish everything. If something is confusing, broken, slow, or unclear, that is
-			exactly what we want to know.
+			Open the platform in a new tab and use it as naturally as possible. Try browsing, creating a
+			3D edition, uploading files, editing metadata, and viewing the result. You do not need to
+			finish everything. If something is confusing, broken, slow, or unclear, that is exactly what
+			we want to know.
 		</p>
-		<a class="btn btn-primary mt-5" href="{base}/" target="_blank" rel="noreferrer">
+		<a class="btn mt-5 btn-primary" href="{base}/" target="_blank" rel="noreferrer">
 			Open Pure3D
 		</a>
 	</div>
@@ -149,22 +149,23 @@
 		>
 			<div class="grid gap-4 md:grid-cols-2">
 				<label class="form-control">
-					<span class="label pb-1 pt-0"><span class="label-text text-xs">Name</span></span>
-					<input class="input input-bordered" bind:value={participantName} />
+					<span class="label pt-0 pb-1"><span class="label-text text-xs">Name</span></span>
+					<input class="input-bordered input" bind:value={participantName} />
 				</label>
 
 				<label class="form-control">
-					<span class="label pb-1 pt-0"><span class="label-text text-xs">Email optional</span></span>
-					<input class="input input-bordered" type="email" bind:value={participantEmail} />
+					<span class="label pt-0 pb-1"><span class="label-text text-xs">Email optional</span></span
+					>
+					<input class="input-bordered input" type="email" bind:value={participantEmail} />
 				</label>
 			</div>
 
 			<label class="form-control">
-				<span class="label pb-1 pt-0">
+				<span class="label pt-0 pb-1">
 					<span class="label-text text-xs">Related page or edition URL optional</span>
 				</span>
 				<input
-					class="input input-bordered"
+					class="input-bordered input"
 					placeholder="Paste the page or edition URL if relevant"
 					bind:value={relatedUrl}
 				/>
@@ -172,16 +173,16 @@
 
 			<div class="grid gap-4 md:grid-cols-2">
 				<label class="form-control">
-					<span class="label pb-1 pt-0"><span class="label-text text-xs">Category</span></span>
-					<select class="select select-bordered" bind:value={category}>
+					<span class="label pt-0 pb-1"><span class="label-text text-xs">Category</span></span>
+					<select class="select-bordered select" bind:value={category}>
 						{#each categoryOptions as option}
 							<option value={option.value}>{option.label}</option>
 						{/each}
 					</select>
 				</label>
 				<label class="form-control">
-					<span class="label pb-1 pt-0"><span class="label-text text-xs">Severity</span></span>
-					<select class="select select-bordered" bind:value={severity}>
+					<span class="label pt-0 pb-1"><span class="label-text text-xs">Severity</span></span>
+					<select class="select-bordered select" bind:value={severity}>
 						{#each severityOptions as option}
 							<option value={option.value}>{option.label}</option>
 						{/each}
@@ -200,7 +201,7 @@
 
 			<div class="flex justify-end">
 				<button class="btn btn-primary" disabled={isSubmitting}>
-					{#if isSubmitting}<span class="loading loading-spinner loading-xs"></span>{/if}
+					{#if isSubmitting}<span class="loading loading-xs loading-spinner"></span>{/if}
 					Submit feedback
 				</button>
 			</div>

@@ -8,12 +8,7 @@
  * auth state is guaranteed to be resolved.
  */
 import { pb } from '$lib/database/client';
-import {
-	CollectionRole,
-	EditionRole,
-	GlobalRole,
-	type UserRoleContext
-} from '$lib/types/roles';
+import { CollectionRole, EditionRole, GlobalRole, type UserRoleContext } from '$lib/types/roles';
 
 interface ResolveArgs {
 	globalRole: GlobalRole;

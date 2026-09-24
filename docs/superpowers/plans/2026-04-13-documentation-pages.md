@@ -14,31 +14,33 @@
 
 ## File Structure
 
-| Action | Path | Responsibility |
-|--------|------|----------------|
-| Create | `src/lib/types/documentation.ts` | Documentation interface |
-| Create | `src/lib/components/ui/RichTextEditor.svelte` | Reusable Tiptap editor component |
-| Create | `src/routes/documentation/+layout.svelte` | Sidebar + content layout for public docs |
-| Create | `src/routes/documentation/+layout.ts` | Load all published docs for sidebar |
-| Create | `src/routes/documentation/+page.svelte` | Overview/landing page with card grid |
-| Create | `src/routes/documentation/[slug]/+page.svelte` | Individual doc page renderer |
-| Create | `src/routes/documentation/[slug]/+page.ts` | Load single doc by slug |
-| Create | `src/routes/admin/documentation/+page.svelte` | Admin CRUD page |
-| Modify | `src/lib/database/client.ts` | Add Documentation interface export |
-| Modify | `src/lib/models/menu-itmes.ts` | Add Documentation menu item |
-| Modify | `src/routes/admin/+layout.svelte` | Add Documentation to admin nav |
-| Modify | `src/lib/utils/audit.ts` | Add doc-related audit actions |
+| Action | Path                                           | Responsibility                           |
+| ------ | ---------------------------------------------- | ---------------------------------------- |
+| Create | `src/lib/types/documentation.ts`               | Documentation interface                  |
+| Create | `src/lib/components/ui/RichTextEditor.svelte`  | Reusable Tiptap editor component         |
+| Create | `src/routes/documentation/+layout.svelte`      | Sidebar + content layout for public docs |
+| Create | `src/routes/documentation/+layout.ts`          | Load all published docs for sidebar      |
+| Create | `src/routes/documentation/+page.svelte`        | Overview/landing page with card grid     |
+| Create | `src/routes/documentation/[slug]/+page.svelte` | Individual doc page renderer             |
+| Create | `src/routes/documentation/[slug]/+page.ts`     | Load single doc by slug                  |
+| Create | `src/routes/admin/documentation/+page.svelte`  | Admin CRUD page                          |
+| Modify | `src/lib/database/client.ts`                   | Add Documentation interface export       |
+| Modify | `src/lib/models/menu-itmes.ts`                 | Add Documentation menu item              |
+| Modify | `src/routes/admin/+layout.svelte`              | Add Documentation to admin nav           |
+| Modify | `src/lib/utils/audit.ts`                       | Add doc-related audit actions            |
 
 ---
 
 ### Task 1: Install Tiptap Dependencies
 
 **Files:**
+
 - Modify: `package.json`
 
 - [ ] **Step 1: Install Tiptap packages**
 
 Run:
+
 ```bash
 npm install @tiptap/core @tiptap/starter-kit @tiptap/extension-link @tiptap/extension-image @tiptap/extension-table @tiptap/extension-table-row @tiptap/extension-table-cell @tiptap/extension-table-header @tiptap/extension-underline @tiptap/extension-placeholder
 ```
@@ -48,6 +50,7 @@ Expected: packages added to `package.json` dependencies, `node_modules` updated.
 - [ ] **Step 2: Verify installation**
 
 Run:
+
 ```bash
 npm ls @tiptap/core
 ```
@@ -66,6 +69,7 @@ git commit -m "feat: add Tiptap rich text editor dependencies"
 ### Task 2: Add Documentation Type and Audit Actions
 
 **Files:**
+
 - Create: `src/lib/types/documentation.ts`
 - Modify: `src/lib/database/client.ts`
 - Modify: `src/lib/utils/audit.ts`
@@ -120,6 +124,7 @@ export type AuditTargetType = 'user' | 'collection' | 'edition' | 'documentation
 - [ ] **Step 3: Verify TypeScript compiles**
 
 Run:
+
 ```bash
 npx svelte-check --tsconfig ./tsconfig.json 2>&1 | head -20
 ```
@@ -138,6 +143,7 @@ git commit -m "feat: add Documentation type and audit actions"
 ### Task 3: Build the RichTextEditor Component
 
 **Files:**
+
 - Create: `src/lib/components/ui/RichTextEditor.svelte`
 
 - [ ] **Step 1: Create the Tiptap editor component**
@@ -222,76 +228,139 @@ Create `src/lib/components/ui/RichTextEditor.svelte`:
 <div class="rounded-box border border-base-300 bg-base-100">
 	<!-- Toolbar -->
 	<div class="flex flex-wrap gap-1 border-b border-base-300 p-2">
-		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('bold')}
-			onclick={() => editor?.chain().focus().toggleBold().run()} title="Bold">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			class:btn-active={editor?.isActive('bold')}
+			onclick={() => editor?.chain().focus().toggleBold().run()}
+			title="Bold"
+		>
 			<strong>B</strong>
 		</button>
-		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('italic')}
-			onclick={() => editor?.chain().focus().toggleItalic().run()} title="Italic">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			class:btn-active={editor?.isActive('italic')}
+			onclick={() => editor?.chain().focus().toggleItalic().run()}
+			title="Italic"
+		>
 			<em>I</em>
 		</button>
-		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('underline')}
-			onclick={() => editor?.chain().focus().toggleUnderline().run()} title="Underline">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			class:btn-active={editor?.isActive('underline')}
+			onclick={() => editor?.chain().focus().toggleUnderline().run()}
+			title="Underline"
+		>
 			<u>U</u>
 		</button>
 
-		<div class="divider divider-horizontal mx-0.5"></div>
+		<div class="divider mx-0.5 divider-horizontal"></div>
 
-		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('heading', { level: 1 })}
-			onclick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()} title="Heading 1">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			class:btn-active={editor?.isActive('heading', { level: 1 })}
+			onclick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
+			title="Heading 1"
+		>
 			H1
 		</button>
-		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('heading', { level: 2 })}
-			onclick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} title="Heading 2">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			class:btn-active={editor?.isActive('heading', { level: 2 })}
+			onclick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
+			title="Heading 2"
+		>
 			H2
 		</button>
-		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('heading', { level: 3 })}
-			onclick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()} title="Heading 3">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			class:btn-active={editor?.isActive('heading', { level: 3 })}
+			onclick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}
+			title="Heading 3"
+		>
 			H3
 		</button>
 
-		<div class="divider divider-horizontal mx-0.5"></div>
+		<div class="divider mx-0.5 divider-horizontal"></div>
 
-		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('bulletList')}
-			onclick={() => editor?.chain().focus().toggleBulletList().run()} title="Bullet List">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			class:btn-active={editor?.isActive('bulletList')}
+			onclick={() => editor?.chain().focus().toggleBulletList().run()}
+			title="Bullet List"
+		>
 			&bull; List
 		</button>
-		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('orderedList')}
-			onclick={() => editor?.chain().focus().toggleOrderedList().run()} title="Ordered List">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			class:btn-active={editor?.isActive('orderedList')}
+			onclick={() => editor?.chain().focus().toggleOrderedList().run()}
+			title="Ordered List"
+		>
 			1. List
 		</button>
-		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('blockquote')}
-			onclick={() => editor?.chain().focus().toggleBlockquote().run()} title="Blockquote">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			class:btn-active={editor?.isActive('blockquote')}
+			onclick={() => editor?.chain().focus().toggleBlockquote().run()}
+			title="Blockquote"
+		>
 			&ldquo; Quote
 		</button>
 
-		<div class="divider divider-horizontal mx-0.5"></div>
+		<div class="divider mx-0.5 divider-horizontal"></div>
 
-		<button type="button" class="btn btn-ghost btn-xs" class:btn-active={editor?.isActive('link')}
-			onclick={setLink} title="Link">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			class:btn-active={editor?.isActive('link')}
+			onclick={setLink}
+			title="Link"
+		>
 			Link
 		</button>
 		<button type="button" class="btn btn-ghost btn-xs" onclick={addImage} title="Image">
 			Image
 		</button>
-		<button type="button" class="btn btn-ghost btn-xs"
-			onclick={() => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Table">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			onclick={() =>
+				editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+			title="Table"
+		>
 			Table
 		</button>
-		<button type="button" class="btn btn-ghost btn-xs"
-			onclick={() => editor?.chain().focus().setHorizontalRule().run()} title="Horizontal Rule">
+		<button
+			type="button"
+			class="btn btn-ghost btn-xs"
+			onclick={() => editor?.chain().focus().setHorizontalRule().run()}
+			title="Horizontal Rule"
+		>
 			&mdash;
 		</button>
 	</div>
 
 	<!-- Editor content -->
-	<div bind:this={element} class="prose prose-sm max-w-none p-4 focus-within:outline-none [&_.tiptap]:min-h-[200px] [&_.tiptap]:outline-none"></div>
+	<div
+		bind:this={element}
+		class="prose prose-sm max-w-none p-4 focus-within:outline-none [&_.tiptap]:min-h-[200px] [&_.tiptap]:outline-none"
+	></div>
 </div>
 ```
 
 - [ ] **Step 2: Verify the component compiles**
 
 Run:
+
 ```bash
 npx svelte-check --tsconfig ./tsconfig.json 2>&1 | head -20
 ```
@@ -310,6 +379,7 @@ git commit -m "feat: add reusable Tiptap rich text editor component"
 ### Task 4: Update Navigation Menus
 
 **Files:**
+
 - Modify: `src/lib/models/menu-itmes.ts`
 - Modify: `src/routes/admin/+layout.svelte`
 
@@ -341,6 +411,7 @@ In `src/routes/admin/+layout.svelte`, add a Documentation nav item to the `navIt
 - [ ] **Step 3: Verify the app builds**
 
 Run:
+
 ```bash
 npx svelte-check --tsconfig ./tsconfig.json 2>&1 | head -20
 ```
@@ -359,6 +430,7 @@ git commit -m "feat: add Documentation to public and admin navigation"
 ### Task 5: Build Public Documentation Routes
 
 **Files:**
+
 - Create: `src/routes/documentation/+layout.ts`
 - Create: `src/routes/documentation/+layout.svelte`
 - Create: `src/routes/documentation/+page.svelte`
@@ -424,7 +496,7 @@ Create `src/routes/documentation/+layout.svelte`:
 			<div class="flex gap-2 overflow-x-auto pb-2 lg:hidden">
 				<a
 					href="{base}/documentation"
-					class="btn btn-sm whitespace-nowrap"
+					class="btn whitespace-nowrap btn-sm"
 					class:btn-active={!currentSlug}
 				>
 					Overview
@@ -432,7 +504,7 @@ Create `src/routes/documentation/+layout.svelte`:
 				{#each pages as p (p.id)}
 					<a
 						href="{base}/documentation/{p.slug}"
-						class="btn btn-sm whitespace-nowrap"
+						class="btn whitespace-nowrap btn-sm"
 						class:btn-active={currentSlug === p.slug}
 					>
 						{p.title}
@@ -591,6 +663,7 @@ Create `src/routes/documentation/[slug]/+page.svelte`:
 - [ ] **Step 6: Verify TypeScript compiles**
 
 Run:
+
 ```bash
 npx svelte-check --tsconfig ./tsconfig.json 2>&1 | head -30
 ```
@@ -609,6 +682,7 @@ git commit -m "feat: add public documentation routes with sidebar layout"
 ### Task 6: Build Admin Documentation Page
 
 **Files:**
+
 - Create: `src/routes/admin/documentation/+page.svelte`
 
 - [ ] **Step 1: Create the admin CRUD page**
@@ -736,23 +810,15 @@ Create `src/routes/admin/documentation/+page.svelte`:
 
 			if (editingId) {
 				await pb.collection('documentation').update(editingId, data);
-				await logAudit(
-					'doc_updated',
-					'documentation',
-					editingId,
-					authStore.user?.email || '',
-					{ title: data.title }
-				);
+				await logAudit('doc_updated', 'documentation', editingId, authStore.user?.email || '', {
+					title: data.title
+				});
 				toast.success('Page updated');
 			} else {
 				const record = await pb.collection('documentation').create(data);
-				await logAudit(
-					'doc_created',
-					'documentation',
-					record.id,
-					authStore.user?.email || '',
-					{ title: data.title }
-				);
+				await logAudit('doc_created', 'documentation', record.id, authStore.user?.email || '', {
+					title: data.title
+				});
 				toast.success('Page created');
 			}
 
@@ -768,13 +834,9 @@ Create `src/routes/admin/documentation/+page.svelte`:
 	async function deleteDoc(doc: Documentation) {
 		try {
 			await pb.collection('documentation').delete(doc.id);
-			await logAudit(
-				'doc_deleted',
-				'documentation',
-				doc.id,
-				authStore.user?.email || '',
-				{ title: doc.title }
-			);
+			await logAudit('doc_deleted', 'documentation', doc.id, authStore.user?.email || '', {
+				title: doc.title
+			});
 			toast.success('Page deleted');
 			deletingId = null;
 			await loadDocs();
@@ -795,13 +857,10 @@ Create `src/routes/admin/documentation/+page.svelte`:
 	async function togglePublished(doc: Documentation) {
 		try {
 			await pb.collection('documentation').update(doc.id, { isPublished: !doc.isPublished });
-			await logAudit(
-				'doc_updated',
-				'documentation',
-				doc.id,
-				authStore.user?.email || '',
-				{ title: doc.title, isPublished: !doc.isPublished }
-			);
+			await logAudit('doc_updated', 'documentation', doc.id, authStore.user?.email || '', {
+				title: doc.title,
+				isPublished: !doc.isPublished
+			});
 			toast.success(doc.isPublished ? 'Unpublished' : 'Published');
 			await loadDocs();
 		} catch {
@@ -813,9 +872,7 @@ Create `src/routes/admin/documentation/+page.svelte`:
 <div>
 	<div class="mb-6 flex items-center justify-between">
 		<h1 class="text-2xl font-bold">Documentation Pages</h1>
-		<button class="btn btn-primary btn-sm" onclick={startCreate}>
-			+ New Page
-		</button>
+		<button class="btn btn-sm btn-primary" onclick={startCreate}> + New Page </button>
 	</div>
 
 	<!-- Form (create/edit) -->
@@ -834,7 +891,7 @@ Create `src/routes/admin/documentation/+page.svelte`:
 						<input
 							id="doc-title"
 							type="text"
-							class="input input-bordered"
+							class="input-bordered input"
 							bind:value={formTitle}
 							oninput={handleTitleInput}
 							placeholder="Page title"
@@ -847,7 +904,7 @@ Create `src/routes/admin/documentation/+page.svelte`:
 						<input
 							id="doc-slug"
 							type="text"
-							class="input input-bordered"
+							class="input-bordered input"
 							bind:value={formSlug}
 							oninput={() => (autoSlug = false)}
 							placeholder="url-friendly-slug"
@@ -861,7 +918,7 @@ Create `src/routes/admin/documentation/+page.svelte`:
 					</label>
 					<textarea
 						id="doc-summary"
-						class="textarea textarea-bordered"
+						class="textarea-bordered textarea"
 						bind:value={formSummary}
 						placeholder="Short description for the overview page"
 						rows="2"
@@ -876,18 +933,14 @@ Create `src/routes/admin/documentation/+page.svelte`:
 						<input
 							id="doc-order"
 							type="number"
-							class="input input-bordered w-24"
+							class="input-bordered input w-24"
 							bind:value={formOrder}
 							min="0"
 						/>
 					</div>
 					<div class="form-control">
 						<label class="label cursor-pointer justify-start gap-3">
-							<input
-								type="checkbox"
-								class="toggle toggle-primary"
-								bind:checked={formIsPublished}
-							/>
+							<input type="checkbox" class="toggle toggle-primary" bind:checked={formIsPublished} />
 							<span class="label-text">Published</span>
 						</label>
 					</div>
@@ -905,9 +958,9 @@ Create `src/routes/admin/documentation/+page.svelte`:
 				</div>
 
 				<div class="flex gap-2">
-					<button class="btn btn-primary btn-sm" onclick={saveDoc} disabled={isSaving}>
+					<button class="btn btn-sm btn-primary" onclick={saveDoc} disabled={isSaving}>
 						{#if isSaving}
-							<span class="loading loading-spinner loading-xs"></span>
+							<span class="loading loading-xs loading-spinner"></span>
 						{/if}
 						{editingId ? 'Update' : 'Create'}
 					</button>
@@ -920,7 +973,7 @@ Create `src/routes/admin/documentation/+page.svelte`:
 	<!-- Table -->
 	{#if isLoading}
 		<div class="flex justify-center py-12">
-			<span class="loading loading-spinner loading-lg"></span>
+			<span class="loading loading-lg loading-spinner"></span>
 		</div>
 	{:else if docs.length === 0}
 		<p class="py-12 text-center text-base-content/60">No documentation pages yet.</p>
@@ -942,7 +995,7 @@ Create `src/routes/admin/documentation/+page.svelte`:
 							<td>
 								<input
 									type="number"
-									class="input input-bordered input-xs w-16"
+									class="input-bordered input input-xs w-16"
 									value={doc.order}
 									onchange={(e) => updateOrder(doc, parseInt(e.currentTarget.value) || 0)}
 									min="0"
@@ -966,14 +1019,17 @@ Create `src/routes/admin/documentation/+page.svelte`:
 										Edit
 									</button>
 									{#if deletingId === doc.id}
-										<button class="btn btn-error btn-xs" onclick={() => deleteDoc(doc)}>
+										<button class="btn btn-xs btn-error" onclick={() => deleteDoc(doc)}>
 											Confirm
 										</button>
 										<button class="btn btn-ghost btn-xs" onclick={() => (deletingId = null)}>
 											Cancel
 										</button>
 									{:else}
-										<button class="btn btn-ghost btn-xs text-error" onclick={() => (deletingId = doc.id)}>
+										<button
+											class="btn text-error btn-ghost btn-xs"
+											onclick={() => (deletingId = doc.id)}
+										>
 											Delete
 										</button>
 									{/if}
@@ -991,6 +1047,7 @@ Create `src/routes/admin/documentation/+page.svelte`:
 - [ ] **Step 2: Verify TypeScript compiles**
 
 Run:
+
 ```bash
 npx svelte-check --tsconfig ./tsconfig.json 2>&1 | head -30
 ```
@@ -1014,27 +1071,30 @@ git commit -m "feat: add admin documentation CRUD page with rich text editor"
 
 Open the PocketBase admin UI and create a new collection named `documentation` with these fields:
 
-| Field         | Type    | Options                          |
-|---------------|---------|----------------------------------|
-| `title`       | Text    | Required                         |
-| `slug`        | Text    | Required, Unique                 |
-| `content`     | Text    | (no constraints)                 |
-| `summary`     | Text    | (no constraints)                 |
-| `order`       | Number  | Default: 0                       |
-| `isPublished` | Boolean | Default: false                   |
+| Field         | Type    | Options          |
+| ------------- | ------- | ---------------- |
+| `title`       | Text    | Required         |
+| `slug`        | Text    | Required, Unique |
+| `content`     | Text    | (no constraints) |
+| `summary`     | Text    | (no constraints) |
+| `order`       | Number  | Default: 0       |
+| `isPublished` | Boolean | Default: false   |
 
 Set API rules:
+
 - **List/View:** Leave empty (public access) — or use `isPublished = true` filter rule for list/view
 - **Create/Update/Delete:** `@request.auth.id != ""` (authenticated users only; admin-level enforcement happens in the app layer)
 
 - [ ] **Step 2: Start the dev server and test**
 
 Run:
+
 ```bash
 npm run dev
 ```
 
 Open the browser and verify:
+
 1. `/admin/documentation` — page loads, shows empty state, "New Page" button visible
 2. Create a test page with title, slug, content, mark as published
 3. `/documentation` — overview page loads, shows the card for the test page
@@ -1045,6 +1105,7 @@ Open the browser and verify:
 - [ ] **Step 3: Test admin operations**
 
 Verify:
+
 1. Edit a page — form pre-populates, save updates the record
 2. Toggle published/draft — badge updates, unpublished page disappears from public routes
 3. Change order — reorder reflected in sidebar
@@ -1070,15 +1131,15 @@ git commit -m "fix: address issues found during documentation pages testing"
 
 Using the admin UI at `/admin/documentation`, create the following pages with `isPublished: true`:
 
-| Slug             | Title                                  | Order | Summary |
-|------------------|----------------------------------------|-------|---------|
-| `submission`     | Submission Guidelines                  | 1     | How to submit a 3D scholarly edition to Pure 3D |
-| `evaluation`     | Evaluation and Publication Process     | 2     | Overview of the editorial review and publication workflow |
-| `review`         | Evaluation Guidelines for Reviewers    | 3     | Guidelines and criteria for peer reviewers |
-| `platform-guide` | Voyager Explorer Guide                | 4     | How to use the Voyager 3D viewer and authoring tools |
-| `tutorials`      | Tutorials                             | 5     | Step-by-step tutorials for creating 3D editions |
-| `faq`            | FAQ & Troubleshooting                 | 6     | Frequently asked questions and common issues |
-| `examples`       | Example Editions                      | 7     | Example editions showcasing best practices |
+| Slug             | Title                               | Order | Summary                                                   |
+| ---------------- | ----------------------------------- | ----- | --------------------------------------------------------- |
+| `submission`     | Submission Guidelines               | 1     | How to submit a 3D scholarly edition to Pure 3D           |
+| `evaluation`     | Evaluation and Publication Process  | 2     | Overview of the editorial review and publication workflow |
+| `review`         | Evaluation Guidelines for Reviewers | 3     | Guidelines and criteria for peer reviewers                |
+| `platform-guide` | Voyager Explorer Guide              | 4     | How to use the Voyager 3D viewer and authoring tools      |
+| `tutorials`      | Tutorials                           | 5     | Step-by-step tutorials for creating 3D editions           |
+| `faq`            | FAQ & Troubleshooting               | 6     | Frequently asked questions and common issues              |
+| `examples`       | Example Editions                    | 7     | Example editions showcasing best practices                |
 
 Content for each page should be sourced from the editorial instructions text referenced in the spec. Use placeholder content initially if the source text is not available, then replace when it is.
 
@@ -1091,6 +1152,7 @@ Visit `/documentation` and confirm all 7 pages appear as cards. Click through ea
 ### Task 9: Add Contextual Links from Existing UI
 
 **Files:**
+
 - Potentially modify: `src/routes/+page.svelte` (homepage)
 - Potentially modify: `src/routes/about/+page.svelte` or related about page files
 
@@ -1104,6 +1166,7 @@ This task depends on what content exists in the homepage and about page. The spe
 - [ ] **Step 1: Search for existing link targets**
 
 Run:
+
 ```bash
 grep -rn "Publish with us\|Publish a 3D\|submission.*guide\|reviewer.*guide" src/routes/ --include="*.svelte"
 ```
