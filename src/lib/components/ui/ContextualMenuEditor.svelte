@@ -16,6 +16,8 @@
 		selectedId = $bindable(),
 		directory,
 		busy = false,
+		menuName = 'Header',
+		showItemPicker = false,
 		onchange = () => {},
 		onclose = () => {}
 	}: {
@@ -23,11 +25,14 @@
 		selectedId: string;
 		directory: MenuDirectory;
 		busy?: boolean;
+		menuName?: string;
+		showItemPicker?: boolean;
 		onchange?: () => void;
 		onclose?: () => void;
 	} = $props();
 
 	let item = $derived(config.items.find((entry) => entry.id === selectedId));
+	let footerMode = $derived(menuName === 'Footer');
 	let index = $derived(config.items.findIndex((entry) => entry.id === selectedId));
 	let allGroups = $derived(
 		config.items.flatMap((entry) =>
@@ -137,8 +142,9 @@
 		changed();
 		menuDialog.close();
 	}
-	function openGroup(group?: MenuGroup) {
-		if (busy || !item) return;
+	function openGroup(group?: MenuGroup, owner = item) {
+		if (busy || !owner) return;
+		selectedId = owner.id;
 		groupEditId = group?.id || '';
 		groupLabel = group?.label || 'New column';
 		groupProminent = group?.prominent || false;
@@ -193,13 +199,14 @@
 		changed();
 		linkDialog.close();
 	}
-	function openFeature() {
-		if (busy || !item) return;
-		featureKicker = item.featured?.kicker || 'Featured';
-		featureTitle = item.featured?.title || 'Featured page';
-		featureDescription = item.featured?.description || '';
-		featureArtwork = item.featured?.artwork || 'PURE3D';
-		featureLink = structuredClone($state.snapshot(item.featured?.link || newMenuLink()));
+	function openFeature(owner = item) {
+		if (busy || !owner) return;
+		selectedId = owner.id;
+		featureKicker = owner.featured?.kicker || 'Featured';
+		featureTitle = owner.featured?.title || 'Featured page';
+		featureDescription = owner.featured?.description || '';
+		featureArtwork = owner.featured?.artwork || 'PURE3D';
+		featureLink = structuredClone($state.snapshot(owner.featured?.link || newMenuLink()));
 		void showDialog(featureDialog);
 	}
 	function saveFeature() {
@@ -237,8 +244,18 @@
 >
 	<fieldset disabled={busy}>
 		<div class="editor-toolbar">
-			<span>Header menu</span>
-			{#if item}
+			<span>{menuName} menu</span>
+			{#if showItemPicker && item && !footerMode}
+				<label class="item-picker">
+					Section
+					<select bind:value={selectedId}>
+						{#each config.items as entry (entry.id)}
+							<option value={entry.id}>{entry.label}</option>
+						{/each}
+					</select>
+				</label>
+			{/if}
+			{#if item && !footerMode}
 				<strong>{item.label}</strong><button
 					aria-label={`Edit ${item.label} menu`}
 					onclick={() => openMenu(item)}>✎</button
@@ -275,10 +292,118 @@
 				>
 			{/if}
 			<a href={resolve('/admin/pages')}>All pages ↗</a><button onclick={() => openMenu(undefined)}
-				>+ Add menu</button
+				>+ Add {footerMode ? 'footer column' : 'menu'}</button
 			>
 		</div>
-		{#if item}
+		{#if footerMode}
+			<div class="footer-columns">
+				{#each config.items as footerItem, footerIndex (footerItem.id)}
+					<section class="footer-column">
+						<div class="column-heading footer-column-heading">
+							<h2>{footerItem.label}{!footerItem.visible ? ' (hidden)' : ''}</h2>
+							<button
+								aria-label={`Edit ${footerItem.label} footer column`}
+								onclick={() => openMenu(footerItem)}>✎</button
+							><button
+								aria-label={`Move ${footerItem.label} footer column left`}
+								disabled={footerIndex === 0}
+								onclick={() => {
+									config.items = move(config.items, footerIndex, footerIndex - 1);
+									changed();
+								}}>←</button
+							><button
+								aria-label={`Move ${footerItem.label} footer column right`}
+								disabled={footerIndex === config.items.length - 1}
+								onclick={() => {
+									config.items = move(config.items, footerIndex, footerIndex + 1);
+									changed();
+								}}>→</button
+							><button
+								aria-label={`Remove ${footerItem.label} footer column`}
+								onclick={() => {
+									if (confirm(`Remove footer column “${footerItem.label}”?`)) {
+										config.items = config.items.filter((entry) => entry.id !== footerItem.id);
+										selectedId = config.items[0]?.id || '';
+										changed();
+									}
+								}}>Remove</button
+							>
+						</div>
+						{#if footerItem.direct}
+							<div class="link-row">
+								<span>{footerItem.direct.label}</span><button
+									aria-label={`Edit ${footerItem.direct.label} link`}
+									onclick={() => openLink(footerItem.direct!, (next) => (footerItem.direct = next))}
+									>⋯</button
+								>
+							</div>
+						{:else}
+							{#each footerItem.groups as group, groupIndex (group.id)}
+								<div class="footer-group">
+									<div class="column-heading">
+										<h3>{group.label}</h3>
+										<button
+											aria-label={`Edit ${group.label} link group`}
+											onclick={() => openGroup(group, footerItem)}>✎</button
+										><button
+											aria-label={`Move ${group.label} link group left`}
+											disabled={groupIndex === 0}
+											onclick={() => {
+												footerItem.groups = move(footerItem.groups, groupIndex, groupIndex - 1);
+												changed();
+											}}>←</button
+										><button
+											aria-label={`Move ${group.label} link group right`}
+											disabled={groupIndex === footerItem.groups.length - 1}
+											onclick={() => {
+												footerItem.groups = move(footerItem.groups, groupIndex, groupIndex + 1);
+												changed();
+											}}>→</button
+										><button
+											aria-label={`Remove ${group.label} link group`}
+											onclick={() => {
+												if (confirm(`Remove “${group.label}” and its links?`)) {
+													footerItem.groups = footerItem.groups.filter(
+														(entry) => entry.id !== group.id
+													);
+													changed();
+												}
+											}}>Remove</button
+										>
+									</div>
+									{#each group.links as link, linkIndex (link.id)}
+										<div class="link-row">
+											<span>{link.label}{!link.visible ? ' (hidden)' : ''}</span><button
+												aria-label={`Edit ${link.label} link`}
+												onclick={() => openGroupLink(link, group.id, linkIndex)}>⋯</button
+											>
+										</div>
+									{/each}
+									<button
+										class="add"
+										onclick={() => openGroupLink(null, group.id, group.links.length)}
+										>+ Add page or link</button
+									>
+								</div>
+							{/each}
+							<button class="add footer-add" onclick={() => openGroup(undefined, footerItem)}
+								>+ Add link group</button
+							>
+						{/if}
+						<div class="editor-secondary">
+							<button onclick={() => openFeature(footerItem)}
+								>{footerItem.featured ? 'Edit featured item' : 'Add featured item'}</button
+							>{#if footerItem.featured}<button
+									onclick={() => {
+										footerItem.featured = null;
+										changed();
+									}}>Remove featured item</button
+								>{/if}
+						</div>
+					</section>
+				{/each}
+			</div>
+		{:else if item}
 			{#if item.direct}
 				<div class="direct-row">
 					<span>{item.direct.label}</span><button
@@ -291,7 +416,7 @@
 				</div>
 			{:else}
 				<div class="editor-columns">
-					{#if item.introduction}
+					{#if !footerMode && item.introduction}
 						<section class="edit-column introduction-card">
 							<div class="column-heading">
 								<h2>{item.label}</h2>
@@ -300,7 +425,7 @@
 							<h3>{item.introduction.heading}</h3>
 							<p>{item.introduction.description}</p>
 						</section>
-					{:else}
+					{:else if !footerMode}
 						<button class="add-column" onclick={openIntroduction}>+ Add introduction</button>
 					{/if}
 					{#each item.groups as group, groupIndex (group.id)}
@@ -351,23 +476,25 @@
 							>
 						</section>
 					{/each}
-					<button class="add-column" onclick={() => openGroup()}>+ Add column</button>
+					<button class="add-column" onclick={() => openGroup()}
+						>+ Add {footerMode ? 'link group' : 'column'}</button
+					>
 				</div>
 				<div class="editor-secondary">
-					<button
-						onclick={() =>
-							openLink(item!.landing || newMenuLink(), (next) => {
-								if (item) item.landing = next;
-							})}>{item.landing ? 'Edit landing link' : 'Add landing link'}</button
-					>{#if item.landing}<button
-							onclick={() => {
-								if (!busy && item) {
-									item.landing = null;
-									changed();
-								}
-							}}>Remove landing link</button
-						>{/if}
-					<button onclick={openFeature}
+					{#if !footerMode}<button
+							onclick={() =>
+								openLink(item!.landing || newMenuLink(), (next) => {
+									if (item) item.landing = next;
+								})}>{item.landing ? 'Edit landing link' : 'Add landing link'}</button
+						>{#if item.landing}<button
+								onclick={() => {
+									if (!busy && item) {
+										item.landing = null;
+										changed();
+									}
+								}}>Remove landing link</button
+							>{/if}{/if}
+					<button onclick={() => openFeature()}
 						>{item.featured ? 'Edit featured item' : 'Add featured item'}</button
 					>{#if item.featured}<button
 							onclick={() => {
@@ -379,26 +506,28 @@
 						>{/if}
 				</div>
 			{/if}
-			<div class="editor-secondary">
-				<button
-					onclick={() =>
-						openLink(config.primary || newMenuLink(), (next) => (config.primary = next))}
-					>{config.primary ? 'Edit header action' : 'Add header action'}</button
-				>{#if config.primary}<button
-						onclick={() => {
-							if (!busy) {
-								config.primary = null;
-								changed();
-							}
-						}}>Remove header action</button
-					>{/if}<button onclick={openFooter}>Edit menu footer</button>
-			</div>
 		{/if}
+		<div class="editor-secondary">
+			<button
+				onclick={() => openLink(config.primary || newMenuLink(), (next) => (config.primary = next))}
+				>{config.primary
+					? `Edit ${menuName.toLowerCase()} action`
+					: `Add ${menuName.toLowerCase()} action`}</button
+			>{#if config.primary}<button
+					onclick={() => {
+						if (!busy) {
+							config.primary = null;
+							changed();
+						}
+					}}>Remove {menuName.toLowerCase()} action</button
+				>{/if}<button onclick={openFooter}
+				>Edit {footerMode ? 'footer callout' : 'menu footer'}</button
+			>
+		</div>
 	</fieldset>
 	<div class="panel-footer">
-		<span>Navigation changes only. Pages stay intact.</span><button onclick={onclose}
-			>Close menu ×</button
-		>
+		<span>{footerMode ? 'Footer links only.' : 'Navigation changes only.'} Pages stay intact.</span
+		><button onclick={onclose}>Close {footerMode ? 'editor' : 'menu'} ×</button>
 	</div>
 	<dialog bind:this={introductionDialog} aria-labelledby="introduction-dialog-title">
 		<form
@@ -438,12 +567,17 @@
 			}}
 		>
 			<fieldset disabled={busy}>
-				<h2 id="menu-dialog-title">{menuEditId ? 'Edit menu' : 'Add menu'}</h2>
-				<label>Menu label <input required bind:value={menuLabel} /></label><label
-					><input type="checkbox" bind:checked={menuVisible} /> Visible</label
-				><label><input type="checkbox" bind:checked={menuDirect} /> Direct link</label><label
+				<h2 id="menu-dialog-title">
+					{menuEditId ? 'Edit' : 'Add'}
+					{footerMode ? 'footer column' : 'menu'}
+				</h2>
+				<label
+					>{footerMode ? 'Column' : 'Menu'} label <input required bind:value={menuLabel} /></label
+				><label><input type="checkbox" bind:checked={menuVisible} /> Visible</label><label
+					><input type="checkbox" bind:checked={menuDirect} /> Direct link</label
+				><label class:hidden-control={footerMode}
 					><input type="checkbox" bind:checked={menuIntroduction} /> Show menu introduction</label
-				>{#if menuIntroduction}<label
+				>{#if !footerMode && menuIntroduction}<label
 						>Introduction heading <input required bind:value={menuIntroductionHeading} /></label
 					><label
 						>Introduction sentence <input
@@ -468,8 +602,14 @@
 			}}
 		>
 			<fieldset disabled={busy}>
-				<h2 id="column-dialog-title">{groupEditId ? 'Edit column' : 'Add column'}</h2>
-				<label>Column heading <input required bind:value={groupLabel} /></label><label
+				<h2 id="column-dialog-title">
+					{groupEditId ? 'Edit' : 'Add'}
+					{footerMode ? 'link group' : 'column'}
+				</h2>
+				<label
+					>{footerMode ? 'Group' : 'Column'} heading
+					<input required bind:value={groupLabel} /></label
+				><label class:hidden-control={footerMode}
 					><input type="checkbox" bind:checked={groupProminent} /> Large links</label
 				>
 				<div class="dialog-actions">
@@ -597,6 +737,14 @@
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
 	}
+	.item-picker {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+	}
+	.hidden-control {
+		display: none;
+	}
 	.editor-toolbar button,
 	.editor-toolbar a,
 	.column-heading button,
@@ -617,6 +765,26 @@
 		gap: 14px;
 		overflow-x: auto;
 		padding-bottom: 4px;
+	}
+	.footer-columns {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(280px, 1fr));
+		gap: 14px;
+		overflow-x: auto;
+		padding-bottom: 4px;
+	}
+	.footer-column {
+		min-width: 0;
+		border: 1px solid #cbd3c0;
+		border-radius: var(--radius-surface);
+		background: color-mix(in srgb, var(--color-base-100) 86%, #edf2e8);
+		padding: 15px;
+	}
+	.footer-group + .footer-group {
+		margin-top: 24px;
+	}
+	.footer-add {
+		margin-top: 8px;
 	}
 	.edit-column {
 		flex: 0 0 390px;
@@ -671,7 +839,8 @@
 		padding-bottom: 12px;
 		margin-bottom: 12px;
 	}
-	.column-heading h2 {
+	.column-heading h2,
+	.column-heading h3 {
 		flex: 1;
 		margin: 0;
 		font-size: 12px;
@@ -754,6 +923,9 @@
 		}
 		.editor-columns {
 			flex-direction: column;
+		}
+		.footer-columns {
+			grid-template-columns: 1fr;
 		}
 		.edit-column,
 		.add-column {
