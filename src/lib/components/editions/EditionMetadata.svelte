@@ -5,6 +5,7 @@
 	import { creditHref } from '$lib/utils/credits';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
 	import CopyIcon from '~icons/lucide/copy';
+	import { sceneDocumentLabel } from './edition-metadata';
 
 	interface Metadata {
 		id: string;
@@ -158,7 +159,7 @@
 			{#if edition.sceneFile}
 				<div class="metadata-row">
 					<dt class="text-base-content/50">Scene document</dt>
-					<dd class="font-mono text-xs break-all">{edition.sceneFile}</dd>
+					<dd class="font-mono text-xs break-all">{sceneDocumentLabel(edition.sceneFile)}</dd>
 				</div>
 			{/if}
 			<div class="metadata-row">

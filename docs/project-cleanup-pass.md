@@ -81,3 +81,41 @@ Largest remaining files and sensible boundaries for subsequent work:
 
 The goal of this pass is a safer, less contradictory base for acceptance testing,
 not to replace the application architecture just before partners review it.
+
+## Follow-up cleanup batches
+
+The follow-up started with a clean working tree: the initial cleanup was already
+committed as `e600967`, separately from workflow checkpoint `5edb570`. It was not
+recommitted or amended. Fresh verification reproduced 190 passing tests using a
+disposable PocketBase binary, zero Svelte diagnostics and a successful build.
+
+- **Field identity preservation (`b870106`):** desired schema definitions carrying
+  exported IDs can no longer replace an existing field's stored ID. Regression
+  tests cover conflicting, empty and undefined IDs, new fields and input preservation.
+- **Metadata presentation boundary (`6b2b827`):** `EditionMetadata.svelte` owns the
+  publication, contributor, rights and technical-provenance markup and responsive
+  styles behind a typed prop contract. The page retains viewer state, gates,
+  normalized credits, clipboard state and review access. No draft, autosave,
+  upload or navigation lifecycle was moved.
+- **Protected document labels:** metadata strips query strings and fragments from
+  scene-document labels, so protected-file tokens are not printed in the panel.
+  The original scene URL and viewer authentication remain unchanged.
+
+Follow-up verification:
+
+- Full disposable-PocketBase suite: **194 passed, zero failures**; `bun run check`
+  and `bun run build` passed. Focused Prettier checks and `git diff --check` passed.
+- Headless Playwright checked the demo metadata panel at 1440×900, 1024×768 and
+  390×844: all four sections present, no horizontal overflow, responsive columns
+  retained and DOI-copy callback/feedback correct (clipboard stubbed).
+- A mounted synthetic metadata fixture confirmed empty-field fallbacks, token-free
+  display and an unchanged authenticated source URL. No real records were edited.
+- The demo browser reported existing missing CMS collection responses and an initial
+  favicon 404. This was not a fresh end-to-end authenticated workflow acceptance run.
+- Global lint still fails on the pre-existing 72 formatting findings. Edition-page
+  ESLint findings decreased from 50 to 38 across the page and extracted component;
+  one existing unresolved alternate-version link finding moved with the panel.
+  No lint rules were disabled. The new schema and label helpers/tests pass ESLint.
+
+The remaining lifecycle extractions, viewer-runtime work and legacy-script inventory
+above remain deferred, not claimed complete. No delegation, push or deployment.
