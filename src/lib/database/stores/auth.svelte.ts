@@ -2,6 +2,7 @@ import { pb } from '../client';
 import { browser } from '$app/environment';
 import { GlobalRole } from '$lib/types/roles';
 import { notificationStore } from './notifications.svelte';
+import { ClientResponseError } from 'pocketbase';
 
 interface User {
 	id: string;
@@ -30,10 +31,11 @@ class AuthStore {
 
 	constructor() {
 		if (browser) {
-			this.user = pb.authStore.model as User | null;
+			if (!pb.authStore.isValid) pb.authStore.clear();
+			this.user = pb.authStore.record as User | null;
 
 			pb.authStore.onChange(() => {
-				this.user = pb.authStore.model as User | null;
+				this.user = pb.authStore.isValid ? (pb.authStore.record as User | null) : null;
 				if (this.user) {
 					notificationStore.subscribe(this.user.id);
 				} else {
@@ -44,6 +46,22 @@ class AuthStore {
 			if (this.user) {
 				notificationStore.subscribe(this.user.id);
 			}
+		}
+	}
+
+	async refreshSession() {
+		if (!pb.authStore.isValid) {
+			this.logout();
+			throw new Error('Your session has expired. Please sign in with ORCID again.');
+		}
+		try {
+			return (await pb.collection('users').authRefresh()).record;
+		} catch (error) {
+			if (error instanceof ClientResponseError && [401, 403].includes(error.status)) {
+				this.logout();
+				throw new Error('Your session is no longer valid. Please sign in with ORCID again.');
+			}
+			throw error;
 		}
 	}
 

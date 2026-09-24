@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- PocketBase Goja supports CommonJS, not ESM. */
 const access = require('./orcid-service.cjs');
 const { reviewStage } = require('./orcid-validation.cjs');
+const alpha = require('./alpha-review-service.cjs');
 
 function deny() {
 	throw new ForbiddenError('Review access requires the matching assignment or edition authorship');
 }
 function changed(record, field) {
-	return record.getString(field) !== record.original().getString(field);
+	return JSON.stringify(record.get(field)) !== JSON.stringify(record.original().get(field));
 }
 function onlyFields(e, allowed) {
 	for (const field of e.collection.fields)
@@ -26,6 +27,7 @@ function request(e, action) {
 			'editionId',
 			'reviewerId',
 			'reviewStage',
+			'reviewRound',
 			...(name === 'reviewAssignments' ? ['assignedBy'] : [])
 		]) {
 			if (changed(r, field))
@@ -35,7 +37,34 @@ function request(e, action) {
 		}
 	}
 	const edition = e.app.findRecordById('editions', r.getString('editionId'));
+	if (name === 'editionReviews' && action === 'create' && r.getInt('reviewStage') !== 2) {
+		r.set('reviewRound', 0);
+		r.set('reviewStatus', 'submitted');
+		r.set('submittedAt', new Date().toISOString());
+	}
 	if (name === 'reviewAssignments') {
+		if (action === 'create') {
+			r.set('reviewRound', r.getInt('reviewStage') === 2 ? edition.getInt('alphaReviewRound') : 0);
+			r.set('editionTitle', edition.getString('title'));
+			if (r.getInt('reviewStage') === 2) {
+				if (edition.getString('status') !== 'alpha_review')
+					throw new BadRequestError(
+						'The author must request Alpha Review before reviewers are assigned.'
+					);
+				const reviewer = e.app.findRecordById('users', r.getString('reviewerId'));
+				const relationship = access.roles({ app: e.app, auth: reviewer }, edition);
+				if (
+					relationship.author ||
+					relationship.collaborator ||
+					relationship.owner ||
+					relationship.editor
+				)
+					throw new BadRequestError(
+						'Authors and the edition team cannot review their own edition.'
+					);
+			}
+		} else if (changed(r, 'editionTitle'))
+			throw new ForbiddenError('The assignment title is server-owned.');
 		if (admin) {
 			if (action === 'create' && !e.auth.isSuperuser()) r.set('assignedBy', e.auth.id);
 			return e.next();
@@ -60,6 +89,17 @@ function request(e, action) {
 			deny();
 		return e.next();
 	}
+	if (name === 'editionReviews' && r.getInt('reviewStage') === 2) {
+		if (action === 'update') onlyFields(e, [...alpha.answerFields, 'reviewStatus']);
+		return alpha.reviewRequest(e, action, edition);
+	}
+	if (name === 'reviewFeedback' && r.getInt('reviewStage') === 2)
+		throw new BadRequestError('Use the Alpha questionnaire for moderated feedback.');
+	if (
+		name === 'editionReviews' &&
+		!['approve', 'reject', 'request_revisions'].includes(r.getString('decision'))
+	)
+		throw new BadRequestError('Select a review decision.');
 	if (admin) return e.next();
 	if (!e.auth || e.auth.collection().name !== 'users') deny();
 	const stage = r.getInt('reviewStage');
@@ -104,6 +144,7 @@ function validate(e) {
 			'editionId',
 			'reviewerId',
 			'reviewStage',
+			'reviewRound',
 			...(r.collection().name === 'reviewAssignments' ? ['assignedBy'] : [])
 		]) {
 			if (changed(r, field)) throw new BadRequestError('Review ownership and stage are immutable');

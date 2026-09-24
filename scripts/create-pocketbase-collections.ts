@@ -5,6 +5,7 @@
  */
 import PocketBase from 'pocketbase';
 import { alignOrcidSchema } from './configure-orcid';
+import schema from '../pocketbase/pb_schema/collections.json';
 
 const POCKETBASE_URL = process.env.POCKETBASE_URL || 'http://localhost:60021';
 const ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL || 'admin@admin.local';
@@ -449,7 +450,12 @@ async function main() {
 				maxSelect: 1,
 				maxSize: 0,
 				mimeTypes: []
-			}
+			},
+			...schema
+				.find((collection) => collection.name === 'editions')!
+				.fields.filter(
+					(field) => field.name.startsWith('proposal') || field.name.startsWith('alpha')
+				)
 		]
 	});
 
@@ -559,11 +565,17 @@ async function main() {
 			{
 				name: 'decision',
 				type: 'select',
-				required: true,
+				required: false,
 				maxSelect: 1,
 				values: ['approve', 'reject', 'request_revisions']
 			},
-			{ name: 'comment', type: 'text', required: false }
+			{ name: 'comment', type: 'text', required: false },
+			...schema
+				.find((collection) => collection.name === 'editionReviews')!
+				.fields.filter(
+					(field) =>
+						!['editionId', 'reviewerId', 'decision', 'reviewStage', 'comment'].includes(field.name)
+				)
 		]
 	});
 
@@ -584,7 +596,10 @@ async function main() {
 				required: true,
 				maxSelect: 1,
 				values: ['pending', 'accepted', 'declined', 'completed']
-			}
+			},
+			...schema
+				.find((collection) => collection.name === 'reviewAssignments')!
+				.fields.filter((field) => ['reviewRound', 'editionTitle'].includes(field.name))
 		]
 	});
 

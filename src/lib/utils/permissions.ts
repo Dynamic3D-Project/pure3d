@@ -72,20 +72,14 @@ export function hasPermission(context: UserRoleContext, permission: Permission):
 			return collectionRole === CollectionRole.Owner || editionRole === EditionRole.Author;
 
 		case Permission.WorkflowReview:
-			return (
-				globalRole === GlobalRole.EditorialBoard || editionRole === EditionRole.Reviewer
-			);
+			return globalRole === GlobalRole.EditorialBoard || editionRole === EditionRole.Reviewer;
 
 		case Permission.WorkflowApprove:
 		case Permission.WorkflowReject:
-			return (
-				globalRole === GlobalRole.EditorialBoard || editionRole === EditionRole.Reviewer
-			);
+			return globalRole === GlobalRole.EditorialBoard || editionRole === EditionRole.Reviewer;
 
 		case Permission.WorkflowRequestRevisions:
-			return (
-				globalRole === GlobalRole.EditorialBoard || editionRole === EditionRole.Reviewer
-			);
+			return globalRole === GlobalRole.EditorialBoard || editionRole === EditionRole.Reviewer;
 
 		case Permission.WorkflowPublish:
 		case Permission.WorkflowUnpublish:
@@ -102,10 +96,7 @@ export function hasPermission(context: UserRoleContext, permission: Permission):
 			return false; // Only Admin (handled above)
 
 		case Permission.CollectionEdit:
-			return (
-				collectionRole === CollectionRole.Owner ||
-				collectionRole === CollectionRole.Editor
-			);
+			return collectionRole === CollectionRole.Owner || collectionRole === CollectionRole.Editor;
 
 		case Permission.CollectionDelete:
 			return collectionRole === CollectionRole.Owner;
@@ -156,8 +147,7 @@ export function canUserTransitionStatus(
 		// --- Alpha stage ---
 		case EditionStatus.AlphaReview:
 			if (current === EditionStatus.ConceptAccepted) {
-				// Admin moves accepted concept to alpha review
-				return hasPermission(context, Permission.WorkflowReview);
+				return hasPermission(context, Permission.WorkflowSubmit);
 			}
 			if (current === EditionStatus.AlphaRevisions) {
 				// Author resubmits after revisions

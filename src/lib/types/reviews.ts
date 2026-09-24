@@ -20,6 +20,8 @@ export interface EditionReview {
 	comment: string | null;
 	created: string;
 	updated: string;
+	reviewRound?: number;
+	reviewStatus?: 'draft' | 'submitted';
 }
 
 export interface ReviewAssignment {
@@ -31,6 +33,8 @@ export interface ReviewAssignment {
 	status: ReviewAssignmentStatus;
 	created: string;
 	updated: string;
+	reviewRound?: number;
+	editionTitle?: string;
 }
 
 export enum FeedbackCategory {

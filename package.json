@@ -18,7 +18,9 @@
 		"test:orcid-migration": "bun test scripts/reconcile-author-profiles.test.ts scripts/migrate-orcid-credits.test.ts scripts/import-data.test.ts",
 		"seed": "bun scripts/seed-data.ts",
 		"migrate:viewer-help": "bun scripts/add-viewer-help-field.ts",
-		"migrate:workflow": "bun scripts/migrate-workflow-statuses.ts"
+		"migrate:workflow": "bun scripts/migrate-workflow-statuses.ts",
+		"migrate:proposal": "bun scripts/migrate-proposal-fields.ts",
+		"migrate:alpha": "bun scripts/migrate-alpha-review.ts"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.4.0",

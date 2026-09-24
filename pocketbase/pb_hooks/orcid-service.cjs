@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- PocketBase Goja supports CommonJS, not ESM. */
 const v = require('./orcid-validation.cjs');
+const proposal = require('./proposal-service.cjs');
 const identityFields = ['orcid', 'orcidVerifiedAt', 'pendingOrcid'];
 const profileFields = ['nickname', 'affiliation', 'bio', 'titleRole', 'socials'];
 const proofContext = 'pure3d.orcid.proof';
@@ -59,7 +60,7 @@ function json(record, field) {
 function changed(record, field) {
 	if (field === 'credits')
 		return !v.sameCredits(json(record, field), json(record.original(), field));
-	return record.getString(field) !== record.original().getString(field);
+	return JSON.stringify(record.get(field)) !== JSON.stringify(record.original().get(field));
 }
 function admin(e) {
 	return !!(
@@ -104,8 +105,13 @@ function roles(e, record) {
 			matches(
 				e.app,
 				'reviewAssignments',
-				'editionId = {:edition} && reviewerId = {:user} && reviewStage = {:stage} && status != "declined"',
-				{ edition: record.id, user: uid, stage: v.reviewStage(record.getString('status')) }
+				'editionId = {:edition} && reviewerId = {:user} && reviewStage = {:stage} && status != "declined" && status != "completed" && (reviewStage != 2 || reviewRound = {:round})',
+				{
+					edition: record.id,
+					user: uid,
+					stage: v.reviewStage(record.getString('status')),
+					round: record.getInt('alphaReviewRound')
+				}
 			).length > 0
 	};
 }
@@ -246,7 +252,19 @@ function createRequest(e) {
 			bad('New editions must start as drafts');
 		if (e.record.getBool('isPublished')) bad('New editions must start as drafts');
 		e.record.set('status', 'draft');
-		for (const field of ['publishedAt', 'publishedBy', 'reviewStage', 'peerReviewStamp'])
+		for (const field of [
+			'publishedAt',
+			'publishedBy',
+			'reviewStage',
+			'peerReviewStamp',
+			'proposalSubmittedAt',
+			'proposalSnapshot',
+			'proposalModels',
+			'proposalAuthorAffiliations'
+		])
+			e.record.set(field, null);
+		proposal.syncModels(e.record);
+		for (const field of require('./alpha-review-service.cjs').editionFields)
 			e.record.set(field, null);
 	}
 	e.record.set('__pure3dCreator', user.id);
@@ -288,11 +306,68 @@ function updateRequest(e) {
 			access.admin || access.owner || access.editor || access.author || access.collaborator;
 		if (!canEdit) {
 			if (!statusChanged) deny();
-			const workflow = ['status', 'isPublished', 'reviewStage', 'publishedAt', 'publishedBy'];
+			const workflow = [
+				'status',
+				'isPublished',
+				'reviewStage',
+				'publishedAt',
+				'publishedBy',
+				'proposalSubmittedAt'
+			];
 			for (const field of e.collection.fields)
 				if (workflow.indexOf(field.name) === -1 && changed(r, field.name)) deny();
 		}
 		if (edition) {
+			r.ignoreUnchangedFields(true);
+			require('./alpha-review-service.cjs').prepareEdition(e);
+			const changedFields = e.collection.fields
+				.filter((field) => changed(r, field.name))
+				.map((field) => field.name);
+			if (
+				!access.admin &&
+				!proposal.canAuthorEditProposal(r.original().getString('status') || 'draft', changedFields)
+			)
+				deny();
+			if (
+				[
+					'proposalSubmittedAt',
+					'proposalSnapshot',
+					'proposalModels',
+					'proposalAuthorAffiliations'
+				].some((field) => changed(r, field))
+			)
+				bad('Proposal submission and file metadata are server-owned');
+			if (
+				changedFields.some((field) =>
+					['proposalModelFiles', 'proposalModelAssets', 'proposalModelScenes'].includes(field)
+				)
+			)
+				proposal.syncModels(r);
+			if (
+				statusChanged &&
+				['draft', 'concept_rejected'].includes(r.original().getString('status')) &&
+				r.getString('status') === 'concept_submitted'
+			) {
+				proposal.validateSubmission(r);
+				r.set('proposalSubmittedAt', new Date().toISOString());
+				r.set('proposalSnapshot', { title: r.getString('title'), credits: json(r, 'credits') });
+			}
+			if (
+				changed(r, 'credits') ||
+				(statusChanged && r.getString('status') === 'concept_submitted')
+			) {
+				if (['draft', 'concept_rejected'].includes(r.original().getString('status'))) {
+					r.set(
+						'proposalAuthorAffiliations',
+						(json(r, 'credits') || []).map((credit) => {
+							let affiliation = '';
+							if (credit.userId)
+								affiliation = e.app.findRecordById('users', credit.userId).getString('affiliation');
+							return { name: credit.name, userId: credit.userId || '', affiliation };
+						})
+					);
+				}
+			}
 			if (changed(r, 'collection')) {
 				if (!access.admin && !access.owner && !access.author) deny();
 				const cid = r.getString('collection');

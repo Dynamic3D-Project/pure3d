@@ -188,6 +188,8 @@ function reviewStage(status) {
 function canTransition(from, to, roles) {
 	if (!(transitions[from] || []).includes(to)) return false;
 	if (roles.admin) return true;
+	if (from === 'alpha_review') return roles.board;
+	if (to === 'alpha_review') return roles.author || roles.owner || roles.board;
 	if (to === 'published' || (from === 'published' && to === 'draft')) return roles.owner;
 	if (
 		to === 'concept_submitted' ||

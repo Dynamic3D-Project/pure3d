@@ -3,7 +3,7 @@
  * These use the client-side PocketBase instance and can be imported from browser code.
  */
 import { pb } from '$lib/database/client';
-import { EditionRole, EditionStatus, getReviewStage } from '$lib/types/roles';
+import { EditionStatus, getReviewStage } from '$lib/types/roles';
 import type { ReviewAssignmentStatus } from '$lib/types/reviews';
 
 export async function updateEditionStatus(
@@ -42,23 +42,7 @@ export async function assignReviewer(
 		status: 'pending'
 	});
 
-	// Ensure the reviewer has an editionUsers record with Reviewer role
-	try {
-		const existing = await pb.collection('editionUsers').getList(1, 1, {
-			filter: `editionId = "${editionId}" && userId = "${reviewerId}"`
-		});
-		if (existing.items.length === 0) {
-			await pb.collection('editionUsers').create({
-				editionId,
-				userId: reviewerId,
-				user: reviewerId,
-				role: EditionRole.Reviewer
-			});
-		}
-	} catch {
-		// If editionUsers creation fails, the assignment still exists
-	}
-
+	// The scoped invitation grants access; a public membership would reveal anonymous reviewers.
 	return assignment;
 }
 

@@ -13,6 +13,7 @@
 		getTargetStatusFromVerdict
 	} from '$lib/utils/review-helpers';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
+	import AlphaEditorialPanel from '$lib/components/workflow/AlphaEditorialPanel.svelte';
 	import WorkflowTimeline from '$lib/components/workflow/WorkflowTimeline.svelte';
 	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
 	import UserSearchSelect from '$lib/components/ui/UserSearchSelect.svelte';
@@ -30,6 +31,7 @@
 		peerReviewRequested: boolean;
 		peerReviewStamp: boolean;
 		publishedAt: string | null;
+		alphaReviewRound: number;
 	}
 
 	interface AppUser {
@@ -131,13 +133,24 @@
 
 	function editionAssignments(editionId: string, stage?: number): ReviewAssignment[] {
 		return allAssignments.filter(
-			(a) => a.editionId === editionId && (stage === undefined || a.reviewStage === stage)
+			(a) =>
+				a.editionId === editionId &&
+				(stage === undefined || a.reviewStage === stage) &&
+				(a.reviewStage !== ReviewStage.Alpha ||
+					(a.reviewRound || 0) ===
+						(editions.find((edition) => edition.id === editionId)?.alphaReviewRound || 0))
 		);
 	}
 
 	function editionReviews(editionId: string, stage?: number): EditionReview[] {
 		return allReviews.filter(
-			(r) => r.editionId === editionId && (stage === undefined || r.reviewStage === stage)
+			(r) =>
+				r.editionId === editionId &&
+				r.reviewStatus !== 'draft' &&
+				(stage === undefined || r.reviewStage === stage) &&
+				(r.reviewStage !== ReviewStage.Alpha ||
+					(r.reviewRound || 0) ===
+						(editions.find((edition) => edition.id === editionId)?.alphaReviewRound || 0))
 		);
 	}
 
@@ -173,6 +186,7 @@
 			]);
 
 			editions = edResult.items.map((r) => ({
+				alphaReviewRound: r.alphaReviewRound || 0,
 				id: r.id,
 				title: r.dcTitle || r.title,
 				status: (r.status as EditionStatus) || EditionStatus.Draft,
@@ -185,6 +199,8 @@
 			}));
 
 			allAssignments = assignResult.items.map((r) => ({
+				reviewRound: r.reviewRound || 0,
+				editionTitle: r.editionTitle || '',
 				id: r.id,
 				editionId: r.editionId,
 				reviewerId: r.reviewerId,
@@ -196,6 +212,8 @@
 			}));
 
 			allReviews = reviewResult.items.map((r) => ({
+				reviewStatus: r.reviewStatus,
+				reviewRound: r.reviewRound || 0,
 				id: r.id,
 				editionId: r.editionId,
 				reviewerId: r.reviewerId,
@@ -252,6 +270,7 @@
 					reviewStage: ReviewStage.Concept,
 					assignedBy: authStore.appUserId || '',
 					status: ReviewAssignmentStatus.Pending,
+					reviewRound: 0,
 					created: new Date().toISOString(),
 					updated: new Date().toISOString()
 				}
@@ -325,6 +344,7 @@
 					reviewStage: stage,
 					assignedBy: authStore.appUserId || '',
 					status: ReviewAssignmentStatus.Pending,
+					reviewRound: stage === ReviewStage.Alpha ? edition.alphaReviewRound : 0,
 					created: new Date().toISOString(),
 					updated: new Date().toISOString()
 				}
@@ -368,7 +388,13 @@
 
 			if (current.peerReviewRequested) {
 				// Compile peer review content from all reviews
-				const reviews = allReviews.filter((r) => r.editionId === edition.id);
+				// Alpha feedback is anonymous and recommendations are confidential, never publication copy.
+				const reviews = allReviews.filter(
+					(r) =>
+						r.editionId === edition.id &&
+						r.reviewStage !== ReviewStage.Alpha &&
+						r.reviewStatus !== 'draft'
+				);
 				const peerReviewContent = reviews
 					.map(
 						(r) =>
@@ -903,7 +929,9 @@
 										<tr>
 											<td>{userLookup.get(a.reviewerId) || 'Unknown'}</td>
 											<td>
-												{#if hasReview}
+												{#if a.status === ReviewAssignmentStatus.Declined}<span
+														class="badge badge-ghost badge-sm">Declined</span
+													>{:else if hasReview}
 													<span class="badge badge-sm badge-success">Reviewed</span>
 												{:else}
 													<span class="badge badge-ghost badge-sm">Pending</span>
@@ -921,7 +949,7 @@
 				</div>
 
 				<!-- Reviews submitted -->
-				{#if displayReviews.length > 0}
+				{#if displayReviews.length > 0 && stage !== ReviewStage.Alpha}
 					<div>
 						<h4 class="mb-2 text-sm font-semibold text-base-content/60 uppercase">Reviews</h4>
 						<div class="space-y-2">
@@ -954,7 +982,7 @@
 				{/if}
 
 				<!-- Verdict aggregate -->
-				{#if assignments.length > 0}
+				{#if assignments.length > 0 && stage !== ReviewStage.Alpha}
 					<div class="flex items-center gap-3">
 						<span class="text-sm font-semibold">Aggregate Verdict:</span>
 						<span class="badge {getVerdictBadge(verdict)}">{getVerdictLabel(verdict)}</span>
@@ -974,6 +1002,11 @@
 				{/if}
 
 				<!-- Assign reviewer form -->
+				{#if stage === ReviewStage.Alpha && edition.status === EditionStatus.AlphaReview}{#key assignments.length}<AlphaEditorialPanel
+							editionId={edition.id}
+							round={edition.alphaReviewRound}
+							onchanged={() => void loadData()}
+						/>{/key}{/if}
 				{#if isSubmission || edition.status === EditionStatus.AlphaReview || edition.status === EditionStatus.FinalReview}
 					<div class="border-t border-base-300 pt-3">
 						<h4 class="mb-2 text-sm font-semibold text-base-content/60 uppercase">
@@ -1007,13 +1040,12 @@
 				<!-- Advance status buttons for accepted states -->
 				{#if edition.status === EditionStatus.ConceptAccepted}
 					<div class="border-t border-base-300 pt-3">
-						<button
-							class="btn btn-outline btn-sm"
-							onclick={() => advanceStatus(edition, EditionStatus.AlphaReview)}
-							disabled={actionLoading}
+						<p class="mb-2 text-sm">
+							The author prepares the edition and requests Alpha Review from the Review tab.
+						</p>
+						<a class="btn btn-outline btn-sm" href="{base}/editions/{edition.id}/workflow"
+							>Open edition workspace</a
 						>
-							Start Alpha Review
-						</button>
 					</div>
 				{/if}
 				{#if edition.status === EditionStatus.AlphaAccepted}

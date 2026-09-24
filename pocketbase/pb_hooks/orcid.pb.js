@@ -145,6 +145,44 @@ onRecordUpdateRequest(
 	'editionUsers'
 );
 
+onRecordEnrich((e) => {
+	const access = require(__hooks + '/orcid-service.cjs').roles(
+		{ app: e.app, auth: e.requestInfo.auth },
+		e.record
+	);
+	if (!Object.values(access).some(Boolean))
+		e.record.hide(
+			...require(__hooks + '/proposal-service.cjs').proposalFields,
+			...require(__hooks + '/alpha-review-service.cjs').editionFields
+		);
+	return e.next();
+}, 'editions');
+
+onFileDownloadRequest((e) => {
+	if (
+		e.fileField &&
+		(e.fileField.name.startsWith('proposal') || !e.record.getBool('isPublished'))
+	) {
+		let auth = e.auth;
+		if (!auth) {
+			try {
+				auth = e.app.findAuthRecordByToken(e.requestInfo().query.token, 'file');
+			} catch {
+				throw new ForbiddenError('A valid private-file token is required.');
+			}
+		}
+		const access = require(__hooks + '/orcid-service.cjs').roles({ app: e.app, auth }, e.record);
+		const info = e.requestInfo();
+		info.auth = auth;
+		if (
+			!Object.values(access).some(Boolean) ||
+			!e.app.canAccessRecord(e.record, info, e.record.collection().viewRule)
+		)
+			throw new ForbiddenError('You do not have access to this private edition file.');
+	}
+	return e.next();
+}, 'editions');
+
 onRecordDeleteRequest(
 	(e) => {
 		return require(__hooks + '/orcid-service.cjs').deleteRequest(e);
@@ -188,6 +226,47 @@ onRecordUpdate(
 	'reviewFeedback',
 	'content'
 );
+
+onRecordUpdate((e) => {
+	// A save started in another tab must not overwrite a just-submitted proposal.
+	const app = e.app;
+	try {
+		return app.runInTransaction((tx) => {
+			e.app = tx;
+			const current = tx.findRecordById('editions', e.record.id);
+			if (current.getString('status') !== e.record.original().getString('status'))
+				throw new BadRequestError('The workflow changed. Reload before saving again.');
+			return e.next();
+		});
+	} finally {
+		e.app = app;
+	}
+}, 'editions');
+
+onRecordCreate(
+	(e) => require(__hooks + '/alpha-review-service.cjs').savedReview(e),
+	'editionReviews'
+);
+onRecordUpdate(
+	(e) => require(__hooks + '/alpha-review-service.cjs').savedReview(e),
+	'editionReviews'
+);
+
+routerAdd(
+	'GET',
+	'/api/pure3d/editions/{editionId}/alpha-progress',
+	(e) => require(__hooks + '/alpha-review-service.cjs').progress(e),
+	$apis.requireAuth()
+);
+routerAdd(
+	'POST',
+	'/api/pure3d/editions/{editionId}/alpha-decision',
+	(e) => require(__hooks + '/alpha-review-service.cjs').decide(e),
+	$apis.requireAuth()
+);
+
+onRecordsListRequest((e) => require(__hooks + '/alpha-review-service.cjs').protectQuery(e));
+onRecordViewRequest((e) => require(__hooks + '/alpha-review-service.cjs').protectQuery(e));
 onRecordDelete(
 	(e) => require(__hooks + '/activity-service.cjs').model(e),
 	'users',

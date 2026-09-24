@@ -1,13 +1,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { SvelteMap } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import toast from 'svelte-french-toast';
 	import { pb } from '$lib/database/client';
 	import { authStore } from '$lib/database/stores/auth.svelte';
-	import { EditionStatus, STATUS_LABELS } from '$lib/types/roles';
+	import { EditionStatus } from '$lib/types/roles';
 	import type { ReviewAssignment, EditionReview } from '$lib/types/reviews';
-	import { ReviewDecision } from '$lib/types/reviews';
+	import { ReviewDecision, ReviewAssignmentStatus } from '$lib/types/reviews';
+	import AlphaReviewProgress from '$lib/components/workflow/AlphaReviewProgress.svelte';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
 	import WorkflowTimeline from '$lib/components/workflow/WorkflowTimeline.svelte';
 	import { getEditionThumbnailUrl } from '$lib/utils/asset-urls';
@@ -23,6 +25,47 @@
 
 	let activeTab = $state<'reviews' | 'editions'>('editions');
 	let isLoading = $state(true);
+	let isCreating = $state(false);
+	let createdDraftId = $state('');
+
+	async function startProposal() {
+		if (isCreating || !authStore.appUserId) return;
+		isCreating = true;
+		try {
+			if (!createdDraftId) {
+				const profile = await authStore.refreshSession();
+				if (!profile.orcid || !profile.orcidVerifiedAt) {
+					throw new Error(
+						'An ORCID-verified account is required to start a proposal. Sign out of the demo account and sign in with ORCID.'
+					);
+				}
+				const record = await pb.collection('editions').create({
+					title: 'Untitled Proposal',
+					dcTitle: 'Untitled Proposal',
+					status: EditionStatus.Draft,
+					isPublished: false,
+					credits: [
+						{
+							type: 'person',
+							name: profile.nickname || 'Author',
+							orcid: profile.orcid || null,
+							role: 'creator',
+							provenance: profile.orcidVerifiedAt ? 'oauth' : 'manual',
+							userId: profile.id
+						}
+					]
+				});
+				createdDraftId = record.id;
+			}
+			await goto(resolve('/editions/[slug]/workflow', { slug: createdDraftId }));
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : 'Could not start your proposal. Please try again.'
+			);
+		} finally {
+			isCreating = false;
+		}
+	}
 
 	// My Reviews data
 	let myAssignments = $state<(ReviewAssignment & { edition?: DashEdition })[]>([]);
@@ -30,25 +73,55 @@
 
 	// My Editions data
 	let myEditions = $state<DashEdition[]>([]);
+	let decliningId = $state('');
+	function matchingReview(assignment: ReviewAssignment) {
+		return myReviews.find(
+			(review) =>
+				review.editionId === assignment.editionId &&
+				review.reviewStage === assignment.reviewStage &&
+				(review.reviewRound || 0) === (assignment.reviewRound || 0)
+		);
+	}
 
 	let pendingAssignments = $derived(
-		myAssignments.filter((a) => {
-			const hasReview = myReviews.some(
-				(r) => r.editionId === a.editionId && r.reviewStage === a.reviewStage
-			);
-			return !hasReview;
-		})
+		myAssignments.filter(
+			(a) =>
+				['pending', 'accepted'].includes(a.status) &&
+				(!matchingReview(a) || matchingReview(a)?.reviewStatus === 'draft')
+		)
 	);
 
 	let completedAssignments = $derived(
-		myAssignments.filter((a) => {
-			return myReviews.some((r) => r.editionId === a.editionId && r.reviewStage === a.reviewStage);
-		})
+		myAssignments.filter(
+			(a) =>
+				a.status !== 'declined' &&
+				(a.status === 'completed' ||
+					(matchingReview(a) && matchingReview(a)?.reviewStatus !== 'draft'))
+		)
 	);
+	async function decline(assignment: ReviewAssignment) {
+		if (
+			decliningId ||
+			!confirm('Decline this review invitation? You will lose reviewer access to the edition.')
+		)
+			return;
+		decliningId = assignment.id;
+		try {
+			await pb.collection('reviewAssignments').update(assignment.id, { status: 'declined' });
+			myAssignments = myAssignments.map((item) =>
+				item.id === assignment.id ? { ...item, status: ReviewAssignmentStatus.Declined } : item
+			);
+			toast.success('Review invitation declined');
+		} catch {
+			toast.error('Could not decline the invitation.');
+		} finally {
+			decliningId = '';
+		}
+	}
 
 	onMount(async () => {
 		if (!authStore.isAuthenticated || !authStore.appUserId) {
-			goto(`${base}/`);
+			goto(resolve('/'));
 			return;
 		}
 		await loadData();
@@ -75,6 +148,8 @@
 			]);
 
 			myReviews = reviewResult.items.map((r) => ({
+				reviewRound: r.reviewRound || 0,
+				reviewStatus: r.reviewStatus,
 				id: r.id,
 				editionId: r.editionId,
 				reviewerId: r.reviewerId,
@@ -91,7 +166,7 @@
 			const allEditionIds = [...new Set([...assignmentEditionIds, ...authorEditionIds])];
 
 			// Load edition details
-			const editionMap = new Map<string, DashEdition>();
+			const editionMap = new SvelteMap<string, DashEdition>();
 			if (allEditionIds.length > 0) {
 				const edResult = await pb.collection('editions').getList(1, 500, {
 					filter: allEditionIds.map((id) => `id = "${id}"`).join(' || '),
@@ -117,6 +192,8 @@
 			}
 
 			myAssignments = assignResult.items.map((r) => ({
+				reviewRound: r.reviewRound || 0,
+				editionTitle: r.editionTitle || '',
 				id: r.id,
 				editionId: r.editionId,
 				reviewerId: r.reviewerId,
@@ -183,12 +260,14 @@
 	}
 
 	function workflowStepHref(editionId: string, status: EditionStatus): string {
-		const workflowPath = `${base}/editions/${editionId}/workflow`;
+		const workflowPath = resolve('/editions/[slug]/workflow', { slug: editionId });
 
 		switch (status) {
 			case EditionStatus.Draft:
+				return `${workflowPath}#proposal`;
 			case EditionStatus.ConceptSubmitted:
 			case EditionStatus.EditorialReview:
+				return `${workflowPath}#proposal-summary`;
 			case EditionStatus.ConceptAccepted:
 			case EditionStatus.ConceptRejected:
 				return `${workflowPath}#concept`;
@@ -209,9 +288,15 @@
 </script>
 
 <div id="reviews-dashboard" class="mx-auto max-w-4xl p-4 lg:p-8">
-	<div class="mb-6">
-		<h1 class="text-2xl font-bold">My Work</h1>
-		<p class="mt-1 text-base-content/60">Your authored editions and review assignments.</p>
+	<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+		<div>
+			<h1 class="text-2xl font-bold">My Work</h1>
+			<p class="mt-1 text-base-content/60">Your proposals, editions, and review assignments.</p>
+		</div>
+		<button type="button" class="btn btn-primary" onclick={startProposal} disabled={isCreating}>
+			{#if isCreating}<span class="loading loading-xs loading-spinner"></span>{/if}
+			{isCreating ? 'Starting proposal…' : 'Start a proposal'}
+		</button>
 	</div>
 
 	<!-- Tabs -->
@@ -221,7 +306,7 @@
 			class:tab-active={activeTab === 'editions'}
 			onclick={() => (activeTab = 'editions')}
 		>
-			My Editions
+			My Proposals & Editions
 			{#if myEditions.length > 0}
 				<span class="ml-1 badge badge-sm">{myEditions.length}</span>
 			{/if}
@@ -253,7 +338,9 @@
 						<div class="rounded-box border border-base-300 bg-base-100 p-4">
 							<div class="flex flex-wrap items-center justify-between gap-3">
 								<div class="flex flex-wrap items-center gap-3">
-									<span class="font-medium">{edition?.title || 'Unknown Edition'}</span>
+									<span class="font-medium"
+										>{edition?.title || assignment.editionTitle || 'Edition'}</span
+									>
 									{#if edition}
 										<StatusBadge status={edition.status} />
 									{/if}
@@ -262,11 +349,19 @@
 									</span>
 								</div>
 								<a
-									href="{base}/editions/{assignment.editionId}/workflow"
+									href={resolve('/editions/[slug]/workflow', { slug: assignment.editionId })}
 									class="btn btn-sm btn-primary"
 								>
-									Start Review
+									{matchingReview(assignment)?.reviewStatus === 'draft'
+										? 'Continue review'
+										: 'Review edition'}
 								</a>
+								<button
+									type="button"
+									class="btn btn-outline btn-sm"
+									disabled={decliningId === assignment.id}
+									onclick={() => decline(assignment)}>Decline</button
+								>
 							</div>
 							{#if edition?.collectionTitle}
 								<p class="mt-1 text-sm text-base-content/50">in {edition.collectionTitle}</p>
@@ -284,20 +379,21 @@
 				<div class="space-y-2">
 					{#each completedAssignments as assignment (assignment.id)}
 						{@const edition = assignment.edition}
-						{@const review = myReviews.find(
-							(r) =>
-								r.editionId === assignment.editionId && r.reviewStage === assignment.reviewStage
-						)}
+						{@const review = matchingReview(assignment)}
 						<div class="rounded-box border border-base-200 bg-base-200/30 p-4">
 							<div class="flex flex-wrap items-center gap-3">
-								<span class="font-medium">{edition?.title || 'Unknown Edition'}</span>
+								<span class="font-medium"
+									>{edition?.title || assignment.editionTitle || 'Edition'}</span
+								>
 								{#if edition}
 									<StatusBadge status={edition.status} />
 								{/if}
 								<span class="badge badge-ghost badge-sm">
 									{getStageLabel(assignment.reviewStage)}
 								</span>
-								{#if review}
+								{#if assignment.reviewStage === 2}<span class="badge badge-sm badge-success"
+										>Alpha Review submitted</span
+									>{:else if review}
 									<span
 										class="badge badge-sm {review.decision === ReviewDecision.Approve
 											? 'badge-success'
@@ -313,6 +409,10 @@
 									</span>
 								{/if}
 							</div>
+							{#if assignment.reviewStage === 2}<p class="mt-3 text-sm text-base-content/70">
+									Your review is submitted and cannot be edited. Edition access is closed until you
+									receive a new review invitation.
+								</p>{/if}
 							<p class="mt-1 text-xs text-base-content/40">
 								Reviewed {review ? formatDate(review.created) : ''}
 							</p>
@@ -321,7 +421,7 @@
 				</div>
 			{/if}
 
-			{#if myAssignments.length === 0}
+			{#if !pendingAssignments.length && !completedAssignments.length}
 				<p class="py-8 text-center text-base-content/60">No review assignments yet.</p>
 			{/if}
 		{/if}
@@ -329,9 +429,19 @@
 		<!-- My Editions Tab -->
 		{#if activeTab === 'editions'}
 			{#if myEditions.length === 0}
-				<p class="py-8 text-center text-base-content/60">
-					You are not listed as an author on any editions.
-				</p>
+				<div class="rounded-box border border-base-300 bg-base-100 px-5 py-10 text-center">
+					<h2 class="text-lg font-semibold">Your first proposal starts here</h2>
+					<p class="mx-auto mt-2 mb-5 max-w-md text-sm text-base-content/65">
+						Tell us about your 3D edition. Your draft saves automatically, and you can return to it
+						anytime before submitting it for review.
+					</p>
+					<button
+						type="button"
+						class="btn btn-primary"
+						onclick={startProposal}
+						disabled={isCreating}>{isCreating ? 'Starting proposal…' : 'Start a proposal'}</button
+					>
+				</div>
 			{:else}
 				<div class="space-y-3">
 					{#each myEditions as edition (edition.id)}
@@ -366,7 +476,11 @@
 								<div class="min-w-0 flex-1">
 									<div class="flex flex-wrap items-center justify-between gap-3">
 										<div class="flex flex-wrap items-center gap-3">
-											<span class="font-medium">{edition.title}</span>
+											<a
+												class="font-medium break-words link-hover"
+												href={resolve('/editions/[slug]/workflow', { slug: edition.id })}
+												>{edition.title || 'Untitled Proposal'}</a
+											>
 											<StatusBadge status={edition.status} />
 										</div>
 										<div class="flex items-center gap-2">
@@ -381,8 +495,20 @@
 													{deletingId === edition.id ? 'Deleting…' : 'Delete'}
 												</button>
 											{/if}
-											<a href="{base}/editions/{edition.id}/workflow" class="btn btn-ghost btn-sm">
-												View Workflow
+											<a
+												href={resolve('/editions/[slug]/workflow', { slug: edition.id })}
+												class="btn btn-ghost btn-sm"
+											>
+												{edition.status === EditionStatus.Draft
+													? 'Continue proposal'
+													: [
+																EditionStatus.ConceptSubmitted,
+																EditionStatus.EditorialReview
+														  ].includes(edition.status)
+														? 'View proposal'
+														: edition.status === EditionStatus.AlphaReview
+															? 'View edition'
+															: 'View workflow'}
 											</a>
 										</div>
 									</div>
@@ -397,6 +523,16 @@
 									hrefForStatus={(status) => workflowStepHref(edition.id, status)}
 								/>
 							</div>
+							{#if edition.status === EditionStatus.AlphaReview}<p
+									class="mt-4 text-sm text-base-content/70"
+								>
+									Submitted for Alpha Review. Editing is locked until the editorial decision.
+								</p>{/if}
+							{#if [EditionStatus.AlphaReview, EditionStatus.AlphaRevisions, EditionStatus.AlphaAccepted].includes(edition.status)}<div
+									class="mt-3"
+								>
+									<AlphaReviewProgress editionId={edition.id} />
+								</div>{/if}
 						</div>
 					{/each}
 				</div>

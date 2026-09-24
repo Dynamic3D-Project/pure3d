@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { pb } from '$lib/database/client';
 	import {
 		EditionStatus,
@@ -47,21 +48,37 @@
 	}
 </script>
 
-{#if transitions.length > 0}
-	<div class="flex flex-wrap gap-2">
-		{#each transitions as target (target)}
-			<button
-				class="btn btn-outline btn-sm"
-				onclick={() => transitionTo(target)}
-				disabled={transitioning}
-			>
-				{#if transitioning}
-					<span class="loading loading-xs loading-spinner"></span>
+<div id="status-transition-panel">
+	{#if status === EditionStatus.AlphaReview}
+		<a
+			class="btn btn-outline btn-sm"
+			href={resolve('/editions/[slug]/workflow', { slug: editionId })}
+			>Review Alpha feedback & decision</a
+		>
+	{:else if transitions.length > 0}
+		<div class="flex flex-wrap gap-2">
+			{#each transitions as target (target)}
+				{#if target === EditionStatus.AlphaReview}
+					<a
+						class="btn btn-outline btn-sm"
+						href={resolve('/editions/[slug]/workflow', { slug: editionId }) + '#edition-review-tab'}
+						>Prepare Alpha Review request</a
+					>
+				{:else}
+					<button
+						class="btn btn-outline btn-sm"
+						onclick={() => transitionTo(target)}
+						disabled={transitioning}
+					>
+						{#if transitioning}
+							<span class="loading loading-xs loading-spinner"></span>
+						{/if}
+						Move to {STATUS_LABELS[target]}
+					</button>
 				{/if}
-				Move to {STATUS_LABELS[target]}
-			</button>
-		{/each}
-	</div>
-{:else}
-	<p class="text-sm text-base-content/60">No transitions available from this status.</p>
-{/if}
+			{/each}
+		</div>
+	{:else}
+		<p class="text-sm text-base-content/60">No transitions available from this status.</p>
+	{/if}
+</div>

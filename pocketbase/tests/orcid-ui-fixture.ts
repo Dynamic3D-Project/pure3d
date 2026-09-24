@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import PocketBase from 'pocketbase';
 import schema from '../pb_schema/collections.json';
 import { orcidAuthConfig } from '../../scripts/configure-orcid';
+import { setupCms } from '../../scripts/cms-schema';
 
 const directory = await mkdtemp(join(tmpdir(), 'orcid-ui-'));
 const hooks = join(directory, 'hooks');
@@ -13,6 +14,8 @@ await mkdir(hooks);
 for (const file of [
 	'orcid.pb.js',
 	'orcid-service.cjs',
+	'proposal-service.cjs',
+	'alpha-review-service.cjs',
 	'orcid-validation.cjs',
 	'review-service.cjs',
 	'activity-service.cjs',
@@ -93,6 +96,7 @@ for (const desired of schema) {
 	}
 }
 await root.send('/_test/seed-ui', { method: 'POST' });
+await setupCms(root);
 for (const [collection, id] of [
 	['collections', 'uicollection001'],
 	['editions', 'uiedition000001']
@@ -109,6 +113,55 @@ await root.collection('editionUsers').create({
 	role: 'author'
 });
 const readiness = await (await fetch(origin + '/api/pure3d/orcid/ready')).json();
+
+// Accepted edition for exercising the author -> Alpha reviewer -> editorial decision UI.
+const profile = await root.collection('users').getOne('author000000000');
+const alphaEdition = await root.collection('editions').create({
+	id: 'alphaui00000001',
+	title: 'Heritage research — Alpha draft',
+	dcTitle: 'Heritage research — Alpha draft',
+	status: 'concept_accepted',
+	reviewStage: 1,
+	isPublished: false,
+	credits: [
+		{
+			type: 'person',
+			role: 'creator',
+			name: profile.nickname,
+			orcid: profile.orcid,
+			provenance: 'oauth',
+			userId: profile.id
+		}
+	]
+});
+await root
+	.collection('editionUsers')
+	.create({ editionId: alphaEdition.id, userId: profile.id, role: 'author' });
+const vertices = Buffer.from(new Float32Array([-1, 0, 0, 1, 0, 0, 0, 1, 0]).buffer);
+const triangle = {
+	asset: { version: '2.0' },
+	scene: 0,
+	scenes: [{ nodes: [0] }],
+	nodes: [{ mesh: 0 }],
+	meshes: [{ primitives: [{ attributes: { POSITION: 0 }, material: 0 }] }],
+	materials: [{ doubleSided: true }],
+	buffers: [
+		{
+			uri: 'data:application/octet-stream;base64,' + vertices.toString('base64'),
+			byteLength: vertices.length
+		}
+	],
+	bufferViews: [{ buffer: 0, byteOffset: 0, byteLength: vertices.length }],
+	accessors: [
+		{ bufferView: 0, componentType: 5126, count: 3, type: 'VEC3', min: [-1, 0, 0], max: [1, 1, 0] }
+	]
+};
+const form = new FormData();
+form.append(
+	'modelFile',
+	new File([JSON.stringify(triangle)], 'triangle.gltf', { type: 'model/gltf+json' })
+);
+await root.collection('editions').update(alphaEdition.id, form);
 assert.deepEqual(readiness.checks, { hooks: true, auth: false, schema: true, credits: true });
 console.log(
 	JSON.stringify({ directory, origin, launcherPid: process.pid, backendPid: backend.pid })

@@ -74,6 +74,11 @@ export async function alignOrcidSchema(
 				collection.name === 'users' ||
 				collection.name.endsWith('Users') ||
 				field.name === 'credits' ||
+				(collection.name === 'editions' && field.name.startsWith('alpha')) ||
+				(collection.name === 'editionReviews' &&
+					!['editionId', 'reviewerId', 'comment'].includes(field.name)) ||
+				(collection.name === 'reviewAssignments' &&
+					['reviewRound', 'editionTitle'].includes(field.name)) ||
 				(workflowNames.includes(collection.name) && ['created', 'updated'].includes(field.name)) ||
 				(collection.name === 'auditLog' && field.name === 'targetType') ||
 				(collection.name === 'notifications' && field.name === 'type')

@@ -226,13 +226,23 @@ function model(e) {
 					recipients = admins(tx);
 				}
 			} else if (name === 'editionReviews') {
-				if (operation !== 'update' || changed.length) {
+				const alphaDraft =
+					record.getInt('reviewStage') === 2 && record.getString('reviewStatus') === 'draft';
+				const alphaSubmission =
+					record.getInt('reviewStage') === 2 &&
+					record.getString('reviewStatus') === 'submitted' &&
+					record.original().getString('reviewStatus') !== 'submitted';
+				if (!alphaDraft && (operation !== 'update' || changed.length || alphaSubmission)) {
 					action = {
 						create: 'review_submitted',
 						update: 'review_updated',
 						delete: 'review_deleted'
 					}[operation];
 					type = operation === 'create' ? 'review_submitted' : 'review_updated';
+					if (alphaSubmission) {
+						action = 'review_submitted';
+						type = 'review_submitted';
+					}
 					title = 'A review is ready for your attention';
 					recipients = admins(tx);
 				}
@@ -278,6 +288,7 @@ function model(e) {
 					}[after.status] || 'status_changed';
 				const submission =
 					after.status === 'concept_submitted' ||
+					(before.status === 'concept_accepted' && after.status === 'alpha_review') ||
 					(['alpha_revisions', 'final_revisions'].includes(before.status) &&
 						['alpha_review', 'final_review'].includes(after.status));
 				title = submission ? 'An edition is ready for review' : 'Your edition workflow changed';

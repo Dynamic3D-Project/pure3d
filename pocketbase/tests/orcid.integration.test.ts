@@ -38,6 +38,45 @@ const credit = {
 	provenance: 'oauth',
 	userId: 'author000000000'
 };
+const proposalPayload = () => ({
+	proposalType: 'research',
+	proposalPurpose: 'Purpose',
+	proposalArgument: 'Argument',
+	proposalThreeDRationale: 'Rationale',
+	proposalAudience: ['academics'],
+	proposalContextualMaterial: 'Context',
+	proposalHasExistingModel: false,
+	proposalDigitisationSituation: 'Digitisation is planned.'
+});
+
+const alphaAnswersPayload = () => ({
+	reviewStatus: 'submitted',
+	technicalComments: 'The scene loads correctly.',
+	valueRating: 4,
+	valueExplanation: 'Sources and methodology are clear.',
+	experienceComments: 'The narrative is easy to follow.',
+	generalComments: 'Review feedback.',
+	decision: 'approve',
+	recommendationExplanation: 'Ready to proceed.',
+	collaborationInterest: 'no'
+});
+async function requestAlpha(editionId: string) {
+	const form = new FormData();
+	form.append(
+		'sceneDocument',
+		new File(
+			[
+				'{"asset":{"type":"application/si-dpo-3d.document+json","version":"1.0"},"scene":0,"scenes":[{"nodes":[]}]}'
+			],
+			'scene.svx.json'
+		)
+	);
+	await author.collection('editions').update(editionId, form);
+	return author.collection('editions').update(editionId, {
+		status: 'alpha_review',
+		alphaRequest: { ready: 'The scene.', focus: 'Research argument.', workInProgress: '' }
+	});
+}
 
 beforeAll(async () => {
 	if (!binary) return;
@@ -48,6 +87,8 @@ beforeAll(async () => {
 		'orcid.pb.js',
 		'orcid-service.cjs',
 		'orcid-validation.cjs',
+		'proposal-service.cjs',
+		'alpha-review-service.cjs',
 		'review-service.cjs',
 		'activity-service.cjs',
 		'orcid-readiness.cjs'
@@ -592,8 +633,14 @@ integration(
 		).rejects.toBeDefined();
 		await author.collection('editions').update(edition.id, { credits: [credit] });
 		await expect(
-			author.collection('editions').update(edition.id, { status: 'concept_submitted' })
+			author.collection('editions').update(edition.id, {
+				status: 'concept_submitted',
+				...proposalPayload()
+			})
 		).resolves.toMatchObject({ status: 'concept_submitted', isPublished: false });
+		await expect(
+			author.collection('editions').update(edition.id, { proposalPurpose: 'Changed after submit.' })
+		).rejects.toBeDefined();
 		await expect(
 			author.collection('editions').update(edition.id, { status: 'published' })
 		).rejects.toBeDefined();
@@ -607,6 +654,333 @@ integration(
 				.collection('editionUsers')
 				.create({ editionId: edition.id, userId: author.authStore.record!.id, role: 'author' })
 		).rejects.toBeDefined();
+	}
+);
+
+integration('proposal round-trip, model groups, private files and submission locks', async () => {
+	let edition = await author
+		.collection('editions')
+		.create({ title: 'Proposal round-trip', credits: [credit] });
+	await author
+		.collection('editionUsers')
+		.create({ editionId: edition.id, userId: other.authStore.record!.id, role: 'collaborator' });
+	await expect(
+		author
+			.collection('editions')
+			.update(edition.id, { proposalSubmittedAt: new Date().toISOString() })
+	).rejects.toBeDefined();
+	await expect(
+		author.collection('editions').update(edition.id, { proposalSnapshot: { title: 'Spoof' } })
+	).rejects.toBeDefined();
+	await expect(
+		author.collection('editions').update(edition.id, {
+			...proposalPayload(),
+			proposalPurpose: '',
+			status: 'concept_submitted'
+		})
+	).rejects.toBeDefined();
+	expect((await author.collection('editions').getOne(edition.id)).status).toBe('draft');
+	await author
+		.collection('editions')
+		.update(edition.id, { ...proposalPayload(), proposalPurpose: 'Saved draft' });
+	expect((await author.collection('editions').getOne(edition.id)).proposalPurpose).toBe(
+		'Saved draft'
+	);
+	const form = new FormData();
+	form.append('proposalModelFiles+', new File(['{"asset":{"version":"2.0"}}'], 'first.gltf'));
+	form.append('proposalModelAssets+', new File(['companion'], 'first.bin'));
+	form.append('proposalSupportingFiles+', new File(['Research evidence'], 'evidence.txt'));
+	edition = await author.collection('editions').update(edition.id, form);
+	expect(edition.proposalModels).toHaveLength(1);
+	expect(edition.proposalModels[0]).toMatchObject({
+		file: edition.proposalModelFiles[0],
+		assets: edition.proposalModelAssets
+	});
+	const second = new FormData();
+	second.append('proposalModelFiles+', new File(['{"asset":{"version":"2.0"}}'], 'second.gltf'));
+	edition = await author.collection('editions').update(edition.id, second);
+	expect(edition.proposalModels).toHaveLength(2);
+	const model = edition.proposalModels[1];
+	edition = await author
+		.collection('editions')
+		.update(edition.id, { 'proposalModelFiles-': [model.file] });
+	expect(edition.proposalModels).toHaveLength(1);
+	const file = edition.proposalSupportingFiles[0];
+	expect((await fetch(author.files.getURL(edition, file))).ok).toBe(false);
+	const token = await author.files.getToken();
+	const download = await fetch(author.files.getURL(edition, file, { token }));
+	expect({ status: download.status, body: await download.text() }).toEqual({
+		status: 200,
+		body: 'Research evidence'
+	});
+	await expect(
+		author.collection('editions').update(edition.id, {
+			status: 'concept_submitted',
+			proposalSupportingLinks: ['javascript:alert(1)']
+		})
+	).rejects.toBeDefined();
+	edition = await author.collection('editions').update(edition.id, {
+		...proposalPayload(),
+		status: 'concept_submitted',
+		proposalHasExistingModel: true,
+		proposalModelSources: ['photogrammetry'],
+		proposalCopyrightOwnership: 'We own the models.'
+	});
+	expect(edition.isPublished).toBe(false);
+	expect(edition.proposalSubmittedAt).toBeTruthy();
+	expect(edition.proposalSnapshot).toMatchObject({
+		title: 'Proposal round-trip',
+		credits: [credit]
+	});
+	for (const client of [author, other]) {
+		for (const body of [
+			{ title: 'Locked' },
+			{ credits: [] },
+			{ proposalPurpose: 'Locked' },
+			{ 'proposalModelFiles-': edition.proposalModelFiles },
+			{ 'proposalSupportingFiles-': [file] },
+			{ status: 'draft' }
+		])
+			await expect(client.collection('editions').update(edition.id, body)).rejects.toBeDefined();
+	}
+	await admin.collection('editions').update(edition.id, { status: 'editorial_review' });
+	await admin.collection('editions').update(edition.id, { status: 'concept_accepted' });
+	await author.collection('editions').update(edition.id, { title: 'Edition development' });
+	expect((await author.collection('editions').getOne(edition.id)).proposalSnapshot.title).toBe(
+		'Proposal round-trip'
+	);
+	await root.collection('editions').delete(edition.id);
+});
+
+integration(
+	'Alpha draft, confidential submission, editorial release and a second round',
+	async () => {
+		let edition = await author
+			.collection('editions')
+			.create({ title: 'Alpha edition', credits: [credit] });
+		const secondUser = await root.collection('users').create({
+			email: 'alpha-second@example.test',
+			password: 'local-test-password-only',
+			passwordConfirm: 'local-test-password-only',
+			role: 'user'
+		});
+		const second = new PocketBase(origin);
+		await second
+			.collection('users')
+			.authWithPassword('alpha-second@example.test', 'local-test-password-only');
+		try {
+			await author
+				.collection('editions')
+				.update(edition.id, { ...proposalPayload(), status: 'concept_submitted' });
+			await admin.collection('editions').update(edition.id, { status: 'editorial_review' });
+			await admin.collection('editions').update(edition.id, { status: 'concept_accepted' });
+			const context = {
+				ready: 'The scene and interpretation.',
+				focus: 'The research argument.',
+				workInProgress: 'Audio commentary.'
+			};
+			await expect(
+				author
+					.collection('editions')
+					.update(edition.id, { status: 'alpha_review', alphaRequest: context })
+			).rejects.toBeDefined();
+			const files = new FormData();
+			files.append(
+				'sceneDocument',
+				new File(
+					[
+						'{"asset":{"type":"application/si-dpo-3d.document+json","version":"1.0"},"scene":0,"scenes":[{"nodes":[]}]}'
+					],
+					'scene.svx.json'
+				)
+			);
+			await author.collection('editions').update(edition.id, files);
+			edition = await author
+				.collection('editions')
+				.update(edition.id, { status: 'alpha_review', alphaRequest: context });
+			expect(edition).toMatchObject({
+				status: 'alpha_review',
+				alphaReviewRound: 1,
+				isPublished: false
+			});
+			for (const client of [author, admin])
+				await expect(
+					client.collection('editions').update(edition.id, { dcAbstract: 'Changed while reviewed' })
+				).rejects.toBeDefined();
+			await expect(
+				admin.collection('reviewAssignments').create({
+					editionId: edition.id,
+					reviewerId: author.authStore.record!.id,
+					assignedBy: admin.authStore.record!.id,
+					reviewStage: 2,
+					status: 'pending'
+				})
+			).rejects.toBeDefined();
+			const assignment = await admin.collection('reviewAssignments').create({
+				editionId: edition.id,
+				reviewerId: other.authStore.record!.id,
+				assignedBy: admin.authStore.record!.id,
+				reviewStage: 2,
+				status: 'pending'
+			});
+			expect(assignment.reviewRound).toBe(1);
+			const secondAssignment = await admin.collection('reviewAssignments').create({
+				editionId: edition.id,
+				reviewerId: secondUser.id,
+				reviewStage: 2,
+				status: 'pending'
+			});
+			expect((await other.collection('editions').getOne(edition.id)).id).toBe(edition.id);
+			const token = await other.files.getToken();
+			expect(
+				(await fetch(other.files.getURL(edition, edition.sceneDocument, { token }))).status
+			).toBe(200);
+			const draft = await other.collection('editionReviews').create({
+				editionId: edition.id,
+				reviewerId: other.authStore.record!.id,
+				reviewStage: 2,
+				reviewStatus: 'draft',
+				technicalComments: 'Saved partial draft'
+			});
+			expect((await other.collection('editionReviews').getOne(draft.id)).technicalComments).toBe(
+				'Saved partial draft'
+			);
+			expect(
+				await author
+					.collection('editionReviews')
+					.getFullList({ filter: `editionId = "${edition.id}"` })
+			).toHaveLength(0);
+			expect(
+				await author
+					.collection('reviewAssignments')
+					.getFullList({ filter: `editionId = "${edition.id}"` })
+			).toHaveLength(0);
+			await expect(
+				other.collection('editionReviews').update(draft.id, { reviewStatus: 'submitted' })
+			).rejects.toBeDefined();
+			const endpoint = `/api/pure3d/editions/${edition.id}`;
+			await expect(
+				admin.send(endpoint + '/alpha-decision', { method: 'POST', body: { decision: 'accept' } })
+			).rejects.toBeDefined();
+			const submitted = await other.collection('editionReviews').update(draft.id, {
+				reviewStatus: 'submitted',
+				technicalComments: 'The scene loads.',
+				valueRating: 4,
+				valueExplanation: 'The methods and sources are clear.',
+				experienceComments: 'The interface is usable.',
+				generalComments: 'Please refine the introduction.',
+				decision: 'request_revisions',
+				recommendationExplanation: 'PRIVATE editor explanation',
+				collaborationInterest: 'yes'
+			});
+			expect(submitted.submittedAt).toBeTruthy();
+			expect((await other.collection('reviewAssignments').getOne(assignment.id)).status).toBe(
+				'completed'
+			);
+			await expect(
+				other.collection('editionReviews').update(draft.id, { generalComments: 'Changed' })
+			).rejects.toBeDefined();
+			await expect(other.collection('editions').getOne(edition.id)).rejects.toBeDefined();
+			expect(
+				(await fetch(other.files.getURL(edition, edition.sceneDocument, { token }))).status
+			).toBe(403);
+			await expect(
+				other.collection('editions').update(edition.id, { status: 'alpha_accepted' })
+			).rejects.toBeDefined();
+			await expect(
+				admin.collection('editions').update(edition.id, { status: 'alpha_accepted' })
+			).rejects.toBeDefined();
+			expect(await author.send(endpoint + '/alpha-progress')).toMatchObject({
+				submitted: 1,
+				total: 2,
+				released: false,
+				feedback: []
+			});
+			await expect(
+				admin.send(endpoint + '/alpha-decision', { method: 'POST', body: { decision: 'accept' } })
+			).rejects.toBeDefined();
+			await second
+				.collection('reviewAssignments')
+				.update(secondAssignment.id, { status: 'declined' });
+			await expect(second.collection('editions').getOne(edition.id)).rejects.toBeDefined();
+			expect(await author.send(endpoint + '/alpha-progress')).toMatchObject({
+				submitted: 1,
+				total: 1
+			});
+			await expect(
+				author.send(endpoint + '/alpha-decision', { method: 'POST', body: { decision: 'accept' } })
+			).rejects.toBeDefined();
+			await admin.send(endpoint + '/alpha-decision', {
+				method: 'POST',
+				body: { decision: 'revisions' }
+			});
+			const progress = await author.send(endpoint + '/alpha-progress');
+			expect(progress).toMatchObject({
+				released: true,
+				feedback: [
+					{
+						reviewer: 'Reviewer A',
+						valueRating: 4,
+						generalComments: 'Please refine the introduction.'
+					}
+				]
+			});
+			expect(JSON.stringify(progress)).not.toContain('PRIVATE');
+			expect(JSON.stringify(progress)).not.toContain(other.authStore.record!.id);
+			expect(JSON.stringify(progress)).not.toContain('collaborationInterest');
+			await expect(
+				author.collection('editions').getList(1, 10, {
+					filter: 'editionReviews_via_editionId.recommendationExplanation ~ "PRIVATE"'
+				})
+			).rejects.toBeDefined();
+			await expect(
+				author.collection('users').getList(1, 10, {
+					filter: `reviewAssignments_via_reviewerId.editionId = "${edition.id}"`
+				})
+			).rejects.toBeDefined();
+			await author
+				.collection('editions')
+				.update(edition.id, { dcAbstract: 'Revised introduction' });
+			edition = await author
+				.collection('editions')
+				.update(edition.id, { status: 'alpha_review', alphaRequest: context });
+			expect(edition.alphaReviewRound).toBe(2);
+			expect(await author.send(endpoint + '/alpha-progress')).toMatchObject({
+				submitted: 0,
+				total: 0,
+				released: false
+			});
+			await expect(other.collection('editions').getOne(edition.id)).rejects.toBeDefined();
+			const invitedAgain = await admin.collection('reviewAssignments').create({
+				editionId: edition.id,
+				reviewerId: other.authStore.record!.id,
+				assignedBy: admin.authStore.record!.id,
+				reviewStage: 2,
+				status: 'pending'
+			});
+			expect(invitedAgain.reviewRound).toBe(2);
+			expect((await other.collection('editions').getOne(edition.id)).id).toBe(edition.id);
+			await other.collection('editionReviews').create({
+				editionId: edition.id,
+				reviewerId: other.authStore.record!.id,
+				reviewStage: 2,
+				...alphaAnswersPayload()
+			});
+			await admin.send(endpoint + '/alpha-decision', {
+				method: 'POST',
+				body: { decision: 'accept' }
+			});
+			await admin.collection('editions').update(edition.id, { status: 'final_review' });
+			await admin.collection('editions').update(edition.id, { status: 'published' });
+			const visitor = new PocketBase(origin);
+			const publicRecord = await visitor.collection('editions').getOne(edition.id);
+			expect(publicRecord.proposalPurpose).toBeUndefined();
+			expect(publicRecord.proposalSnapshot).toBeUndefined();
+			expect(publicRecord.alphaRequest).toBeUndefined();
+		} finally {
+			await root.collection('editions').delete(edition.id);
+			await root.collection('users').delete(secondUser.id);
+		}
 	}
 );
 
@@ -744,7 +1118,9 @@ integration(
 			.collection('editions')
 			.create({ title: 'Different review scope', credits: [credit] });
 		try {
-			await author.collection('editions').update(edition.id, { status: 'concept_submitted' });
+			await author
+				.collection('editions')
+				.update(edition.id, { status: 'concept_submitted', ...proposalPayload() });
 			await root.collection('editionUsers').create({
 				editionId: edition.id,
 				userId: outsider.authStore.record!.id,
@@ -775,13 +1151,13 @@ integration(
 			const secondAssignment = await admin.collection('reviewAssignments').create({
 				editionId: edition.id,
 				reviewerId: secondUser.id,
-				reviewStage: 2,
+				reviewStage: 3,
 				status: 'pending'
 			});
 			await admin.collection('reviewAssignments').create({
 				editionId: differentEdition.id,
 				reviewerId: other.authStore.record!.id,
-				reviewStage: 2,
+				reviewStage: 3,
 				status: 'pending'
 			});
 			expect(
@@ -828,7 +1204,7 @@ integration(
 					).rejects.toBeDefined();
 			const falseScope = await admin
 				.collection('editionReviews')
-				.create({ ...verdict, reviewStage: 2 });
+				.create({ ...verdict, reviewStage: 3 });
 			await expect(other.collection('editionReviews').getOne(falseScope.id)).rejects.toBeDefined();
 			expect(
 				(await other.collection('editionReviews').getFullList({ sort: '-created' })).map(
@@ -837,6 +1213,7 @@ integration(
 			).toEqual([review.id]);
 			await expect(second.collection('editionReviews').getOne(review.id)).rejects.toBeDefined();
 			await expect(outsider.collection('editionReviews').getOne(review.id)).rejects.toBeDefined();
+			await admin.collection('editionReviews').delete(falseScope.id);
 			const feedbackData = {
 				editionId: edition.id,
 				reviewerId: other.authStore.record!.id,
@@ -888,8 +1265,15 @@ integration(
 				await expect(
 					other.collection('reviewFeedback').update(feedback.id, patch)
 				).rejects.toBeDefined();
-			for (const status of ['editorial_review', 'concept_accepted', 'alpha_review'])
+			for (const status of ['editorial_review', 'concept_accepted'])
 				await admin.collection('editions').update(edition.id, { status });
+			await requestAlpha(edition.id);
+			const alphaAssignment = await admin.collection('reviewAssignments').create({
+				editionId: edition.id,
+				reviewerId: secondUser.id,
+				reviewStage: 2,
+				status: 'pending'
+			});
 			await expect(
 				other.collection('editionReviews').update(review.id, { comment: 'Past stage edit' })
 			).rejects.toBeDefined();
@@ -899,18 +1283,29 @@ integration(
 			await expect(
 				other.collection('editions').update(edition.id, { status: 'alpha_accepted' })
 			).rejects.toBeDefined();
-			const alphaFeedback = await second
-				.collection('reviewFeedback')
-				.create({ ...feedbackData, reviewerId: secondUser.id, reviewStage: 2 });
-			await admin.collection('editions').update(edition.id, { status: 'alpha_revisions' });
-			for (const item of [feedback, alphaFeedback])
+			await expect(
+				second
+					.collection('reviewFeedback')
+					.create({ ...feedbackData, reviewerId: secondUser.id, reviewStage: 2 })
+			).rejects.toBeDefined();
+			const alphaReview = await second.collection('editionReviews').create({
+				editionId: edition.id,
+				reviewerId: secondUser.id,
+				reviewStage: 2,
+				...alphaAnswersPayload()
+			});
+			await admin.send(`/api/pure3d/editions/${edition.id}/alpha-decision`, {
+				method: 'POST',
+				body: { decision: 'revisions' }
+			});
+			for (const item of [feedback])
 				await expect(
 					author.collection('reviewFeedback').update(item.id, { resolved: true })
 				).resolves.toMatchObject({ resolved: true });
 			await expect(
 				author
 					.collection('reviewFeedback')
-					.update(alphaFeedback.id, { resolved: false, comment: 'Smuggled edit' })
+					.update(feedback.id, { resolved: false, comment: 'Smuggled edit' })
 			).rejects.toBeDefined();
 			await expect(
 				author.collection('editions').update(edition.id, { dcInstitution: ['Updated institution'] })
@@ -922,18 +1317,39 @@ integration(
 			).rejects.toBeDefined();
 			await admin
 				.collection('reviewAssignments')
-				.update(secondAssignment.id, { status: 'declined' });
+				.update(alphaAssignment.id, { status: 'declined' });
 			await expect(
-				second.collection('reviewFeedback').getOne(alphaFeedback.id)
+				second.collection('editionReviews').getOne(alphaReview.id)
 			).rejects.toBeDefined();
 			await expect(
-				second.collection('reviewFeedback').update(alphaFeedback.id, { comment: 'Declined edit' })
+				second
+					.collection('editionReviews')
+					.update(alphaReview.id, { generalComments: 'Declined edit' })
 			).rejects.toBeDefined();
 			await admin.collection('reviewAssignments').delete(assignment.id);
 			await expect(other.collection('editionReviews').getOne(review.id)).rejects.toBeDefined();
 			await expect(other.collection('editions').getOne(edition.id)).rejects.toBeDefined();
-			for (const status of ['alpha_review', 'alpha_accepted', 'final_review'])
-				await admin.collection('editions').update(edition.id, { status });
+			await requestAlpha(edition.id);
+			await admin.collection('reviewAssignments').create({
+				editionId: edition.id,
+				reviewerId: secondUser.id,
+				reviewStage: 2,
+				status: 'pending'
+			});
+			await second.collection('editionReviews').create({
+				editionId: edition.id,
+				reviewerId: secondUser.id,
+				reviewStage: 2,
+				...alphaAnswersPayload()
+			});
+			await admin.send(`/api/pure3d/editions/${edition.id}/alpha-decision`, {
+				method: 'POST',
+				body: { decision: 'accept' }
+			});
+			await admin.collection('editions').update(edition.id, { status: 'final_review' });
+			await admin
+				.collection('reviewAssignments')
+				.update(secondAssignment.id, { status: 'declined' });
 			await admin.collection('reviewAssignments').create({
 				editionId: edition.id,
 				reviewerId: other.authStore.record!.id,
@@ -1193,6 +1609,7 @@ integration(
 		try {
 			await author.collection('editions').update(edition.id, {
 				status: 'concept_submitted',
+				...proposalPayload(),
 				__pure3dActor: '_superusers/' + root.authStore.record!.id,
 				performedBy: 'forged actor',
 				recipientId: other.authStore.record!.id
