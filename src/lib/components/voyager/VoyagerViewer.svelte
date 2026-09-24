@@ -16,6 +16,15 @@
 	 */
 
 	import { onMount } from 'svelte';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
+	import { installViewerFetch } from './viewer-fetch';
+	import {
+		ViewerResources,
+		captureViewerErrors,
+		retainCanvasCapture,
+		ensureViewerScript
+	} from './viewer-resources';
+	import type { VoyagerElement, VoyagerItem, VoyagerTour } from './viewer-runtime';
 	import { base } from '$app/paths';
 	import toast from 'svelte-french-toast';
 	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
@@ -52,8 +61,6 @@
 		enableControls?: boolean;
 		/** Show/hide interaction prompt */
 		showPrompt?: boolean;
-		/** Show/hide reader initially */
-		showReader?: boolean;
 		/** Voyager version (e.g., "0.56.2") - determines which Voyager script to load */
 		voyagerVersion?: string;
 		/** Resource root path for Voyager assets (fonts, css, images, language) */
@@ -103,9 +110,9 @@
 		getFeatureNeeds: () => VoyagerFeatureNeeds;
 		resetCamera: () => void;
 		resetViewer: () => void;
-		getAnnotations: () => any[];
-		getArticles: () => any[];
-		getTours: () => any[];
+		getAnnotations: () => VoyagerItem[];
+		getArticles: () => VoyagerItem[];
+		getTours: () => VoyagerTour[];
 		getActiveTags: () => string[];
 		setActiveTags: (categories: string[]) => void;
 		setActiveAnnotation: (id: string) => void;
@@ -138,7 +145,7 @@
 		stepIndex: number;
 	}
 
-	interface CategoryViewer extends HTMLElement {
+	interface CategoryViewer extends VoyagerElement {
 		viewer?: {
 			node?: {
 				setup?: {
@@ -203,7 +210,6 @@
 		uiMode = 'none',
 		enableControls = true,
 		showPrompt = false,
-		showReader = false,
 		voyagerVersion = DEFAULT_VOYAGER_VERSION,
 		resourceRoot,
 		onModelLoaded,
@@ -227,13 +233,13 @@
 		height ? `height: ${height};` : 'aspect-ratio: 4/3; max-height: 90dvh;'
 	);
 
-	let voyagerElement: HTMLElement | undefined = $state();
+	let voyagerElement: CategoryViewer | undefined = $state();
 	let isScriptLoaded = $state(false);
 	let hasError = $state(false);
 	let errorMessage = $state('');
-	let annotations = $state<any[]>([]);
-	let articles = $state<any[]>([]);
-	let tours = $state<any[]>([]);
+	let annotations = $state<VoyagerItem[]>([]);
+	let articles = $state<VoyagerItem[]>([]);
+	let tours = $state<VoyagerTour[]>([]);
 
 	// Loading progress state
 	let loadingProgress = $state(0);
@@ -247,7 +253,8 @@
 	let lastActiveCategories: string | null = null;
 	let lastActiveArticleId: string | null = null;
 	let disposed = false;
-	let cleanupConsoleError: (() => void) | null = null;
+	const resources = new ViewerResources();
+	let contentResources: ViewerResources | null = null;
 	let lastTourState: VoyagerTourState = { tourIndex: -1, stepIndex: -1 };
 	let arAvailable = false;
 	let sceneFeatureNeeds = {
@@ -277,7 +284,7 @@
 	const resolvedEditorUrl = $derived.by(() => {
 		if (editorUrl) return editorUrl;
 
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		params.set('version', voyagerVersion);
 		params.set('root', url);
 		params.set('resourceRoot', resolvedResourceRoot);
@@ -293,136 +300,19 @@
 		return `${base}/voyager/story.html?${params.toString()}`;
 	});
 
-	// Format bytes to human readable string
-	function formatBytes(bytes: number): string {
-		if (bytes < 1024) return `${bytes} B`;
-		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-	}
-
-	// PocketBase normalizes filenames on upload: splits camelCase (DamagedHelmet →
-	// damaged_helmet, metalRoughness → metal_roughness), lowercases, replaces
-	// non-alphanumerics with "_", and appends a 10-char random suffix before the
-	// extension. Here we mirror the normalization (without the suffix) so GLTF-referenced
-	// paths like "Textures/Default_metalRoughness.jpg" match stored companion names.
-	function normalizeBasename(name: string): string {
-		const dot = name.lastIndexOf('.');
-		const stem = dot >= 0 ? name.slice(0, dot) : name;
-		const ext = dot >= 0 ? name.slice(dot) : '';
-		return (
-			stem
-				.replace(/([a-z0-9])([A-Z])/g, '$1_$2')
-				.replace(/([A-Z])([A-Z][a-z])/g, '$1_$2')
-				.toLowerCase()
-				.replace(/[^a-z0-9]+/g, '_')
-				.replace(/_+/g, '_')
-				.replace(/^_|_$/g, '') + ext.toLowerCase()
-		);
-	}
-
-	function resolveCompanion(requestedUrl: string): string | null {
-		if (!companionAssets) return null;
-		if (!requestedUrl.startsWith(companionAssets.baseDir)) return null;
-
-		let pathname: string;
-		try {
-			const parsed = new URL(requestedUrl);
-			if (parsed.searchParams.has('token')) return null;
-			pathname = parsed.pathname;
-		} catch {
-			return null;
-		}
-		const slash = pathname.lastIndexOf('/');
-		const raw = decodeURIComponent(slash >= 0 ? pathname.slice(slash + 1) : pathname);
-		if (!raw) return null;
-
-		const key = normalizeBasename(raw);
-		return companionAssets.byBasename[key] ?? null;
-	}
-
-	// Install fetch interceptor to track download progress
-	function installFetchInterceptor(): () => void {
-		const originalFetch = window.fetch;
-		const trackedExtensions = [
-			'.glb',
-			'.gltf',
-			'.bin',
-			'.jpg',
-			'.jpeg',
-			'.png',
-			'.webp',
-			'.ktx2',
-			'.draco'
-		];
-
-		(window as any).fetch = async (
-			input: RequestInfo | URL,
-			init?: RequestInit
-		): Promise<Response> => {
-			const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-
-			const override = fetchOverrides?.find((o: any) => o.url === url);
-			if (override) {
-				return new Response(override.content, {
-					status: 200,
-					headers: { 'content-type': override.contentType ?? 'application/json' }
-				});
+	function installFetchInterceptor() {
+		return installViewerFetch(window, {
+			root: () => new URL(url, window.location.href).href,
+			overrides: () => fetchOverrides,
+			companions: () => companionAssets,
+			progress: (total, loaded) => {
+				if (disposed || loadingPhase === 'complete') return;
+				if (loadingPhase === 'document') loadingPhase = 'model';
+				totalBytes += total;
+				loadedBytes += loaded;
+				loadingProgress = totalBytes > 0 ? Math.round((loadedBytes / totalBytes) * 100) : 0;
 			}
-
-			const companionUrl = resolveCompanion(url);
-			if (companionUrl && companionUrl !== url) {
-				return window.fetch(companionUrl, init);
-			}
-
-			const shouldTrack =
-				loadingPhase !== 'complete' &&
-				trackedExtensions.some((ext) => url.toLowerCase().includes(ext));
-
-			if (!shouldTrack) {
-				return originalFetch(input, init);
-			}
-
-			// First asset request detected - switch to model loading phase
-			if (loadingPhase === 'document') {
-				loadingPhase = 'model';
-			}
-
-			const response = await originalFetch(input, init);
-			const contentLength = response.headers.get('content-length');
-
-			// If no content-length or no body, return original response
-			if (!contentLength || !response.body) {
-				return response;
-			}
-
-			const fileSize = parseInt(contentLength);
-			totalBytes += fileSize;
-
-			const reader = response.body.getReader();
-			const stream = new ReadableStream({
-				async start(this: any, controller: ReadableStreamDefaultController) {
-					while (true) {
-						const { done, value } = await reader.read();
-						if (done) break;
-						loadedBytes += value.length;
-						loadingProgress = totalBytes > 0 ? Math.round((loadedBytes / totalBytes) * 100) : 0;
-						controller.enqueue(value);
-					}
-					controller.close();
-				}
-			});
-
-			return new Response(stream, {
-				headers: response.headers,
-				status: response.status,
-				statusText: response.statusText
-			});
-		};
-
-		// Return cleanup function
-		return () => {
-			(window as any).fetch = originalFetch;
-		};
+		});
 	}
 
 	onMount(() => {
@@ -434,77 +324,39 @@
 			loadedBytes = 0;
 			loadingPhase = 'script';
 
-			// Patch getContext to force preserveDrawingBuffer on WebGL contexts.
-			// This allows canvas screenshot capture (toDataURL/drawImage) to work.
-			const origGetContext = HTMLCanvasElement.prototype.getContext;
-			HTMLCanvasElement.prototype.getContext = function (
-				this: HTMLCanvasElement,
-				type: string,
-				attrs?: any
-			) {
-				if (type === 'webgl' || type === 'webgl2') {
-					attrs = { ...attrs, preserveDrawingBuffer: true };
-				}
-				return origGetContext.call(this, type, attrs);
-			} as typeof origGetContext;
+			resources.defer(retainCanvasCapture(HTMLCanvasElement.prototype));
 
 			// Install fetch interceptor before loading Voyager
 			cleanupFetchInterceptor = installFetchInterceptor();
+			resources.defer(() => {
+				disposed = true;
+				contentResources?.dispose();
+				cancelCameraAnimation();
+				cleanupChromeObserver();
+				cleanupFetchInterceptor?.();
+				cleanupFetchInterceptor = null;
+			});
 
 			// Compute script URL based on resourceRoot or voyagerVersion
 			const scriptUrl = `${resolvedResourceRoot}js/voyager-explorer.min.js`;
 
-			// If Voyager is already registered (user navigated to this view previously),
-			// re-loading the script would bundle another Three.js copy and re-register
-			// existing custom elements — which throws. Reuse the existing registration.
-			if (customElements.get('voyager-explorer')) {
-				isScriptLoaded = true;
-				loadingPhase = 'document';
-				setTimeout(loadContent, 500);
-				return () => {
-					disposed = true;
-					cleanupConsoleError?.();
-					cancelCameraAnimation();
-					cleanupChromeObserver();
-					if (cleanupFetchInterceptor) {
-						cleanupFetchInterceptor();
-						cleanupFetchInterceptor = null;
-					}
-				};
-			}
-
-			// Load Voyager Explorer script
-			const script = document.createElement('script');
-			script.src = scriptUrl;
-			script.onload = () => {
-				if (disposed) return;
-				isScriptLoaded = true;
-				loadingPhase = 'document';
-				// Wait for element to be created and initialized
-				setTimeout(loadContent, 500);
-			};
-			script.onerror = () => handleVoyagerError({ message: 'The 3D viewer could not be loaded.' });
-			document.head.appendChild(script);
-
-			return () => {
-				disposed = true;
-				cleanupConsoleError?.();
-				cancelCameraAnimation();
-				cleanupChromeObserver();
-				// Cleanup fetch interceptor
-				if (cleanupFetchInterceptor) {
-					cleanupFetchInterceptor();
-					cleanupFetchInterceptor = null;
-				}
-				// Leave the script tag in place — Voyager registers custom elements
-				// globally, so removing the script doesn't un-register them and
-				// re-adding it on next mount would throw "already defined".
-			};
+			void ensureViewerScript(document, customElements, scriptUrl)
+				.then(() => {
+					if (disposed) return;
+					isScriptLoaded = true;
+					loadingPhase = 'document';
+					resources.timeout(loadContent, 500);
+				})
+				.catch(handleVoyagerError);
+			return () => resources.dispose();
 		}
 	});
 
 	function loadContent() {
 		if (disposed || !voyagerElement) return;
+		contentResources?.dispose();
+		const contentScope = new ViewerResources();
+		contentResources = contentScope;
 
 		// Fix Voyager modal z-index to appear above sticky header (Shadow DOM)
 		fixVoyagerModalZIndex();
@@ -512,7 +364,7 @@
 
 		// Handler for when model is ready
 		async function handleModelReady() {
-			if (disposed || loadingPhase === 'complete' || hasError) return; // Already handled
+			if (disposed || contentScope.disposed || loadingPhase === 'complete' || hasError) return;
 
 			hasError = false;
 			loadingPhase = 'complete';
@@ -531,9 +383,11 @@
 
 			// Load available content
 			getContent();
-			sceneFeatureNeeds = await detectSceneFeatures();
-			arAvailable = await supportsAR();
-			if (disposed) return;
+			const features = await detectSceneFeatures();
+			const ar = await supportsAR();
+			if (disposed || contentScope.disposed) return;
+			sceneFeatureNeeds = features;
+			arAvailable = ar;
 
 			// Expose API to parent
 			if (onReady) {
@@ -546,9 +400,8 @@
 					toggleMeasurement,
 					enableAR,
 					setLanguage,
-					getLanguages: () => (voyagerElement as any)?.getLanguages?.() ?? [],
-					getActiveLanguage: () =>
-						(voyagerElement as any)?.getActiveLanguage?.() ?? selectedLanguage,
+					getLanguages: () => voyagerElement?.getLanguages?.() ?? [],
+					getActiveLanguage: () => voyagerElement?.getActiveLanguage?.() ?? selectedLanguage,
 					getCapabilities,
 					getFeatureNeeds,
 					resetCamera,
@@ -569,58 +422,42 @@
 		}
 
 		// Listen for model load event
-		voyagerElement.addEventListener('model-load', () => {
+		contentScope.listen(voyagerElement, 'model-load', () => {
 			handleModelReady();
 		});
-		voyagerElement.addEventListener('scene-content-load', getContent);
+		contentScope.listen(voyagerElement, 'scene-content-load', getContent);
 
 		// Check if model is already loaded (e.g., from cache)
 		// Poll for the presence of models/annotations as indicator
 		const checkIfAlreadyLoaded = () => {
-			if (disposed || loadingPhase === 'complete' || hasError) return;
+			if (disposed || contentScope.disposed || loadingPhase === 'complete' || hasError) return;
 
 			try {
 				// Check if Voyager has models loaded
-				const hasModels = (voyagerElement as any).getModels?.()?.length > 0;
-				const hasAnnotations = (voyagerElement as any).getAnnotations?.()?.length >= 0;
+				const hasModels = (voyagerElement?.getModels?.()?.length ?? 0) > 0;
+				const hasAnnotations = (voyagerElement?.getAnnotations?.()?.length ?? -1) >= 0;
 
 				if (hasModels || hasAnnotations) {
 					handleModelReady();
 				} else {
 					// Keep checking for a bit
-					setTimeout(checkIfAlreadyLoaded, 200);
+					contentScope.timeout(checkIfAlreadyLoaded, 200);
 				}
 			} catch {
 				// API not ready yet, keep checking
-				setTimeout(checkIfAlreadyLoaded, 200);
+				contentScope.timeout(checkIfAlreadyLoaded, 200);
 			}
 		};
 
 		// Start checking after a short delay
-		setTimeout(checkIfAlreadyLoaded, 1000);
-
-		// Listen for annotation changes
-		voyagerElement.addEventListener('annotation-active', (e: any) => {
-			console.log('Active annotation:', e.detail);
-		});
+		contentScope.timeout(checkIfAlreadyLoaded, 1000);
 
 		// Listen for Voyager error events
-		voyagerElement.addEventListener('error', handleVoyagerError);
-		voyagerElement.addEventListener('load-error', handleVoyagerError);
+		contentScope.listen(voyagerElement, 'error', handleVoyagerError);
+		contentScope.listen(voyagerElement, 'load-error', handleVoyagerError);
 
 		// Also listen for global errors that might come from Voyager
-		const originalConsoleError = console.error;
-		console.error = (...args) => {
-			const message = args.join(' ');
-			if (message.includes('Failed to load document') || message.includes('schema validation')) {
-				handleVoyagerError({ detail: { message } });
-			}
-			originalConsoleError.apply(console, args);
-		};
-		const installedConsoleError = console.error;
-		cleanupConsoleError = () => {
-			if (console.error === installedConsoleError) console.error = originalConsoleError;
-		};
+		contentScope.defer(captureViewerErrors((message) => handleVoyagerError({ message })));
 	}
 
 	$effect(() => {
@@ -643,7 +480,7 @@
 	function fixVoyagerModalZIndex() {
 		if (!voyagerElement) return;
 
-		const shadowRoot = (voyagerElement as any).shadowRoot;
+		const shadowRoot = voyagerElement.shadowRoot;
 		if (shadowRoot) {
 			// Inject styles into Shadow DOM to contain modal within viewer
 			const style = document.createElement('style');
@@ -700,7 +537,7 @@
 	}
 
 	function observeVoyagerChrome() {
-		const shadowRoot = (voyagerElement as any)?.shadowRoot as ShadowRoot | undefined;
+		const shadowRoot = voyagerElement?.shadowRoot;
 		if (
 			!shadowRoot ||
 			(!onPanelVisibilityChange &&
@@ -780,9 +617,11 @@
 		}
 	});
 
-	function handleVoyagerError(e: any) {
+	function handleVoyagerError(e: unknown) {
 		if (disposed) return;
-		const message = e?.detail?.message || e?.message || 'Failed to load 3D model';
+		const error = e as { detail?: { message?: unknown }; message?: unknown } | null;
+		const value = error?.detail?.message || error?.message;
+		const message = typeof value === 'string' ? value : 'Failed to load 3D model';
 		hasError = true;
 		errorMessage = message;
 		cleanupFetchInterceptor?.();
@@ -795,13 +634,12 @@
 	}
 
 	function getContent() {
-		if (disposed || !voyagerElement || typeof (voyagerElement as any).getAnnotations !== 'function')
-			return;
+		if (disposed || !voyagerElement || typeof voyagerElement.getAnnotations !== 'function') return;
 
 		try {
-			const annots = (voyagerElement as any).getAnnotations();
-			const arts = (voyagerElement as any).getArticles();
-			const toursData = (voyagerElement as any).getTours?.();
+			const annots = voyagerElement.getAnnotations();
+			const arts = voyagerElement.getArticles?.();
+			const toursData = voyagerElement.getTours?.();
 			annotations = Array.isArray(annots) ? [...annots] : [];
 			articles = Array.isArray(arts) ? [...arts] : [];
 			tours = Array.isArray(toursData) ? [...toursData] : [];
@@ -813,7 +651,7 @@
 	}
 
 	function getCapabilities(): VoyagerCapabilities {
-		const element = voyagerElement as any;
+		const element = voyagerElement;
 
 		return {
 			annotations: typeof element?.toggleAnnotations === 'function',
@@ -866,7 +704,7 @@
 	function setCameraOrbitInternal() {
 		if (!voyagerElement) return;
 		cancelCameraAnimation();
-		(voyagerElement as any).setCameraOrbit?.(cameraYaw, cameraPitch);
+		voyagerElement.setCameraOrbit?.(cameraYaw, cameraPitch);
 	}
 
 	/** Set camera orbit with explicit yaw/pitch values (for external API) */
@@ -875,7 +713,7 @@
 		cancelCameraAnimation();
 		cameraYaw = yaw;
 		cameraPitch = pitch;
-		(voyagerElement as any).setCameraOrbit?.(yaw, pitch);
+		voyagerElement.setCameraOrbit?.(yaw, pitch);
 	}
 
 	function cancelCameraAnimation() {
@@ -990,8 +828,8 @@
 			cameraOffsetY = targetOffsetY;
 			cameraOffsetZ = targetOffsetZ;
 
-			(voyagerElement as any).setCameraOrbit?.(cameraYaw, cameraPitch);
-			(voyagerElement as any).setCameraOffset?.(cameraOffsetX, cameraOffsetY, cameraOffsetZ);
+			voyagerElement.setCameraOrbit?.(cameraYaw, cameraPitch);
+			voyagerElement.setCameraOffset?.(cameraOffsetX, cameraOffsetY, cameraOffsetZ);
 			return;
 		}
 
@@ -1005,8 +843,8 @@
 			cameraOffsetY = interpolate(currentOffsetY, targetOffsetY, progress);
 			cameraOffsetZ = interpolate(currentOffsetZ, targetOffsetZ, progress);
 
-			(voyagerElement as any).setCameraOrbit?.(cameraYaw, cameraPitch);
-			(voyagerElement as any).setCameraOffset?.(cameraOffsetX, cameraOffsetY, cameraOffsetZ);
+			voyagerElement?.setCameraOrbit?.(cameraYaw, cameraPitch);
+			voyagerElement?.setCameraOffset?.(cameraOffsetX, cameraOffsetY, cameraOffsetZ);
 		};
 
 		if (durationMs === 0) {
@@ -1030,7 +868,7 @@
 
 	function getCameraOrbit(type?: string) {
 		if (!voyagerElement) return;
-		return (voyagerElement as any).getCameraOrbit?.(type);
+		return voyagerElement.getCameraOrbit?.(type);
 	}
 
 	function setCameraOffset(x: number, y: number, z: number) {
@@ -1039,7 +877,7 @@
 		cameraOffsetX = x;
 		cameraOffsetY = y;
 		cameraOffsetZ = z;
-		(voyagerElement as any).setCameraOffset?.(x, y, z);
+		voyagerElement.setCameraOffset?.(x, y, z);
 	}
 
 	function applyCameraOffset() {
@@ -1048,7 +886,7 @@
 
 	function getCameraOffset(type?: string) {
 		if (!voyagerElement) return;
-		return (voyagerElement as any).getCameraOffset?.(type);
+		return voyagerElement.getCameraOffset?.(type);
 	}
 
 	function resetCamera() {
@@ -1065,7 +903,7 @@
 	function resetViewer() {
 		if (!voyagerElement) return;
 		cancelCameraAnimation();
-		(voyagerElement as any).resetViewer?.();
+		voyagerElement.resetViewer?.();
 	}
 
 	function getCurrentCameraPosition() {
@@ -1104,7 +942,7 @@
 
 	function setActiveAnnotation(id: string) {
 		if (!voyagerElement) return;
-		const element = voyagerElement as any;
+		const element = voyagerElement;
 		// A scene's tag filter can hide an otherwise active annotation.
 		const annotation = annotations.find((item) => item.id === id);
 		if (
@@ -1123,7 +961,7 @@
 
 	function toggleAnnotations() {
 		if (!voyagerElement) return;
-		(voyagerElement as any).toggleAnnotations?.();
+		voyagerElement.toggleAnnotations?.();
 	}
 
 	// API Methods - Articles
@@ -1137,16 +975,16 @@
 			return;
 		}
 		// Show reader if hidden, then set active article
-		const readerElement = (voyagerElement as any).shadowRoot?.querySelector('.sv-reader-container');
+		const readerElement = voyagerElement.shadowRoot?.querySelector('.sv-reader-container');
 		if (!readerElement) {
-			(voyagerElement as any).toggleReader?.();
+			voyagerElement.toggleReader?.();
 		}
-		(voyagerElement as any).setActiveArticle?.(id);
+		voyagerElement.setActiveArticle?.(id);
 	}
 
 	function toggleReader() {
 		if (!voyagerElement) return;
-		(voyagerElement as any).toggleReader?.();
+		voyagerElement.toggleReader?.();
 	}
 
 	function openArticle(id: string) {
@@ -1155,7 +993,7 @@
 
 		// Just set the active article - user should toggle reader manually
 		try {
-			(voyagerElement as any).setActiveArticle?.(id);
+			voyagerElement.setActiveArticle?.(id);
 			console.log('✅ Article activated. Toggle Reader to view.');
 		} catch (err) {
 			console.error('❌ Error opening article:', err);
@@ -1174,13 +1012,13 @@
 		) {
 			toggleTours();
 		}
-		(voyagerElement as any).setTourStep?.(tourIdx, stepIdx, interpolate);
+		voyagerElement.setTourStep?.(tourIdx, stepIdx, interpolate);
 		notifyTourState({ tourIndex: tourIdx, stepIndex: stepIdx });
 	}
 
 	function toggleTours() {
 		if (!voyagerElement) return;
-		(voyagerElement as any).toggleTours?.();
+		voyagerElement.toggleTours?.();
 	}
 
 	function stopTour() {
@@ -1193,7 +1031,7 @@
 	// API Methods - UI Controls
 	function toggleTools() {
 		if (!voyagerElement) return;
-		(voyagerElement as any).toggleTools?.();
+		voyagerElement.toggleTools?.();
 	}
 
 	function toggleMeasurement() {
@@ -1218,18 +1056,18 @@
 
 	function setBackgroundStyle(style: 'Solid' | 'LinearGradient' | 'RadialGradient') {
 		if (!voyagerElement) return;
-		(voyagerElement as any).setBackgroundStyle?.(style);
+		voyagerElement.setBackgroundStyle?.(style);
 	}
 
 	function setBackgroundColor(color0: string, color1?: string) {
 		if (!voyagerElement) return;
-		(voyagerElement as any).setBackgroundColor?.(color0, color1);
+		voyagerElement.setBackgroundColor?.(color0, color1);
 	}
 
 	function setLanguage(languageCode: string) {
 		if (!voyagerElement) return;
 		selectedLanguage = languageCode;
-		(voyagerElement as any).setLanguage?.(languageCode);
+		voyagerElement.setLanguage?.(languageCode);
 	}
 
 	async function supportsAR() {
@@ -1261,7 +1099,7 @@
 			toast.error('AR is not available on this device or browser.');
 			return;
 		}
-		(voyagerElement as any).enableAR?.();
+		voyagerElement.enableAR?.();
 	}
 
 	// Available languages
@@ -1282,6 +1120,9 @@
 
 	function toggleVoyagerUI() {
 		showVoyagerUI = !showVoyagerUI;
+		contentResources?.dispose();
+		cleanupChromeObserver();
+		cancelCameraAnimation();
 
 		// Clean up existing fetch interceptor
 		if (cleanupFetchInterceptor) {
@@ -1297,12 +1138,12 @@
 
 		// Re-mount the voyager element with new uiMode
 		isScriptLoaded = false;
-		setTimeout(() => {
+		resources.timeout(() => {
 			// Reinstall fetch interceptor
 			cleanupFetchInterceptor = installFetchInterceptor();
 			isScriptLoaded = true;
 			loadingPhase = 'document';
-			setTimeout(loadContent, 500);
+			resources.timeout(loadContent, 500);
 		}, 100);
 	}
 </script>
@@ -1652,7 +1493,7 @@
 									<div class="mt-4">
 										<h3 class="mb-2 text-sm font-semibold">Annotations ({annotations.length})</h3>
 										<div class="flex flex-wrap gap-2">
-											{#each annotations as annotation}
+											{#each annotations as annotation (annotation.id)}
 												<button
 													class="badge cursor-pointer badge-lg badge-primary hover:badge-accent"
 													onclick={() => setActiveAnnotation(annotation.id)}
@@ -1673,7 +1514,7 @@
 									<div class="mt-4">
 										<h3 class="mb-2 text-sm font-semibold">Articles ({articles.length})</h3>
 										<div class="flex flex-wrap gap-2">
-											{#each articles as article}
+											{#each articles as article (article.id)}
 												<button
 													class="badge cursor-pointer badge-lg badge-secondary hover:badge-accent"
 													onclick={() => openArticle(article.id)}
@@ -1694,14 +1535,14 @@
 									<div class="mt-4">
 										<h3 class="mb-2 text-sm font-semibold">Tours</h3>
 										<div class="space-y-2">
-											{#each tours as tour, tourIdx}
+											{#each tours as tour, tourIdx (tourIdx)}
 												<div class="card bg-base-200 p-2">
 													<div class="mb-1 text-xs font-semibold">
 														{tour.title || tour.titles?.EN || `Tour ${tourIdx + 1}`}
 													</div>
 													{#if tour.steps && tour.steps.length > 0}
 														<div class="flex flex-wrap gap-1">
-															{#each tour.steps as step, stepIdx}
+															{#each tour.steps as step, stepIdx (stepIdx)}
 																<button
 																	class="btn btn-outline btn-xs"
 																	onclick={() => setTourStep(tourIdx, stepIdx, true)}

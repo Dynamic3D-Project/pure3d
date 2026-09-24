@@ -334,7 +334,9 @@ export async function migrate(
 				active = plan.item;
 				expected = plan.expected;
 				readback = null;
-				readback = await pb.collection(plan.item.collection).getOne<AttributionRecord>(plan.item.id);
+				readback = await pb
+					.collection(plan.item.collection)
+					.getOne<AttributionRecord>(plan.item.id);
 				if (
 					fingerprint(readback) !== fingerprint(plan.current) ||
 					readback.updated !== plan.current.updated
