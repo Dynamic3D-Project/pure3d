@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import PocketBase from 'pocketbase';
+import PocketBase, { type CollectionModel } from 'pocketbase';
 
 const POCKETBASE_URL =
 	process.env.POCKETBASE_URL || process.env.PUBLIC_POCKETBASE_URL || 'http://localhost:60021';
@@ -10,9 +10,9 @@ const ADMIN_PASSWORD =
 
 const pb = new PocketBase(POCKETBASE_URL);
 
-function roleField(collection: any) {
+function roleField(collection: CollectionModel) {
 	const fields = Array.isArray(collection.fields) ? collection.fields : collection.schema || [];
-	const field = fields.find((f: any) => f?.name === 'role');
+	const field = fields.find((f: { name?: string }) => f?.name === 'role');
 	if (!field) throw new Error('users.role field not found');
 	return { fields, field };
 }

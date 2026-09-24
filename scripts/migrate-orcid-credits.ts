@@ -334,7 +334,7 @@ export async function migrate(
 				active = plan.item;
 				expected = plan.expected;
 				readback = null;
-				readback = await pb.collection(plan.item.collection).getOne(plan.item.id);
+				readback = await pb.collection(plan.item.collection).getOne<AttributionRecord>(plan.item.id);
 				if (
 					fingerprint(readback) !== fingerprint(plan.current) ||
 					readback.updated !== plan.current.updated
@@ -386,7 +386,7 @@ export async function migrate(
 				await pb.collection(active.collection).update(active.id, { credits: plan.credits });
 				writeAcknowledged = true;
 				phase = 'record-readback';
-				readback = await pb.collection(active.collection).getOne(active.id);
+				readback = await pb.collection(active.collection).getOne<AttributionRecord>(active.id);
 				if (fingerprint(readback) !== expected)
 					throw new Error('Stored attribution differs from reviewed data; stop and investigate');
 				result(active, {

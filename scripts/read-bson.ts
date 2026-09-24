@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { deserialize } from 'bson';
-import { readFileSync, writeFileSync, readdirSync } from 'fs';
+import { readFileSync, writeFileSync, readdirSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
 /**
@@ -14,11 +14,11 @@ const OUTPUT_DIR = 'data/json-output';
 interface CollectionStats {
 	name: string;
 	documentCount: number;
-	sampleDocument: any;
-	schema: any;
+	sampleDocument: unknown;
+	schema: unknown;
 }
 
-function extractSchema(doc: any, depth = 0, maxDepth = 3): any {
+function extractSchema(doc: unknown, depth = 0, maxDepth = 3): unknown {
 	if (depth > maxDepth || doc === null || doc === undefined) {
 		return typeof doc;
 	}
@@ -28,7 +28,7 @@ function extractSchema(doc: any, depth = 0, maxDepth = 3): any {
 	}
 
 	if (typeof doc === 'object' && doc !== null) {
-		const schema: any = {};
+		const schema: Record<string, unknown> = {};
 		for (const [key, value] of Object.entries(doc)) {
 			schema[key] = extractSchema(value, depth + 1, maxDepth);
 		}
@@ -38,9 +38,9 @@ function extractSchema(doc: any, depth = 0, maxDepth = 3): any {
 	return typeof doc;
 }
 
-function readBSONFile(filePath: string): any[] {
+function readBSONFile(filePath: string): Record<string, unknown>[] {
 	const buffer = readFileSync(filePath);
-	const documents: any[] = [];
+	const documents: Record<string, unknown>[] = [];
 	let offset = 0;
 
 	while (offset < buffer.length) {
@@ -97,10 +97,7 @@ function main() {
 	const targetCollection = process.argv[2];
 
 	// Create output directory
-	const fs = require('fs');
-	if (!fs.existsSync(OUTPUT_DIR)) {
-		fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-	}
+	mkdirSync(OUTPUT_DIR, { recursive: true });
 
 	if (targetCollection) {
 		// Process single collection

@@ -161,7 +161,7 @@ async function ensureNotificationsCollection() {
 		// Update existing collection with any missing types
 		const collection = await getCollection('notifications');
 		const fields = collection.fields || [];
-		const typeField = fields.find((f: any) => f.name === 'type');
+		const typeField = fields.find((f: { name: string }) => f.name === 'type');
 
 		if (!typeField) {
 			console.log('  ERROR: type field not found on notifications collection\n');

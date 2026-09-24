@@ -17,6 +17,33 @@ const JSON_DIR = 'data/json-output';
 
 const pb = new PocketBase(PB_URL);
 
+interface LegacyMetadata extends Record<string, unknown> {
+	coverage?: Record<string, unknown>;
+	rights?: Record<string, unknown>;
+}
+interface LegacySite extends Record<string, unknown> {
+	dc?: LegacyMetadata;
+}
+interface LegacyUser extends Record<string, unknown> {
+	email?: string;
+	user: string;
+	role?: string;
+}
+interface LegacyCollection extends LegacySite {
+	_id: string;
+	title: string;
+}
+interface LegacyEdition extends LegacyCollection {
+	projectId: string;
+	isPublished?: boolean;
+	status?: string;
+	pure3d?: Record<string, unknown>;
+	settings?: { authorTool?: Record<string, unknown> };
+}
+interface LegacyCollectionMembership extends LegacyUser {
+	projectId: string;
+}
+
 function requireLocalTarget(target: string) {
 	if (
 		!['http://pocketbase:8090', 'http://localhost:60021', 'http://127.0.0.1:60021'].includes(target)
@@ -229,7 +256,9 @@ async function waitForPocketBase() {
 			await pb.health.check();
 			console.log('PocketBase is ready\n');
 			return;
-		} catch {}
+		} catch {
+			// The local service may still be starting; retry within the bounded wait.
+		}
 
 		await new Promise((resolve) => setTimeout(resolve, 2000));
 	}
@@ -277,7 +306,7 @@ export async function main(args = process.argv.slice(2)) {
 	const userHashToId = new Map<string, string>();
 
 	console.log('Importing site...');
-	const siteData = readJsonArray<any>('site.json');
+	const siteData = readJsonArray<LegacySite>('site.json');
 	const existingSite = await pb.collection('site').getFullList();
 	let siteId = existingSite[0]?.id;
 
@@ -318,9 +347,9 @@ export async function main(args = process.argv.slice(2)) {
 	}
 
 	console.log('\nImporting users...');
-	const usersData = readJsonArray<any>('user.json');
+	const usersData = readJsonArray<LegacyUser>('user.json');
 	const existingUsers = await pb.collection('users').getFullList();
-	const existingEmails = new Set(existingUsers.map((record: any) => normalizeEmail(record.email)));
+	const existingEmails = new Set(existingUsers.map((record) => normalizeEmail(record.email)));
 
 	for (const record of existingUsers) {
 		if (record.userHash) {
@@ -361,10 +390,10 @@ export async function main(args = process.argv.slice(2)) {
 	console.log(`   Imported ${importedUsers}, skipped ${skippedUsers}`);
 
 	console.log('\nImporting keywords...');
-	const keywordsData = readJsonArray<any>('keyword.json');
+	const keywordsData = readJsonArray<{ name: string; value: string }>('keyword.json');
 	const existingKeywords = await pb.collection('keywords').getFullList();
 	const keywordKeys = new Set(
-		existingKeywords.map((record: any) => `${record.category || record.name}|${record.value}`)
+		existingKeywords.map((record) => `${record.category || record.name}|${record.value}`)
 	);
 
 	let importedKeywords = 0;
@@ -389,10 +418,10 @@ export async function main(args = process.argv.slice(2)) {
 	console.log(`   Imported ${importedKeywords}, skipped ${skippedKeywords}`);
 
 	console.log('\nImporting collections...');
-	const projectsData = readJsonArray<any>('project.json');
+	const projectsData = readJsonArray<LegacyCollection>('project.json');
 	const existingCollections = await pb.collection('collections').getFullList();
 	const existingCollectionsByTitle = new Map(
-		existingCollections.map((record: any) => [record.title, record])
+		existingCollections.map((record) => [record.title, record])
 	);
 
 	for (const doc of projectsData) {
@@ -449,10 +478,10 @@ export async function main(args = process.argv.slice(2)) {
 	console.log(`   Imported ${importedCollections}, skipped ${skippedCollections}`);
 
 	console.log('\nImporting editions...');
-	const editionsData = readJsonArray<any>('edition.json');
+	const editionsData = readJsonArray<LegacyEdition>('edition.json');
 	const existingEditions = await pb.collection('editions').getFullList();
 	const existingEditionKeys = new Map(
-		existingEditions.map((record: any) => [`${record.title}|${record.collection}`, record])
+		existingEditions.map((record) => [`${record.title}|${record.collection}`, record])
 	);
 
 	for (const doc of editionsData) {
@@ -555,11 +584,11 @@ export async function main(args = process.argv.slice(2)) {
 	console.log(`   Imported ${importedEditions}, skipped ${skippedEditions}`);
 
 	console.log('\nImporting collection users...');
-	const projectUsersData = readJsonArray<any>('projectUser.json');
+	const projectUsersData = readJsonArray<LegacyCollectionMembership>('projectUser.json');
 	const existingCollectionUsers = await pb.collection('collectionUsers').getFullList();
 	const collectionUserKeys = new Set(
 		existingCollectionUsers.map(
-			(record: any) => `${record.collection}|${record.userId || record.user}|${record.role}`
+			(record) => `${record.collection}|${record.userId || record.user}|${record.role}`
 		)
 	);
 

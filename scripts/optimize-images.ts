@@ -13,8 +13,8 @@
  */
 
 import sharp from 'sharp';
-import { readdir, stat, mkdir } from 'fs/promises';
-import { join, dirname, basename, extname } from 'path';
+import { readdir, stat } from 'fs/promises';
+import { join, dirname } from 'path';
 import { existsSync } from 'fs';
 
 const STATIC_PROJECT_DIR = './static/project';
@@ -48,7 +48,7 @@ async function findIconFiles(dir: string): Promise<string[]> {
 					iconFiles.push(fullPath);
 				}
 			}
-		} catch (error) {
+		} catch {
 			// Skip directories we can't read
 		}
 	}

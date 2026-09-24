@@ -92,7 +92,7 @@ async function updateEditionsCollection() {
 	const usersId = await resolveCollectionId('users');
 
 	// Update status field values
-	const statusField = fields.find((f: any) => f.name === 'status');
+	const statusField = fields.find((f: { name: string }) => f.name === 'status');
 	if (statusField) {
 		statusField.values = [
 			'draft',
@@ -127,7 +127,7 @@ async function updateEditionsCollection() {
 	];
 
 	for (const newField of newFields) {
-		if (!fields.some((f: any) => f.name === newField.name)) {
+		if (!fields.some((f: { name: string }) => f.name === newField.name)) {
 			fields.push(newField);
 		}
 	}

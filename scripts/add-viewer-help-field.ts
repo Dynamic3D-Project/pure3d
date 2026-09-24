@@ -14,6 +14,16 @@ const ADMIN_PASSWORD = process.env.PB_ADMIN_PASSWORD || '1234567890';
 
 let authToken = '';
 
+interface SchemaField {
+	name: string;
+	type: string;
+	required?: boolean;
+}
+interface CollectionSchema {
+	fields?: SchemaField[];
+	schema?: SchemaField[];
+}
+
 async function authenticate() {
 	const response = await fetch(`${PB_URL}/api/collections/_superusers/auth-with-password`, {
 		method: 'POST',
@@ -33,7 +43,7 @@ async function authenticate() {
 	console.log('✅ Authenticated\n');
 }
 
-async function getCollection(collectionName: string) {
+async function getCollection(collectionName: string): Promise<CollectionSchema> {
 	const response = await fetch(`${PB_URL}/api/collections/${collectionName}`, {
 		headers: {
 			Authorization: authToken
@@ -47,7 +57,10 @@ async function getCollection(collectionName: string) {
 	return response.json();
 }
 
-async function updateCollection(collectionId: string, updateData: any) {
+async function updateCollection(
+	collectionId: string,
+	updateData: CollectionSchema
+): Promise<CollectionSchema | null> {
 	const response = await fetch(`${PB_URL}/api/collections/${collectionId}`, {
 		method: 'PATCH',
 		headers: {
@@ -79,8 +92,8 @@ async function main() {
 
 	// Check existing fields
 	const existingFields = siteCollection.fields || siteCollection.schema || [];
-	const hasViewerHelp = existingFields.some((f: any) => f.name === 'viewerHelp');
-	const hasViewerHelpVideoUrl = existingFields.some((f: any) => f.name === 'viewerHelpVideoUrl');
+	const hasViewerHelp = existingFields.some((f) => f.name === 'viewerHelp');
+	const hasViewerHelpVideoUrl = existingFields.some((f) => f.name === 'viewerHelpVideoUrl');
 
 	if (hasViewerHelp && hasViewerHelpVideoUrl) {
 		console.log('ℹ️  All fields already exist. Nothing to do.');
@@ -91,7 +104,7 @@ async function main() {
 	const updatedFields = [...existingFields];
 
 	// Add viewerHelp if not exists
-	if (!existingFields.some((f: any) => f.name === 'viewerHelp')) {
+	if (!existingFields.some((f) => f.name === 'viewerHelp')) {
 		updatedFields.push({
 			name: 'viewerHelp',
 			type: 'editor',
@@ -100,7 +113,7 @@ async function main() {
 	}
 
 	// Add viewerHelpVideoUrl if not exists
-	if (!existingFields.some((f: any) => f.name === 'viewerHelpVideoUrl')) {
+	if (!existingFields.some((f) => f.name === 'viewerHelpVideoUrl')) {
 		updatedFields.push({
 			name: 'viewerHelpVideoUrl',
 			type: 'url',
@@ -113,7 +126,7 @@ async function main() {
 
 	if (result) {
 		console.log('✅ Migration complete!');
-		console.log('   Fields:', (result.fields || result.schema)?.map((f: any) => f.name).join(', '));
+		console.log('   Fields:', (result.fields || result.schema)?.map((f) => f.name).join(', '));
 		console.log('\n📌 Next steps:');
 		console.log('   1. Go to PocketBase admin → site collection');
 		console.log('   2. Edit the site record');
