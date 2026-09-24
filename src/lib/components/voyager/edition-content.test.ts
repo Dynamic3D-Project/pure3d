@@ -2,7 +2,9 @@ import { describe, expect, test } from 'bun:test';
 import {
 	filterAnnotations,
 	normalizeEditionContent,
-	parseAnnotationCategories
+	parseAnnotationCategories,
+	resolveHttpUrl,
+	resolveVoyagerAssetUrl
 } from './edition-content';
 
 describe('edition content normalization', () => {
@@ -75,5 +77,21 @@ describe('annotation categories', () => {
 
 	test('editions without categories remain directly browsable', () => {
 		expect(filterAnnotations([items[3]], [])).toEqual([items[3]]);
+	});
+});
+
+describe('Voyager reading assets', () => {
+	test('resolves relative Voyager articles and rejects unsafe URLs', () => {
+		expect(
+			resolveVoyagerAssetUrl('/project/demo/', 'articles/story.html', 'https://pure3d.example/')
+		).toBe('https://pure3d.example/project/demo/articles/story.html');
+		expect(
+			resolveHttpUrl('Media/image.jpeg', 'https://pure3d.example/project/demo/articles/story.html')
+		).toBe('https://pure3d.example/project/demo/articles/Media/image.jpeg');
+		expect(resolveHttpUrl('javascript:alert(1)', 'https://pure3d.example/')).toBeNull();
+		expect(resolveHttpUrl('', 'https://pure3d.example/')).toBeNull();
+		expect(
+			resolveHttpUrl('https://user:password@example.com', 'https://pure3d.example/')
+		).toBeNull();
 	});
 });

@@ -9,8 +9,15 @@
 		disabled?: boolean;
 		onuploaded?: (r: RecordModel) => void;
 		onremoved?: (r: RecordModel) => void;
+		onbusychange?: (busy: boolean) => void;
 	};
-	let { record = $bindable(), disabled = false, onuploaded, onremoved }: Props = $props();
+	let {
+		record = $bindable(),
+		disabled = false,
+		onuploaded,
+		onremoved,
+		onbusychange
+	}: Props = $props();
 
 	const MAIN_EXTS = ['.glb', '.gltf', '.obj', '.ply'];
 	const SCENE_EXTS = ['.svx.json', '.svx'];
@@ -25,6 +32,9 @@
 	let isObj = $derived(modelFilename.toLowerCase().endsWith('.obj'));
 
 	let uploading = $state(false);
+	$effect(() => {
+		onbusychange?.(uploading);
+	});
 	let progress = $state(0);
 	let errorMsg = $state('');
 	let dragActive = $state(false);
@@ -153,19 +163,16 @@
 	}
 
 	async function upload(files: File[]) {
-		const split = await splitFiles(files);
-		if (typeof split === 'string') {
-			errorMsg = split;
-			toast.error(split);
-			return;
-		}
-		let { main, scene, companions } = split;
-
+		if (disabled || uploading) return;
 		uploading = true;
 		errorMsg = '';
 		progress = 0;
 
 		try {
+			const split = await splitFiles(files);
+			if (typeof split === 'string') throw new Error(split);
+			let { main } = split;
+			const { scene, companions } = split;
 			if (main.name.toLowerCase().endsWith('.ply')) {
 				main = await addNormalsToPlyFile(main);
 			}
@@ -226,7 +233,8 @@
 	}
 
 	async function removeAll() {
-		if (!modelFilename && assetFilenames.length === 0) return;
+		if (disabled || uploading || (!modelFilename && assetFilenames.length === 0)) return;
+		uploading = true;
 		try {
 			const patch: Record<string, unknown> = {};
 			if (modelFilename) patch.modelFile = null;
@@ -237,10 +245,14 @@
 		} catch (err) {
 			console.error('Remove failed:', err);
 			toast.error((err as Error).message || 'Failed to remove files');
+		} finally {
+			uploading = false;
 		}
 	}
 
 	async function removeCompanion(filename: string) {
+		if (disabled || uploading) return;
+		uploading = true;
 		try {
 			const updated = await pb.collection('editions').update(record.id, {
 				'modelAssets-': [filename]
@@ -250,6 +262,8 @@
 		} catch (err) {
 			console.error('Remove companion failed:', err);
 			toast.error((err as Error).message || 'Failed to remove asset');
+		} finally {
+			uploading = false;
 		}
 	}
 
@@ -273,9 +287,11 @@
 		const entries: FileSystemEntry[] = [];
 		if (dt.items && dt.items.length > 0) {
 			for (let i = 0; i < dt.items.length; i++) {
-				const entry = (dt.items[i] as DataTransferItem & {
-					webkitGetAsEntry?: () => FileSystemEntry | null;
-				}).webkitGetAsEntry?.();
+				const entry = (
+					dt.items[i] as DataTransferItem & {
+						webkitGetAsEntry?: () => FileSystemEntry | null;
+					}
+				).webkitGetAsEntry?.();
 				if (entry) entries.push(entry);
 			}
 		}
@@ -372,17 +388,16 @@
 						onclick={() => inputEl?.click()}
 						{disabled}>Replace</button
 					>
-					<button
-						type="button"
-						class="btn btn-ghost btn-xs"
-						onclick={removeAll}
-						{disabled}>Remove</button
+					<button type="button" class="btn btn-ghost btn-xs" onclick={removeAll} {disabled}
+						>Remove</button
 					>
 				</div>
 			</div>
 
 			{#if assetFilenames.length > 0}
-				<ul class="mt-2 max-h-40 space-y-1 overflow-y-auto rounded border border-base-300 bg-base-100 p-2">
+				<ul
+					class="mt-2 max-h-40 space-y-1 overflow-y-auto rounded border border-base-300 bg-base-100 p-2"
+				>
 					{#each assetFilenames as filename}
 						<li class="flex items-center justify-between gap-2">
 							<span class="truncate text-xs" title={filename}>{filename}</span>
@@ -408,9 +423,9 @@
 						<li>Mesh groups with transparent or texture-only materials may appear missing</li>
 					</ul>
 					<p class="mt-2">
-						Export your model as <strong>GLB</strong> for full fidelity — Blender: <em
-							>File → Export → glTF 2.0 (.glb/.gltf)</em
-						> with format set to <em>glTF Binary</em>. Single file, embedded textures, proper
+						Export your model as <strong>GLB</strong> for full fidelity — Blender:
+						<em>File → Export → glTF 2.0 (.glb/.gltf)</em>
+						with format set to <em>glTF Binary</em>. Single file, embedded textures, proper
 						lighting.
 					</p>
 				</div>
@@ -423,7 +438,7 @@
 			</p>
 			<button
 				type="button"
-				class="btn btn-outline btn-sm mt-3 w-full"
+				class="btn mt-3 w-full btn-outline btn-sm"
 				onclick={() => inputEl?.click()}
 				{disabled}
 			>
@@ -433,13 +448,15 @@
 	{/if}
 
 	{#if dragActive}
-		<div class="pointer-events-none rounded-lg bg-primary/10 p-2 text-center text-xs font-medium text-primary">
+		<div
+			class="pointer-events-none rounded-lg bg-primary/10 p-2 text-center text-xs font-medium text-primary"
+		>
 			Drop to upload
 		</div>
 	{/if}
 
 	{#if errorMsg}
-		<div class="alert alert-sm alert-error">
+		<div class="alert-sm alert alert-error">
 			<span class="text-xs">{errorMsg}</span>
 		</div>
 	{/if}

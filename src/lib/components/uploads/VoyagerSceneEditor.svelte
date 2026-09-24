@@ -1,0 +1,231 @@
+<script lang="ts">
+	import { onMount, tick } from 'svelte';
+	import { beforeNavigate } from '$app/navigation';
+	import { base } from '$app/paths';
+	import type { RecordModel } from 'pocketbase';
+	import { pb } from '$lib/database/client';
+	import {
+		getVoyagerResourceRoot,
+		DEFAULT_VOYAGER_VERSION,
+		getEditionRoot
+	} from '$lib/utils/asset-urls';
+	let {
+		edition,
+		collectionPubNum,
+		editionPubNum,
+		disabled = false,
+		onupdated,
+		onbusychange
+	}: {
+		edition: RecordModel;
+		collectionPubNum?: number | null;
+		editionPubNum?: number | null;
+		disabled?: boolean;
+		onupdated: (record: RecordModel) => void;
+		onbusychange: (busy: boolean) => void;
+	} = $props();
+	let modal: HTMLDialogElement;
+	let frame = $state<HTMLIFrameElement>();
+	let src = $state('');
+	let ready = $state(false);
+	let dirty = $state(false);
+	let saving = $state(false);
+	let error = $state('');
+	let session = '';
+	let config: Record<string, unknown>;
+	let pending: { resolve: (document: object) => void; reject: (error: Error) => void } | undefined;
+	let timeout: ReturnType<typeof setTimeout> | undefined;
+	beforeNavigate((navigation) => {
+		if ((dirty || saving) && !confirm('Leave with unsaved Voyager scene changes?'))
+			navigation.cancel();
+	});
+	onMount(() => {
+		const receive = (event: MessageEvent) => {
+			if (
+				event.origin !== location.origin ||
+				event.source !== frame?.contentWindow ||
+				event.data?.session !== session
+			)
+				return;
+			if (event.data.type === 'ready') ready = true;
+			if (event.data.type === 'dirty') dirty = true;
+			if (event.data.type === 'error') {
+				error = event.data.message || 'Scene editor failed.';
+				pending?.reject(new Error(error));
+				pending = undefined;
+			}
+			if (event.data.type === 'document' && pending) {
+				clearTimeout(timeout);
+				pending.resolve(event.data.document);
+				pending = undefined;
+			}
+		};
+		const unload = (event: BeforeUnloadEvent) => {
+			if (dirty || saving) {
+				event.preventDefault();
+				event.returnValue = '';
+			}
+		};
+		window.addEventListener('message', receive);
+		window.addEventListener('beforeunload', unload);
+		return () => {
+			clearTimeout(timeout);
+			window.removeEventListener('message', receive);
+			window.removeEventListener('beforeunload', unload);
+		};
+	});
+	async function open() {
+		if (disabled) return;
+		onbusychange(true);
+		error = '';
+		ready = false;
+		dirty = false;
+		try {
+			const token = edition.isPublished ? '' : await pb.files.getToken();
+			const files = [
+				edition.modelFile,
+				edition.sceneDocument,
+				...(edition.modelAssets || [])
+			].filter(Boolean) as string[];
+			const assets: Record<string, string> = {};
+			for (const filename of files) {
+				const url = pb.files.getURL(edition, filename, { token });
+				assets[filename] = url;
+				assets[filename.replace(/_[a-z0-9]{10}(\.[^.]+)$/i, '$1')] = url;
+			}
+			const root = files.length
+				? pb.files
+						.getURL(edition, files[0])
+						.slice(0, pb.files.getURL(edition, files[0]).lastIndexOf('/') + 1)
+				: collectionPubNum && editionPubNum
+					? getEditionRoot(collectionPubNum, editionPubNum)
+					: '';
+			config = {
+				root,
+				resourceRoot: getVoyagerResourceRoot(
+					edition.settingsAuthorToolVersion || DEFAULT_VOYAGER_VERSION
+				),
+				document: edition.sceneDocument
+					? assets[edition.sceneDocument]
+					: root && !edition.modelFile
+						? edition.settingsSceneFile || 'scene.svx.json'
+						: '',
+				model: edition.modelFile ? assets[edition.modelFile] : '',
+				assets
+			};
+			session = crypto.randomUUID();
+			src = `${base}/voyager/alpha-story.html?session=${session}`;
+			await tick();
+			modal.showModal();
+		} catch (cause) {
+			error = cause instanceof Error ? cause.message : 'Could not open the scene editor.';
+			onbusychange(false);
+		}
+	}
+	function close() {
+		if (saving || (dirty && !confirm('Discard unsaved scene changes?'))) return;
+		modal.close();
+		src = '';
+		dirty = false;
+		onbusychange(false);
+	}
+	function persistentScene(document: object): object {
+		const root = String(config.root || '');
+		return JSON.parse(
+			JSON.stringify(document, (key, value) => {
+				if (key === 'uri' && typeof value === 'string' && root && value.startsWith(root))
+					return new URL(value).pathname.split('/').pop();
+				return value;
+			})
+		);
+	}
+	async function save() {
+		if (!ready || saving) return;
+		saving = true;
+		error = '';
+		try {
+			const document = await new Promise<object>((resolve, reject) => {
+				pending = { resolve, reject };
+				timeout = setTimeout(() => {
+					pending = undefined;
+					reject(new Error('Voyager did not return the scene. Your work is still open.'));
+				}, 15000);
+				frame?.contentWindow?.postMessage({ type: 'export', session }, location.origin);
+			});
+			if (
+				!document ||
+				typeof document !== 'object' ||
+				!('asset' in document) ||
+				!('scenes' in document)
+			)
+				throw new Error('Voyager returned an invalid scene.');
+			const form = new FormData();
+			form.append(
+				'sceneDocument',
+				new File([JSON.stringify(persistentScene(document))], 'scene.svx.json', {
+					type: 'application/json'
+				})
+			);
+			const record = await pb.collection('editions').update(edition.id, form);
+			onupdated(record);
+			dirty = false;
+			modal.close();
+			src = '';
+			onbusychange(false);
+		} catch (cause) {
+			error = cause instanceof Error ? cause.message : 'Could not save. Your scene is still open.';
+		} finally {
+			saving = false;
+		}
+	}
+</script>
+
+<div id="voyager-scene-editor" class="space-y-2">
+	<button type="button" class="btn btn-outline btn-sm" {disabled} onclick={open}
+		>{edition.sceneDocument || edition.settingsSceneFile
+			? 'Edit scene in Voyager Story'
+			: 'Create Voyager scene'}</button
+	>
+	{#if error && !src}<p role="alert" class="text-sm text-error">{error}</p>{/if}
+	<dialog
+		bind:this={modal}
+		class="modal"
+		aria-labelledby="voyager-scene-editor-title"
+		oncancel={(event) => {
+			event.preventDefault();
+			close();
+		}}
+	>
+		<div class="modal-box flex h-[90dvh] w-[96vw] max-w-none flex-col p-3">
+			<div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+				<h2 id="voyager-scene-editor-title" class="font-semibold">
+					Voyager Story · {edition.title}
+				</h2>
+				<div class="flex gap-2">
+					<button type="button" class="btn btn-outline btn-sm" disabled={saving} onclick={close}
+						>Close</button
+					><button
+						type="button"
+						class="btn btn-sm btn-primary"
+						disabled={!ready || saving}
+						onclick={save}>{saving ? 'Saving scene…' : 'Save scene & close'}</button
+					>
+				</div>
+			</div>
+			{#if error}<p role="alert" class="mb-2 rounded-box bg-error/10 p-2 text-sm text-base-content">
+					{error}
+				</p>{/if}{#if src}<iframe
+					bind:this={frame}
+					{src}
+					title="Voyager Story scene editor"
+					class="min-h-0 w-full flex-1 border-0"
+					allow="fullscreen"
+					onload={() =>
+						frame?.contentWindow?.postMessage(
+							{ type: 'init', session, ...config },
+							location.origin
+						)}
+				></iframe>{/if}
+		</div>
+	</dialog>
+</div>

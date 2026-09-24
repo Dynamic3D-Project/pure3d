@@ -56,8 +56,24 @@ export const load: PageLoad = async ({ params, fetch }) => {
 
 		// Voyager configuration - auto-upgrade old versions that don't support derivatives schema
 		const voyagerVersion = getEffectiveVoyagerVersion(record.settingsAuthorToolVersion);
-		const sceneFile = record.settingsSceneFile || 'scene.svx.json';
-		const voyagerRoot = collectionPubNum > 0 ? getEditionRoot(collectionPubNum, editionPubNum) : '';
+		let sceneFile = record.settingsSceneFile || 'scene.svx.json';
+		let voyagerRoot = collectionPubNum > 0 ? getEditionRoot(collectionPubNum, editionPubNum) : '';
+		const uploadedAssetMap: Record<string, string> = {};
+		if (record.sceneDocument) {
+			const token = record.isPublished ? '' : await pb.files.getToken({ fetch });
+			const sceneUrl = pb.files.getURL(record, record.sceneDocument, { token });
+			voyagerRoot = sceneUrl.slice(0, sceneUrl.lastIndexOf('/') + 1);
+			sceneFile = sceneUrl.slice(sceneUrl.lastIndexOf('/') + 1);
+			for (const filename of [
+				record.modelFile,
+				record.sceneDocument,
+				...(record.modelAssets || [])
+			].filter(Boolean) as string[]) {
+				const url = pb.files.getURL(record, filename, { token });
+				uploadedAssetMap[filename] = url;
+				uploadedAssetMap[filename.replace(/_[a-z0-9]{10}(\.[^.]+)$/i, '$1')] = url;
+			}
+		}
 		const voyagerResourceRoot = getVoyagerResourceRoot(voyagerVersion);
 
 		// Thumbnail from asset URL (respects PUBLIC_ASSET_BASE_URL / R2)
@@ -79,6 +95,7 @@ export const load: PageLoad = async ({ params, fetch }) => {
 			voyagerUrl: '',
 			// Voyager direct mode configuration
 			voyagerRoot,
+			uploadedAssetMap,
 			voyagerResourceRoot,
 			voyagerVersion,
 			sceneFile,

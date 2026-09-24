@@ -5,6 +5,10 @@ export interface EditionContentItem {
 	steps: number;
 }
 
+export interface VoyagerArticle extends EditionContentItem {
+	uri: string;
+}
+
 type ContentRecord = Record<string, unknown>;
 
 export function parseAnnotationCategories(value: unknown): string[] {
@@ -90,4 +94,33 @@ export function normalizeEditionContent(
 			steps: Array.isArray(content.steps) ? content.steps.length : 0
 		};
 	});
+}
+
+export function normalizeVoyagerArticles(items: unknown[], language: string): VoyagerArticle[] {
+	return normalizeEditionContent(items, language, 'story').map((item, index) => ({
+		...item,
+		uri: localizedValue(items[index], 'uri', 'uris', language)
+	}));
+}
+
+export function resolveHttpUrl(value: string, baseUrl: string): string | null {
+	if (!value.trim()) return null;
+	try {
+		const url = new URL(value, baseUrl);
+		return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password
+			? url.href
+			: null;
+	} catch {
+		return null;
+	}
+}
+
+export function resolveVoyagerAssetUrl(root: string, uri: string, baseUrl: string): string | null {
+	try {
+		const rootUrl = new URL(root, baseUrl);
+		const directory = rootUrl.href.endsWith('/') ? rootUrl.href : `${rootUrl.href}/`;
+		return resolveHttpUrl(uri, directory);
+	} catch {
+		return null;
+	}
 }

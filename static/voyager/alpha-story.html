@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Edition scene editor</title>
+		<style>
+			html,
+			body {
+				height: 100%;
+				margin: 0;
+				background: #303030;
+				color: white;
+				font: 14px sans-serif;
+			}
+			#loading {
+				padding: 24px;
+			}
+		</style>
+	</head>
+	<body>
+		<p id="loading">Loading Voyager Story…</p>
+		<script>
+			const session = new URLSearchParams(location.search).get('session');
+			let app;
+			let started = false;
+			const send = (type, data = {}) =>
+				parent.postMessage({ type, session, ...data }, location.origin);
+			addEventListener('message', async (event) => {
+				if (
+					event.source !== parent ||
+					event.origin !== location.origin ||
+					!session ||
+					event.data?.session !== session
+				)
+					return;
+				try {
+					if (event.data.type === 'init' && !started) {
+						started = true;
+						const { root, resourceRoot, document: scene, model, assets } = event.data;
+						const resources = new URL(resourceRoot, location.href);
+						if (
+							resources.origin !== location.origin ||
+							!/\/voyager\/\d+\.\d+\.\d+\/$/.test(resources.pathname)
+						)
+							throw new Error('Invalid Voyager runtime.');
+						const originalFetch = window.fetch.bind(window);
+						window.fetch = (input, init) => {
+							const url =
+								typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+							const name = decodeURIComponent(
+								new URL(url, location.href).pathname.split('/').pop()
+							);
+							const normalized = name
+								.replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+								.replace(/([A-Z])([A-Z][a-z])/g, '$1_$2')
+								.toLowerCase()
+								.replace(/[^a-z0-9.]+/g, '_');
+							return originalFetch(assets[name] || assets[normalized] || input, init);
+						};
+						for (const path of ['fonts/fonts.css', 'css/voyager-story.min.css']) {
+							const link = document.createElement('link');
+							link.rel = 'stylesheet';
+							link.href = new URL(path, resources).href;
+							document.head.append(link);
+						}
+						await new Promise((resolve, reject) => {
+							const script = document.createElement('script');
+							script.src = new URL('js/voyager-story.min.js', resources).href;
+							script.onload = resolve;
+							script.onerror = () => reject(new Error('Could not load Voyager Story.'));
+							document.head.append(script);
+						});
+						document.getElementById('loading').remove();
+						// Initialize the application before attaching Story's panels and mode listeners.
+						app = new window.VoyagerStory(null, {
+							resourceRoot: resources.href,
+							mode: 'author',
+							expert: false
+						});
+						app.setBaseUrl(root || location.origin + '/');
+						const StoryView = customElements.get('voyager-story');
+						const view = new StoryView(app);
+						view.style.height = '100%';
+						document.body.append(view);
+						if (scene) await app.loadDocument(scene);
+						else if (/\.(obj|ply)(\?|$)/i.test(model)) await app.loadGeometry(model);
+						else if (model) await app.loadModel(model, 'High');
+						if (!app.documentProvider?.activeComponent?.deflateDocument)
+							throw new Error('This Voyager version cannot save scenes through the editor.');
+						send('ready');
+						// Mark interactions as potentially unsaved; never discard scene work silently.
+						for (const type of ['input', 'change', 'pointerdown'])
+							document.addEventListener(type, () => send('dirty'), { capture: true });
+					} else if (event.data.type === 'export' && app) {
+						await new Promise(requestAnimationFrame);
+						send('document', { document: app.documentProvider.activeComponent.deflateDocument() });
+					}
+				} catch (error) {
+					send('error', { message: error.message || 'Scene editor failed.' });
+				}
+			});
+		</script>
+	</body>
+</html>

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { pb } from '$lib/database/client';
 	import type { RecordModel } from 'pocketbase';
-	import type { Snippet } from 'svelte';
+	import { untrack, type Snippet } from 'svelte';
 	import toast from 'svelte-french-toast';
 
 	type Props = {
@@ -14,6 +14,7 @@
 		disabled?: boolean;
 		onuploaded?: (record: RecordModel) => void;
 		onremoved?: (record: RecordModel) => void;
+		onbusychange?: (busy: boolean) => void;
 		preview?: Snippet<[{ filename: string; url: string }]>;
 		emptyPreview?: Snippet;
 	};
@@ -28,6 +29,7 @@
 		disabled = false,
 		onuploaded,
 		onremoved,
+		onbusychange,
 		preview,
 		emptyPreview
 	}: Props = $props();
@@ -35,6 +37,23 @@
 	let currentFilename = $derived((record[fieldName] as string | undefined) ?? '');
 	let progress = $state(0);
 	let uploading = $state(false);
+	let removing = $state(false);
+	let fileToken = $state('');
+	$effect(() => {
+		onbusychange?.(uploading || removing);
+	});
+	$effect(() => {
+		if (collectionName !== 'editions' || record.isPublished || !currentFilename) return;
+		let active = true;
+		void untrack(() => pb.files.getToken())
+			.then((token) => {
+				if (active) fileToken = token;
+			})
+			.catch(() => {});
+		return () => {
+			active = false;
+		};
+	});
 	let errorMsg = $state('');
 	let pendingFile = $state<File | null>(null);
 	let dragActive = $state(false);
@@ -89,6 +108,7 @@
 	}
 
 	function upload(file: File) {
+		if (disabled || uploading || removing) return;
 		const vErr = validate(file);
 		if (vErr) {
 			errorMsg = vErr;
@@ -170,7 +190,8 @@
 	}
 
 	async function remove() {
-		if (!currentFilename) return;
+		if (!currentFilename || disabled || uploading || removing) return;
+		removing = true;
 		try {
 			const updated = await pb.collection(collectionName).update(record.id, {
 				[fieldName]: null
@@ -180,6 +201,8 @@
 		} catch (err) {
 			console.error(`Remove ${fieldName} failed:`, err);
 			toast.error((err as Error).message || 'Failed to remove file');
+		} finally {
+			removing = false;
 		}
 	}
 
@@ -216,10 +239,12 @@
 		upload(file);
 	}
 
-	let fileUrl = $derived(currentFilename ? pb.files.getURL(record, currentFilename) : '');
+	let fileUrl = $derived(
+		currentFilename ? pb.files.getURL(record, currentFilename, { token: fileToken }) : ''
+	);
 </script>
 
-<div class="space-y-2">
+<div id="file-upload-field" class="space-y-2">
 	<input
 		bind:this={inputEl}
 		type="file"
@@ -240,7 +265,7 @@
 		role="presentation"
 	>
 		{#if currentFilename && !uploading}
-			{#if preview}
+			{#if preview && (collectionName !== 'editions' || record.isPublished || fileToken)}
 				{@render preview({ filename: currentFilename, url: fileUrl })}
 			{:else}
 				<div class="text-xs">{currentFilename}</div>
@@ -255,7 +280,9 @@
 			</div>
 		{:else if uploading}
 			<div class="space-y-1">
-				<div class="text-xs text-base-content/60">Uploading {humanSize(pendingFile?.size ?? 0)}...</div>
+				<div class="text-xs text-base-content/60">
+					Uploading {humanSize(pendingFile?.size ?? 0)}...
+				</div>
 				<progress class="progress w-full progress-primary" value={progress} max="100"></progress>
 				<div class="text-xs text-base-content/40">{progress}%</div>
 			</div>
@@ -263,7 +290,7 @@
 			{#if emptyPreview}
 				{@render emptyPreview()}
 			{/if}
-			<button type="button" class="btn btn-outline btn-sm mt-2 w-full" onclick={pick} {disabled}>
+			<button type="button" class="btn mt-2 w-full btn-outline btn-sm" onclick={pick} {disabled}>
 				Choose file
 			</button>
 		{/if}
@@ -278,7 +305,7 @@
 	</div>
 
 	{#if errorMsg}
-		<div class="alert alert-sm alert-error">
+		<div class="alert-sm alert alert-error">
 			<span class="text-xs">{errorMsg}</span>
 			{#if pendingFile}
 				<button type="button" class="btn btn-ghost btn-xs" onclick={retry}>Retry</button>

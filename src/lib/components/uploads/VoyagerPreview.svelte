@@ -1,37 +1,62 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { pb } from '$lib/database/client';
 	import type { RecordModel } from 'pocketbase';
 	import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
 	import { rewriteSceneJson, type FileMap } from '$lib/utils/svx-uri-rewriter';
-	import {
-		getEditionRoot,
-		DEFAULT_VOYAGER_VERSION
-	} from '$lib/utils/asset-urls';
+	import { getEditionRoot, DEFAULT_VOYAGER_VERSION } from '$lib/utils/asset-urls';
 
 	type Props = {
 		edition: RecordModel;
 		collectionPubNum?: number | null;
 		editionPubNum?: number | null;
 		title?: string;
+		fileToken?: string;
 		/** Called when the user drops files on the viewer. Parent wires this to the uploader. */
 		onFiles?: (files: File[]) => void;
 	};
-	let { edition, collectionPubNum, editionPubNum, title = 'Edition preview', onFiles }: Props =
-		$props();
+	let {
+		edition,
+		collectionPubNum,
+		editionPubNum,
+		title = 'Edition preview',
+		fileToken,
+		onFiles
+	}: Props = $props();
 
 	let dragActive = $state(false);
 
 	let modelFilename = $derived((edition.modelFile as string | undefined) ?? '');
 	let sceneFilename = $derived((edition.sceneDocument as string | undefined) ?? '');
+	let privateFileToken = $state('');
+	let tokenKey = '';
+	const resolvedFileToken = $derived(fileToken || privateFileToken);
+	$effect(() => {
+		if (edition.isPublished || fileToken) return;
+		const key = `${edition.id}:${modelFilename}:${sceneFilename}`;
+		if (key === tokenKey && privateFileToken) return;
+		let active = true;
+		void untrack(() => pb.files.getToken())
+			.then((token) => {
+				if (active) {
+					tokenKey = key;
+					privateFileToken = token;
+				}
+			})
+			.catch(() => {});
+		return () => {
+			active = false;
+		};
+	});
 
 	let previewDocument = $state<string>('');
 	let previewRoot = $state<string>('');
 	let previewModel = $state<string>('');
 	let previewGeometry = $state<string>('');
 	let previewOverrides = $state<Array<{ url: string; content: string; contentType?: string }>>([]);
-	let previewCompanions = $state<{ baseDir: string; byBasename: Record<string, string> } | undefined>(
-		undefined
-	);
+	let previewCompanions = $state<
+		{ baseDir: string; byBasename: Record<string, string> } | undefined
+	>(undefined);
 	let mode = $state<'scene' | 'model' | 'legacy' | 'empty'>('empty');
 	let warnMissingModel = $state(false);
 	let sceneFallbackError = $state(false);
@@ -40,6 +65,16 @@
 	let activeAbort: AbortController | null = null;
 
 	$effect(() => {
+		// Voyager intercepts fetch and reads its reactive props. Those reads must not
+		// become dependencies of the effect that writes this preview's props.
+		void edition.id;
+		void edition.isPublished;
+		void edition.modelAssets;
+		void modelFilename;
+		void sceneFilename;
+		void resolvedFileToken;
+		void collectionPubNum;
+		void editionPubNum;
 		const myRun = ++runId;
 		warnMissingModel = false;
 		sceneFallbackError = false;
@@ -47,7 +82,9 @@
 		activeAbort = new AbortController();
 		const signal = activeAbort.signal;
 
-		void resolvePreview(myRun, signal);
+		untrack(() => {
+			void resolvePreview(myRun, signal);
+		});
 
 		return () => {
 			activeAbort?.abort();
@@ -57,11 +94,7 @@
 
 	async function resolvePreview(myRun: number, signal: AbortSignal) {
 		if (myRun !== runId) return;
-		previewRoot = '';
-		previewDocument = '';
-		previewModel = '';
-		previewGeometry = '';
-		previewOverrides = [];
+		if (!edition.isPublished && !resolvedFileToken && (modelFilename || sceneFilename)) return;
 		previewCompanions = buildCompanions();
 
 		if (sceneFilename) {
@@ -69,9 +102,16 @@
 			return;
 		}
 		if (collectionPubNum && editionPubNum) {
+			previewModel = '';
+			previewGeometry = '';
+			previewOverrides = [];
 			previewRoot = getEditionRoot(collectionPubNum, editionPubNum);
 			previewDocument = 'scene.svx.json';
 			mode = 'legacy';
+			return;
+		}
+		if (modelFilename) {
+			setModelDirect();
 			return;
 		}
 		mode = 'empty';
@@ -80,7 +120,7 @@
 	function companionBaseDir(): string {
 		const reference = modelFilename || sceneFilename;
 		if (!reference) return '';
-		const full = pb.files.getURL(edition, reference);
+		const full = pb.files.getURL(edition, reference, { token: resolvedFileToken });
 		const lastSlash = full.lastIndexOf('/');
 		return lastSlash >= 0 ? full.slice(0, lastSlash + 1) : '';
 	}
@@ -92,13 +132,22 @@
 	}
 
 	function buildCompanions(): { baseDir: string; byBasename: Record<string, string> } | undefined {
-		const assets = Array.isArray(edition.modelAssets) ? (edition.modelAssets as string[]) : [];
+		const assets = [
+			modelFilename,
+			sceneFilename,
+			...(Array.isArray(edition.modelAssets) ? (edition.modelAssets as string[]) : [])
+		].filter(Boolean);
 		if (assets.length === 0) return undefined;
 		const baseDir = companionBaseDir();
 		if (!baseDir) return undefined;
 		const byBasename: Record<string, string> = {};
 		for (const stored of assets) {
-			byBasename[originalBasename(stored)] = pb.files.getURL(edition, stored);
+			byBasename[originalBasename(stored)] = pb.files.getURL(edition, stored, {
+				token: resolvedFileToken
+			});
+			byBasename[stored.toLowerCase()] = pb.files.getURL(edition, stored, {
+				token: resolvedFileToken
+			});
 		}
 		return { baseDir, byBasename };
 	}
@@ -106,7 +155,7 @@
 	function buildFileMap(): FileMap {
 		const map: FileMap = {};
 		const register = (stored: string) => {
-			const url = pb.files.getURL(edition, stored);
+			const url = pb.files.getURL(edition, stored, { token: resolvedFileToken });
 			map[stored] = url;
 			map[originalBasename(stored)] = url;
 		};
@@ -119,7 +168,7 @@
 
 	async function buildSceneOverride(myRun: number, signal: AbortSignal) {
 		try {
-			const sceneUrl = pb.files.getURL(edition, sceneFilename);
+			const sceneUrl = pb.files.getURL(edition, sceneFilename, { token: resolvedFileToken });
 			const resp = await fetch(sceneUrl, { signal });
 			if (myRun !== runId) return;
 			if (!resp.ok) throw new Error(`Scene fetch failed (${resp.status})`);
@@ -129,9 +178,16 @@
 			warnMissingModel = sceneReferencesMissingModel(rewritten);
 			const lastSlash = sceneUrl.lastIndexOf('/');
 			previewRoot = lastSlash >= 0 ? sceneUrl.slice(0, lastSlash + 1) : '';
-			previewDocument = lastSlash >= 0 ? sceneUrl.slice(lastSlash + 1) : sceneUrl;
+			previewDocument = sceneFilename;
+			previewModel = '';
+			previewGeometry = '';
 			previewOverrides = [
-				{ url: sceneUrl, content: JSON.stringify(rewritten), contentType: 'application/json' }
+				{ url: sceneUrl, content: JSON.stringify(rewritten), contentType: 'application/json' },
+				{
+					url: pb.files.getURL(edition, sceneFilename),
+					content: JSON.stringify(rewritten),
+					contentType: 'application/json'
+				}
 			];
 			mode = 'scene';
 		} catch (err) {
@@ -148,7 +204,7 @@
 			mode = 'empty';
 			return;
 		}
-		const url = pb.files.getURL(edition, modelFilename);
+		const url = pb.files.getURL(edition, modelFilename, { token: resolvedFileToken });
 		const lower = modelFilename.toLowerCase();
 		const isGeometry = lower.endsWith('.obj') || lower.endsWith('.ply');
 		if (isGeometry) {
@@ -359,7 +415,7 @@
 			</div>
 		{/if}
 		<div
-			class="relative card overflow-hidden bg-base-200 shadow-xl transition-all {dragActive
+			class="card relative overflow-hidden bg-base-200 shadow-xl transition-all {dragActive
 				? 'ring-2 ring-primary ring-offset-2 ring-offset-base-100'
 				: ''}"
 			ondragover={onDragOver}
@@ -369,17 +425,19 @@
 			role="presentation"
 		>
 			<div class="card-body p-0">
-				<VoyagerViewer
-					url={previewRoot}
-					document={previewDocument}
-					model={previewModel}
-					geometry={previewGeometry}
-					fetchOverrides={previewOverrides}
-					companionAssets={previewCompanions}
-					{title}
-					direct={true}
-					voyagerVersion={DEFAULT_VOYAGER_VERSION}
-				/>
+				{#key `${mode}:${previewDocument}:${previewModel}:${previewGeometry}`}
+					<VoyagerViewer
+						url={previewRoot}
+						document={previewDocument}
+						model={previewModel}
+						geometry={previewGeometry}
+						fetchOverrides={previewOverrides}
+						companionAssets={previewCompanions}
+						{title}
+						direct={true}
+						voyagerVersion={DEFAULT_VOYAGER_VERSION}
+					/>
+				{/key}
 			</div>
 			{#if dragActive}
 				<div

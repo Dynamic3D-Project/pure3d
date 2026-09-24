@@ -68,6 +68,12 @@
 		onContentChange?: (content: VoyagerContent) => void;
 		/** Keep external categories in sync with native tag buttons and tour changes */
 		onAnnotationCategoriesChange?: (categories: string[]) => void;
+		/** Keep an external article reader in sync with Voyager article selections */
+		onActiveArticleChange?: (id: string | null) => void;
+		/** Keep an external tour navigator in sync with Voyager tour changes */
+		onTourChange?: (tourIndex: number, stepIndex: number) => void;
+		/** Hide Voyager's reader, tour, and tag chrome in favour of external content controls */
+		externalContent?: boolean;
 		/** Callback when Voyager's native annotations, reader, tours, or tools UI changes */
 		onPanelVisibilityChange?: (panel: VoyagerPanel | null) => void;
 		/** Callback to toggle full-window mode from the embedded editor controls */
@@ -86,6 +92,7 @@
 		toggleAnnotations: () => void;
 		toggleReader: () => void;
 		toggleTours: () => void;
+		stopTour: () => void;
 		toggleTools: () => void;
 		toggleMeasurement: () => void;
 		enableAR: () => void;
@@ -126,14 +133,37 @@
 		tours: unknown[];
 	}
 
+	export interface VoyagerTourState {
+		tourIndex: number;
+		stepIndex: number;
+	}
+
 	interface CategoryViewer extends HTMLElement {
 		viewer?: {
+			node?: {
+				setup?: {
+					reader?: {
+						ins: {
+							enabled: { value: boolean; setValue: (value: boolean) => void };
+							articleId: { value: string; setValue: (value: string) => void };
+						};
+					};
+					tape?: {
+						ins: { visible: { value: boolean } };
+					};
+					tours?: {
+						ins: { enabled: { value: boolean } };
+						outs: { tourIndex: { value: number }; stepIndex: { value: number } };
+					};
+				};
+			};
 			ins?: {
 				activeTags?: { value: unknown };
 				annotationsVisible?: { value: boolean };
 			};
 		};
 		setActiveTags?: (tags: string) => void;
+		toggleTools?: () => void;
 	}
 
 	export type VoyagerPanel = 'annotations' | 'reader' | 'tours' | 'tools';
@@ -181,6 +211,9 @@
 		onReady,
 		onContentChange,
 		onAnnotationCategoriesChange,
+		onActiveArticleChange,
+		onTourChange,
+		externalContent = false,
 		onPanelVisibilityChange,
 		onFullWindowToggle,
 		height,
@@ -212,6 +245,11 @@
 	let toolsVisibilityFrame: number | null = null;
 	let lastVisiblePanel: VoyagerPanel | null = null;
 	let lastActiveCategories: string | null = null;
+	let lastActiveArticleId: string | null = null;
+	let disposed = false;
+	let cleanupConsoleError: (() => void) | null = null;
+	let lastTourState: VoyagerTourState = { tourIndex: -1, stepIndex: -1 };
+	let arAvailable = false;
 	let sceneFeatureNeeds = {
 		annotations: false,
 		reader: false,
@@ -288,7 +326,9 @@
 
 		let pathname: string;
 		try {
-			pathname = new URL(requestedUrl).pathname;
+			const parsed = new URL(requestedUrl);
+			if (parsed.searchParams.has('token')) return null;
+			pathname = parsed.pathname;
 		} catch {
 			return null;
 		}
@@ -334,7 +374,9 @@
 				return window.fetch(companionUrl, init);
 			}
 
-			const shouldTrack = trackedExtensions.some((ext) => url.toLowerCase().includes(ext));
+			const shouldTrack =
+				loadingPhase !== 'complete' &&
+				trackedExtensions.some((ext) => url.toLowerCase().includes(ext));
 
 			if (!shouldTrack) {
 				return originalFetch(input, init);
@@ -385,6 +427,7 @@
 
 	onMount(() => {
 		if (direct) {
+			disposed = false;
 			// Reset progress state
 			loadingProgress = 0;
 			totalBytes = 0;
@@ -419,6 +462,9 @@
 				loadingPhase = 'document';
 				setTimeout(loadContent, 500);
 				return () => {
+					disposed = true;
+					cleanupConsoleError?.();
+					cancelCameraAnimation();
 					cleanupChromeObserver();
 					if (cleanupFetchInterceptor) {
 						cleanupFetchInterceptor();
@@ -431,14 +477,19 @@
 			const script = document.createElement('script');
 			script.src = scriptUrl;
 			script.onload = () => {
+				if (disposed) return;
 				isScriptLoaded = true;
 				loadingPhase = 'document';
 				// Wait for element to be created and initialized
 				setTimeout(loadContent, 500);
 			};
+			script.onerror = () => handleVoyagerError({ message: 'The 3D viewer could not be loaded.' });
 			document.head.appendChild(script);
 
 			return () => {
+				disposed = true;
+				cleanupConsoleError?.();
+				cancelCameraAnimation();
 				cleanupChromeObserver();
 				// Cleanup fetch interceptor
 				if (cleanupFetchInterceptor) {
@@ -453,7 +504,7 @@
 	});
 
 	function loadContent() {
-		if (!voyagerElement) return;
+		if (disposed || !voyagerElement) return;
 
 		// Fix Voyager modal z-index to appear above sticky header (Shadow DOM)
 		fixVoyagerModalZIndex();
@@ -461,14 +512,14 @@
 
 		// Handler for when model is ready
 		async function handleModelReady() {
-			if (loadingPhase === 'complete') return; // Already handled
+			if (disposed || loadingPhase === 'complete' || hasError) return; // Already handled
 
 			hasError = false;
 			loadingPhase = 'complete';
 			loadingProgress = 100;
 
-			// Clean up fetch interceptor after model loads
-			if (cleanupFetchInterceptor) {
+			// Private assets and scene overrides still need their resolver for later requests.
+			if (cleanupFetchInterceptor && !fetchOverrides?.length && !companionAssets) {
 				cleanupFetchInterceptor();
 				cleanupFetchInterceptor = null;
 			}
@@ -481,6 +532,8 @@
 			// Load available content
 			getContent();
 			sceneFeatureNeeds = await detectSceneFeatures();
+			arAvailable = await supportsAR();
+			if (disposed) return;
 
 			// Expose API to parent
 			if (onReady) {
@@ -488,6 +541,7 @@
 					toggleAnnotations,
 					toggleReader,
 					toggleTours,
+					stopTour,
 					toggleTools,
 					toggleMeasurement,
 					enableAR,
@@ -523,7 +577,7 @@
 		// Check if model is already loaded (e.g., from cache)
 		// Poll for the presence of models/annotations as indicator
 		const checkIfAlreadyLoaded = () => {
-			if (loadingPhase === 'complete') return;
+			if (disposed || loadingPhase === 'complete' || hasError) return;
 
 			try {
 				// Check if Voyager has models loaded
@@ -563,9 +617,28 @@
 			}
 			originalConsoleError.apply(console, args);
 		};
+		const installedConsoleError = console.error;
+		cleanupConsoleError = () => {
+			if (console.error === installedConsoleError) console.error = originalConsoleError;
+		};
 	}
 
-	let fullWindowStyleElement: HTMLStyleElement | null = null;
+	$effect(() => {
+		// Voyager 0.59 does not stop its animation pulse when the element is detached.
+		// Stop only this viewer's pulse before replacing one layout with the other.
+		const pulse = (
+			voyagerElement as
+				| (HTMLElement & {
+						application?: {
+							system?: { components?: { get?: (type: string) => { stop?: () => void } } };
+						};
+				  })
+				| undefined
+		)?.application?.system?.components?.get?.('CPulse');
+		return () => pulse?.stop?.();
+	});
+
+	let fullWindowStyleElement = $state<HTMLStyleElement | null>(null);
 
 	function fixVoyagerModalZIndex() {
 		if (!voyagerElement) return;
@@ -602,23 +675,60 @@
 		toolsVisibilityFrame = null;
 	}
 
+	function notifyActiveArticle() {
+		const reader = (voyagerElement as CategoryViewer)?.viewer?.node?.setup?.reader;
+		const id = reader?.ins.enabled.value ? reader.ins.articleId.value || null : null;
+		if (externalContent && id && reader) {
+			reader.ins.enabled.setValue(false);
+			reader.ins.articleId.setValue('');
+		}
+		if (id === lastActiveArticleId) return;
+		lastActiveArticleId = id;
+		onActiveArticleChange?.(id || null);
+	}
+
+	function notifyTourState(state?: VoyagerTourState) {
+		const tours = (voyagerElement as CategoryViewer)?.viewer?.node?.setup?.tours;
+		const tourIndex =
+			state?.tourIndex ?? (tours?.ins.enabled.value ? tours.outs.tourIndex.value : -1);
+		const stepIndex =
+			state?.stepIndex ?? (tours?.ins.enabled.value ? tours.outs.stepIndex.value : -1);
+		if (!Number.isInteger(tourIndex) || !Number.isInteger(stepIndex)) return;
+		if (tourIndex === lastTourState.tourIndex && stepIndex === lastTourState.stepIndex) return;
+		lastTourState = { tourIndex, stepIndex };
+		onTourChange?.(tourIndex, stepIndex);
+	}
+
 	function observeVoyagerChrome() {
 		const shadowRoot = (voyagerElement as any)?.shadowRoot as ShadowRoot | undefined;
-		if (!shadowRoot || (!onPanelVisibilityChange && !onAnnotationCategoriesChange)) return;
+		if (
+			!shadowRoot ||
+			(!onPanelVisibilityChange &&
+				!onAnnotationCategoriesChange &&
+				!onActiveArticleChange &&
+				!onTourChange)
+		)
+			return;
 
 		cleanupChromeObserver();
 		const notify = () => {
 			toolsVisibilityFrame = null;
 			notifyAnnotationCategories();
-			const panel: VoyagerPanel | null = shadowRoot.querySelector('.sv-reader-container')
-				? 'reader'
-				: shadowRoot.querySelector('.sv-tour-menu, .sv-tour-navigator')
-					? 'tours'
-					: shadowRoot.querySelector('.sv-bottom-bar-container')
-						? 'annotations'
-						: shadowRoot.querySelector('.sv-tool-bar-container')
-							? 'tools'
-							: null;
+			notifyActiveArticle();
+			notifyTourState();
+			const panel: VoyagerPanel | null = externalContent
+				? shadowRoot.querySelector('.sv-tool-bar-container')
+					? 'tools'
+					: null
+				: shadowRoot.querySelector('.sv-reader-container')
+					? 'reader'
+					: shadowRoot.querySelector('.sv-tour-menu, .sv-tour-navigator')
+						? 'tours'
+						: shadowRoot.querySelector('.sv-bottom-bar-container')
+							? 'annotations'
+							: shadowRoot.querySelector('.sv-tool-bar-container')
+								? 'tools'
+								: null;
 			if (panel === lastVisiblePanel) return;
 			lastVisiblePanel = panel;
 			onPanelVisibilityChange?.(panel);
@@ -641,16 +751,12 @@
 	// to hide the UI after the model loads.
 	$effect(() => {
 		if (fullWindowStyleElement && loadingPhase === 'complete') {
-			if (showVoyagerMenu) {
-				// Show Voyager's built-in UI
-				fullWindowStyleElement.textContent = '';
-			} else {
-				// Hide Voyager's built-in UI - custom controls are used instead
-				fullWindowStyleElement.textContent = `
+			const hideStandardChrome = showVoyagerMenu
+				? ''
+				: `
 					/* Hide all Voyager UI elements - using custom controls */
 					.sv-main-menu,
 					.sv-main-menu-wrapper,
-					.sv-chrome-view,
 					.sv-content-view > .ff-title-bar,
 					.sv-title-bar,
 					.ff-title-bar,
@@ -658,16 +764,29 @@
 					.sv-nav-container,
 					.sv-top-bar-container {
 						display: none !important;
-					}
-				`;
-			}
+					}`;
+			const hideExternalChrome = externalContent
+				? `
+					.sv-reader-view,
+					.sv-reader,
+					.sv-reader-container,
+					.sv-tour-menu,
+					.sv-tour-navigator,
+					.sv-bottom-bar-container:not(.sv-tour-navigator):not(.sv-tool-bar) {
+						display: none !important;
+					}`
+				: '';
+			fullWindowStyleElement.textContent = `${hideStandardChrome}${hideExternalChrome}`;
 		}
 	});
 
 	function handleVoyagerError(e: any) {
+		if (disposed) return;
 		const message = e?.detail?.message || e?.message || 'Failed to load 3D model';
 		hasError = true;
 		errorMessage = message;
+		cleanupFetchInterceptor?.();
+		cleanupFetchInterceptor = null;
 		toast.error(message, {
 			duration: 5000,
 			position: 'bottom-center',
@@ -676,7 +795,8 @@
 	}
 
 	function getContent() {
-		if (!voyagerElement || typeof (voyagerElement as any).getAnnotations !== 'function') return;
+		if (disposed || !voyagerElement || typeof (voyagerElement as any).getAnnotations !== 'function')
+			return;
 
 		try {
 			const annots = (voyagerElement as any).getAnnotations();
@@ -701,7 +821,7 @@
 			tours: typeof element?.toggleTours === 'function',
 			tools: typeof element?.toggleTools === 'function',
 			measurement: typeof element?.toggleMeasurement === 'function',
-			ar: typeof element?.enableAR === 'function',
+			ar: arAvailable && typeof element?.enableAR === 'function',
 			reset: typeof element?.resetViewer === 'function',
 			audio: false
 		};
@@ -1009,6 +1129,13 @@
 	// API Methods - Articles
 	function setActiveArticle(id: string) {
 		if (!voyagerElement) return;
+		if (externalContent) {
+			if (lastActiveArticleId !== id) {
+				lastActiveArticleId = id;
+				onActiveArticleChange?.(id);
+			}
+			return;
+		}
 		// Show reader if hidden, then set active article
 		const readerElement = (voyagerElement as any).shadowRoot?.querySelector('.sv-reader-container');
 		if (!readerElement) {
@@ -1038,15 +1165,29 @@
 	// API Methods - Tours
 	function setTourStep(tourIdx: number, stepIdx: number, interpolate?: boolean) {
 		if (!voyagerElement) return;
-		if (!voyagerElement.shadowRoot?.querySelector('.sv-tour-menu, .sv-tour-navigator')) {
+		const enabled = (voyagerElement as CategoryViewer).viewer?.node?.setup?.tours?.ins.enabled
+			.value;
+		if (
+			enabled === false ||
+			(enabled === undefined &&
+				!voyagerElement.shadowRoot?.querySelector('.sv-tour-menu, .sv-tour-navigator'))
+		) {
 			toggleTours();
 		}
 		(voyagerElement as any).setTourStep?.(tourIdx, stepIdx, interpolate);
+		notifyTourState({ tourIndex: tourIdx, stepIndex: stepIdx });
 	}
 
 	function toggleTours() {
 		if (!voyagerElement) return;
 		(voyagerElement as any).toggleTours?.();
+	}
+
+	function stopTour() {
+		if ((voyagerElement as CategoryViewer)?.viewer?.node?.setup?.tours?.ins.enabled.value) {
+			toggleTours();
+		}
+		notifyTourState();
 	}
 
 	// API Methods - UI Controls
@@ -1057,7 +1198,22 @@
 
 	function toggleMeasurement() {
 		if (!voyagerElement) return;
-		(voyagerElement as any).toggleMeasurement?.();
+		const element = voyagerElement as CategoryViewer;
+		const shadowRoot = element.shadowRoot;
+		if (!shadowRoot?.querySelector('.sv-tool-bar-container')) element.toggleTools?.();
+		requestAnimationFrame(() => {
+			const button = Array.from(
+				shadowRoot?.querySelectorAll<HTMLElement>('.sv-tool-button') ?? []
+			).find((item) => item.getAttribute('icon') === 'tape');
+			button?.click();
+			requestAnimationFrame(() => {
+				const toggle = shadowRoot?.querySelector<HTMLElement>(
+					'sv-property-boolean[name="Tape Tool"] ff-button'
+				);
+				toggle?.click();
+				if (toggle) toast.success('Measurement active — select two points on the model.');
+			});
+		});
 	}
 
 	function setBackgroundStyle(style: 'Solid' | 'LinearGradient' | 'RadialGradient') {
@@ -1076,8 +1232,35 @@
 		(voyagerElement as any).setLanguage?.(languageCode);
 	}
 
-	function enableAR() {
+	async function supportsAR() {
+		const nav = navigator as Navigator & {
+			xr?: { isSessionSupported?: (mode: string) => Promise<boolean> };
+		};
+		const sessionPrototype = (
+			window as Window & {
+				XRSession?: { prototype?: { requestHitTestSource?: unknown } };
+			}
+		).XRSession?.prototype;
+		const hasWebXR =
+			!!nav.xr &&
+			typeof nav.xr.isSessionSupported === 'function' &&
+			!!sessionPrototype?.requestHitTestSource;
+		const webXR = hasWebXR
+			? await nav.xr!.isSessionSupported!('immersive-ar').catch(() => false)
+			: false;
+		const android = /Android/i.test(nav.userAgent);
+		const ios = /iPad|iPhone|iPod/.test(nav.userAgent);
+		const link = document.createElement('a');
+		const quickLook = ios && !!link.relList?.supports?.('ar');
+		return webXR || android || quickLook;
+	}
+
+	async function enableAR() {
 		if (!voyagerElement) return;
+		if (!(await supportsAR())) {
+			toast.error('AR is not available on this device or browser.');
+			return;
+		}
 		(voyagerElement as any).enableAR?.();
 	}
 
@@ -1125,7 +1308,18 @@
 </script>
 
 {#snippet progressBar()}
-	{#if activeMode === 'viewer' && loadingPhase !== 'complete'}
+	{#if activeMode === 'viewer' && hasError}
+		<div
+			class="absolute inset-0 z-10 grid place-content-center bg-base-200 p-6 text-center"
+			role="status"
+		>
+			<p class="font-semibold">3D preview unavailable</p>
+			<p class="mt-2 text-sm text-base-content/70">{errorMessage}</p>
+			{#if externalContent}<p class="mt-2 text-sm">
+					You can still explore the edition content below.
+				</p>{/if}
+		</div>
+	{:else if activeMode === 'viewer' && loadingPhase !== 'complete'}
 		<div class="pointer-events-none absolute right-0 bottom-0 left-0 z-10">
 			<progress
 				class="progress h-1 w-full rounded-none progress-primary"
