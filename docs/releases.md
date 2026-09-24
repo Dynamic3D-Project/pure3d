@@ -21,7 +21,8 @@ prove current remote synchronization; this limitation is printed explicitly.
 A real release requires a clean index and working tree (including untracked files), `main`,
 full history, and an existing stable `vX.Y.Z` baseline. It fetches origin/main and tags, then
 requires HEAD to equal origin/main. Divergence is rejected; no automatic pull/rebase occurs.
-Unsupported prerelease/malformed reachable `v*` tags are rejected rather than guessed.
+Valid prerelease tags are ignored when choosing the stable version baseline; malformed reachable
+`v*` tags are rejected rather than guessed.
 The highest reachable stable version is the baseline; commits in `tag..HEAD` determine:
 
 | Commit                                                                      | Release |
@@ -65,6 +66,9 @@ destination. Absolute/traversing paths, symbolic/hard links and special files ar
 existing destinations are refused and archive permissions are not restored. No checkout, install or build
 runs in that workflow. Main pushes run checks only. GitHub Pages must use GitHub Actions as its
 source. The local command reports publication, not deployment completion; inspect the Pages run.
+Prerelease tags can deploy the same way when a matching published GitHub prerelease contains the
+prebuilt archive and checksum; they do not alter the stable version baseline. This replaces the
+live Pages site, not a separate preview environment.
 If publication takes longer than the wait window, finish `make release` and rerun the failed tag
 workflow. No second tag or release is needed. Repository administrators should enable GitHub
 immutable releases for server-enforced protection as well; this tool never replaces assets.

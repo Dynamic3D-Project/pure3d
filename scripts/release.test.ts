@@ -1,6 +1,13 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { expect, test } from 'bun:test';
-import { classify, nextVersion, releaseNotes, prependChangelog, updateCitation } from './release';
+import {
+	classify,
+	nextVersion,
+	releaseNotes,
+	prependChangelog,
+	stableReleaseTags,
+	updateCitation
+} from './release';
 
 const commits = (...messages: string[]) =>
 	messages.map((message) => ({ hash: 'abcdef123456', message }));
@@ -23,6 +30,11 @@ test('Conventional Commits select highest bump and reset lower fields', () => {
 	expect(classify('fix missing colon')).toBeNull();
 	for (const invalid of ['v1.2.3', '01.2.3', '1.2', '1.2.3-beta.1'])
 		expect(() => nextVersion(invalid, [])).toThrow();
+});
+
+test('stable releases ignore valid prerelease tags without accepting malformed tags', () => {
+	expect(stableReleaseTags(['v2.0.0-beta.1', 'v0.14.0'])).toEqual(['v0.14.0']);
+	expect(() => stableReleaseTags(['v2.0.beta'])).toThrow();
 });
 
 test('dated categorized notes preserve prior history without duplicate headings', () => {
@@ -187,6 +199,7 @@ test('Pages is tag-only and deploys verified prebuilt bytes; all Actions remain 
 		expect(workflow).not.toMatch(/run:.*(?:run build|release-build|run release)/);
 	for (const evidence of [
 		'.draft == false',
+		'.prerelease == $prerelease',
 		'gh release download',
 		'hashlib.sha256',
 		'Archive checksum mismatch',

@@ -25,14 +25,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          [[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          [[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]
+          prerelease=false
+          [[ "$TAG" != *-* ]] || prerelease=true
           archive="pure3d-${TAG}.tar.gz"
           # Tag push starts this job before local publication finishes. Never rebuild.
           ready=false
           for attempt in {1..60}; do
             if gh api "repos/$GH_REPO/releases/tags/$TAG" > release.json &&
-              jq -e --arg tag "$TAG" --arg archive "$archive" \
-                '.tag_name == $tag and .draft == false and .prerelease == false and
+              jq -e --arg tag "$TAG" --arg archive "$archive" --argjson prerelease "$prerelease" \
+                '.tag_name == $tag and .draft == false and .prerelease == $prerelease and
                  ([.assets[] | select(.state == "uploaded") | .name] | index($archive) != null and index($archive + ".sha256") != null)' release.json; then
               ready=true
               break

@@ -6,6 +6,13 @@ import { publishRelease } from './release-publish';
 
 export type Commit = { hash: string; message: string };
 const semver = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+const prerelease = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*$/;
+
+export function stableReleaseTags(tags: string[]) {
+	if (tags.some((tag) => !semver.test(tag.slice(1)) && !prerelease.test(tag)))
+		throw new Error('Only stable or prerelease SemVer vX.Y.Z tags supported.');
+	return tags.filter((tag) => semver.test(tag.slice(1)));
+}
 
 export function classify(message: string) {
 	const header = /^(\w+)(?:\([^)]+\))?(!)?: (.+)$/.exec(message.split('\n')[0]);
@@ -125,11 +132,11 @@ function main() {
 	}
 
 	if (!state) {
-		const tags = git('tag', '--merged', 'HEAD', '--list', 'v*', '--sort=-version:refname')
-			.split('\n')
-			.filter(Boolean);
-		if (tags.some((tag) => !semver.test(tag.slice(1))))
-			throw new Error('Only stable vX.Y.Z release tags supported.');
+		const tags = stableReleaseTags(
+			git('tag', '--merged', 'HEAD', '--list', 'v*', '--sort=-version:refname')
+				.split('\n')
+				.filter(Boolean)
+		);
 		const latest = tags[0];
 		if (!latest)
 			throw new Error('Missing vX.Y.Z baseline tag; establish release history explicitly.');
