@@ -739,13 +739,6 @@
 	.btn:active {
 		transform: translateY(1px);
 	}
-	.btn-primary {
-		background: var(--color-ink);
-		color: var(--color-paper);
-	}
-	.btn-primary:hover {
-		background: var(--color-ink-2);
-	}
 	.btn-secondary {
 		background: transparent;
 		color: var(--color-ink);

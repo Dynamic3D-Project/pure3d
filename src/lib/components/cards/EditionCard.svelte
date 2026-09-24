@@ -132,7 +132,7 @@
 		{#if onRemove}
 			<button
 				type="button"
-				class="btn absolute right-2 bottom-2 z-20 btn-square shadow btn-xs btn-neutral"
+				class="btn absolute right-2 bottom-2 z-20 btn-square shadow btn-outline btn-xs btn-error"
 				title="Remove edition from this collection"
 				aria-label="Remove edition from this collection"
 				onclick={handleRemove}

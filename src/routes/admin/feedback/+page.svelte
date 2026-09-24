@@ -425,7 +425,7 @@
 	<div class="mb-6 flex flex-wrap gap-2">
 		<button
 			type="button"
-			class={`btn btn-xs h-auto min-h-0 gap-2 rounded-full px-3 py-2 ${statusFilter === '' ? 'btn-primary' : 'btn-outline'}`}
+			class={`btn btn-xs h-auto min-h-0 gap-2 rounded-full px-3 py-2 ${statusFilter === '' ? 'btn-accent' : 'btn-outline'}`}
 			onclick={() => filterByStatus('')}
 		>
 			<span class="font-medium">Total</span>
@@ -442,7 +442,7 @@
 		{#each statusOptions.filter((option) => option.value) as option}
 			<button
 				type="button"
-				class={`btn btn-xs h-auto min-h-0 gap-2 rounded-full px-3 py-2 ${statusFilter === option.value ? 'btn-primary' : 'btn-outline opacity-75'}`}
+				class={`btn btn-xs h-auto min-h-0 gap-2 rounded-full px-3 py-2 ${statusFilter === option.value ? 'btn-accent' : 'btn-outline opacity-75'}`}
 				onclick={() => filterByStatus(option.value)}
 			>
 				<span class="font-medium">{option.label}</span>

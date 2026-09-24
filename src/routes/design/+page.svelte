@@ -689,11 +689,11 @@
 				<div class="sec-head">
 					<div class="sec-num">§ 04 — Color</div>
 					<div>
-						<h2 class="sec-title">Paper, ink, and a single <em>vermillion</em>.</h2>
+						<h2 class="sec-title">Paper, ink, <em>forest,</em> and vermillion.</h2>
 						<p class="sec-sub">
 							The palette is pulled from archive — unbleached card stock, ink, and the red of a
-							museum accession label. Neutrals do 95% of the work. The vermillion is reserved:
-							links, annotation pins, critical state. Never decorative.
+							museum accession label. Forest marks primary actions; vermillion marks selected tools
+							and highlights. Status colours report state rather than action hierarchy.
 						</p>
 					</div>
 				</div>
@@ -748,39 +748,60 @@
 							<div class="hex">#141413</div>
 						</div>
 					</div>
-					<div class="sw" style="background:oklch(62% 0.19 35);color:#fff;">
-						<div class="role">Accent · signal</div>
+					<div class="sw" style="background:var(--ds-primary);color:var(--ds-primary-content);">
+						<div class="role">Action · primary</div>
+						<div>
+							<div class="name">Forest</div>
+							<div class="hex">#293E30 · Save · Publish</div>
+						</div>
+					</div>
+					<div class="sw" style="background:var(--ds-vermillion);color:#fff;">
+						<div class="role">Accent · selected</div>
 						<div>
 							<div class="name">Vermillion</div>
 							<div class="hex">oklch(62% .19 35)</div>
 						</div>
 					</div>
-					<div class="sw" style="background:oklch(40% 0.15 35);color:#fff;">
+					<div class="sw" style="background:var(--ds-vermillion-ink);color:#fff;">
 						<div class="role">Accent · ink</div>
 						<div>
 							<div class="name">Vermillion Ink</div>
 							<div class="hex">oklch(40% .15 35)</div>
 						</div>
 					</div>
-					<div class="sw" style="background:oklch(95% 0.035 35);color:#141413;">
+					<div class="sw" style="background:var(--ds-vermillion-wash);color:#141413;">
 						<div class="role">Accent · wash</div>
 						<div>
 							<div class="name">Vermillion Wash</div>
 							<div class="hex">oklch(95% .035 35)</div>
 						</div>
 					</div>
-					<div class="sw" style="background:#EAF0E4;color:#141413;">
-						<div class="role">Semantic · open</div>
+					<div class="sw" style="background:var(--ds-info);color:var(--ds-info-content);">
+						<div class="role">Status · information</div>
 						<div>
-							<div class="name">Sage Wash</div>
-							<div class="hex">#EAF0E4</div>
+							<div class="name">Info</div>
+							<div class="hex">--color-info</div>
 						</div>
 					</div>
-					<div class="sw" style="background:#2F5D3A;color:#F4F1EB;">
-						<div class="role">Semantic · success</div>
+					<div class="sw" style="background:var(--ds-success);color:var(--ds-success-content);">
+						<div class="role">Status · success</div>
 						<div>
-							<div class="name">Verdigris</div>
-							<div class="hex">#2F5D3A</div>
+							<div class="name">Success</div>
+							<div class="hex">--color-success</div>
+						</div>
+					</div>
+					<div class="sw" style="background:var(--ds-warning);color:var(--ds-warning-content);">
+						<div class="role">Status · warning</div>
+						<div>
+							<div class="name">Warning</div>
+							<div class="hex">--color-warning</div>
+						</div>
+					</div>
+					<div class="sw" style="background:var(--ds-error);color:var(--ds-error-content);">
+						<div class="role">Status · error</div>
+						<div>
+							<div class="name">Error</div>
+							<div class="hex">--color-error</div>
 						</div>
 					</div>
 				</div>
@@ -800,7 +821,7 @@
 					<div class="acc-notes">
 						<ul>
 							<li>
-								<span>01</span>Active annotation pin, active viewer tool, primary link-on-paper.
+								<span>01</span>Active annotation pin, selected viewer tool, and focused highlight.
 							</li>
 							<li>
 								<span>02</span>Never used as a background behind body copy. Headers only, or under
@@ -811,8 +832,7 @@
 								not the base accent, to hold its weight beside the grotesk.
 							</li>
 							<li>
-								<span>04</span>Error and warning states borrow the accent temporarily, with the
-								semantic "!" glyph.
+								<span>04</span>Info, success, warning, and error retain their own semantic colours.
 							</li>
 						</ul>
 					</div>
@@ -837,7 +857,7 @@
 
 				<div class="grid-demo">
 					<div class="gd-cols">
-						{#each Array(12) as _, i (i)}<div></div>{/each}
+						{#each Array(12).keys() as i (i)}<div></div>{/each}
 					</div>
 					<div class="gd-over">
 						<div class="gd-block gd-b1">Hero · 5 col</div>
@@ -1135,24 +1155,34 @@
 					<div>
 						<h2 class="sec-title">A small <em>vocabulary,</em> spoken consistently.</h2>
 						<p class="sec-sub">
-							The system is deliberately narrow: four button roles, three badge states, one input.
-							Anything outside this vocabulary needs a case made for it.
+							The system is deliberately narrow: primary actions, outlined support, quiet controls,
+							and accent selections. Status colours communicate state, not importance.
 						</p>
 					</div>
 				</div>
 
 				<div class="comp-grid">
 					<div class="plate">
-						<div class="plate-label"><span>Buttons</span><span class="pl-r">4 roles</span></div>
+						<div class="plate-label">
+							<span>Buttons</span><span class="pl-r">4 common roles + theme secondary</span>
+						</div>
 						<div class="row-wrap">
-							<button class="btn btn-primary">Open viewer <span class="k">⏎</span></button>
-							<button class="btn btn-secondary">Download .glb</button>
-							<button class="btn btn-ghost">Cite this object</button>
-							<button class="btn btn-accent">Save annotation</button>
+							<button class="btn btn-primary">Save changes <span class="k">⌘S</span></button>
+							<button class="btn btn-primary">Publish</button>
+							<button class="btn btn-outline">Preview</button>
+							<button class="btn btn-ghost">Cancel</button>
+							<button class="btn btn-accent" aria-pressed="true">Annotation tool selected</button>
 						</div>
 						<div class="row-wrap row-disabled">
 							<button class="btn btn-primary" disabled>Disabled</button>
-							<button class="btn btn-secondary" disabled>Disabled</button>
+							<button class="btn btn-outline" disabled>Disabled</button>
+						</div>
+						<div class="plate-note">
+							Use <code>btn-outline</code> for supporting actions. <code>btn-secondary</code> is the
+							solid secondary theme role, not the default support style.
+						</div>
+						<div class="row-wrap mt-4">
+							<button class="btn btn-secondary">Secondary solid theme</button>
 						</div>
 					</div>
 
@@ -1551,7 +1581,7 @@
 								</div>
 								<div class="ed-primary-actions">
 									<button class="btn btn-primary">Open viewer <span class="k">↵</span></button>
-									<button class="btn btn-secondary">Compare editions</button>
+									<button class="btn btn-outline">Compare editions</button>
 									<button class="btn btn-ghost">Copy DOI</button>
 								</div>
 							</div>
@@ -1650,7 +1680,7 @@
 									Haddad, L. <em>Bronze Ewer, Khorasan, c. 1180.</em> Pure 3D, ed. 03 (2026). doi:10.60131/p3d.0142.03.
 								</div>
 								<div class="cite-actions">
-									<button class="sm btn btn-secondary">Copy citation</button>
+									<button class="sm btn btn-outline">Copy citation</button>
 									<button class="sm btn btn-ghost">Download .bib</button>
 								</div>
 								<div class="chip-body mt-4">
@@ -1717,8 +1747,8 @@
 							<dd>Inter Tight · Fraunces · JetBrains Mono</dd>
 						</div>
 						<div>
-							<dt>Primary</dt>
-							<dd>Paper · Ink · Vermillion</dd>
+							<dt>Colour roles</dt>
+							<dd>Paper · Ink · Forest · Vermillion</dd>
 							<dt>Grid</dt>
 							<dd>12 col · 16 gutter · 8px baseline</dd>
 							<dt>Next</dt>
@@ -1814,11 +1844,24 @@
 		--ds-ink-4: #8a8579;
 		--ds-rule: #1414131a;
 		--ds-rule-strong: #14141333;
+		--ds-primary: var(--color-primary);
+		--ds-primary-content: var(--color-primary-content);
+		--ds-primary-hover: var(--color-forest-hover);
 
 		/* accent — vermillion / archival red */
-		--ds-vermillion: oklch(62% 0.19 35);
-		--ds-vermillion-ink: oklch(40% 0.15 35);
-		--ds-vermillion-wash: oklch(95% 0.035 35);
+		--ds-vermillion: var(--color-accent);
+		--ds-vermillion-ink: var(--color-vermillion-ink);
+		--ds-vermillion-wash: var(--color-vermillion-wash);
+
+		/* status */
+		--ds-info: var(--color-info);
+		--ds-info-content: var(--color-info-content);
+		--ds-success: var(--color-success);
+		--ds-success-content: var(--color-success-content);
+		--ds-warning: var(--color-warning);
+		--ds-warning-content: var(--color-warning-content);
+		--ds-error: var(--color-error);
+		--ds-error-content: var(--color-error-content);
 
 		/* type */
 		--ds-sans: 'Inter Tight', 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -1878,7 +1921,7 @@
 		color: inherit;
 		text-decoration: none;
 	}
-	.ds-root button {
+	.ds-root button:not(.btn) {
 		font: inherit;
 		color: inherit;
 		background: none;
@@ -3242,18 +3285,27 @@
 		cursor: not-allowed;
 	}
 	.btn-primary {
-		background: var(--ds-ink);
-		color: var(--ds-paper);
+		background: var(--ds-primary);
+		color: var(--ds-primary-content);
 	}
 	.btn-primary:hover {
-		background: var(--ds-ink-2);
+		background: var(--ds-primary-hover);
 	}
 	.btn-secondary {
+		background: var(--ds-ink-3);
+		color: var(--ds-paper);
+		border-color: var(--ds-ink-3);
+	}
+	.btn-secondary:hover {
+		background: var(--ds-ink-2);
+		border-color: var(--ds-ink-2);
+	}
+	.btn-outline {
 		background: transparent;
 		color: var(--ds-ink);
 		border-color: var(--ds-rule-strong);
 	}
-	.btn-secondary:hover {
+	.btn-outline:hover {
 		border-color: var(--ds-ink);
 	}
 	.btn-ghost {
@@ -3307,32 +3359,36 @@
 		border-radius: 50%;
 	}
 	.badge.verified {
-		color: var(--ds-vermillion-ink);
-		border-color: var(--ds-vermillion);
-		background: var(--ds-vermillion-wash);
+		color: var(--ds-success-content);
+		border-color: var(--ds-success);
+		background: var(--ds-success);
 	}
 	.badge.verified .d {
-		background: var(--ds-vermillion);
+		background: currentColor;
 	}
 	.badge.draft {
-		color: var(--ds-ink-3);
+		color: var(--ds-warning-content);
+		border-color: var(--ds-warning);
+		background: var(--ds-warning);
 	}
 	.badge.draft .d {
-		background: var(--ds-ink-4);
+		background: currentColor;
 	}
 	.badge.open {
-		color: #2f5d3a;
-		border-color: #2f5d3a44;
-		background: #eaf0e4;
+		color: var(--ds-info-content);
+		border-color: var(--ds-info);
+		background: var(--ds-info);
 	}
 	.badge.open .d {
-		background: #2f5d3a;
+		background: currentColor;
 	}
 	.badge.embargo {
-		color: var(--ds-ink-2);
+		color: var(--ds-error-content);
+		border-color: var(--ds-error);
+		background: var(--ds-error);
 	}
 	.badge.embargo .d {
-		background: var(--ds-ink-2);
+		background: currentColor;
 	}
 	.badge.quiet {
 		background: var(--ds-paper-2);

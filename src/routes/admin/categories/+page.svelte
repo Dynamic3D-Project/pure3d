@@ -95,7 +95,7 @@
 					></textarea></label
 				>
 				<div class="flex gap-2">
-					<button class="btn btn-neutral" disabled={busy}>Save category</button
+					<button class="btn btn-primary" disabled={busy}>Save category</button
 					>{#if selected}<button type="button" class="btn btn-ghost" onclick={reset}>Cancel</button
 						>{/if}
 				</div>

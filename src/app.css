@@ -30,6 +30,8 @@
   --color-ink-2: #2b2a27;
   --color-ink-3: #555249;
   --color-ink-4: #8a8579;
+  --color-forest: #293e30;
+  --color-forest-hover: #40553b;
   --color-vermillion: oklch(62% 0.19 35);
   --color-vermillion-ink: oklch(40% 0.15 35);
   --color-vermillion-wash: oklch(95% 0.035 35);
@@ -40,15 +42,15 @@
   default: false;
   prefersdark: false;
   color-scheme: "light";
-  /* Pure 3D — paper · ink · vermillion.
-     Primary = ink (dominant action is dark-on-paper).
+  /* Pure 3D — paper · ink · forest · vermillion.
+     Primary = forest (dominant actions).
      Accent  = vermillion (reserved for signal: pins, links, active tool). */
   --color-base-100: var(--color-paper);
   --color-base-200: var(--color-paper-2);
   --color-base-300: var(--color-paper-3);
   --color-base-content: var(--color-ink);
-  --color-primary: var(--color-ink);
-  --color-primary-content: var(--color-paper);
+  --color-primary: var(--color-forest);
+  --color-primary-content: #ffffff;
   --color-secondary: var(--color-ink-3);
   --color-secondary-content: var(--color-paper);
   --color-accent: var(--color-vermillion);

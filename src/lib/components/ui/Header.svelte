@@ -316,12 +316,20 @@
 			</div>
 			<div>
 				<span>{dirty ? 'Unsaved changes' : 'Draft saved'}{previewing ? ' · Previewing' : ''}</span>
-				<button disabled={saving || !dirty} onclick={() => saveEditor()}>Save draft</button>
-				<button disabled={saving} onclick={togglePreview}
+				<button
+					class="btn btn-sm btn-primary"
+					disabled={saving || !dirty}
+					onclick={() => saveEditor()}>Save draft</button
+				>
+				<button class="btn btn-outline btn-sm" disabled={saving} onclick={togglePreview}
 					>{previewing ? 'Back to editing' : 'Preview'}</button
 				>
-				<button disabled={saving} onclick={() => exitEditor()}>Exit editing</button>
-				<button class="publish" disabled={saving} onclick={() => saveEditor(true)}>Publish</button>
+				<button class="btn btn-outline btn-sm" disabled={saving} onclick={() => exitEditor()}
+					>Exit editing</button
+				>
+				<button class="btn btn-sm btn-primary" disabled={saving} onclick={() => saveEditor(true)}
+					>Publish</button
+				>
 			</div>
 		</div>
 	{/if}
@@ -410,6 +418,7 @@
 								></button
 							>{/each}
 					{:else}{#each navigation as item (item.id)}{#if item.direct}<a
+									class:publishing-cta={item.direct.href === '/documentation'}
 									class:active={isActive(item.direct.href)}
 									href={linkHref(item.direct.href)}
 									>{@render destinationIcon(item.direct.href)}{item.label}</a
@@ -516,7 +525,7 @@
 		align-items: stretch;
 		min-height: 44px;
 		border-radius: var(--radius-field);
-		background: #293e30;
+		background: var(--color-primary);
 		gap: 0;
 	}
 	.desktop-links .publishing-cta > a,
@@ -536,7 +545,7 @@
 		color: inherit;
 	}
 	.desktop-links .publishing-cta:hover {
-		background: #40553b;
+		background: var(--color-forest-hover);
 	}
 	.desktop-links > a.publishing-cta {
 		padding: 12px 20px;
@@ -592,7 +601,7 @@
 		gap: 16px;
 		min-height: 52px;
 		padding: 8px max(24px, calc((100vw - 1360px) / 2));
-		background: #293e30;
+		background: var(--color-ink-2);
 		color: #fff;
 		font-size: 12px;
 	}
@@ -608,17 +617,8 @@
 		color: #d3ddc7;
 	}
 	.editorbar button {
-		border: 1px solid color-mix(in srgb, #fff 35%, transparent);
-		border-radius: var(--radius-control);
-		min-height: 36px;
-		padding: 7px 10px;
 		color: #fff;
 		white-space: nowrap;
-	}
-	.editorbar button.publish {
-		background: #e8eddb;
-		border-color: #e8eddb;
-		color: #243727;
 	}
 	.editor-error {
 		position: relative;
@@ -937,9 +937,6 @@
 			flex-wrap: wrap;
 			justify-content: flex-end;
 		}
-		.editorbar button {
-			padding: 7px;
-		}
 		.editor-error {
 			padding: 10px 18px;
 		}
@@ -983,6 +980,16 @@
 			padding: 14px 0;
 			font-size: 14px;
 			color: #476044;
+		}
+		.mobile-links > a.publishing-cta {
+			margin-top: 8px;
+			padding: 12px 16px;
+			border-radius: var(--radius-field);
+			background: var(--color-primary);
+			color: var(--color-primary-content);
+		}
+		.mobile-links > a.publishing-cta:hover {
+			background: var(--color-forest-hover);
 		}
 		.mobile-split {
 			display: flex;

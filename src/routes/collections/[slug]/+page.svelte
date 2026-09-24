@@ -287,7 +287,7 @@
 					<div
 						class="mb-3 flex flex-wrap justify-end gap-2 md:absolute md:top-0 md:right-0 md:z-10 md:mb-0"
 					>
-						<a href="{base}/collections/{collection.id}/edit" class="btn btn-sm btn-neutral">
+						<a href="{base}/collections/{collection.id}/edit" class="btn btn-outline btn-sm">
 							Manage
 						</a>
 					</div>
