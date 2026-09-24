@@ -71,7 +71,7 @@
 		onclose={() => (open = false)}
 	>
 		<div class="grid grid-cols-1 gap-3 p-3">
-			{#each themes_data as theme}
+			{#each themes_data as theme (theme)}
 				<div
 					class="overflow-hidden rounded-lg outline outline-2 outline-offset-2 outline-base-content"
 					data-set-theme={theme.id}

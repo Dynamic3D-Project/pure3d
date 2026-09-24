@@ -56,7 +56,7 @@
 
 	<!-- Category selection -->
 	<div class="flex flex-wrap gap-3">
-		{#each Object.values(FeedbackCategory) as cat}
+		{#each Object.values(FeedbackCategory) as cat (cat)}
 			<label class="label cursor-pointer gap-2">
 				<input
 					type="radio"

@@ -2,7 +2,7 @@
 	import CreditsEditor from '$lib/components/ui/CreditsEditor.svelte';
 	import type { Credit } from '$lib/types/credits';
 	import { readCredits, validateCredits } from '$lib/utils/credits';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
@@ -120,9 +120,9 @@
 				isVisible
 			});
 			toast.success('Collection updated');
-			goto(`${base}/collections/${record.id}`);
-		} catch (e: any) {
-			toast.error(e?.message || 'Failed to save collection');
+			goto(resolve('/collections/[slug]', { slug: record.id }));
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : 'Failed to save collection');
 		} finally {
 			isSaving = false;
 		}
@@ -183,9 +183,9 @@
 					? `Collection deleted; ${unlinkedEditionCount} edition${unlinkedEditionCount === 1 ? '' : 's'} unassigned`
 					: 'Collection deleted'
 			);
-			goto(`${base}/collections`);
-		} catch (e: any) {
-			toast.error(e?.message || 'Failed to delete collection');
+			goto(resolve('/collections'));
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : 'Failed to delete collection');
 		} finally {
 			isDeleting = false;
 		}
@@ -193,7 +193,7 @@
 
 	async function cancel() {
 		if (!isNewCollection) {
-			goto(`${base}/collections/${record.id}`);
+			goto(resolve('/collections/[slug]', { slug: record.id }));
 			return;
 		}
 
@@ -206,9 +206,9 @@
 			}
 
 			await pb.collection('collections').delete(record.id, { $autoCancel: false });
-			goto(`${base}/collections`);
-		} catch (e: any) {
-			toast.error(e?.message || 'Failed to remove empty collection');
+			goto(resolve('/collections'));
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : 'Failed to remove empty collection');
 		} finally {
 			isCancelling = false;
 		}
@@ -226,10 +226,12 @@
 <div class="container mx-auto max-w-4xl px-4 py-12">
 	<nav class="breadcrumbs mb-6 text-sm">
 		<ul>
-			<li><a href="{base}/" class="link link-hover">Home</a></li>
-			<li><a href="{base}/collections" class="link link-hover">Collections</a></li>
+			<li><a href={resolve('/')} class="link link-hover">Home</a></li>
+			<li><a href={resolve('/collections')} class="link link-hover">Collections</a></li>
 			<li>
-				<a href="{base}/collections/{record.id}" class="link link-hover">{record.title}</a>
+				<a href={resolve('/collections/[slug]', { slug: record.id })} class="link link-hover"
+					>{record.title}</a
+				>
 			</li>
 			<li class="text-base-content/70">Edit</li>
 		</ul>

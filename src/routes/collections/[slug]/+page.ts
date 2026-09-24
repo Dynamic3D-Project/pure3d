@@ -80,7 +80,7 @@ export const load: PageLoad = async ({ params }) => {
 		});
 
 		return { collection, editions };
-	} catch (e) {
+	} catch {
 		throw error(404, 'Collection not found');
 	}
 };

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { authStore, pb } from '$lib/database';
 	import { GlobalRole } from '$lib/types/roles';
 	import FloatingDropdown from '$lib/components/ui/FloatingDropdown.svelte';
@@ -12,7 +12,7 @@
 	let avatarUrl = $derived.by(() => {
 		const user = authStore.user;
 		const image = user?.profilePicture || user?.avatar;
-		return user && image ? pb.files.getURL(user as any, image, { thumb: '80x80' }) : '';
+		return user && image ? pb.files.getURL(user, image, { thumb: '80x80' }) : '';
 	});
 </script>
 
@@ -56,7 +56,7 @@
 					{#if authStore.globalRole === GlobalRole.Admin}
 						<li>
 							<a
-								href="{base}/admin"
+								href={resolve('/admin')}
 								class="flex w-full items-center gap-2"
 								onclick={() => (accountMenuOpen = false)}
 							>
@@ -80,7 +80,7 @@
 					{/if}
 					<li>
 						<a
-							href="{base}/profile"
+							href={resolve('/profile')}
 							class="flex w-full items-center gap-2"
 							onclick={() => (accountMenuOpen = false)}
 						>
@@ -103,7 +103,7 @@
 					</li>
 					<li>
 						<a
-							href="{base}/reviews"
+							href={resolve('/reviews')}
 							class="flex w-full items-center gap-2"
 							onclick={() => (accountMenuOpen = false)}
 						>

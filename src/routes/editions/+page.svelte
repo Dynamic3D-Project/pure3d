@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { afterNavigate, goto } from '$app/navigation';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
 	import FilterSidebar from '$lib/components/filters/FilterSidebar.svelte';
 	import FloatingDropdown from '$lib/components/ui/FloatingDropdown.svelte';
@@ -165,7 +165,7 @@
 		showSuggestions = false;
 		selectedIndex = -1;
 		searchQuery = '';
-		goto(`${base}/editions/${edition.id}`);
+		goto(resolve('/editions/[slug]', { slug: edition.id }));
 	}
 
 	function handleFocus() {
@@ -205,7 +205,7 @@
 				isPublished: false
 			});
 
-			goto(`${base}/editions/${record.id}/workflow`);
+			goto(resolve('/editions/[slug]/workflow', { slug: record.id }));
 		} catch (e: unknown) {
 			const message = e instanceof Error ? e.message : 'Failed to create edition';
 			toast.error(message);
@@ -435,7 +435,7 @@
 			<!-- Editions Grid -->
 			{#if isLoading && !hasCachedData}
 				<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-					{#each Array(15) as _}
+					{#each Array.from({ length: 15 }, (_, index) => index) as index (index)}
 						<div class="h-64 skeleton rounded-xl"></div>
 					{/each}
 				</div>

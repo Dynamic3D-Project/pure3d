@@ -72,6 +72,7 @@ export interface Edition {
 	authors: string;
 	thumbnail: string;
 	coverImage?: string;
+	modelSize?: string | null;
 	collectionName?: string;
 	voyagerUrl: string;
 	usageConditions: string;

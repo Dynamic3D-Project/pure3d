@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 
 	interface CollectionCardData {
 		id: string;
@@ -45,7 +45,7 @@
 		<span class="collection-stack-layer collection-stack-layer-front" aria-hidden="true"></span>
 	{/if}
 	<a
-		href={`${base}/collections/${collection.slug}`}
+		href={resolve('/collections/[slug]', { slug: collection.slug })}
 		data-sveltekit-preload-data="hover"
 		class="catalogue-card group ds-card relative flex h-full flex-col p-3"
 	>

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import ContentRenderer from '$lib/components/content/ContentRenderer.svelte';
+	import { resolve } from '$app/paths';
 	import { pb, type Post } from '$lib/database';
 	import { onMount } from 'svelte';
 	import Search from '$lib/components/Search.svelte';
@@ -31,7 +32,7 @@
 				<p class="mt-2 text-base-content/70">Read our latest posts</p>
 			</div>
 			<a
-				href="{base}/"
+				href={resolve('/')}
 				data-sveltekit-preload-data="hover"
 				class="hover:bg-neutral-focus rounded-lg bg-neutral px-4 py-2 text-sm font-medium text-neutral-content"
 			>
@@ -62,7 +63,11 @@
 				<article
 					class="rounded-lg border border-base-300 bg-base-100 p-6 shadow-sm transition hover:shadow-md"
 				>
-					<a href="{base}/blog/{post.id}" data-sveltekit-preload-data="hover" class="block">
+					<a
+						href={resolve('/blog/[id]', { id: post.id })}
+						data-sveltekit-preload-data="hover"
+						class="block"
+					>
 						<h2 class="text-2xl font-semibold text-base-content transition hover:text-primary">
 							{post.title}
 						</h2>
@@ -73,9 +78,10 @@
 								day: 'numeric'
 							})}
 						</div>
-						<div class="prose prose-sm mt-4 line-clamp-3 max-w-none text-base-content/80">
-							{@html post.content}
-						</div>
+						<ContentRenderer
+							className="prose prose-sm mt-4 line-clamp-3 max-w-none text-base-content/80"
+							content={post.content}
+						/>
 						<div class="hover:text-primary-focus mt-4 font-medium text-primary">Read more →</div>
 					</a>
 				</article>

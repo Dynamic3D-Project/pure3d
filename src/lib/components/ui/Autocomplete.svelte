@@ -88,7 +88,7 @@
 		maxHeight={240}
 		onclose={() => (showDropdown = false)}
 	>
-		{#each filteredOptions as option, i}
+		{#each filteredOptions as option, i (i)}
 			<button
 				type="button"
 				class="block w-full p-3 text-left text-base-content hover:bg-base-200 hover:text-base-content"

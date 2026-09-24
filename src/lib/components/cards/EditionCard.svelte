@@ -1,13 +1,13 @@
 <script lang="ts">
+	import { SvelteSet } from 'svelte/reactivity';
 	import { creatorNames } from '$lib/utils/credits';
-	import { base } from '$app/paths';
+	import { base, resolve } from '$app/paths';
 	import type { Edition } from '$lib/types/collection';
-	import type { RecordModel } from 'pocketbase';
 	import { getEditionCoverUrl } from '$lib/utils/asset-urls';
 	import TrashIcon from '~icons/lucide/trash-2';
 
 	interface Props {
-		edition: Edition;
+		edition: Pick<Edition, 'id' | 'slug' | 'title' | 'credits'> & Partial<Edition>;
 		onRemove?: () => void;
 		removeDisabled?: boolean;
 		discovery?: boolean;
@@ -17,7 +17,7 @@
 	let imageError = $state(false);
 	let hasPrefetched = false;
 
-	let coverUrl = $derived(getEditionCoverUrl(edition as unknown as RecordModel));
+	let coverUrl = $derived(getEditionCoverUrl(edition));
 
 	function handleImageError() {
 		imageError = true;
@@ -58,7 +58,7 @@
 			const scene = await response.json();
 
 			// Extract model URLs from scene (GLB/GLTF files)
-			const modelUrls = new Set<string>();
+			const modelUrls = new SvelteSet<string>();
 
 			// Models are typically in scene.models[].uri or scene.nodes[].model.uri
 			if (scene.models) {
@@ -142,11 +142,11 @@
 			</button>
 		{/if}
 		<!-- Mesh/Texture info chip -->
-		{#if (edition as any).modelSize && !discovery}
+		{#if edition.modelSize && !discovery}
 			<div
 				class="absolute bottom-2 left-2 z-10 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm"
 			>
-				{(edition as any).modelSize}
+				{edition.modelSize}
 			</div>
 		{/if}
 		<!-- Placeholder: show on error -->
@@ -185,7 +185,7 @@
 			</div>
 		{/if}
 		<a
-			href={`${base}/editions/${edition.slug}`}
+			href={resolve('/editions/[slug]', { slug: edition.slug })}
 			data-sveltekit-preload-data="hover"
 			onmouseenter={prefetch3DAssets}
 			class="absolute inset-0 z-[5]"
@@ -194,7 +194,7 @@
 	</figure>
 	<div class="mt-3 flex min-h-24 flex-1 flex-col rounded-md bg-base-200 px-3 py-3">
 		<a
-			href={`${base}/editions/${edition.slug}`}
+			href={resolve('/editions/[slug]', { slug: edition.slug })}
 			data-sveltekit-preload-data="hover"
 			onmouseenter={prefetch3DAssets}
 		>

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import ContentRenderer from '$lib/components/content/ContentRenderer.svelte';
+	import { base, resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
@@ -55,7 +56,7 @@
 	let editionGroups = $derived.by(() => {
 		const groups: Record<string, typeof editions> = {};
 		for (const edition of editions) {
-			const key = (edition as any).status || 'Unknown';
+			const key = edition.status || 'Unknown';
 			if (!groups[key]) groups[key] = [];
 			groups[key].push(edition);
 		}
@@ -72,7 +73,7 @@
 	// Latest edition (highest pubNum)
 	let latestEdition = $derived(
 		editions.length > 0
-			? editions.reduce((a, b) => (((a as any).pubNum || 0) > ((b as any).pubNum || 0) ? a : b))
+			? editions.reduce((a, b) => ((a.pubNum || 0) > (b.pubNum || 0) ? a : b))
 			: null
 	);
 
@@ -158,8 +159,8 @@
 			availableEditions = allEditionsResult.items
 				.filter((record) => record.collection !== collection.id)
 				.map(editionOptionFromRecord);
-		} catch (e: any) {
-			toast.error(e?.message || 'Failed to load editable editions');
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : 'Failed to load editable editions');
 		} finally {
 			isLoadingEditionManager = false;
 		}
@@ -174,8 +175,8 @@
 			selectedEditionId = '';
 			await loadEditionManager();
 			toast.success('Edition added to collection');
-		} catch (e: any) {
-			toast.error(e?.message || 'Failed to add edition');
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : 'Failed to add edition');
 		} finally {
 			isUpdatingEdition = false;
 		}
@@ -189,8 +190,8 @@
 			await pb.collection('editions').update(editionId, { collection: null });
 			await loadEditionManager();
 			toast.success('Edition removed from collection');
-		} catch (e: any) {
-			toast.error(e?.message || 'Failed to remove edition');
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : 'Failed to remove edition');
 		} finally {
 			isUpdatingEdition = false;
 		}
@@ -207,9 +208,9 @@
 				isPublished: false
 			});
 
-			goto(`${base}/editions/${record.id}/workflow`);
-		} catch (e: any) {
-			toast.error(e?.message || 'Failed to create edition');
+			goto(resolve('/editions/[slug]/workflow', { slug: record.id }));
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : 'Failed to create edition');
 		} finally {
 			isCreating = false;
 		}
@@ -227,11 +228,14 @@
 		<nav class="breadcrumbs mb-6 text-sm">
 			<ul>
 				<li>
-					<a href="{base}/" data-sveltekit-preload-data="hover" class="link link-hover">Home</a>
+					<a href={resolve('/')} data-sveltekit-preload-data="hover" class="link link-hover">Home</a
+					>
 				</li>
 				<li>
-					<a href="{base}/collections" data-sveltekit-preload-data="hover" class="link link-hover"
-						>Collections</a
+					<a
+						href={resolve('/collections')}
+						data-sveltekit-preload-data="hover"
+						class="link link-hover">Collections</a
 					>
 				</li>
 				<li class="text-base-content/70">{collection.title}</li>
@@ -287,7 +291,10 @@
 					<div
 						class="mb-3 flex flex-wrap justify-end gap-2 md:absolute md:top-0 md:right-0 md:z-10 md:mb-0"
 					>
-						<a href="{base}/collections/{collection.id}/edit" class="btn btn-outline btn-sm">
+						<a
+							href={resolve('/collections/[slug]/edit', { slug: collection.id })}
+							class="btn btn-outline btn-sm"
+						>
 							Manage
 						</a>
 					</div>
@@ -345,7 +352,7 @@
 							class="prose max-w-prose text-base leading-relaxed text-base-content/80"
 							class:line-clamp-6={descriptionIsLong && !descriptionExpanded}
 						>
-							{@html collection.description}
+							<ContentRenderer className="contents" content={collection.description} />
 						</div>
 						{#if descriptionIsLong}
 							<button
@@ -460,14 +467,11 @@
 
 		{#if editions.length > 0}
 			<!-- Version summary -->
-			{#if latestEdition && (latestEdition as any).pubNum > 1}
+			{#if latestEdition && latestEdition.pubNum > 1}
 				<div class="mb-4 text-sm text-base-content/60">
-					{editions.length} editions · Latest: Ed. {String((latestEdition as any).pubNum).padStart(
-						2,
-						'0'
-					)} ·
+					{editions.length} editions · Latest: Ed. {String(latestEdition.pubNum).padStart(2, '0')} ·
 					<a
-						href="{base}/editions/{latestEdition.id}"
+						href={resolve('/editions/[slug]', { slug: latestEdition.id })}
 						data-sveltekit-preload-data="hover"
 						class="link link-hover"
 					>
@@ -478,7 +482,7 @@
 
 			<!-- Grouped by status -->
 			{#if editionGroups.length > 1}
-				{#each editionGroups as group}
+				{#each editionGroups as group (group.status)}
 					<div class="mb-6">
 						<h3
 							class="mb-3 flex items-center gap-2 text-sm font-semibold tracking-wider text-base-content/50 uppercase"
@@ -491,7 +495,7 @@
 						>
 							{#each group.editions as edition (edition.id)}
 								<EditionCard
-									edition={edition as any}
+									{edition}
 									onRemove={canManageEditions
 										? () => removeEditionFromCollection(edition.id)
 										: undefined}
@@ -507,7 +511,7 @@
 				>
 					{#each editions as edition (edition.id)}
 						<EditionCard
-							edition={edition as any}
+							{edition}
 							onRemove={canManageEditions
 								? () => removeEditionFromCollection(edition.id)
 								: undefined}
@@ -527,7 +531,11 @@
 
 	<!-- Back Button -->
 	<div class="mt-12 flex justify-center">
-		<a href="{base}/collections" data-sveltekit-preload-data="hover" class="btn btn-outline btn-lg">
+		<a
+			href={resolve('/collections')}
+			data-sveltekit-preload-data="hover"
+			class="btn btn-outline btn-lg"
+		>
 			← Back to Collections
 		</a>
 	</div>

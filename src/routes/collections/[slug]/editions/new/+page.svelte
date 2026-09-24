@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { pb } from '$lib/database/client';
@@ -57,7 +57,7 @@
 				status: EditionStatus.Draft,
 				isPublished: false
 			});
-			goto(`${base}/editions/${record.id}/workflow`);
+			goto(resolve('/editions/[slug]/workflow', { slug: record.id }));
 		} catch (e: unknown) {
 			toast.error((e as Error)?.message || 'Failed to create edition');
 			creating = false;
@@ -72,10 +72,12 @@
 <div class="container mx-auto max-w-xl px-4 py-12">
 	<nav class="breadcrumbs mb-4 text-sm">
 		<ul>
-			<li><a href="{base}/" class="link link-hover">Home</a></li>
-			<li><a href="{base}/collections" class="link link-hover">Collections</a></li>
+			<li><a href={resolve('/')} class="link link-hover">Home</a></li>
+			<li><a href={resolve('/collections')} class="link link-hover">Collections</a></li>
 			<li>
-				<a href="{base}/collections/{collection.id}" class="link link-hover">{collection.title}</a>
+				<a href={resolve('/collections/[slug]', { slug: collection.id })} class="link link-hover"
+					>{collection.title}</a
+				>
 			</li>
 			<li class="text-base-content/70">New Edition</li>
 		</ul>
@@ -120,7 +122,10 @@
 					</p>
 				</div>
 				<div class="flex justify-end gap-2">
-					<a href="{base}/collections/{collection.id}" class="btn btn-ghost btn-sm">Cancel</a>
+					<a
+						href={resolve('/collections/[slug]', { slug: collection.id })}
+						class="btn btn-ghost btn-sm">Cancel</a
+					>
 					<button type="submit" class="btn btn-sm btn-primary" disabled={creating || !title.trim()}>
 						{#if creating}
 							<span class="loading loading-xs loading-spinner"></span>

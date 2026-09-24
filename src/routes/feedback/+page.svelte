@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { pb } from '$lib/database/client';
 	import { authStore } from '$lib/database/stores/auth.svelte';
@@ -126,7 +126,7 @@
 			finish everything. If something is confusing, broken, slow, or unclear, that is exactly what
 			we want to know.
 		</p>
-		<a class="btn mt-5 btn-primary" href="{base}/" target="_blank" rel="noreferrer">
+		<a class="btn mt-5 btn-primary" href={resolve('/')} target="_blank" rel="noreferrer">
 			Open Pure3D
 		</a>
 	</div>
@@ -175,7 +175,7 @@
 				<label class="form-control">
 					<span class="label pt-0 pb-1"><span class="label-text text-xs">Category</span></span>
 					<select class="select-bordered select" bind:value={category}>
-						{#each categoryOptions as option}
+						{#each categoryOptions as option (option.value)}
 							<option value={option.value}>{option.label}</option>
 						{/each}
 					</select>
@@ -183,7 +183,7 @@
 				<label class="form-control">
 					<span class="label pt-0 pb-1"><span class="label-text text-xs">Severity</span></span>
 					<select class="select-bordered select" bind:value={severity}>
-						{#each severityOptions as option}
+						{#each severityOptions as option (option.value)}
 							<option value={option.value}>{option.label}</option>
 						{/each}
 					</select>

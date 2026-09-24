@@ -163,7 +163,7 @@ export const load: PageLoad = async ({ params, fetch }) => {
 			viewerHelp: site?.viewerHelp || null,
 			viewerHelpVideoUrl: site?.viewerHelpVideoUrl || null
 		};
-	} catch (e) {
+	} catch {
 		throw error(404, 'Edition not found');
 	}
 };

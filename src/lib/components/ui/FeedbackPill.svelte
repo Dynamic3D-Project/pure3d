@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { base } from '$app/paths';
+	import { base, resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { pb } from '$lib/database/client';
 	import { authStore } from '$lib/database/stores/auth.svelte';
@@ -194,7 +194,7 @@
 								class="feedback-field select-bordered select w-full select-sm"
 								bind:value={category}
 							>
-								{#each categoryOptions as option}
+								{#each categoryOptions as option (option.value)}
 									<option value={option.value}>{option.label}</option>
 								{/each}
 							</select>
@@ -206,7 +206,7 @@
 								class="feedback-field select-bordered select w-full select-sm"
 								bind:value={severity}
 							>
-								{#each severityOptions as option}
+								{#each severityOptions as option (option.value)}
 									<option value={option.value}>{option.label}</option>
 								{/each}
 							</select>
@@ -226,7 +226,7 @@
 				</div>
 
 				<div class="flex items-center justify-between gap-3 border-t border-base-300 pt-4">
-					<a class="link text-sm link-primary" href="{base}/feedback">Open feedback page</a>
+					<a class="link text-sm link-primary" href={resolve('/feedback')}>Open feedback page</a>
 					<div class="flex gap-2">
 						<button type="button" class="btn btn-ghost btn-sm" onclick={closeFeedback}
 							>Cancel</button

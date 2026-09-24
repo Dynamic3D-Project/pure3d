@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import ContentRenderer from '$lib/components/content/ContentRenderer.svelte';
+	import { resolve } from '$app/paths';
 	import { pb, type Post } from '$lib/database';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
@@ -58,21 +59,19 @@
 				</div>
 			</header>
 
-			<div class="prose prose-lg max-w-none">
-				{@html post.content}
-			</div>
+			<ContentRenderer className="prose prose-lg max-w-none" content={post.content} />
 		</article>
 	{/if}
 
 	<div class="mt-8 flex items-center justify-between">
 		<a
-			href="{base}/blog"
+			href={resolve('/blog')}
 			class="inline-flex items-center text-sm text-base-content/70 hover:text-base-content"
 		>
 			← Back to blog
 		</a>
 		<a
-			href="{base}/"
+			href={resolve('/')}
 			class="inline-flex items-center text-sm text-base-content/70 hover:text-base-content"
 		>
 			Home

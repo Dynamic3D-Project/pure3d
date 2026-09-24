@@ -98,7 +98,13 @@ export const MIN_DERIVATIVES_VERSION = '0.59.0';
 
 export type VoyagerVersion = (typeof VOYAGER_VERSIONS)[number];
 
-export function getEditionCoverUrl(edition: RecordModel): string | null {
+export function getEditionCoverUrl(edition: {
+	id: string;
+	collectionId?: string;
+	collectionName?: string;
+	coverImage?: string;
+	thumbnail?: string;
+}): string | null {
 	const coverImage = (edition.coverImage as string | undefined) ?? '';
 	if (coverImage) return pb.files.getURL(edition, coverImage, { thumb: '400x300' });
 	const thumbnail = (edition.thumbnail as string | undefined) ?? '';

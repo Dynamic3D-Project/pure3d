@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import CollectionCard from '$lib/components/cards/CollectionCard.svelte';
 	import { collectionsStore, fetchCollections, isStale } from '$lib/stores/data.store';
 	import { authStore } from '$lib/database/stores/auth.svelte';
@@ -188,7 +188,7 @@
 		showSuggestions = false;
 		selectedIndex = -1;
 		searchQuery = '';
-		goto(`${base}/collections/${collection.id}`);
+		goto(resolve('/collections/[slug]', { slug: collection.id }));
 	}
 
 	function handleFocus() {
@@ -219,7 +219,7 @@
 				isVisible: false
 			});
 
-			goto(`${base}/collections/${record.id}/edit?new=1`);
+			goto(resolve(`/collections/${record.id}/edit?new=1`));
 		} catch (e: unknown) {
 			const message = e instanceof Error ? e.message : 'Failed to create collection';
 			toast.error(message);
@@ -412,7 +412,7 @@
 	<!-- Collections Grid -->
 	{#if isLoading && !hasCachedData}
 		<div class="masonry-grid">
-			{#each Array(8) as _}
+			{#each Array.from({ length: 8 }, (_, index) => index) as index (index)}
 				<div class="masonry-item">
 					<div class="h-64 skeleton rounded-xl"></div>
 				</div>

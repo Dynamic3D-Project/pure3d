@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { SvelteSet } from 'svelte/reactivity';
 	import { pb } from '$lib/database/client';
 	import type { RecordModel } from 'pocketbase';
 	import toast from 'svelte-french-toast';
@@ -88,7 +89,7 @@
 			}
 		}
 
-		const seen = new Set<string>();
+		const seen = new SvelteSet<string>();
 		for (const f of companions) {
 			const key = basename(f.name).toLowerCase();
 			if (seen.has(key)) {
@@ -398,7 +399,7 @@
 				<ul
 					class="mt-2 max-h-40 space-y-1 overflow-y-auto rounded border border-base-300 bg-base-100 p-2"
 				>
-					{#each assetFilenames as filename}
+					{#each assetFilenames as filename (filename)}
 						<li class="flex items-center justify-between gap-2">
 							<span class="truncate text-xs" title={filename}>{filename}</span>
 							<button

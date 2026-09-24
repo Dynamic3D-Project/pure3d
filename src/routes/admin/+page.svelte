@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 
 	onMount(() => {
-		goto(`${base}/admin/users`, { replaceState: true });
+		goto(resolve('/admin/users'), { replaceState: true });
 	});
 </script>
