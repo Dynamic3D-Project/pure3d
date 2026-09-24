@@ -6,7 +6,27 @@
 
 	interface Props {
 		open: boolean;
-		edition: Edition;
+		edition: Pick<
+			Edition,
+			'id' | 'slug' | 'title' | 'description' | 'authors' | 'thumbnail' | 'tags' | 'credits'
+		> &
+			Partial<
+				Pick<
+					Edition,
+					| 'dcAbstract'
+					| 'dcDescription'
+					| 'dcSubject'
+					| 'dcKeyword'
+					| 'dcCoveragePeriod'
+					| 'dcCoveragePlace'
+					| 'dcCoverageCountry'
+					| 'dcCoverageTemporal'
+					| 'dcCoverageGeo'
+					| 'dcProvenance'
+					| 'dcSource'
+					| 'dcInstitution'
+				>
+			>;
 		onclose: () => void;
 	}
 

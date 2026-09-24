@@ -1,5 +1,7 @@
 import type { PageLoad } from './$types';
 import type { Credit } from '$lib/types/credits';
+import type { EditionViewData } from '$lib/components/editions/edition-view';
+import { EditionStatus } from '$lib/types/roles';
 import {
 	getEditionRoot,
 	getEditionThumbnailUrl,
@@ -20,7 +22,7 @@ export const load: PageLoad = async () => {
 	const apiCollectionPubNum = 13;
 	const apiEditionPubNum = 1;
 
-	const edition = {
+	const edition: EditionViewData['edition'] = {
 		id: 'demo',
 		slug: 'demo',
 		title: '[DEMO] The Battle at 25 Northumberland Road',
@@ -66,7 +68,7 @@ export const load: PageLoad = async () => {
 		modelSize: '~19 MB',
 		pubNum: showcaseEditionPubNum,
 		collectionId: 'demo-collection',
-		status: 'published',
+		status: EditionStatus.Published,
 		isPublished: true,
 		settingsAuthorToolName: 'Voyager Story',
 		settingsAuthorToolVersion: voyagerVersion,

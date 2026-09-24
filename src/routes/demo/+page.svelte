@@ -2,7 +2,7 @@
 	import type { PageData } from './$types';
 	import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
 	import VoyagerAPIDemo from '$lib/components/voyager/VoyagerAPIDemo.svelte';
-	import EditionPage from '../editions/[slug]/+page.svelte';
+	import EditionView from '$lib/components/editions/EditionView.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -48,13 +48,13 @@
 		</div>
 
 		{#if topTab === 'showcase'}
-			<EditionPage
+			<EditionView
 				data={{
 					edition: data.edition,
 					siblingEditions: data.siblingEditions,
 					viewerHelp: null,
 					viewerHelpVideoUrl: null
-				} as any}
+				}}
 				embedded
 			/>
 		{:else if topTab === 'controls'}

@@ -5,6 +5,7 @@
 	import { creditHref } from '$lib/utils/credits';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
 	import CopyIcon from '~icons/lucide/copy';
+	import SafeLink from '$lib/components/ui/SafeLink.svelte';
 	import { sceneDocumentLabel } from './edition-metadata';
 
 	interface Metadata {
@@ -127,7 +128,11 @@
 			{#if edition.alternativeVersion}
 				<div class="metadata-row">
 					<dt class="text-base-content/50">Other version</dt>
-					<dd><a href={edition.alternativeVersion} class="link link-hover">View version</a></dd>
+					<dd>
+						<SafeLink href={edition.alternativeVersion} class="link link-hover"
+							>View version</SafeLink
+						>
+					</dd>
 				</div>
 			{/if}
 		</dl>

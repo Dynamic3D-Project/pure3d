@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
+	import SafeLink from '$lib/components/ui/SafeLink.svelte';
 	import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
 </script>
 
@@ -21,11 +23,16 @@
 			</p>
 
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-				<a href="/voyager/voyager-explorer.html" target="_blank" class="btn btn-outline">
-					Open Voyager Explorer →
-				</a>
-				<a href="/voyager/voyager-mini.html" target="_blank" class="btn btn-outline">
-					Open Voyager Mini →
+				<SafeLink
+					href="/voyager/story.html"
+					target="_blank"
+					rel="noreferrer"
+					class="btn btn-outline"
+				>
+					Open Voyager Story →
+				</SafeLink>
+				<a href={resolve('/demo')} target="_blank" rel="noreferrer" class="btn btn-outline">
+					Open Voyager demo →
 				</a>
 			</div>
 
@@ -229,7 +236,7 @@ mkdir -p static/models/example/models
 
 	<!-- Navigation -->
 	<div class="mt-8 flex justify-center gap-4">
-		<a href="/voyager-api-demo" class="btn btn-primary"> View Full API Demo </a>
-		<a href="/collections" class="btn btn-outline"> Back to Collections </a>
+		<a href={resolve('/demo')} class="btn btn-primary"> View Full API Demo </a>
+		<a href={resolve('/collections')} class="btn btn-outline"> Back to Collections </a>
 	</div>
 </div>

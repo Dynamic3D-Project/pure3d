@@ -1,6 +1,8 @@
 <script lang="ts">
+	import SafeLink from '$lib/components/ui/SafeLink.svelte';
+	import { ClientResponseError } from 'pocketbase';
 	import { onMount } from 'svelte';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { pb } from '$lib/database/client';
 	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
 	import toast from 'svelte-french-toast';
@@ -153,8 +155,10 @@
 			recipientEmail = '';
 			await loadRecipients();
 			toast.success('Email recipient added');
-		} catch (error: any) {
-			const message = error?.response?.data?.email?.message || 'Failed to add email recipient';
+		} catch (error) {
+			const message =
+				(error instanceof ClientResponseError && error.response?.data?.email?.message) ||
+				'Failed to add email recipient';
 			toast.error(message);
 		} finally {
 			isSavingRecipient = false;
@@ -445,7 +449,7 @@
 			<span class="font-medium">Visible</span>
 			<span class="font-mono text-sm">{visibleCount}</span>
 		</button>
-		{#each statusOptions.filter((option) => option.value) as option}
+		{#each statusOptions.filter((option) => option.value) as option (option.value)}
 			<button
 				type="button"
 				class={`btn h-auto min-h-0 gap-2 rounded-full px-3 py-2 btn-xs ${statusFilter === option.value ? 'btn-accent' : 'opacity-75 btn-outline'}`}
@@ -498,12 +502,15 @@
 						<div class="border-t border-base-300 p-4">
 							<div class="mb-4 flex flex-wrap gap-2">
 								{#if item.editionId}
-									<a class="btn btn-outline btn-xs" href="{base}/editions/{item.editionId}"
-										>Open edition</a
+									<a
+										class="btn btn-outline btn-xs"
+										href={resolve('/editions/[slug]', { slug: item.editionId })}>Open edition</a
 									>
 								{/if}
 								{#if item.editionUrl}
-									<a class="btn btn-outline btn-xs" href={item.editionUrl}>Open submitted URL</a>
+									<SafeLink class="btn btn-outline btn-xs" href={item.editionUrl}
+										>Open submitted URL</SafeLink
+									>
 								{/if}
 								{#if item.status !== 'reviewed'}
 									<button
@@ -539,14 +546,18 @@
 
 									{#if item.images.length > 0}
 										<div class="grid grid-cols-2 gap-3 md:grid-cols-3">
-											{#each item.images as filename}
-												<a href={fullImageUrl(item, filename)} target="_blank" rel="noreferrer">
+											{#each item.images as filename (filename)}
+												<SafeLink
+													href={fullImageUrl(item, filename)}
+													target="_blank"
+													rel="noreferrer"
+												>
 													<img
 														src={imageUrl(item, filename)}
 														alt="Feedback screenshot"
 														class="aspect-video w-full rounded border border-base-300 object-cover"
 													/>
-												</a>
+												</SafeLink>
 											{/each}
 										</div>
 									{/if}

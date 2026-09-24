@@ -9,6 +9,7 @@ import {
 	MIN_DERIVATIVES_VERSION
 } from '$lib/utils/asset-urls';
 import { creatorNames, readCredits } from '$lib/utils/credits';
+import type { EditionViewData, EditionVersion } from '$lib/components/editions/edition-view';
 
 /**
  * Compare semver versions (simple comparison for our use case)
@@ -85,7 +86,7 @@ export const load: PageLoad = async ({ params, fetch }) => {
 		const toArray = (v: unknown): string[] =>
 			Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && !!x) : [];
 
-		const edition = {
+		const edition: EditionViewData['edition'] = {
 			id: record.id,
 			slug: record.id,
 			title: record.dcTitle || record.title,
@@ -126,7 +127,7 @@ export const load: PageLoad = async ({ params, fetch }) => {
 		};
 
 		// Fetch sibling editions (version history) for the same collection
-		let siblingEditions: Array<Record<string, unknown>> = [];
+		let siblingEditions: EditionVersion[] = [];
 		if (collectionId) {
 			try {
 				const siblingsResult = await pb.collection('editions').getList(1, 100, {
