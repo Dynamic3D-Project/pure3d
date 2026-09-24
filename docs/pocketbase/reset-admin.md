@@ -1,59 +1,28 @@
-# Reset PocketBase Admin Account
+# Recover local PocketBase superuser access
 
-If you're having authentication issues, follow these steps to reset:
+Do not delete `pocketbase/pb_data` to fix an authentication problem. It contains
+the database and uploaded files. Take and verify a backup before account recovery.
+These instructions apply only to the local Docker stack, not production.
 
-## Option 1: Delete and Recreate
+If you can sign in at <http://localhost:60021/_/>, manage the superuser there and
+keep `POCKETBASE_ADMIN_EMAIL` and `POCKETBASE_ADMIN_PASSWORD` in your local `.env`
+consistent with that account. Never commit credentials.
 
-```bash
-# Stop all services
-docker compose down
+If you cannot sign in, an authorized local operator can reset the configured
+superuser using PocketBase's CLI. Confirm the target email in `.env` first; an
+incorrect email creates another privileged account rather than recovering yours.
+Recreate the container to load any changed environment values, then explicitly
+run the recovery command:
 
-# Delete PocketBase data
-rm -rf pocketbase/pb_data
-
-# Start PocketBase
-docker compose up -d pocketbase
-
-# Open admin UI and create new account
-open http://localhost:60021/_/
+```sh
+docker compose up -d --force-recreate pocketbase
+docker compose exec pocketbase sh -c 'pocketbase superuser upsert "$POCKETBASE_ADMIN_EMAIL" "$POCKETBASE_ADMIN_PASSWORD" --dir=/pb/pb_data'
 ```
 
-**IMPORTANT**: When creating the admin account, use EXACTLY:
-- Email: `admin@admin.com`
-- Password: `adminadmin`
+The variables expand inside the container rather than putting literal credentials
+in shell history. Do not share command output or container environment dumps.
+Verify access by signing in to the local admin UI. Account recovery does not
+require schema setup or a data import.
 
-(These must match your `.env` file)
-
-## Option 2: Change .env to Match Your Actual Admin
-
-If you want to keep your existing admin account, update `.env` to match what you actually created:
-
-```bash
-# Edit .env file
-nano .env
-
-# Update these lines to match your actual credentials:
-POCKETBASE_ADMIN_EMAIL=your-actual-email@example.com
-POCKETBASE_ADMIN_PASSWORD=your-actual-password
-```
-
-## Verify It Works
-
-After resetting, test authentication:
-
-```bash
-POCKETBASE_URL=http://localhost:60021 bun scripts/setup-pocketbase-simple.ts
-```
-
-You should see:
-```
-✅ Authenticated successfully
-   Admin ID: xxxxx
-   Admin Email: admin@admin.com
-```
-
-## Then Run Full Setup
-
-```bash
-docker compose --profile setup up pocketbase-setup
-```
+For a fresh installation, use `make install`; see [the script inventory](scripts.md)
+for the supported schema/import entry points.
