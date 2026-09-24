@@ -7,6 +7,10 @@
 	import { normalizeOrcid } from '$lib/utils/credits';
 	import toast from 'svelte-french-toast';
 	import type { RecordModel } from 'pocketbase';
+	import IconChevronUp from '~icons/heroicons/chevron-up';
+	import IconChevronDown from '~icons/heroicons/chevron-down';
+	import IconChevronUpDown from '~icons/heroicons/chevron-up-down';
+	import { sortUsers, type SortDirection, type UserSortField } from './users-table';
 
 	type PendingIdentity = {
 		userId: string;
@@ -19,6 +23,8 @@
 	let isSaving = $state(false);
 	let searchQuery = $state('');
 	let roleFilter = $state('');
+	let sortField = $state<UserSortField>('name');
+	let sortDirection = $state<SortDirection>('ascending');
 	let editingUser = $state<RecordModel | null>(null);
 	let editRole = $state('');
 	let pending = $state<PendingIdentity | null>(null);
@@ -28,15 +34,25 @@
 		value,
 		label: GLOBAL_ROLE_LABELS[value]
 	}));
+	const sortableColumns: { field: UserSortField; label: string }[] = [
+		{ field: 'name', label: 'Name' },
+		{ field: 'orcid', label: 'ORCID' },
+		{ field: 'ownership', label: 'Ownership proof' },
+		{ field: 'role', label: 'Role' }
+	];
 	let filteredUsers = $derived(
-		users.filter(
-			(user) =>
-				(!roleFilter || user.role === roleFilter) &&
-				[user.nickname, user.orcid].some((value) =>
-					String(value || '')
-						.toLowerCase()
-						.includes(searchQuery.toLowerCase())
-				)
+		sortUsers(
+			users.filter(
+				(user) =>
+					(!roleFilter || user.role === roleFilter) &&
+					[user.nickname, user.orcid].some((value) =>
+						String(value || '')
+							.toLowerCase()
+							.includes(searchQuery.toLowerCase())
+					)
+			),
+			sortField,
+			sortDirection
 		)
 	);
 
@@ -49,6 +65,15 @@
 			toast.error(error instanceof Error ? error.message : 'Failed to load users');
 		} finally {
 			isLoading = false;
+		}
+	}
+
+	function setSort(field: UserSortField) {
+		if (sortField === field) {
+			sortDirection = sortDirection === 'ascending' ? 'descending' : 'ascending';
+		} else {
+			sortField = field;
+			sortDirection = 'ascending';
 		}
 	}
 
@@ -154,10 +179,29 @@
 	{:else}
 		<div class="overflow-x-auto rounded-box border border-base-300">
 			<table class="table">
-				<thead
-					><tr><th>Name</th><th>ORCID</th><th>Ownership proof</th><th>Role</th><th>Actions</th></tr
-					></thead
-				>
+				<thead>
+					<tr>
+						{#each sortableColumns as column (column.field)}
+							<th aria-sort={sortField === column.field ? sortDirection : 'none'}>
+								<button
+									type="button"
+									class="flex items-center gap-1 hover:text-base-content"
+									onclick={() => setSort(column.field)}
+								>
+									{column.label}
+									{#if sortField !== column.field}
+										<IconChevronUpDown class="h-4 w-4 text-base-content/40" />
+									{:else if sortDirection === 'ascending'}
+										<IconChevronUp class="h-4 w-4" />
+									{:else}
+										<IconChevronDown class="h-4 w-4" />
+									{/if}
+								</button>
+							</th>
+						{/each}
+						<th>Actions</th>
+					</tr>
+				</thead>
 				<tbody>
 					{#each filteredUsers as user (user.id)}
 						<tr>
