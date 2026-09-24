@@ -19,7 +19,7 @@ export function mergeSchemaFields(
 				`Field ${String(field.name)} changes type or relation target; use an explicit data migration. No fields were dropped.`
 			);
 		}
-		merged[index] = { ...old, ...field };
+		merged[index] = { ...old, ...field, ...(old.id ? { id: old.id } : {}) };
 	}
 	return merged;
 }
