@@ -51,6 +51,68 @@ export const collectionsStore = persisted<CollectionsData>(
 	}
 );
 
+// The home page needs only a handful of cards, not the full catalogue or its metadata.
+export const homeStore = persisted<{
+	editions: Edition[];
+	collections: (Collection & { editionCount?: number })[];
+	editionTotal: number;
+	collectionTotal: number;
+	lastFetched: number | null;
+}>(`${cachePrefix}:home:v1`, {
+	editions: [],
+	collections: [],
+	editionTotal: 0,
+	collectionTotal: 0,
+	lastFetched: null
+});
+
+export async function fetchHomeData() {
+	const [editions, collections] = await Promise.all([
+		pb.collection('editions').getList(1, 8, {
+			filter: 'isPublished = true',
+			fields:
+				'id,title,dcTitle,dcAbstract,credits,thumbnail,pubNum,collection,settingsSceneFile,expand.collection.pubNum',
+			expand: 'collection'
+		}),
+		pb.collection('collections').getList(1, 5, {
+			filter: 'isVisible = true',
+			fields: 'id,title,dcAbstract,pubNum,coverImage,thumbnail,isVisible'
+		})
+	]);
+	const value = {
+		editions: editions.items.map((record) => {
+			const collectionPubNum = record.expand?.collection?.pubNum || 0;
+			return {
+				id: record.id,
+				slug: record.id,
+				title: record.dcTitle || record.title,
+				credits: readCredits(record.credits),
+				thumbnail:
+					record.thumbnail && collectionPubNum > 0
+						? getEditionThumbnailUrl(collectionPubNum, record.pubNum || 1)
+						: '',
+				voyagerUrl:
+					collectionPubNum > 0 ? getEditionRoot(collectionPubNum, record.pubNum || 1) : '',
+				settingsSceneFile: record.settingsSceneFile || 'scene.svx.json',
+				isPublished: true
+			} as Edition;
+		}),
+		collections: collections.items.map((record) => ({
+			id: record.id,
+			slug: record.id,
+			title: record.title,
+			description: record.dcAbstract || '',
+			thumbnail: getCollectionCoverUrl(record, record.pubNum) || '',
+			isVisible: true
+		})) as (Collection & { editionCount?: number })[],
+		editionTotal: editions.totalItems,
+		collectionTotal: collections.totalItems,
+		lastFetched: Date.now()
+	};
+	homeStore.set(value);
+	return value;
+}
+
 /**
  * Fetches all published editions from Pocketbase and updates the store.
  * Returns the mapped editions array.
@@ -213,18 +275,6 @@ export async function fetchCollections(): Promise<(Collection & { editionCount?:
 	});
 
 	return mappedCollections;
-}
-
-/**
- * Fetches both editions and collections in parallel.
- * Use this on the home page to refresh all data at once.
- */
-export async function fetchAllData(): Promise<{
-	editions: Edition[];
-	collections: (Collection & { editionCount?: number })[];
-}> {
-	const [editions, collections] = await Promise.all([fetchEditions(), fetchCollections()]);
-	return { editions, collections };
 }
 
 /**

@@ -3,55 +3,24 @@
 	import { base, resolve } from '$app/paths';
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
 	import CollectionCard from '$lib/components/cards/CollectionCard.svelte';
-	import { editionsStore, collectionsStore, fetchAllData, isStale } from '$lib/stores/data.store';
+	import { homeStore, fetchHomeData, isStale } from '$lib/stores/data.store';
 
 	// Reactive data from persisted stores - shows cached data immediately
-	let featuredEditions = $derived($editionsStore.items.slice(0, 8));
+	let featuredEditions = $derived($homeStore.editions);
 	const heroRotation = Math.random();
 	let heroEditions = $derived.by(() => {
-		const editions = $editionsStore.items.filter((edition) => edition.thumbnail);
+		const editions = $homeStore.editions.filter((edition) => edition.thumbnail);
 		if (editions.length <= 5) return editions;
 
 		const start = Math.floor(heroRotation * editions.length);
 		return Array.from({ length: 5 }, (_, index) => editions[(start + index) % editions.length]);
 	});
-	let collections = $derived(
-		$collectionsStore.items.filter(
-			(collection) => collection.isVisible && (collection.editionCount ?? 0) > 0
-		)
-	);
-	let totalEditions = $derived($editionsStore.total);
-	let totalCollections = $derived(collections.length);
+	let collections = $derived($homeStore.collections);
+	let totalEditions = $derived($homeStore.editionTotal);
+	let totalCollections = $derived($homeStore.collectionTotal);
 
-	let hasCachedData = $derived(
-		$editionsStore.items.length > 0 || $collectionsStore.items.length > 0
-	);
+	let hasCachedData = $derived($homeStore.editions.length > 0 || $homeStore.collections.length > 0);
 	let isLoading = $state(true);
-
-	function preloadImages(urls: string[]) {
-		const validUrls = urls.filter(Boolean);
-		if (!validUrls.length) return;
-
-		const loadNext = (index: number) => {
-			if (index >= validUrls.length) return;
-
-			const img = new Image();
-			img.onload = img.onerror = () => {
-				if ('requestIdleCallback' in window) {
-					requestIdleCallback(() => loadNext(index + 1), { timeout: 1000 });
-				} else {
-					setTimeout(() => loadNext(index + 1), 50);
-				}
-			};
-			img.src = validUrls[index];
-		};
-
-		if ('requestIdleCallback' in window) {
-			requestIdleCallback(() => loadNext(0), { timeout: 2000 });
-		} else {
-			setTimeout(() => loadNext(0), 500);
-		}
-	}
 
 	let carouselContainer: HTMLDivElement | undefined = $state();
 
@@ -66,27 +35,15 @@
 
 	onMount(() => {
 		async function loadData() {
-			const editionsStale = isStale($editionsStore.lastFetched);
-			const collectionsStale = isStale($collectionsStore.lastFetched);
+			const homeStale = isStale($homeStore.lastFetched);
 
-			if (hasCachedData && !editionsStale && !collectionsStale) {
+			if (hasCachedData && !homeStale) {
 				isLoading = false;
-				const firstFoldThumbnails = [
-					...$editionsStore.items.slice(0, 15).map((e) => e.thumbnail),
-					...$collectionsStore.items.slice(0, 15).map((c) => c.thumbnail)
-				];
-				preloadImages(firstFoldThumbnails);
 				return;
 			}
 
 			try {
-				const { editions, collections: cols } = await fetchAllData();
-
-				const firstFoldThumbnails = [
-					...editions.slice(0, 15).map((e) => e.thumbnail),
-					...cols.slice(0, 15).map((c) => c.thumbnail)
-				];
-				preloadImages(firstFoldThumbnails);
+				await fetchHomeData();
 			} catch (error) {
 				console.error('Error loading data:', error);
 			} finally {
@@ -218,6 +175,8 @@
 											src={edition.thumbnail}
 											alt={edition.title}
 											loading={i < 2 ? 'eager' : 'lazy'}
+											fetchpriority={i < 2 ? 'high' : 'auto'}
+											decoding="async"
 										/>
 									</a>
 								{/each}

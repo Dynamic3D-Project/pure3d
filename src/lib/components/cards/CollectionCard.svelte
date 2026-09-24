@@ -31,6 +31,9 @@
 	}
 
 	let plainDescription = $derived(stripHtml(collection.description || ''));
+	let hasEditionCount = $derived(
+		collection.editionCount !== undefined || collection.editionIds !== undefined
+	);
 	let editionCount = $derived(collection.editionCount ?? collection.editionIds?.length ?? 0);
 </script>
 
@@ -105,8 +108,11 @@
 					</p>
 				{/if}
 				<div class="mt-auto pt-3 text-xs font-medium tracking-wide text-base-content/75 uppercase">
-					{editionCount}
-					{editionCount === 1 ? 'Edition' : 'Editions'}
+					{#if hasEditionCount}
+						{editionCount} {editionCount === 1 ? 'Edition' : 'Editions'}
+					{:else}
+						Explore collection
+					{/if}
 				</div>
 			</div>
 		</div>
