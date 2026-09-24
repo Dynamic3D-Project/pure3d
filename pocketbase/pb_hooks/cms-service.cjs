@@ -1,7 +1,51 @@
+const editionIdPattern = /^[a-zA-Z0-9_-]{1,64}$/;
+function attribute(tag, name) {
+	const match = tag.match(new RegExp(`(?:^|\\s)${name}=(['"])(.*?)\\1`, 'i'));
+	return match ? match[2] : null;
+}
+function safeComponentUrl(value) {
+	return /^\/(?![\\/])/.test(value) || /^(https?:\/\/[^\s]+|mailto:[^\s]+)$/i.test(value);
+}
+function validateComponentHtml(html) {
+	for (const match of html.matchAll(/\sdata-cms-[\w-]+=(['"])(.*?)\1/gi)) {
+		if (/[<>]/.test(match[2])) return 'Invalid content component.';
+	}
+	for (const tag of html.matchAll(/<([a-z][\w-]*)\b[^>]*>/gi)) {
+		const [, tagName] = tag;
+		for (const match of tag[0].matchAll(/\s(data-cms-[\w-]+)=(['"])(.*?)\2/gi)) {
+			const [, name, , value] = match;
+			if (
+				(name === 'data-cms-callout' &&
+					tagName === 'aside' &&
+					['info', 'success', 'warning'].includes(value)) ||
+				(name === 'data-cms-actions' && tagName === 'div' && value === 'true') ||
+				(name === 'data-cms-action' &&
+					tagName === 'a' &&
+					['primary', 'secondary'].includes(value)) ||
+				(name === 'data-cms-expandable' && tagName === 'details' && value === 'true') ||
+				(name === 'data-cms-editions' &&
+					tagName === 'div' &&
+					value.split(',').length <= 24 &&
+					value.split(',').every((id) => editionIdPattern.test(id.trim())))
+			)
+				continue;
+			return 'Invalid content component.';
+		}
+	}
+	for (const tag of html.matchAll(
+		/<a\b[^>]*\bdata-cms-action=(['"])(?:primary|secondary)\1[^>]*>/gi
+	)) {
+		const href = attribute(tag[0], 'href');
+		if (!href || !safeComponentUrl(href)) return 'Unsafe content component link.';
+	}
+	return null;
+}
 function validateContent(e) {
 	const r = e.record,
 		kind = r.getString('kind'),
 		layout = r.getString('layout');
+	const componentError = validateComponentHtml(r.getString('body'));
+	if (componentError) throw new BadRequestError(componentError);
 	if (
 		r.original().getString('slug') === 'documentation' &&
 		r.original().getString('layout') === 'guide' &&
@@ -171,4 +215,11 @@ function deleteMedia(e) {
 		throw new BadRequestError('This file is used by a page or post. Remove its references first.');
 	e.next();
 }
-module.exports = { validateContent, validateMenu, enforceMenuVersion, deleteContent, deleteMedia };
+module.exports = {
+	validateContent,
+	validateComponentHtml,
+	validateMenu,
+	enforceMenuVersion,
+	deleteContent,
+	deleteMedia
+};

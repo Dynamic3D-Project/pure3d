@@ -6,10 +6,11 @@ class BadRequestError extends Error {}
 (globalThis as typeof globalThis & { BadRequestError: typeof BadRequestError }).BadRequestError =
 	BadRequestError;
 
-const { enforceMenuVersion, validateMenu } = createRequire(import.meta.url)(
+const { enforceMenuVersion, validateComponentHtml, validateMenu } = createRequire(import.meta.url)(
 	'./cms-service.cjs'
 ) as {
 	enforceMenuVersion: (event: ReturnType<typeof requestEvent>) => void;
+	validateComponentHtml: (html: string) => string | null;
 	validateMenu: (event: ReturnType<typeof validateEvent>) => void;
 };
 
@@ -135,4 +136,23 @@ test('menu validation accepts introductions and checks landing links', () => {
 			})
 		)
 	).toThrow('Unknown application route.');
+});
+
+test('content components only accept constrained attributes and safe action URLs', () => {
+	expect(
+		validateComponentHtml(
+			'<aside data-cms-callout="info"><p>Text</p></aside><div data-cms-editions="edition-a,edition-b"></div><details data-cms-expandable="true"><summary>More</summary></details>'
+		)
+	).toBeNull();
+	expect(validateComponentHtml('<div data-cms-editions="edition-a,<script>"></div>')).toBe(
+		'Invalid content component.'
+	);
+	expect(validateComponentHtml('<p data-cms-editions="edition-a">Wrong element</p>')).toBe(
+		'Invalid content component.'
+	);
+	expect(
+		validateComponentHtml(
+			'<div data-cms-actions="true"><a data-cms-action="primary" href="javascript:alert(1)">Read</a></div>'
+		)
+	).toBe('Unsafe content component link.');
 });

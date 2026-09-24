@@ -60,6 +60,28 @@ make release      # explicitly authorized local release only
 - Formatting is Prettier-controlled: tabs, single quotes, no trailing commas, 100-character width.
 - Every Svelte component must have one root HTML element with an `id` matching the filename in
   kebab-case, for example `ProfileCard.svelte` uses `id="profile-card"`.
+- Use `btn-primary` (forest) for the main Save, Publish, or submit action; use neutral/outline styles
+  for supporting actions, accent for selected tools or highlights, and status colours only for status.
+
+## Rich Content Editing
+
+- Continue extending the existing Tiptap editor with reusable components that make content editing
+  and public pages richer. Build on the Insert component menu and existing callouts, action links,
+  edition grids, and expandable sections; do not replace the editor with a separate page builder.
+- Add components for concrete editorial needs, using consistent site styling and limited options
+  rather than arbitrary HTML, CSS, or layout controls. Keep CMS-only controls gated from other uses
+  of the shared editor.
+- Implement each component end to end: insertion and editing, HTML serialization and reopening,
+  frontend sanitization, backend validation, and public rendering. Preserve existing content and
+  allow only explicitly supported elements and attributes.
+- Reuse existing site components and reference live records where appropriate instead of copying
+  their metadata into page content. Handle missing or unpublished records safely.
+- Verify nested content and save/reopen round-trips, hostile input sanitization, keyboard access,
+  and responsive editor/public views when adding or changing components.
+- Relevant files: `src/lib/components/ui/RichTextEditor.svelte`,
+  `src/lib/utils/editor-content-components.ts`, `src/lib/utils/content-components.ts`,
+  `src/lib/utils/content-html.ts`, `src/lib/content.ts`, `src/lib/components/content/`, and
+  `pocketbase/pb_hooks/cms-service.cjs`.
 
 ## Key Directories
 

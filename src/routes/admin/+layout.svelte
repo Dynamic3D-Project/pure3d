@@ -1,14 +1,24 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, setContext } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { resolve } from '$app/paths';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { GlobalRole } from '$lib/types/roles';
+	import FileTextIcon from '~icons/lucide/file-text';
+	import ImagesIcon from '~icons/lucide/images';
+	import NewspaperIcon from '~icons/lucide/newspaper';
+	import TagsIcon from '~icons/lucide/tags';
 
 	let { children } = $props();
 
 	let sidebarOpen = $state(false);
+	let createContent: (() => void) | null = null;
+	setContext('admin-content-actions', {
+		register(action: (() => void) | null) {
+			createContent = action;
+		}
+	});
 
 	const navItems = [
 		{
@@ -61,10 +71,10 @@
 		}
 	] as const;
 	const contentTabs = [
-		{ label: 'Pages', href: '/admin/pages' },
-		{ label: 'Posts', href: '/admin/posts' },
-		{ label: 'Categories', href: '/admin/categories' },
-		{ label: 'Media', href: '/admin/media' }
+		{ label: 'Pages', href: '/admin/pages', icon: FileTextIcon },
+		{ label: 'Posts', href: '/admin/posts', icon: NewspaperIcon },
+		{ label: 'Categories', href: '/admin/categories', icon: TagsIcon },
+		{ label: 'Media', href: '/admin/media', icon: ImagesIcon }
 	] as const;
 
 	function isContentRoute(): boolean {
@@ -163,25 +173,34 @@
 			Admin menu
 		</button>
 		{#if isContentRoute()}
-			<nav
-				class="mb-8 flex w-fit max-w-full gap-1 overflow-x-auto rounded-lg bg-primary p-1"
-				aria-label="Content sections"
-			>
-				{#each contentTabs as tab (tab.href)}
-					<a
-						class="shrink-0 rounded-md px-5 py-2.5 text-sm font-semibold transition-colors"
-						class:bg-base-100={$page.url.pathname.startsWith(resolve(tab.href))}
-						class:shadow-sm={$page.url.pathname.startsWith(resolve(tab.href))}
-						style:color={$page.url.pathname.startsWith(resolve(tab.href))
-							? 'var(--color-base-content)'
-							: 'var(--color-primary-content)'}
-						href={resolve(tab.href)}
-						aria-current={$page.url.pathname.startsWith(resolve(tab.href)) ? 'page' : undefined}
-					>
-						{tab.label}
-					</a>
-				{/each}
-			</nav>
+			<div class="mb-8 flex flex-wrap items-center justify-between gap-4">
+				<nav
+					class="flex max-w-full gap-1 overflow-x-auto rounded-lg bg-neutral p-1"
+					aria-label="Content sections"
+				>
+					{#each contentTabs as tab (tab.href)}
+						{@const Icon = tab.icon}
+						<a
+							class="flex shrink-0 items-center gap-2 rounded-md px-5 py-2.5 text-sm font-semibold transition-colors"
+							class:bg-base-100={$page.url.pathname.startsWith(resolve(tab.href))}
+							class:shadow-sm={$page.url.pathname.startsWith(resolve(tab.href))}
+							style:color={$page.url.pathname.startsWith(resolve(tab.href))
+								? 'var(--color-base-content)'
+								: 'var(--color-neutral-content)'}
+							href={resolve(tab.href)}
+							aria-current={$page.url.pathname.startsWith(resolve(tab.href)) ? 'page' : undefined}
+						>
+							<Icon class="size-4" aria-hidden="true" />
+							{tab.label}
+						</a>
+					{/each}
+				</nav>
+				{#if $page.url.pathname.startsWith(resolve('/admin/pages')) || $page.url.pathname.startsWith(resolve('/admin/posts'))}
+					<button class="btn shrink-0 btn-primary" onclick={() => createContent?.()}>
+						+ New {$page.url.pathname.startsWith(resolve('/admin/posts')) ? 'post' : 'page'}
+					</button>
+				{/if}
+			</div>
 		{/if}
 		{@render children?.()}
 	</main>

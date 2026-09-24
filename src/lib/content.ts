@@ -29,7 +29,11 @@ export const contentTags = [
 	'hr',
 	'pre',
 	'code',
-	'iframe'
+	'iframe',
+	'aside',
+	'div',
+	'details',
+	'summary'
 ];
 export const embedHosts = [
 	'www.youtube.com',

@@ -2,7 +2,7 @@
 	/* eslint-disable svelte/no-navigation-without-resolve -- The resolved admin route appends the record ID as a query parameter. */
 	import { resolve } from '$app/paths';
 	import { kindLabels } from '$lib/content';
-	import { cleanContent } from '$lib/utils/content-html';
+	import ContentRenderer from '$lib/components/content/ContentRenderer.svelte';
 	import { contentPath } from '$lib/cms';
 	import { base } from '$app/paths';
 	import { authStore } from '$lib/database/stores/auth.svelte';
@@ -56,8 +56,7 @@
 			src={item.coverUrl}
 			alt=""
 		/>{/if}
-	<!-- eslint-disable-next-line svelte/no-at-html-tags -- cleanContent strips executable HTML with an allowlist. -->
-	<article class="prose mt-10 max-w-none">{@html cleanContent(item.body || '')}</article>
+	<ContentRenderer content={item.body || ''} className="prose mt-10 max-w-none" />
 	{#if data.children.length}<nav
 			aria-label="Child pages"
 			class="mt-12 border-t border-base-300 pt-6"
@@ -72,23 +71,3 @@
 			</ul>
 		</nav>{/if}
 </main>
-
-<style>
-	article :global(img) {
-		max-width: 100%;
-		height: auto;
-		border-radius: var(--radius-control);
-	}
-	article :global(iframe) {
-		width: 100%;
-		aspect-ratio: 16/9;
-		border: 0;
-	}
-	article :global(table) {
-		display: block;
-		overflow-x: auto;
-	}
-	article :global(a) {
-		overflow-wrap: anywhere;
-	}
-</style>

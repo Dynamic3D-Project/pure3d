@@ -1,6 +1,6 @@
 <script lang="ts">
 	/* eslint-disable svelte/no-navigation-without-resolve -- Internal routes use resolve; attachment and WordPress source URLs are absolute. */
-	import { onMount } from 'svelte';
+	import { getContext, onMount } from 'svelte';
 	import { beforeNavigate } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
@@ -13,12 +13,16 @@
 	import toast from 'svelte-french-toast';
 	import { contentPath, validParent, orderedPages, move } from '$lib/cms';
 	import { refreshMenus } from '$lib/stores/navigation';
+	const contentActions = getContext<{
+		register: (action: (() => void) | null) => void;
+	}>('admin-content-actions');
 	let { kindFilter = '' }: { kindFilter?: 'page' | 'post' | '' } = $props();
 	let layout = $state('standard'),
 		parent = $state(''),
 		order = $state(0),
 		categoryIds = $state<string[]>([]),
 		categoryOptions = $state<RecordModel[]>([]),
+		cmsEditions = $state<{ id: string; title: string }[]>([]),
 		library = $state<RecordModel[]>([]),
 		showLibrary = $state(false);
 	let dragId = $state('');
@@ -58,7 +62,6 @@
 		isPublished = $state(false);
 	let saving = $state(false),
 		loading = $state(true),
-		creating = $state(false),
 		dirty = $state(false),
 		assets = $state<RecordModel[]>([]);
 	let filtered = $derived(
@@ -76,11 +79,23 @@
 		loading = true;
 		failure = '';
 		try {
-			[items, categoryOptions, library] = await Promise.all([
+			const [content, categories, media, editions] = await Promise.all([
 				pb.collection('content').getFullList({ sort: '-updated' }),
 				pb.collection('cms_categories').getFullList({ sort: 'name' }),
-				pb.collection('content_assets').getFullList()
+				pb.collection('content_assets').getFullList(),
+				pb.collection('editions').getFullList({
+					filter: 'isPublished = true',
+					fields: 'id,title,dcTitle',
+					sort: 'dcTitle,title'
+				})
 			]);
+			items = content;
+			categoryOptions = categories;
+			library = media;
+			cmsEditions = editions.map((edition) => ({
+				id: edition.id,
+				title: edition.dcTitle || edition.title || 'Untitled edition'
+			}));
 		} catch (e) {
 			failure = e instanceof Error ? e.message : 'Could not load content';
 		} finally {
@@ -89,13 +104,11 @@
 	}
 	function reset() {
 		selected = null;
-		creating = false;
 		dirty = false;
 	}
 	async function edit(item: RecordModel) {
 		if (dirty && !confirm('Discard unsaved changes?')) return;
 		selected = item;
-		creating = false;
 		title = item.title;
 		slug = item.slug;
 		summary = item.summary || '';
@@ -122,26 +135,28 @@
 			toast.error('Could not load attachments. Please reopen the page to retry.');
 		}
 	}
-	function create() {
+	async function create() {
 		if (dirty && !confirm('Discard unsaved changes?')) return;
-		reset();
-		creating = true;
-		title = '';
-		slug = '';
-		summary = '';
-		notes = '';
-		body = '';
-		author = '';
-		publishedAt = '';
-		coverUrl = '';
-		section = 'resources';
-		formKind = kindFilter || 'page';
-		layout = formKind === 'post' ? 'article' : 'standard';
-		parent = '';
-		order = 0;
-		categoryIds = [];
-		isPublished = false;
-		assets = [];
+		const newKind = kindFilter || 'page';
+		saving = true;
+		try {
+			const row = await pb.collection('content').create({
+				title: `Untitled ${newKind}`,
+				slug: `draft-${crypto.randomUUID()}`,
+				kind: newKind,
+				layout: newKind === 'post' ? 'article' : 'standard',
+				section: 'resources',
+				isPublished: false
+			});
+			items = [row, ...items];
+			dirty = false;
+			await edit(row);
+			toast.success('Draft created');
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : 'Could not create draft');
+		} finally {
+			saving = false;
+		}
 	}
 	async function save() {
 		if (!allowed || saving) return;
@@ -242,12 +257,16 @@
 	beforeNavigate(({ cancel }) => {
 		if (dirty && !confirm('Discard unsaved changes?')) cancel();
 	});
-	onMount(async () => {
-		if (!allowed) return;
-		await load();
-		const id = $page.url.searchParams.get('edit');
-		const item = items.find((i) => i.id === id);
-		if (item) await edit(item);
+	onMount(() => {
+		contentActions.register(create);
+		void (async () => {
+			if (!allowed) return;
+			await load();
+			const id = $page.url.searchParams.get('edit');
+			const item = items.find((i) => i.id === id);
+			if (item) await edit(item);
+		})();
+		return () => contentActions.register(null);
 	});
 	async function reorder(id: string, targetId: string) {
 		const source = items.find((i) => i.id === id),
@@ -328,24 +347,10 @@
 >
 <div id="content-manager">
 	{#if !allowed}<p>Admin access is required.</p>{:else}
-		<header class="mb-8 flex flex-wrap items-center justify-between gap-4">
-			<div>
-				<p class="mb-2 text-xs tracking-widest uppercase opacity-50">Editorial workspace</p>
-				<h1 class="text-3xl font-semibold">
-					{kindFilter === 'page' ? 'Pages' : kindFilter === 'post' ? 'Posts' : 'Pages & posts'}
-				</h1>
-				<p class="mt-2 text-sm opacity-60">
-					Pages, stories and research. Review drafts before publishing.
-				</p>
-			</div>
-			<button class="btn btn-neutral" disabled={saving} onclick={create}
-				>+ New {kindFilter || 'content'}</button
-			>
-		</header>
 		{#if failure}<div role="alert" class="alert alert-error">
 				{failure}<button onclick={load}>Retry</button>
 			</div>{/if}
-		{#if selected || creating}
+		{#if selected}
 			<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
 				<button
 					class="btn btn-ghost"
@@ -355,18 +360,36 @@
 					}}>← Content library</button
 				>
 				<div class="flex gap-3">
-					{#if selected}<a
-							class="btn btn-outline"
-							href={`${base}${contentPath(selected)}`}
-							target="_blank"
-							rel="noopener">Preview ↗</a
-						>{/if}<button class="btn btn-neutral" disabled={saving} onclick={save}
+					{#if selected}<a class="btn btn-outline" href={`${base}${contentPath(selected)}`}
+							>Preview</a
+						>{/if}<button class="btn btn-primary" disabled={saving || !dirty} onclick={save}
 						>{saving ? 'Saving…' : 'Save changes'}</button
 					>
 				</div>
 			</div>
 			<div inert={saving} class="grid gap-7 xl:grid-cols-[minmax(0,1fr)_280px]">
 				<div class="min-w-0 space-y-6">
+					<div>
+						<label class="block text-sm font-medium"
+							>Cover image<input
+								type="file"
+								accept="image/*"
+								class="file-input mt-2 w-full"
+								onchange={(e) => chooseMedia(e, true)}
+							/></label
+						>
+						{#if coverUrl}<img
+								src={coverUrl}
+								alt="Current cover"
+								class="mt-3 aspect-video w-full rounded-xl object-cover"
+							/><button
+								class="btn mt-2 btn-xs"
+								onclick={() => {
+									coverUrl = '';
+									dirty = true;
+								}}>Remove cover</button
+							>{/if}
+					</div>
 					<label class="block text-sm font-medium"
 						>Title<input
 							class="input mt-2 w-full text-lg"
@@ -387,6 +410,8 @@
 								minHeight="450px"
 								enableImagePaste
 								uploadImage={upload}
+								cmsComponents
+								{cmsEditions}
 								onchange={(html) => {
 									body = html;
 									dirty = true;
@@ -577,25 +602,6 @@
 							oninput={() => (dirty = true)}
 						/></label
 					>
-					<label class="block text-sm"
-						>Cover image<input
-							type="file"
-							accept="image/*"
-							class="file-input mt-2 w-full"
-							disabled={!selected}
-							onchange={(e) => chooseMedia(e, true)}
-						/></label
-					>{#if coverUrl}<img
-							src={coverUrl}
-							alt="Current cover"
-							class="aspect-video w-full rounded-lg object-cover"
-						/><button
-							class="btn btn-xs"
-							onclick={() => {
-								coverUrl = '';
-								dirty = true;
-							}}>Remove cover</button
-						>{/if}
 					{#if selected?.sourceUrl}
 						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- Original external source. -->
 						<a

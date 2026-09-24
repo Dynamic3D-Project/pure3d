@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import {
 	emptyMenu,
+	contentPath,
 	newMenuLink,
 	move,
 	moveMenuLink,
@@ -11,6 +12,16 @@ import {
 	menuSignature
 } from './cms';
 import type { RecordModel } from 'pocketbase';
+test('content paths cover posts, pages and guides', () => {
+	expect(contentPath({ slug: 'post', kind: 'post', layout: 'article' })).toBe('/resources/post');
+	expect(contentPath({ slug: 'page', kind: 'page', layout: 'standard' })).toBe('/resources/page');
+	expect(contentPath({ slug: 'guide', kind: 'page', layout: 'guide' })).toBe(
+		'/documentation/guide'
+	);
+	expect(contentPath({ slug: 'documentation', kind: 'page', layout: 'guide' })).toBe(
+		'/documentation'
+	);
+});
 test('menu references survive page slug changes and never allow executable URLs', () => {
 	const directory = {
 		content: [

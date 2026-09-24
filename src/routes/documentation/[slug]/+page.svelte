@@ -3,7 +3,7 @@
 	import { base } from '$app/paths';
 	import type { PageData } from './$types';
 	import { authStore } from '$lib/database/stores/auth.svelte';
-	import { cleanContent } from '$lib/utils/content-html';
+	import ContentRenderer from '$lib/components/content/ContentRenderer.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -32,11 +32,10 @@
 				>{doc.isPublished ? 'Published guide' : 'Draft preview · admins only'}</span
 			><a class="btn btn-outline btn-sm" href={`${base}/admin/pages?edit=${doc.id}`}>Edit page</a>
 		</div>{/if}
-	<article class="prose max-w-none">
+	<section class="prose max-w-none">
 		<h1>{doc.title}</h1>
-		<!-- eslint-disable-next-line svelte/no-at-html-tags -- HTML is sanitised with DOMPurify. -->
-		{@html cleanContent(doc.body)}
-	</article>
+		<ContentRenderer content={doc.body} />
+	</section>
 
 	<nav class="mt-16 grid grid-cols-2 gap-4 border-t border-base-300 pt-6" aria-label="Guide pages">
 		{#if previousPage}
