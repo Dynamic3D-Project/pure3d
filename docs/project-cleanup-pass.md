@@ -3,7 +3,7 @@
 ## Checkpoint and scope
 
 Workflow checkpoint: `5edb570` (`feat(workflow): complete review and publication`).
-The cleanup is a separate working-tree change, with no push or deployment.
+The cleanup is committed separately from that checkpoint, with no push or deployment.
 
 The pass inventoried source-file sizes, ran project-wide ESLint and the full Bun
 test suite, and inspected workflow permissions, navigation, review helpers,
@@ -60,9 +60,9 @@ claim that all repository technical debt has been removed.
   all changed code and `git diff --check`: passed. This pass does not retest
   production SMTP or real 3D rendering.
 
-## Remaining work: deliberately not disguised as cleanup
+## Initial follow-up inventory (now resolved below)
 
-The repository is **not globally lint-clean**. `bun run lint` stops at 72 existing
+At the initial checkpoint, the repository was **not globally lint-clean**. `bun run lint` stopped at 72 existing
 Prettier findings outside this cleanup. With vendor code excluded, ESLint
 reports 352 application/tooling findings across 55 files, mainly explicit `any`,
 old navigation links, unused declarations and unkeyed loops. These are recorded
@@ -117,5 +117,68 @@ Follow-up verification:
   one existing unresolved alternate-version link finding moved with the panel.
   No lint rules were disabled. The new schema and label helpers/tests pass ESLint.
 
-The remaining lifecycle extractions, viewer-runtime work and legacy-script inventory
-above remain deferred, not claimed complete. No delegation, push or deployment.
+Those lifecycle and inventory tasks were deferred at this intermediate checkpoint.
+The completion batches below supersede that status.
+
+## Completion batches
+
+- **Legacy scripts:** removed superseded destructive setup/import prototypes and
+  retired-schema inspection scripts after checking callers. The supported chain
+  and retirement reasons are in [the script inventory](pocketbase/scripts.md).
+  Account recovery no longer recommends deleting the database.
+- **Repository lint:** normalized formatting, removed unused starter components,
+  replaced ambient `any` shims with typed icons and Bun test types, typed maintained
+  scripts and runtime bridges, resolved navigation paths and keyed UI loops.
+  Repository-wide Prettier and ESLint now pass without disabling application rules.
+- **Edition presentation:** `EditionView.svelte` is the typed shared public/demo
+  view; routes no longer import another route component. Metadata remains a separate
+  panel. The experimental viewer gate stays unchanged. Blog, collection, review and
+  help HTML use the existing sanitizer. Record-provided links use a tested URL
+  allowlist and deployment base handling; demo downloads retain plain-text data URLs.
+- **Voyager lifecycle:** extracted typed runtime contracts, shared fetch dispatch,
+  script loading, console/canvas hook ownership and disposable listeners/timers.
+  Overlapping viewers can dispose out of order without restoring stale hooks.
+  Protected companion URLs retain their tokens and Request options. Tests cover
+  malformed filenames, directory boundaries, stream failures, pending downloads,
+  concurrent script requests and teardown. No upstream runtime bundles were edited.
+- **Draft lifecycle:** proposal/edition persistence now uses the existing tested
+  `DraftAutosave` controller instead of a second queue/timer implementation.
+  Upload/submission locks preserve dirty state; late disposed responses cannot
+  update another workspace. The route keys `EditionWorkflowPage` by edition and
+  account, while persistence, upload controls and navigation warnings stay together.
+  Tests cover overlapping edits, retries, reverts, submission locking and navigation
+  checks before the reactive effect runs.
+- **Size-only candidates closed without churn:** the design sandbox, homepage,
+  header and admin presentation were candidate boundaries, not identified defects.
+  Their applicable lint findings were fixed. No arbitrary line-count target or
+  new component framework was introduced. The shared edition/workflow components
+  remain substantial because their UI state belongs together.
+
+## Final verification and limits
+
+- `PB_TEST_BINARY=/private/var/folders/78/t7tp8f_557d8qdc94shsqp0w0000gn/T/opencode/proposal-pocketbase/pocketbase bun --no-env-file test`:
+  **212 passed, zero failures, zero skipped**, including disposable PocketBase tests.
+- `bun run check`: zero errors/warnings. `bun run lint`, `bun run build` and
+  `git diff --check`: passed.
+- Headless browser checks covered collections, editions, a synthetic collection,
+  blog and feedback at 1440×900, 1024×768 and 390×844, without horizontal overflow.
+  Synthetic hostile collection HTML did not execute.
+- Demo metadata, description, versions and printables passed the same width matrix;
+  four plain-text downloads remained available and the anonymous experimental gate
+  remained closed.
+- A real local Voyager scene exposed five annotations, fourteen articles and a
+  rendered canvas. UI remount/navigation restored the original fetch, console and
+  canvas methods and removed the viewer. A first browser probe timed out because
+  this runtime has no `getModels` method; subsequent checks used its actual APIs.
+- Synthetic intercepted workflow records verified autosave, save/reopen, switching
+  between two editions without cross-writing, responsive overflow and cancellation
+  of dirty navigation. Confirmation was stubbed for deterministic verification.
+  No real records were changed by these browser checks.
+- Browser limitations remain explicit: local missing CMS/favicon responses and an
+  upstream Voyager 0.59.0 late `graph` callback error during rapid model teardown
+  were observed. Application-owned hooks were restored despite that vendor error.
+  This is not a fresh production SMTP, external identity-provider or full authenticated
+  publication acceptance test; backend integration tests use disposable services.
+
+The scoped cleanup tasks are complete. This is not a claim of zero technical debt
+or a line-by-line audit. No delegation, push or deployment was performed.
