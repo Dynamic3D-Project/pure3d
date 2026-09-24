@@ -49,20 +49,20 @@
 </script>
 
 <div id="status-transition-panel">
-	{#if status === EditionStatus.AlphaReview}
+	{#if [EditionStatus.AlphaReview, EditionStatus.FinalReview, EditionStatus.PublicationRequested].includes(status)}
 		<a
 			class="btn btn-outline btn-sm"
 			href={resolve('/editions/[slug]/workflow', { slug: editionId })}
-			>Review Alpha feedback & decision</a
+			>Review feedback & editorial decision</a
 		>
 	{:else if transitions.length > 0}
 		<div class="flex flex-wrap gap-2">
 			{#each transitions as target (target)}
-				{#if target === EditionStatus.AlphaReview}
+				{#if [EditionStatus.AlphaReview, EditionStatus.FinalReview, EditionStatus.PublicationRequested].includes(target)}
 					<a
 						class="btn btn-outline btn-sm"
-						href={resolve('/editions/[slug]/workflow', { slug: editionId }) + '#edition-review-tab'}
-						>Prepare Alpha Review request</a
+						href={resolve('/editions/[slug]/workflow', { slug: editionId })}
+						>Prepare submission request</a
 					>
 				{:else}
 					<button

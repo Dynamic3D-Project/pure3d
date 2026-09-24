@@ -20,7 +20,8 @@
 		"migrate:viewer-help": "bun scripts/add-viewer-help-field.ts",
 		"migrate:workflow": "bun scripts/migrate-workflow-statuses.ts",
 		"migrate:proposal": "bun scripts/migrate-proposal-fields.ts",
-		"migrate:alpha": "bun scripts/migrate-alpha-review.ts"
+		"migrate:alpha": "bun scripts/migrate-alpha-review.ts",
+		"migrate:publication": "bun scripts/migrate-alpha-review.ts"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.4.0",

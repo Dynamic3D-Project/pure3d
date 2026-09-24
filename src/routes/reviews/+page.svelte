@@ -10,6 +10,7 @@
 	import type { ReviewAssignment, EditionReview } from '$lib/types/reviews';
 	import { ReviewDecision, ReviewAssignmentStatus } from '$lib/types/reviews';
 	import AlphaReviewProgress from '$lib/components/workflow/AlphaReviewProgress.svelte';
+	import FinalReviewProgress from '$lib/components/workflow/FinalReviewProgress.svelte';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
 	import WorkflowTimeline from '$lib/components/workflow/WorkflowTimeline.svelte';
 	import { getEditionThumbnailUrl } from '$lib/utils/asset-urls';
@@ -192,6 +193,7 @@
 			}
 
 			myAssignments = assignResult.items.map((r) => ({
+				dueAt: r.dueAt || '',
 				reviewRound: r.reviewRound || 0,
 				editionTitle: r.editionTitle || '',
 				id: r.id,
@@ -363,6 +365,9 @@
 									onclick={() => decline(assignment)}>Decline</button
 								>
 							</div>
+							{#if assignment.dueAt}<p class="mt-2 text-sm">
+									Review due: {formatDate(assignment.dueAt)}
+								</p>{/if}
 							{#if edition?.collectionTitle}
 								<p class="mt-1 text-sm text-base-content/50">in {edition.collectionTitle}</p>
 							{/if}
@@ -391,8 +396,8 @@
 								<span class="badge badge-ghost badge-sm">
 									{getStageLabel(assignment.reviewStage)}
 								</span>
-								{#if assignment.reviewStage === 2}<span class="badge badge-sm badge-success"
-										>Alpha Review submitted</span
+								{#if assignment.reviewStage >= 2}<span class="badge badge-sm badge-success"
+										>{assignment.reviewStage === 3 ? 'Final' : 'Alpha'} Review submitted</span
 									>{:else if review}
 									<span
 										class="badge badge-sm {review.decision === ReviewDecision.Approve
@@ -409,7 +414,7 @@
 									</span>
 								{/if}
 							</div>
-							{#if assignment.reviewStage === 2}<p class="mt-3 text-sm text-base-content/70">
+							{#if assignment.reviewStage >= 2}<p class="mt-3 text-sm text-base-content/70">
 									Your review is submitted and cannot be edited. Edition access is closed until you
 									receive a new review invitation.
 								</p>{/if}
@@ -528,6 +533,11 @@
 								>
 									Submitted for Alpha Review. Editing is locked until the editorial decision.
 								</p>{/if}
+							{#if [EditionStatus.FinalReview, EditionStatus.FinalRevisions, EditionStatus.FinalAccepted, EditionStatus.PublicationRequested].includes(edition.status)}<div
+									class="mt-3"
+								>
+									<FinalReviewProgress editionId={edition.id} />
+								</div>{/if}
 							{#if [EditionStatus.AlphaReview, EditionStatus.AlphaRevisions, EditionStatus.AlphaAccepted].includes(edition.status)}<div
 									class="mt-3"
 								>

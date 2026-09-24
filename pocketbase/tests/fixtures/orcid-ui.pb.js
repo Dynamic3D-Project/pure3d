@@ -50,9 +50,10 @@ routerAdd(
 			{
 				type: 'person',
 				name: 'Synthetic Researcher',
+				userId: 'author000000000',
 				orcid: 'https://orcid.org/0000-0002-1825-0097',
 				role: 'creator',
-				provenance: 'manual'
+				provenance: 'oauth'
 			},
 			{
 				type: 'org',

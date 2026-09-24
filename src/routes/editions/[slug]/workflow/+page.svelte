@@ -33,6 +33,11 @@
 	import AlphaReviewForm from '$lib/components/workflow/AlphaReviewForm.svelte';
 	import AlphaReviewProgress from '$lib/components/workflow/AlphaReviewProgress.svelte';
 	import AlphaEditorialPanel from '$lib/components/workflow/AlphaEditorialPanel.svelte';
+	import FinalRequestForm from '$lib/components/workflow/FinalRequestForm.svelte';
+	import FinalReviewForm from '$lib/components/workflow/FinalReviewForm.svelte';
+	import FinalReviewProgress from '$lib/components/workflow/FinalReviewProgress.svelte';
+	import FinalEditorialPanel from '$lib/components/workflow/FinalEditorialPanel.svelte';
+	import { STATUS_LABELS } from '$lib/types/roles';
 	import type { SaveState } from '$lib/workflow/autosave';
 	import VoyagerPreview from '$lib/components/uploads/VoyagerPreview.svelte';
 	import CoverImageUpload from '$lib/components/uploads/CoverImageUpload.svelte';
@@ -246,7 +251,10 @@
 				EditionStatus.ConceptSubmitted,
 				EditionStatus.EditorialReview,
 				EditionStatus.ConceptRejected,
-				EditionStatus.AlphaReview
+				EditionStatus.AlphaReview,
+				EditionStatus.FinalReview,
+				EditionStatus.PublicationRequested,
+				EditionStatus.Published
 			].includes(edition.status)
 		) {
 			return 'concept-form';
@@ -274,9 +282,7 @@
 	});
 
 	// Can the author resubmit?
-	let canResubmit = $derived(
-		isAuthor && edition !== null && edition.status === EditionStatus.FinalRevisions
-	);
+	const canResubmit = false; // Review requests require the guided submission form.
 
 	// Can the author manage collaborators?
 	let canManageCollaborators = $derived(
@@ -322,7 +328,12 @@
 		},
 		{
 			label: 'Final Review',
-			statuses: [EditionStatus.FinalReview, EditionStatus.FinalRevisions]
+			statuses: [
+				EditionStatus.FinalReview,
+				EditionStatus.FinalRevisions,
+				EditionStatus.FinalAccepted,
+				EditionStatus.PublicationRequested
+			]
 		},
 		{ label: 'Published', statuses: [EditionStatus.Published] }
 	];
@@ -351,6 +362,14 @@
 			return 'Read the released feedback, revise the edition, then request another Alpha round from the Review tab.';
 		if (edition.status === EditionStatus.AlphaReview)
 			return 'Alpha Review is in progress. Editing is locked until the editorial decision.';
+		if ([EditionStatus.AlphaAccepted, EditionStatus.FinalRevisions].includes(edition.status))
+			return 'Revise the edition and explain your response to feedback, then request Final Review from the Review tab.';
+		if (edition.status === EditionStatus.FinalReview)
+			return 'Final Review is in progress. Editing is locked until the editorial decision.';
+		if (edition.status === EditionStatus.FinalAccepted)
+			return 'Make final corrections, confirm material rights, and request publication from the Review tab.';
+		if (edition.status === EditionStatus.PublicationRequested)
+			return 'Publication has been requested. Editing is locked while the editors make their decision.';
 		if (canResubmit) return 'Address feedback, then resubmit the edition for review.';
 		if (edition.status === EditionStatus.Published)
 			return 'This edition is published and visible publicly.';
@@ -558,8 +577,11 @@
 							a.reviewerId === authStore.appUserId &&
 							a.reviewStage === currentStage &&
 							!['declined', 'completed'].includes(a.status) &&
-							(a.reviewStage !== ReviewStage.Alpha ||
-								a.reviewRound === (edRecord.alphaReviewRound || 0))
+							(a.reviewStage === ReviewStage.Concept ||
+								a.reviewRound ===
+									(edRecord[
+										a.reviewStage === ReviewStage.Final ? 'finalReviewRound' : 'alphaReviewRound'
+									] || 0))
 					) || null;
 				isReviewer = !!myAssignment;
 				myExistingReview =
@@ -567,8 +589,11 @@
 						(r) =>
 							r.reviewerId === authStore.appUserId &&
 							r.reviewStage === currentStage &&
-							(r.reviewStage !== ReviewStage.Alpha ||
-								(r.reviewRound === (edRecord.alphaReviewRound || 0) &&
+							(r.reviewStage === ReviewStage.Concept ||
+								(r.reviewRound ===
+									(edRecord[
+										r.reviewStage === ReviewStage.Final ? 'finalReviewRound' : 'alphaReviewRound'
+									] || 0) &&
 									r.reviewStatus === 'submitted'))
 					) || null;
 			}
@@ -1336,6 +1361,7 @@
 				</form>
 			{:else}
 				<div id="draft" class="scroll-mt-24">
+					{#if editionRecord?.finalReviewRound}<FinalReviewProgress editionId={edition.id} />{/if}
 					{#if editionRecord?.alphaReviewRound}<div class="mb-6">
 							<AlphaReviewProgress
 								editionId={edition.id}
@@ -1580,7 +1606,7 @@
 																</div>
 															</div>
 														</div>
-													{:else if activeFormTab === 'peer-review' && ![EditionStatus.ConceptAccepted, EditionStatus.AlphaRevisions].includes(edition.status)}
+													{:else if activeFormTab === 'peer-review' && ![EditionStatus.ConceptAccepted, EditionStatus.AlphaRevisions, EditionStatus.AlphaAccepted, EditionStatus.FinalRevisions, EditionStatus.FinalAccepted].includes(edition.status)}
 														<div class="space-y-4">
 															<label class="flex cursor-pointer items-start gap-3">
 																<input
@@ -1634,6 +1660,22 @@
 																	toast.success('Edition submitted for Alpha Review');
 																	void loadData();
 																}}
+															/>
+														</div>
+													{/if}
+													{#if editionRecord && [EditionStatus.AlphaAccepted, EditionStatus.FinalRevisions, EditionStatus.FinalAccepted].includes(edition.status)}
+														<div hidden={activeFormTab !== 'peer-review'}>
+															<FinalRequestForm
+																edition={editionRecord}
+																publication={edition.status === EditionStatus.FinalAccepted}
+																disabled={editionAssetsBusy || coverBusy}
+																canRequest={isAuthor ||
+																	isAdmin ||
+																	collectionRole === CollectionRole.Owner}
+																beforeSubmit={flushEditionForAlpha}
+																onbusychange={(busy) => (isSubmitting = busy)}
+																onstatuschange={(state) => (alphaContextSaveStatus = state)}
+																onsubmitted={() => void loadData()}
 															/>
 														</div>
 													{/if}
@@ -1693,7 +1735,7 @@
 
 		<!-- Review Form (for assigned reviewers) -->
 		{#if viewMode === 'review-form' && myAssignment && edition}
-			{#if currentStage === ReviewStage.Alpha && editionRecord}
+			{#if (currentStage === ReviewStage.Alpha || currentStage === ReviewStage.Final) && editionRecord}
 				<div
 					class={expandedReview
 						? 'mx-auto max-w-4xl'
@@ -1709,7 +1751,7 @@
 						<div class="rounded-box border border-base-300 p-4">
 							<h2 class="font-semibold">{edition.title}</h2>
 							<p class="mt-2 text-sm text-base-content/70">
-								This edition is read-only during Alpha Review. Use the review form to record your
+								This edition is read-only during review. Use the review form to record your
 								feedback.
 							</p>
 							<ul class="mt-2 text-sm">
@@ -1729,16 +1771,27 @@
 							>
 						</div>
 						<div class={expandedReview ? '' : 'lg:max-h-[75dvh] lg:overflow-y-auto lg:pr-2'}>
-							<AlphaReviewForm
-								editionId={edition.id}
-								reviewerId={authStore.appUserId || ''}
-								round={editionRecord.alphaReviewRound || 0}
-								context={editionRecord.alphaRequest}
-								onsubmitted={() => {
-									toast.success('Alpha Review submitted');
-									void goto(resolve('/reviews'));
-								}}
-							/>
+							{#if currentStage === ReviewStage.Final}<FinalReviewForm
+									editionId={edition.id}
+									reviewerId={authStore.appUserId || ''}
+									round={editionRecord.finalReviewRound || 0}
+									context={editionRecord.finalRequest}
+									onsubmitted={() => {
+										toast.success('Final Review submitted');
+										void goto(resolve('/reviews'));
+									}}
+								/>{:else}
+								<AlphaReviewForm
+									editionId={edition.id}
+									reviewerId={authStore.appUserId || ''}
+									round={editionRecord.alphaReviewRound || 0}
+									context={editionRecord.alphaRequest}
+									onsubmitted={() => {
+										toast.success('Alpha Review submitted');
+										void goto(resolve('/reviews'));
+									}}
+								/>
+							{/if}
 						</div>
 					</section>
 				</div>
@@ -1827,7 +1880,24 @@
 						</span>
 					</div>
 				{/if}
-				{#if edition.status === EditionStatus.AlphaReview && editionRecord}
+				{#if [EditionStatus.FinalReview, EditionStatus.PublicationRequested, EditionStatus.Published].includes(edition.status) && editionRecord}
+					<p class="rounded-box border border-info/30 bg-info/10 p-4 text-base-content">
+						{STATUS_LABELS[edition.status]}. Edition editing is locked.
+					</p>
+					<VoyagerPreview
+						edition={editionRecord}
+						{collectionPubNum}
+						{editionPubNum}
+						title={edition.title}
+					/>
+					<FinalReviewProgress editionId={edition.id} />
+					{#if edition.status !== EditionStatus.Published && (isAdmin || authStore.globalRole === GlobalRole.EditorialBoard)}<FinalEditorialPanel
+							editionId={edition.id}
+							status={edition.status}
+							round={editionRecord.finalReviewRound || 0}
+							onchanged={() => void loadData()}
+						/>{/if}
+				{:else if edition.status === EditionStatus.AlphaReview && editionRecord}
 					<div class="rounded-box border border-info/30 bg-info/10 p-4 text-base-content">
 						Submitted for Alpha Review. You can view the edition, but editing is locked until the
 						editors release their decision.
@@ -1852,7 +1922,7 @@
 					</details>
 				{:else if editionRecord}<ProposalSummary record={editionRecord} />{/if}
 
-				{#if ![EditionStatus.ConceptSubmitted, EditionStatus.EditorialReview, EditionStatus.AlphaReview].includes(edition.status)}
+				{#if ![EditionStatus.ConceptSubmitted, EditionStatus.EditorialReview, EditionStatus.AlphaReview, EditionStatus.FinalReview, EditionStatus.PublicationRequested, EditionStatus.Published].includes(edition.status)}
 					<div id="alpha" class="scroll-mt-24 rounded-box border border-base-300 bg-base-100 p-6">
 						<h2 class="mb-2 text-lg font-semibold">Alpha</h2>
 						<p class="text-base-content/70">Review and revise the edition before final review.</p>
@@ -1978,7 +2048,12 @@
 							editionId={edition.id}
 							{credits}
 							oncreditssaved={saveCollaboratorCredits}
-							isReadOnly={edition.status === EditionStatus.AlphaReview ||
+							isReadOnly={[
+								EditionStatus.AlphaReview,
+								EditionStatus.FinalReview,
+								EditionStatus.PublicationRequested,
+								EditionStatus.Published
+							].includes(edition.status) ||
 								(!isAdmin && !canManageCollaborators) ||
 								isSaving ||
 								isSubmitting}

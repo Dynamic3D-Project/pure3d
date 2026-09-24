@@ -153,7 +153,8 @@ onRecordEnrich((e) => {
 	if (!Object.values(access).some(Boolean))
 		e.record.hide(
 			...require(__hooks + '/proposal-service.cjs').proposalFields,
-			...require(__hooks + '/alpha-review-service.cjs').editionFields
+			...require(__hooks + '/alpha-review-service.cjs').editionFields,
+			...require(__hooks + '/publication-service.cjs').fields
 		);
 	return e.next();
 }, 'editions');
@@ -267,6 +268,28 @@ routerAdd(
 
 onRecordsListRequest((e) => require(__hooks + '/alpha-review-service.cjs').protectQuery(e));
 onRecordViewRequest((e) => require(__hooks + '/alpha-review-service.cjs').protectQuery(e));
+
+routerAdd(
+	'GET',
+	'/api/pure3d/editions/{editionId}/final-progress',
+	(e) => require(__hooks + '/publication-service.cjs').progress(e),
+	$apis.requireAuth()
+);
+routerAdd('GET', '/api/pure3d/editions/{editionId}/public-reviews', (e) =>
+	require(__hooks + '/publication-service.cjs').progress(e, true)
+);
+routerAdd(
+	'POST',
+	'/api/pure3d/editions/{editionId}/final-decision',
+	(e) => require(__hooks + '/publication-service.cjs').decision(e),
+	$apis.requireAuth()
+);
+routerAdd(
+	'POST',
+	'/api/pure3d/editions/{editionId}/final-invitations',
+	(e) => require(__hooks + '/publication-service.cjs').reinvite(e),
+	$apis.requireAuth()
+);
 onRecordDelete(
 	(e) => require(__hooks + '/activity-service.cjs').model(e),
 	'users',

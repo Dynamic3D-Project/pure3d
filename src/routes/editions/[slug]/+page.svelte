@@ -29,6 +29,7 @@
 	import { rewriteSceneJson } from '$lib/utils/svx-uri-rewriter';
 	import { localizedValue } from '$lib/components/voyager/edition-content';
 	import ReviewFeedbackList from '$lib/components/workflow/ReviewFeedbackList.svelte';
+	import FinalReviewProgress from '$lib/components/workflow/FinalReviewProgress.svelte';
 	import ImagineModal from '$lib/components/ui/ImagineModal.svelte';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
 	import { authStore } from '$lib/database/stores/auth.svelte';
@@ -1549,6 +1550,10 @@
 												</section>
 											</div>
 										{:else if detailsTab === 'peer-review'}
+											{#if edition.isPublished}<FinalReviewProgress
+													editionId={edition.id}
+													publicView
+												/>{/if}
 											{#if edition.hasPeerReview}
 												<div class="not-prose space-y-6">
 													<!-- Peer Reviewed Badge -->

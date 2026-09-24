@@ -91,12 +91,12 @@
 		<button
 			type="button"
 			class="btn btn-sm btn-primary"
-			disabled={busy || !total || reviews.length !== total}
+			disabled={busy || total < 2 || reviews.length !== total}
 			onclick={() => decide('accept')}>Release feedback & accept Alpha</button
 		><button
 			type="button"
 			class="btn btn-outline btn-sm"
-			disabled={busy || !total || reviews.length !== total}
+			disabled={busy || total < 2 || reviews.length !== total}
 			onclick={() => decide('revisions')}>Release feedback & request revisions</button
 		>
 	</div>

@@ -40,6 +40,8 @@ const editionStatusValues = [
 	'alpha_rejected',
 	'final_review',
 	'final_revisions',
+	'final_accepted',
+	'publication_requested',
 	'published'
 ];
 const notificationTypes = [
@@ -453,8 +455,8 @@ async function main() {
 			},
 			...schema
 				.find((collection) => collection.name === 'editions')!
-				.fields.filter(
-					(field) => field.name.startsWith('proposal') || field.name.startsWith('alpha')
+				.fields.filter((field) =>
+					/^(proposal|alpha|final|publication|workflowDecision)/.test(field.name)
 				)
 		]
 	});
@@ -599,7 +601,9 @@ async function main() {
 			},
 			...schema
 				.find((collection) => collection.name === 'reviewAssignments')!
-				.fields.filter((field) => ['reviewRound', 'editionTitle'].includes(field.name))
+				.fields.filter((field) =>
+					['reviewRound', 'editionTitle', 'dueAt', 'replacementReason'].includes(field.name)
+				)
 		]
 	});
 

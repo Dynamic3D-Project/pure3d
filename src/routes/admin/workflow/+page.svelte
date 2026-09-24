@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { base } from '$app/paths';
+	import { base, resolve } from '$app/paths';
 	import { pb } from '$lib/database/client';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { EditionStatus, ReviewStage, STATUS_LABELS } from '$lib/types/roles';
@@ -14,6 +14,7 @@
 	} from '$lib/utils/review-helpers';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
 	import AlphaEditorialPanel from '$lib/components/workflow/AlphaEditorialPanel.svelte';
+	import FinalEditorialPanel from '$lib/components/workflow/FinalEditorialPanel.svelte';
 	import WorkflowTimeline from '$lib/components/workflow/WorkflowTimeline.svelte';
 	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
 	import UserSearchSelect from '$lib/components/ui/UserSearchSelect.svelte';
@@ -32,6 +33,7 @@
 		peerReviewStamp: boolean;
 		publishedAt: string | null;
 		alphaReviewRound: number;
+		finalReviewRound: number;
 	}
 
 	interface AppUser {
@@ -84,6 +86,8 @@
 
 	// Reviewer assignment form state
 	let assignUserId = $state('');
+	let assignDueAt = $state('');
+	let replacementReason = $state('');
 
 	// Publish modal state
 	let publishModalEdition = $state<WfEdition | null>(null);
@@ -108,15 +112,13 @@
 			(e) =>
 				e.status === EditionStatus.AlphaAccepted ||
 				e.status === EditionStatus.FinalReview ||
-				e.status === EditionStatus.FinalRevisions
+				e.status === EditionStatus.FinalRevisions ||
+				e.status === EditionStatus.FinalAccepted
 		)
 	);
 	let publishEditions = $derived(
 		filteredBaseEditions.filter(
-			(e) =>
-				e.status === EditionStatus.Published ||
-				(e.status === EditionStatus.FinalReview &&
-					(!e.peerReviewRequested || hasCompletedFinalReview(e.id)))
+			(e) => e.status === EditionStatus.Published || e.status === EditionStatus.PublicationRequested
 		)
 	);
 	let allNonDraft = $derived(filteredBaseEditions.filter((e) => e.status !== EditionStatus.Draft));
@@ -154,23 +156,6 @@
 		);
 	}
 
-	function hasCompletedFinalReview(editionId: string): boolean {
-		const assignments = editionAssignments(editionId, ReviewStage.Final).filter(
-			(assignment) => assignment.status !== ReviewAssignmentStatus.Declined
-		);
-		const reviews = editionReviews(editionId, ReviewStage.Final);
-		return (
-			assignments.length > 0 &&
-			assignments.every((assignment) =>
-				reviews.some(
-					(review) =>
-						review.reviewerId === assignment.reviewerId &&
-						review.decision === ReviewDecision.Approve
-				)
-			)
-		);
-	}
-
 	onMount(loadData);
 
 	async function loadData() {
@@ -187,6 +172,7 @@
 
 			editions = edResult.items.map((r) => ({
 				alphaReviewRound: r.alphaReviewRound || 0,
+				finalReviewRound: r.finalReviewRound || 0,
 				id: r.id,
 				title: r.dcTitle || r.title,
 				status: (r.status as EditionStatus) || EditionStatus.Draft,
@@ -333,7 +319,19 @@
 		}
 		actionLoading = true;
 		try {
-			await assignReviewer(edition.id, assignUserId, stage, authStore.appUserId || '');
+			if (stage >= 2 && !assignDueAt) throw new Error('Choose a review deadline.');
+			if (stage === 3 && !replacementReason.trim())
+				throw new Error(
+					'Explain why a new reviewer is being invited instead of reusing the Alpha reviewers.'
+				);
+			await assignReviewer(
+				edition.id,
+				assignUserId,
+				stage,
+				authStore.appUserId || '',
+				assignDueAt ? new Date(assignDueAt + 'T23:59:59').toISOString() : '',
+				replacementReason
+			);
 
 			allAssignments = [
 				...allAssignments,
@@ -344,7 +342,12 @@
 					reviewStage: stage,
 					assignedBy: authStore.appUserId || '',
 					status: ReviewAssignmentStatus.Pending,
-					reviewRound: stage === ReviewStage.Alpha ? edition.alphaReviewRound : 0,
+					reviewRound:
+						stage === ReviewStage.Alpha
+							? edition.alphaReviewRound
+							: stage === ReviewStage.Final
+								? edition.finalReviewRound
+								: 0,
 					created: new Date().toISOString(),
 					updated: new Date().toISOString()
 				}
@@ -368,44 +371,18 @@
 				toast.error('Complete the final review stage before publishing');
 				return;
 			}
-			if (current.peerReviewRequested && !hasCompletedFinalReview(edition.id)) {
-				toast.error(
-					'All assigned final reviewers must approve before publishing with a review stamp'
-				);
-				return;
-			}
 			const issue = validateCredits(readCredits(current.credits), true);
 			if (issue) {
 				toast.error(issue);
 				return;
 			}
-			const updateData: Record<string, unknown> = {
-				status: EditionStatus.Published,
-				isPublished: true,
-				publishedAt: new Date().toISOString(),
-				publishedBy: authStore.appUserId
-			};
-
-			if (current.peerReviewRequested) {
-				// Compile peer review content from all reviews
-				// Alpha feedback is anonymous and recommendations are confidential, never publication copy.
-				const reviews = allReviews.filter(
-					(r) =>
-						r.editionId === edition.id &&
-						r.reviewStage !== ReviewStage.Alpha &&
-						r.reviewStatus !== 'draft'
-				);
-				const peerReviewContent = reviews
-					.map(
-						(r) =>
-							`Stage ${r.reviewStage} - ${userLookup.get(r.reviewerId) || 'Reviewer'}: ${r.decision}${r.comment ? '\n' + r.comment : ''}`
-					)
-					.join('\n\n');
-
-				updateData.peerReviewContent = peerReviewContent;
-			}
-
-			const saved = await pb.collection('editions').update(edition.id, updateData);
+			const comment = prompt('Editorial publication explanation (maximum 500 words):');
+			if (!comment?.trim()) return;
+			await pb.send(`/api/pure3d/editions/${edition.id}/final-decision`, {
+				method: 'POST',
+				body: { decision: 'publish', comment }
+			});
+			const saved = await pb.collection('editions').getOne(edition.id);
 
 			edition.status = EditionStatus.Published;
 			edition.peerReviewRequested = saved.peerReviewRequested;
@@ -417,42 +394,6 @@
 		} catch (error) {
 			console.error('Error publishing:', error);
 			toast.error(error instanceof Error ? error.message : 'Failed to publish edition');
-		} finally {
-			actionLoading = false;
-		}
-	}
-
-	async function unpublishEdition(edition: WfEdition) {
-		actionLoading = true;
-		try {
-			await pb.collection('editions').update(edition.id, {
-				status: EditionStatus.Draft,
-				isPublished: false
-			});
-
-			edition.status = EditionStatus.Draft;
-			editions = [...editions];
-			toast.success('Edition unpublished');
-		} catch (error) {
-			console.error('Error unpublishing:', error);
-			toast.error('Failed to unpublish');
-		} finally {
-			actionLoading = false;
-		}
-	}
-
-	// --- Move editions forward manually (e.g. ConceptAccepted -> AlphaReview) ---
-	async function advanceStatus(edition: WfEdition, targetStatus: EditionStatus) {
-		actionLoading = true;
-		try {
-			await updateEditionStatus(edition.id, targetStatus, authStore.appUserId || '');
-
-			edition.status = targetStatus;
-			editions = [...editions];
-			toast.success(`Status changed to ${STATUS_LABELS[targetStatus]}`);
-		} catch (error) {
-			console.error('Error advancing status:', error);
-			toast.error('Failed to advance status');
 		} finally {
 			actionLoading = false;
 		}
@@ -733,13 +674,11 @@
 								</div>
 								<div class="flex gap-2">
 									{#if edition.status === EditionStatus.Published}
-										<button
-											class="btn btn-outline btn-sm btn-error"
-											onclick={() => unpublishEdition(edition)}
-											disabled={actionLoading}
+										<a
+											class="btn btn-outline btn-sm"
+											href={resolve('/editions/[slug]', { slug: edition.id })}
+											>View published edition</a
 										>
-											Unpublish
-										</button>
 									{:else}
 										<button
 											class="btn btn-sm btn-primary"
@@ -802,7 +741,7 @@
 				Publish <strong>{publishModalEdition.title}</strong>?
 			</p>
 
-			{#if publishModalEdition.peerReviewRequested && hasCompletedFinalReview(publishModalEdition.id)}
+			{#if publishModalEdition.peerReviewRequested}
 				<div class="mt-4 alert alert-info">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -820,14 +759,10 @@
 					<div>
 						<p class="font-semibold">Peer review stamp will be applied</p>
 						<p class="text-sm">
-							All review comments will be compiled into the peer review content and the edition will
-							be marked as peer reviewed.
+							Released Final Reviews will become public using each reviewer's chosen attribution.
+							Alpha feedback stays private.
 						</p>
 					</div>
-				</div>
-			{:else if publishModalEdition.peerReviewRequested}
-				<div class="mt-4 alert alert-warning">
-					<p>Complete all final review approvals before publishing with a peer review stamp.</p>
 				</div>
 			{:else}
 				<div class="mt-4 alert">
@@ -847,9 +782,7 @@
 					class="btn btn-primary"
 					onclick={() => publishModalEdition && publishEdition(publishModalEdition)}
 					disabled={actionLoading ||
-						!canTransitionStatus(publishModalEdition.status, EditionStatus.Published) ||
-						(publishModalEdition.peerReviewRequested &&
-							!hasCompletedFinalReview(publishModalEdition.id))}
+						!canTransitionStatus(publishModalEdition.status, EditionStatus.Published)}
 				>
 					{#if actionLoading}
 						<span class="loading loading-sm loading-spinner"></span>
@@ -949,7 +882,7 @@
 				</div>
 
 				<!-- Reviews submitted -->
-				{#if displayReviews.length > 0 && stage !== ReviewStage.Alpha}
+				{#if displayReviews.length > 0 && stage === ReviewStage.Concept}
 					<div>
 						<h4 class="mb-2 text-sm font-semibold text-base-content/60 uppercase">Reviews</h4>
 						<div class="space-y-2">
@@ -982,7 +915,7 @@
 				{/if}
 
 				<!-- Verdict aggregate -->
-				{#if assignments.length > 0 && stage !== ReviewStage.Alpha}
+				{#if assignments.length > 0 && stage === ReviewStage.Concept}
 					<div class="flex items-center gap-3">
 						<span class="text-sm font-semibold">Aggregate Verdict:</span>
 						<span class="badge {getVerdictBadge(verdict)}">{getVerdictLabel(verdict)}</span>
@@ -1002,6 +935,12 @@
 				{/if}
 
 				<!-- Assign reviewer form -->
+				{#if edition.status === EditionStatus.FinalReview}<FinalEditorialPanel
+						editionId={edition.id}
+						status={edition.status}
+						round={edition.finalReviewRound}
+						onchanged={() => void loadData()}
+					/>{/if}
 				{#if stage === ReviewStage.Alpha && edition.status === EditionStatus.AlphaReview}{#key assignments.length}<AlphaEditorialPanel
 							editionId={edition.id}
 							round={edition.alphaReviewRound}
@@ -1020,6 +959,21 @@
 									placeholder="Search user..."
 								/>
 							</div>
+							{#if !isSubmission}<label class="text-sm" for="assignment-deadline"
+									>Deadline<input
+										id="assignment-deadline"
+										class="input-bordered input input-sm block"
+										type="date"
+										bind:value={assignDueAt}
+									/></label
+								>{/if}
+							{#if stage === ReviewStage.Final}<label class="text-sm" for="replacement-reason"
+									>Reason for reviewer replacement<input
+										id="replacement-reason"
+										class="input-bordered input input-sm block"
+										bind:value={replacementReason}
+									/></label
+								>{/if}
 							<button
 								class="btn btn-sm btn-primary"
 								onclick={() =>
@@ -1043,20 +997,20 @@
 						<p class="mb-2 text-sm">
 							The author prepares the edition and requests Alpha Review from the Review tab.
 						</p>
-						<a class="btn btn-outline btn-sm" href="{base}/editions/{edition.id}/workflow"
+						<a
+							class="btn btn-outline btn-sm"
+							href={resolve('/editions/[slug]/workflow', { slug: edition.id })}
 							>Open edition workspace</a
 						>
 					</div>
 				{/if}
-				{#if edition.status === EditionStatus.AlphaAccepted}
+				{#if [EditionStatus.AlphaAccepted, EditionStatus.FinalRevisions, EditionStatus.FinalAccepted].includes(edition.status)}
 					<div class="border-t border-base-300 pt-3">
-						<button
+						<a
 							class="btn btn-outline btn-sm"
-							onclick={() => advanceStatus(edition, EditionStatus.FinalReview)}
-							disabled={actionLoading}
+							href={resolve('/editions/[slug]/workflow', { slug: edition.id })}
+							>Open author submission workspace</a
 						>
-							Start Final Review
-						</button>
 					</div>
 				{/if}
 			</div>

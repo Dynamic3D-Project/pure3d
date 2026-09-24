@@ -16,6 +16,7 @@ for (const file of [
 	'orcid-service.cjs',
 	'proposal-service.cjs',
 	'alpha-review-service.cjs',
+	'publication-service.cjs',
 	'orcid-validation.cjs',
 	'review-service.cjs',
 	'activity-service.cjs',
@@ -97,15 +98,6 @@ for (const desired of schema) {
 }
 await root.send('/_test/seed-ui', { method: 'POST' });
 await setupCms(root);
-for (const [collection, id] of [
-	['collections', 'uicollection001'],
-	['editions', 'uiedition000001']
-]) {
-	const record = await root.collection(collection).getOne(id);
-	record.credits[0].userId = 'author000000000';
-	record.credits[0].provenance = 'oauth';
-	await root.collection(collection).update(id, { credits: record.credits });
-}
 await root.collection('editionUsers').create({
 	editionId: 'uiedition000002',
 	userId: 'author000000000',

@@ -89,6 +89,7 @@ beforeAll(async () => {
 		'orcid-validation.cjs',
 		'proposal-service.cjs',
 		'alpha-review-service.cjs',
+		'publication-service.cjs',
 		'review-service.cjs',
 		'activity-service.cjs',
 		'orcid-readiness.cjs'
@@ -392,7 +393,7 @@ integration(
 			);
 			await expect(
 				root.collection('editions').update(published.id, { dcInstitution: ['Updated institution'] })
-			).resolves.toMatchObject({ dcInstitution: ['Updated institution'] });
+			).rejects.toBeDefined(); // Published editions are immutable, including metadata.
 			expect(
 				await root
 					.collection('editionUsers')
@@ -910,6 +911,21 @@ integration(
 			await expect(
 				author.send(endpoint + '/alpha-decision', { method: 'POST', body: { decision: 'accept' } })
 			).rejects.toBeDefined();
+			await expect(
+				admin.send(endpoint + '/alpha-decision', {
+					method: 'POST',
+					body: { decision: 'revisions' }
+				})
+			).rejects.toBeDefined();
+			await admin
+				.collection('reviewAssignments')
+				.update(secondAssignment.id, { status: 'pending' });
+			await second.collection('editionReviews').create({
+				editionId: edition.id,
+				reviewerId: secondUser.id,
+				reviewStage: 2,
+				...alphaAnswersPayload()
+			});
 			await admin.send(endpoint + '/alpha-decision', {
 				method: 'POST',
 				body: { decision: 'revisions' }
@@ -922,7 +938,8 @@ integration(
 						reviewer: 'Reviewer A',
 						valueRating: 4,
 						generalComments: 'Please refine the introduction.'
-					}
+					},
+					{ reviewer: 'Reviewer B' }
 				]
 			});
 			expect(JSON.stringify(progress)).not.toContain('PRIVATE');
@@ -966,20 +983,258 @@ integration(
 				reviewStage: 2,
 				...alphaAnswersPayload()
 			});
+			await admin.collection('reviewAssignments').create({
+				editionId: edition.id,
+				reviewerId: secondUser.id,
+				reviewStage: 2,
+				status: 'pending'
+			});
+			await second.collection('editionReviews').create({
+				editionId: edition.id,
+				reviewerId: secondUser.id,
+				reviewStage: 2,
+				...alphaAnswersPayload()
+			});
 			await admin.send(endpoint + '/alpha-decision', {
 				method: 'POST',
 				body: { decision: 'accept' }
 			});
-			await admin.collection('editions').update(edition.id, { status: 'final_review' });
-			await admin.collection('editions').update(edition.id, { status: 'published' });
-			const visitor = new PocketBase(origin);
-			const publicRecord = await visitor.collection('editions').getOne(edition.id);
-			expect(publicRecord.proposalPurpose).toBeUndefined();
-			expect(publicRecord.proposalSnapshot).toBeUndefined();
-			expect(publicRecord.alphaRequest).toBeUndefined();
+			expect((await author.collection('editions').getOne(edition.id)).status).toBe(
+				'alpha_accepted'
+			);
 		} finally {
 			await root.collection('editions').delete(edition.id);
 			await root.collection('users').delete(secondUser.id);
+		}
+	}
+);
+
+integration(
+	'complete publication workflow enforces two reviews, consent, locks and anonymous public feedback',
+	async () => {
+		const edition = await author
+			.collection('editions')
+			.create({ title: 'Complete workflow', credits: [credit] });
+		const user = await root.collection('users').create({
+			email: 'publication-second@example.test',
+			password: 'local-test-password-only',
+			passwordConfirm: 'local-test-password-only',
+			role: 'user',
+			nickname: 'Named reviewer'
+		});
+		const second = new PocketBase(origin);
+		await second
+			.collection('users')
+			.authWithPassword('publication-second@example.test', 'local-test-password-only');
+		const endpoint = `/api/pure3d/editions/${edition.id}`;
+		try {
+			await author
+				.collection('editions')
+				.update(edition.id, { ...proposalPayload(), status: 'concept_submitted' });
+			await admin.collection('editions').update(edition.id, { status: 'editorial_review' });
+			await admin.collection('editions').update(edition.id, { status: 'concept_accepted' });
+			await requestAlpha(edition.id);
+			for (const reviewer of [other, second]) {
+				await admin.collection('reviewAssignments').create({
+					editionId: edition.id,
+					reviewerId: reviewer.authStore.record!.id,
+					reviewStage: 2,
+					status: 'pending'
+				});
+				await reviewer.collection('editionReviews').create({
+					editionId: edition.id,
+					reviewerId: reviewer.authStore.record!.id,
+					reviewStage: 2,
+					...alphaAnswersPayload()
+				});
+				if (reviewer === other)
+					await expect(
+						admin.send(endpoint + '/alpha-decision', {
+							method: 'POST',
+							body: { decision: 'accept' }
+						})
+					).rejects.toBeDefined();
+			}
+			await admin.send(endpoint + '/alpha-decision', {
+				method: 'POST',
+				body: { decision: 'accept' }
+			});
+			const finalRequest = {
+				changes: 'Implemented the Alpha suggestions.',
+				notImplemented: 'Retained original scale for accuracy.',
+				comment: 'Ready.'
+			};
+			await expect(
+				author.collection('editions').update(edition.id, { status: 'final_review', finalRequest })
+			).rejects.toBeDefined();
+			await author.collection('editions').update(edition.id, {
+				dcAbstract: '<p>Research description</p>',
+				dcLanguage: 'English',
+				dcRightsLicense: 'CC BY 4.0',
+				peerReviewRequested: true,
+				finalRequest
+			});
+			const submittedEdition = await author
+				.collection('editions')
+				.update(edition.id, { status: 'final_review' });
+			expect(submittedEdition.finalReviewRound).toBe(1);
+			await expect(
+				author.collection('editions').update(edition.id, { title: 'Locked' })
+			).rejects.toBeDefined();
+			await expect(
+				admin.collection('editions').update(edition.id, { status: 'published' })
+			).rejects.toBeDefined();
+			await admin.send(endpoint + '/final-invitations', {
+				method: 'POST',
+				body: { dueAt: '2099-01-01T00:00:00Z' }
+			});
+			const invitations = await admin
+				.collection('reviewAssignments')
+				.getFullList({ filter: `editionId = "${edition.id}" && reviewStage = 3` });
+			expect(invitations).toHaveLength(2);
+			for (const reviewer of [other, second]) {
+				const draft = await reviewer.collection('editionReviews').create({
+					editionId: edition.id,
+					reviewerId: reviewer.authStore.record!.id,
+					reviewStage: 3,
+					reviewStatus: 'draft',
+					finalAnswers: {}
+				});
+				expect(
+					await author.collection('editionReviews').getFullList({ filter: `id = "${draft.id}"` })
+				).toHaveLength(0);
+				await expect(
+					reviewer.collection('editionReviews').update(draft.id, { reviewStatus: 'submitted' })
+				).rejects.toBeDefined();
+				await reviewer.collection('editionReviews').update(draft.id, {
+					reviewStatus: 'submitted',
+					finalAnswers: {
+						valueRating: 4,
+						valueExplanation: 'Solid evidence.',
+						experienceComments: 'Clear navigation.',
+						changesRating: 5,
+						changesExplanation: 'Feedback addressed.',
+						recommendation: reviewer === other ? 'minor_changes' : 'without_changes',
+						comments: 'Public review text.',
+						attribution: reviewer === other ? 'anonymous' : 'named'
+					}
+				});
+				await expect(
+					reviewer.collection('editionReviews').update(draft.id, { finalAnswers: {} })
+				).rejects.toBeDefined();
+				await expect(reviewer.collection('editions').getOne(edition.id)).rejects.toBeDefined();
+				if (reviewer === other)
+					await expect(
+						admin.send(endpoint + '/final-decision', {
+							method: 'POST',
+							body: { decision: 'accept', comment: 'Ready.' }
+						})
+					).rejects.toBeDefined();
+			}
+			expect(await author.send(endpoint + '/final-progress')).toMatchObject({
+				submitted: 2,
+				feedback: []
+			});
+			await expect(
+				author.send(endpoint + '/final-decision', {
+					method: 'POST',
+					body: { decision: 'accept', comment: 'Bypass.' }
+				})
+			).rejects.toBeDefined();
+			await admin.send(endpoint + '/final-decision', {
+				method: 'POST',
+				body: { decision: 'revisions', comment: 'Another review round is required.' }
+			});
+			await author
+				.collection('editions')
+				.update(edition.id, {
+					status: 'final_review',
+					finalRequest: { ...finalRequest, comment: 'Final Review revisions completed.' }
+				});
+			await expect(other.collection('editions').getOne(edition.id)).rejects.toBeDefined();
+			await admin.send(endpoint + '/final-invitations', {
+				method: 'POST',
+				body: { dueAt: '2099-01-01T00:00:00Z' }
+			});
+			for (const reviewer of [other, second]) {
+				const review = await reviewer
+					.collection('editionReviews')
+					.create({
+						editionId: edition.id,
+						reviewerId: reviewer.authStore.record!.id,
+						reviewStage: 3,
+						reviewStatus: 'submitted',
+						finalAnswers: {
+							valueRating: 5,
+							valueExplanation: 'Revisions checked.',
+							experienceComments: 'Clear navigation.',
+							changesRating: 5,
+							changesExplanation: 'All addressed.',
+							recommendation: 'without_changes',
+							comments: '',
+							attribution: reviewer === other ? 'anonymous' : 'named'
+						}
+					});
+				expect(review.reviewRound).toBe(2);
+			}
+			await admin.send(endpoint + '/final-decision', {
+				method: 'POST',
+				body: { decision: 'accept', comment: 'Minor corrections may be made before publication.' }
+			});
+			expect((await author.send(endpoint + '/final-progress')).feedback).toHaveLength(4);
+			const visitor = new PocketBase(origin);
+			await expect(visitor.send(endpoint + '/public-reviews')).rejects.toBeDefined();
+			await author
+				.collection('editions')
+				.update(edition.id, { dcAbstract: '<p>Final corrected description</p>' });
+			await expect(
+				author.collection('editions').update(edition.id, {
+					status: 'publication_requested',
+					publicationRequest: { comment: '', rightsConfirmed: false }
+				})
+			).rejects.toBeDefined();
+			await author.collection('editions').update(edition.id, {
+				status: 'publication_requested',
+				publicationRequest: { comment: 'Corrections completed.', rightsConfirmed: true }
+			});
+			await expect(
+				author.collection('editions').update(edition.id, { title: 'Cannot change submission' })
+			).rejects.toBeDefined();
+			await admin.send(endpoint + '/final-decision', {
+				method: 'POST',
+				body: { decision: 'return', comment: 'Please double-check captions.' }
+			});
+			await author
+				.collection('editions')
+				.update(edition.id, { dcAbstract: '<p>Captions checked.</p>' });
+			await author.collection('editions').update(edition.id, { status: 'publication_requested' });
+			await admin.send(endpoint + '/final-decision', {
+				method: 'POST',
+				body: { decision: 'publish', comment: 'Approved for publication.' }
+			});
+			const publicEdition = await visitor.collection('editions').getOne(edition.id);
+			expect(publicEdition.proposalPurpose).toBeUndefined();
+			expect(publicEdition.proposalSnapshot).toBeUndefined();
+			expect(publicEdition.alphaRequest).toBeUndefined();
+			expect(publicEdition.isPublished).toBe(true);
+			expect(publicEdition.peerReviewStamp).toBe(true);
+			expect(publicEdition.finalRequest).toBeUndefined();
+			expect(publicEdition.publicationRequest).toBeUndefined();
+			const published = await visitor.send(endpoint + '/public-reviews');
+			expect(published.feedback).toHaveLength(4);
+			expect(JSON.stringify(published)).not.toContain(other.authStore.record!.id);
+			expect(
+				published.feedback.some((r: { reviewer: string }) => r.reviewer === 'Named reviewer')
+			).toBe(true);
+			await expect(
+				author.collection('editions').update(edition.id, { dcAbstract: 'Published edit' })
+			).rejects.toBeDefined();
+			await expect(
+				admin.collection('editions').update(edition.id, { status: 'draft' })
+			).rejects.toBeDefined();
+		} finally {
+			await root.collection('editions').delete(edition.id);
+			await root.collection('users').delete(user.id);
 		}
 	}
 );
@@ -1008,91 +1263,38 @@ integration(
 	}
 );
 
-integration('publication stamps require opt-in and completed matching final reviews', async () => {
-	// Match the peerReviewKind text field installed by create-pocketbase-collections.ts.
-	const definition = await root.collections.getOne('editions');
-	if (!definition.fields.some((field) => field.name === 'peerReviewKind')) {
-		await root.collections.update(definition.id, {
-			fields: [...definition.fields, { name: 'peerReviewKind', type: 'text' }]
-		});
-	}
-	for (const scenario of [
-		{ requested: false, verdict: 'approve', stamp: false },
-		{ requested: true, verdict: 'approve', stamp: true },
-		{ requested: true, verdict: 'request_revisions', stamp: false },
-		{ requested: true, verdict: '', stamp: false },
-		{ requested: true, verdict: 'approve', unassigned: true, stamp: false },
-		{ requested: true, verdict: 'approve', incomplete: true, stamp: false }
-	]) {
-		const edition = await root.collection('editions').create({
-			title: 'Publication stamp evidence',
-			status: 'alpha_accepted',
-			peerReviewRequested: scenario.requested,
-			credits: [credit]
-		});
-		try {
-			await expect(
-				admin
-					.collection('editions')
-					.update(edition.id, { status: 'published', peerReviewStamp: true })
-			).rejects.toBeDefined();
-			const final = await admin
-				.collection('editions')
-				.update(edition.id, { status: 'final_review' });
-			expect(final).toMatchObject({
-				status: 'final_review',
-				reviewStage: 3,
-				peerReviewStamp: false
+integration(
+	'publication state cannot be forged or reached through the old direct-publish shortcut',
+	async () => {
+		for (const requested of [false, true]) {
+			const edition = await root.collection('editions').create({
+				title: 'Publication guard',
+				status: 'alpha_accepted',
+				peerReviewRequested: requested,
+				credits: [credit]
 			});
-			if (!scenario.unassigned)
-				await admin.collection('reviewAssignments').create({
-					editionId: edition.id,
-					reviewerId: other.authStore.record!.id,
-					reviewStage: 3,
-					status: 'pending'
-				});
-			if (scenario.verdict) {
-				const reviewer = scenario.unassigned ? root : other;
-				await reviewer.collection('editionReviews').create({
-					editionId: edition.id,
-					reviewerId: other.authStore.record!.id,
-					reviewStage: 3,
-					decision: scenario.verdict
-				});
+			try {
+				for (const patch of [
+					{ status: 'published', peerReviewStamp: true },
+					{ isPublished: true },
+					{ peerReviewStamp: true },
+					{ finalFeedbackReleasedAt: new Date().toISOString() }
+				])
+					await expect(
+						admin.collection('editions').update(edition.id, patch)
+					).rejects.toBeDefined();
+				await expect(
+					admin.send(`/api/pure3d/editions/${edition.id}/final-decision`, {
+						method: 'POST',
+						body: { decision: 'publish', comment: 'Bypass' }
+					})
+				).rejects.toBeDefined();
+			} finally {
+				await root.collection('editions').delete(edition.id);
 			}
-			if (scenario.incomplete)
-				await admin.collection('reviewAssignments').create({
-					editionId: edition.id,
-					reviewerId: author.authStore.record!.id,
-					reviewStage: 3,
-					status: 'pending'
-				});
-			const published = await admin.collection('editions').update(edition.id, {
-				status: 'published',
-				peerReviewStamp: !scenario.stamp,
-				peerReviewKind: 'Peer reviewed'
-			});
-			expect(published).toMatchObject({
-				status: 'published',
-				isPublished: true,
-				peerReviewRequested: scenario.requested,
-				peerReviewStamp: scenario.stamp,
-				peerReviewKind: scenario.stamp ? 'Peer reviewed' : 'No peer review'
-			});
-			expect((await root.collection('editions').getOne(edition.id)).peerReviewStamp).toBe(
-				scenario.stamp
-			);
-			await expect(
-				admin.collection('editions').update(edition.id, { status: 'draft' })
-			).resolves.toMatchObject({ peerReviewStamp: false });
-			await expect(
-				admin.collection('editions').update(edition.id, { peerReviewStamp: true })
-			).rejects.toBeDefined();
-		} finally {
-			await root.collection('editions').delete(edition.id);
 		}
 	}
-});
+);
 
 integration(
 	'review access is scoped to the exact assignment, stage and immutable owner',
@@ -1151,13 +1353,13 @@ integration(
 			const secondAssignment = await admin.collection('reviewAssignments').create({
 				editionId: edition.id,
 				reviewerId: secondUser.id,
-				reviewStage: 3,
+				reviewStage: 1,
 				status: 'pending'
 			});
 			await admin.collection('reviewAssignments').create({
 				editionId: differentEdition.id,
 				reviewerId: other.authStore.record!.id,
-				reviewStage: 3,
+				reviewStage: 1,
 				status: 'pending'
 			});
 			expect(
@@ -1176,7 +1378,7 @@ integration(
 				await author
 					.collection('reviewAssignments')
 					.getFullList({ filter: `editionId = '${edition.id}'`, sort: 'created' })
-			).toHaveLength(2);
+			).toHaveLength(0);
 			await expect(
 				other.collection('reviewAssignments').update(assignment.id, { status: 'completed' })
 			).rejects.toBeDefined();
@@ -1204,7 +1406,7 @@ integration(
 					).rejects.toBeDefined();
 			const falseScope = await admin
 				.collection('editionReviews')
-				.create({ ...verdict, reviewStage: 3 });
+				.create({ ...verdict, reviewerId: secondUser.id });
 			await expect(other.collection('editionReviews').getOne(falseScope.id)).rejects.toBeDefined();
 			expect(
 				(await other.collection('editionReviews').getFullList({ sort: '-created' })).map(
@@ -1294,6 +1496,18 @@ integration(
 				reviewStage: 2,
 				...alphaAnswersPayload()
 			});
+			await admin.collection('reviewAssignments').create({
+				editionId: edition.id,
+				reviewerId: other.authStore.record!.id,
+				reviewStage: 2,
+				status: 'pending'
+			});
+			await other.collection('editionReviews').create({
+				editionId: edition.id,
+				reviewerId: other.authStore.record!.id,
+				reviewStage: 2,
+				...alphaAnswersPayload()
+			});
 			await admin.send(`/api/pure3d/editions/${edition.id}/alpha-decision`, {
 				method: 'POST',
 				body: { decision: 'revisions' }
@@ -1329,55 +1543,16 @@ integration(
 			await admin.collection('reviewAssignments').delete(assignment.id);
 			await expect(other.collection('editionReviews').getOne(review.id)).rejects.toBeDefined();
 			await expect(other.collection('editions').getOne(edition.id)).rejects.toBeDefined();
-			await requestAlpha(edition.id);
-			await admin.collection('reviewAssignments').create({
-				editionId: edition.id,
-				reviewerId: secondUser.id,
-				reviewStage: 2,
-				status: 'pending'
-			});
-			await second.collection('editionReviews').create({
-				editionId: edition.id,
-				reviewerId: secondUser.id,
-				reviewStage: 2,
-				...alphaAnswersPayload()
-			});
-			await admin.send(`/api/pure3d/editions/${edition.id}/alpha-decision`, {
-				method: 'POST',
-				body: { decision: 'accept' }
-			});
-			await admin.collection('editions').update(edition.id, { status: 'final_review' });
 			await admin
 				.collection('reviewAssignments')
 				.update(secondAssignment.id, { status: 'declined' });
-			await admin.collection('reviewAssignments').create({
-				editionId: edition.id,
-				reviewerId: other.authStore.record!.id,
-				reviewStage: 3,
-				status: 'pending'
-			});
 			await expect(
-				other
-					.collection('editionReviews')
-					.create({ ...verdict, reviewStage: 3, decision: 'reject' })
+				admin.collection('editions').update(edition.id, { status: 'published' })
 			).rejects.toBeDefined();
 			await expect(
 				other.collection('editionReviews').create({ ...verdict, reviewStage: 3.5 })
 			).rejects.toBeDefined();
-			await expect(
-				other.collection('editionReviews').create({ ...verdict, reviewStage: 3 })
-			).resolves.toBeDefined();
-			await admin.collection('editions').update(edition.id, { status: 'published' });
-			await expect(
-				author
-					.collection('editions')
-					.update(edition.id, { dcInstitution: ['Published institution metadata'] })
-			).resolves.toMatchObject({ dcInstitution: ['Published institution metadata'] });
-			await expect(
-				other
-					.collection('editions')
-					.update(edition.id, { dcInstitution: ['Unauthorized published change'] })
-			).rejects.toBeDefined();
+			// Final drafts, round scoping, release and published locks are exercised in the full workflow test.
 		} finally {
 			await root.collection('editions').delete(edition.id);
 			await root.collection('editions').delete(differentEdition.id);
@@ -1391,11 +1566,13 @@ integration(
 	async () => {
 		await expect(
 			admin.collection('editions').update('legacy000000000', { title: 'Preserved attribution' })
-		).resolves.toBeDefined();
+		).rejects.toBeDefined();
 		await expect(
 			admin.collection('editions').update('legacy000000000', { dcCreator: ['Changed creator'] })
 		).rejects.toBeDefined();
-		await admin.collection('editions').update('legacy000000000', { status: 'draft' });
+		await expect(
+			admin.collection('editions').update('legacy000000000', { status: 'draft' })
+		).rejects.toBeDefined();
 		await expect(
 			admin.collection('editions').update('legacy000000000', { status: 'concept_submitted' })
 		).rejects.toBeDefined();

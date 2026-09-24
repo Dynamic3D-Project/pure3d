@@ -173,9 +173,11 @@ const transitions = {
 	alpha_revisions: ['alpha_review'],
 	alpha_accepted: ['final_review'],
 	alpha_rejected: ['draft'],
-	final_review: ['published', 'final_revisions'],
+	final_review: ['final_accepted', 'final_revisions'],
 	final_revisions: ['final_review'],
-	published: ['draft']
+	final_accepted: ['publication_requested'],
+	publication_requested: ['published', 'final_accepted'],
+	published: []
 };
 
 function reviewStage(status) {
@@ -188,6 +190,9 @@ function reviewStage(status) {
 function canTransition(from, to, roles) {
 	if (!(transitions[from] || []).includes(to)) return false;
 	if (roles.admin) return true;
+	if (to === 'final_review' || to === 'publication_requested')
+		return roles.author || roles.owner || roles.board;
+	if (['final_review', 'publication_requested'].includes(from)) return roles.board;
 	if (from === 'alpha_review') return roles.board;
 	if (to === 'alpha_review') return roles.author || roles.owner || roles.board;
 	if (to === 'published' || (from === 'published' && to === 'draft')) return roles.owner;

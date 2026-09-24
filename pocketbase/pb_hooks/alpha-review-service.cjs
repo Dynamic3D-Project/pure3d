@@ -82,14 +82,14 @@ function publicFeedback(record, index) {
 		result[key] = value(record, key) || (key === 'valueRating' ? 0 : '');
 	return result;
 }
-function assignments(app, edition, round) {
+function assignments(app, edition, round, stage = 2) {
 	return app.findRecordsByFilter(
 		'reviewAssignments',
-		'editionId = {:id} && reviewStage = 2 && reviewRound = {:round} && status != "declined"',
+		'editionId = {:id} && reviewStage = {:stage} && reviewRound = {:round} && status != "declined"',
 		'created,id',
 		0,
 		0,
-		{ id: edition.id, round }
+		{ id: edition.id, round, stage }
 	);
 }
 function reviews(app, edition, round) {
@@ -123,6 +123,7 @@ function protectQuery(e) {
 }
 
 function prepareEdition(e) {
+	require('./publication-service.cjs').prepareEdition(e);
 	const record = e.record;
 	const from = record.original().getString('status');
 	const to = record.getString('status');
@@ -162,19 +163,21 @@ function prepareEdition(e) {
 
 function reviewRequest(e, action, edition) {
 	const record = e.record;
+	const stage = record.getInt('reviewStage');
+	const prefix = stage === 3 ? 'final' : 'alpha';
 	if (
 		!e.auth ||
 		e.auth.collection().name !== 'users' ||
 		record.getString('reviewerId') !== e.auth.id
 	)
 		throw new ForbiddenError('Only the assigned reviewer can write this review.');
-	if (edition.getString('status') !== 'alpha_review')
-		throw new ForbiddenError('Alpha Review is not open.');
-	const round = edition.getInt('alphaReviewRound');
+	if (edition.getString('status') !== prefix + '_review')
+		throw new ForbiddenError('This review stage is not open.');
+	const round = edition.getInt(prefix + 'ReviewRound');
 	if (action === 'create') record.set('reviewRound', round);
 	if (record.getInt('reviewRound') !== round)
 		throw new ForbiddenError('This review round is closed.');
-	const assignment = assignments(e.app, edition, round).find(
+	const assignment = assignments(e.app, edition, round, stage).find(
 		(item) => item.getString('reviewerId') === e.auth.id
 	);
 	if (!assignment || !['pending', 'accepted'].includes(assignment.getString('status')))
@@ -186,14 +189,31 @@ function reviewRequest(e, action, edition) {
 	const status = record.getString('reviewStatus') || 'draft';
 	if (!['draft', 'submitted'].includes(status)) throw new BadRequestError('Invalid review status.');
 	record.set('reviewStatus', status);
-	const errors = reviewErrors(record, status === 'submitted');
+	const errors =
+		stage === 3
+			? [
+					require('./publication-service.cjs').answersError(
+						json(record, 'finalAnswers'),
+						status === 'submitted'
+					)
+				].filter(Boolean)
+			: reviewErrors(record, status === 'submitted');
 	if (errors.length) throw new BadRequestError(errors[0]);
+	if (stage === 3)
+		record.set(
+			'decision',
+			json(record, 'finalAnswers')?.recommendation === 'without_changes'
+				? 'approve'
+				: 'request_revisions'
+		);
 	if (status === 'submitted') record.set('submittedAt', new Date().toISOString());
 	return e.next();
 }
 
 function savedReview(e) {
-	if (e.record.getInt('reviewStage') !== 2) return e.next();
+	const stage = e.record.getInt('reviewStage');
+	if (![2, 3].includes(stage)) return e.next();
+	const prefix = stage === 3 ? 'final' : 'alpha';
 	const app = e.app;
 	try {
 		return app.runInTransaction((tx) => {
@@ -201,11 +221,11 @@ function savedReview(e) {
 			const record = e.record;
 			const edition = tx.findRecordById('editions', record.getString('editionId'));
 			if (
-				edition.getString('status') !== 'alpha_review' ||
-				record.getInt('reviewRound') !== edition.getInt('alphaReviewRound')
+				edition.getString('status') !== prefix + '_review' ||
+				record.getInt('reviewRound') !== edition.getInt(prefix + 'ReviewRound')
 			)
 				throw new BadRequestError('This Alpha Review round is closed.');
-			const assigned = assignments(tx, edition, record.getInt('reviewRound')).find(
+			const assigned = assignments(tx, edition, record.getInt('reviewRound'), stage).find(
 				(item) => item.getString('reviewerId') === record.getString('reviewerId')
 			);
 			if (
@@ -227,7 +247,7 @@ function savedReview(e) {
 				record.original().getString('reviewStatus') !== 'submitted'
 			) {
 				const edition = tx.findRecordById('editions', record.getString('editionId'));
-				const assignment = assignments(tx, edition, record.getInt('reviewRound')).find(
+				const assignment = assignments(tx, edition, record.getInt('reviewRound'), stage).find(
 					(item) => item.getString('reviewerId') === record.getString('reviewerId')
 				);
 				if (assignment) {
@@ -303,7 +323,7 @@ function decide(e) {
 				)
 		);
 		if (
-			!assigned.length ||
+			assigned.length < 2 ||
 			assigned.some(
 				(assignment) =>
 					!submitted.some(

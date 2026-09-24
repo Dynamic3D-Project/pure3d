@@ -35,6 +35,7 @@ export interface ReviewAssignment {
 	updated: string;
 	reviewRound?: number;
 	editionTitle?: string;
+	dueAt?: string;
 }
 
 export enum FeedbackCategory {

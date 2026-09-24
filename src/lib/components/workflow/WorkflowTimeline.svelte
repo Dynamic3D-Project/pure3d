@@ -36,7 +36,12 @@
 			},
 			{
 				label: 'Final Review',
-				statuses: [EditionStatus.FinalReview, EditionStatus.FinalRevisions],
+				statuses: [
+					EditionStatus.FinalReview,
+					EditionStatus.FinalRevisions,
+					EditionStatus.FinalAccepted,
+					EditionStatus.PublicationRequested
+				],
 				hrefStatus: EditionStatus.FinalReview
 			},
 			{

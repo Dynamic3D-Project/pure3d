@@ -74,14 +74,16 @@ export async function alignOrcidSchema(
 				collection.name === 'users' ||
 				collection.name.endsWith('Users') ||
 				field.name === 'credits' ||
-				(collection.name === 'editions' && field.name.startsWith('alpha')) ||
+				(collection.name === 'editions' &&
+					/^(alpha|final|publication|workflowDecision|status$)/.test(field.name)) ||
 				(collection.name === 'editionReviews' &&
 					!['editionId', 'reviewerId', 'comment'].includes(field.name)) ||
 				(collection.name === 'reviewAssignments' &&
-					['reviewRound', 'editionTitle'].includes(field.name)) ||
+					['reviewRound', 'editionTitle', 'dueAt', 'replacementReason'].includes(field.name)) ||
 				(workflowNames.includes(collection.name) && ['created', 'updated'].includes(field.name)) ||
 				(collection.name === 'auditLog' && field.name === 'targetType') ||
-				(collection.name === 'notifications' && field.name === 'type')
+				(collection.name === 'notifications' &&
+					(field.name === 'type' || field.name.startsWith('email')))
 		);
 		for (const definition of desiredFields) {
 			const field = { ...definition } as Field;

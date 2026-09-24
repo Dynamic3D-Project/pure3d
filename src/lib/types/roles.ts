@@ -32,6 +32,8 @@ export enum EditionStatus {
 	AlphaRejected = 'alpha_rejected',
 	FinalReview = 'final_review',
 	FinalRevisions = 'final_revisions',
+	FinalAccepted = 'final_accepted',
+	PublicationRequested = 'publication_requested',
 	Published = 'published'
 }
 
@@ -57,6 +59,8 @@ export function getReviewStage(status: EditionStatus): ReviewStage | null {
 			return ReviewStage.Alpha;
 		case EditionStatus.FinalReview:
 		case EditionStatus.FinalRevisions:
+		case EditionStatus.FinalAccepted:
+		case EditionStatus.PublicationRequested:
 			return ReviewStage.Final;
 		default:
 			return null;
@@ -112,9 +116,11 @@ export const EDITION_STATUS_TRANSITIONS: Record<EditionStatus, EditionStatus[]> 
 	[EditionStatus.AlphaRevisions]: [EditionStatus.AlphaReview],
 	[EditionStatus.AlphaAccepted]: [EditionStatus.FinalReview],
 	[EditionStatus.AlphaRejected]: [EditionStatus.Draft],
-	[EditionStatus.FinalReview]: [EditionStatus.Published, EditionStatus.FinalRevisions],
+	[EditionStatus.FinalReview]: [EditionStatus.FinalAccepted, EditionStatus.FinalRevisions],
 	[EditionStatus.FinalRevisions]: [EditionStatus.FinalReview],
-	[EditionStatus.Published]: [EditionStatus.Draft]
+	[EditionStatus.FinalAccepted]: [EditionStatus.PublicationRequested],
+	[EditionStatus.PublicationRequested]: [EditionStatus.Published, EditionStatus.FinalAccepted],
+	[EditionStatus.Published]: []
 };
 
 // Global role hierarchy (higher index = more privilege)
@@ -173,5 +179,7 @@ export const STATUS_LABELS: Record<EditionStatus, string> = {
 	[EditionStatus.AlphaRejected]: 'Alpha Rejected',
 	[EditionStatus.FinalReview]: 'Final Review',
 	[EditionStatus.FinalRevisions]: 'Final Revisions',
+	[EditionStatus.FinalAccepted]: 'Final Review Complete',
+	[EditionStatus.PublicationRequested]: 'Awaiting Publication',
 	[EditionStatus.Published]: 'Published'
 };

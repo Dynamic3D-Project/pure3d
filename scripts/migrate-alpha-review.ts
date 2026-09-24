@@ -8,7 +8,8 @@ export async function migrateAlphaReview(pb: PocketBase) {
 		'editionReviews',
 		'reviewAssignments',
 		'reviewFeedback',
-		'editionUsers'
+		'editionUsers',
+		'notifications'
 	];
 	// Install fields first: rules and unique indexes depend on reviewRound.
 	for (const name of names) {
@@ -16,12 +17,12 @@ export async function migrateAlphaReview(pb: PocketBase) {
 		const desired = schema.find((collection) => collection.name === name)!;
 		const additions = desired.fields.filter((field) =>
 			name === 'editions'
-				? field.name.startsWith('alpha')
+				? /^(alpha|final|publication|workflowDecision|status$)/.test(field.name)
 				: name === 'editionReviews'
 					? !['editionId', 'reviewerId', 'comment', 'created', 'updated'].includes(field.name)
 					: name === 'reviewAssignments'
-						? ['reviewRound', 'editionTitle'].includes(field.name)
-						: false
+						? ['reviewRound', 'editionTitle', 'dueAt', 'replacementReason'].includes(field.name)
+						: name === 'notifications' && field.name.startsWith('email')
 		);
 		const fields = current.fields.map((field: { name: string }) => ({
 			...field,
@@ -60,6 +61,6 @@ if (import.meta.main) {
 		.authWithPassword(process.env.POCKETBASE_ADMIN_EMAIL, process.env.POCKETBASE_ADMIN_PASSWORD);
 	await migrateAlphaReview(pb);
 	console.log(
-		'Alpha Review fields, indexes, and access rules installed. Existing review records were preserved.'
+		'Alpha/Final Review and publication fields, indexes, and access rules installed. Existing review records were preserved.'
 	);
 }

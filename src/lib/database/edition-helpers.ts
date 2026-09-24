@@ -32,13 +32,17 @@ export async function assignReviewer(
 	editionId: string,
 	reviewerId: string,
 	reviewStage: number,
-	assignedBy: string
+	assignedBy: string,
+	dueAt = '',
+	replacementReason = ''
 ) {
 	const assignment = await pb.collection('reviewAssignments').create({
 		editionId,
 		reviewerId,
 		reviewStage,
 		assignedBy,
+		dueAt,
+		replacementReason,
 		status: 'pending'
 	});
 

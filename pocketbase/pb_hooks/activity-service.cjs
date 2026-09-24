@@ -51,7 +51,9 @@ function audit(app, performedBy, action, targetType, targetId, details) {
 }
 
 function admins(app) {
-	return app.findRecordsByFilter('users', 'role = "admin"', '', 0, 0).map((user) => user.id);
+	return app
+		.findRecordsByFilter('users', 'role = "admin" || role = "editorial_board"', '', 0, 0)
+		.map((user) => user.id);
 }
 
 function authors(app, editionId) {
@@ -92,6 +94,7 @@ function notify(app, performedBy, recipients, type, title, editionId, path) {
 			message: 'Open the linked workspace to view this change.',
 			editionId: editionId || '',
 			read: false,
+			emailEligible: $os.getenv('PURE3D_WORKFLOW_EMAIL_ENABLED') === 'true',
 			// appURL is an administrator-controlled PB setting, never a request Host or client URL.
 			actionUrl: applicationURL(app) + path
 		});
@@ -227,9 +230,10 @@ function model(e) {
 				}
 			} else if (name === 'editionReviews') {
 				const alphaDraft =
-					record.getInt('reviewStage') === 2 && record.getString('reviewStatus') === 'draft';
+					[2, 3].includes(record.getInt('reviewStage')) &&
+					record.getString('reviewStatus') === 'draft';
 				const alphaSubmission =
-					record.getInt('reviewStage') === 2 &&
+					[2, 3].includes(record.getInt('reviewStage')) &&
 					record.getString('reviewStatus') === 'submitted' &&
 					record.original().getString('reviewStatus') !== 'submitted';
 				if (!alphaDraft && (operation !== 'update' || changed.length || alphaSubmission)) {
@@ -287,6 +291,7 @@ function model(e) {
 						published: 'published'
 					}[after.status] || 'status_changed';
 				const submission =
+					['final_review', 'publication_requested'].includes(after.status) ||
 					after.status === 'concept_submitted' ||
 					(before.status === 'concept_accepted' && after.status === 'alpha_review') ||
 					(['alpha_revisions', 'final_revisions'].includes(before.status) &&
@@ -295,6 +300,21 @@ function model(e) {
 				recipients = (submission ? admins(tx) : authors(tx, editionId)).concat(
 					owners(tx, record.getString('collection'))
 				);
+				if (after.status === 'published') {
+					path = '/editions/' + editionId;
+					recipients = recipients.concat(
+						tx
+							.findRecordsByFilter(
+								'reviewAssignments',
+								'editionId = {:id} && reviewStage = 3 && status = "completed"',
+								'',
+								0,
+								0,
+								{ id: editionId }
+							)
+							.map((r) => r.getString('reviewerId'))
+					);
+				}
 			}
 		}
 		if (!action) return;

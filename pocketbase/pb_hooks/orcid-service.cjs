@@ -105,12 +105,16 @@ function roles(e, record) {
 			matches(
 				e.app,
 				'reviewAssignments',
-				'editionId = {:edition} && reviewerId = {:user} && reviewStage = {:stage} && status != "declined" && status != "completed" && (reviewStage != 2 || reviewRound = {:round})',
+				'editionId = {:edition} && reviewerId = {:user} && reviewStage = {:stage} && status != "declined" && status != "completed" && (reviewStage = 1 || reviewRound = {:round})',
 				{
 					edition: record.id,
 					user: uid,
 					stage: v.reviewStage(record.getString('status')),
-					round: record.getInt('alphaReviewRound')
+					round: record.getInt(
+						v.reviewStage(record.getString('status')) === 3
+							? 'finalReviewRound'
+							: 'alphaReviewRound'
+					)
 				}
 			).length > 0
 	};
@@ -266,6 +270,7 @@ function createRequest(e) {
 		proposal.syncModels(e.record);
 		for (const field of require('./alpha-review-service.cjs').editionFields)
 			e.record.set(field, null);
+		for (const field of require('./publication-service.cjs').fields) e.record.set(field, null);
 	}
 	e.record.set('__pure3dCreator', user.id);
 	return e.next();
@@ -445,6 +450,12 @@ function membershipAccess(e) {
 		if (r.getString('role') === 'owner' || r.original().getString('role') === 'owner') deny();
 	} else {
 		const edition = e.app.findRecordById('editions', r.getString('editionId'));
+		if (
+			['alpha_review', 'final_review', 'publication_requested', 'published'].includes(
+				edition.getString('status')
+			)
+		)
+			deny();
 		const access = roles(e, edition);
 		if (!access.owner && !access.author) deny();
 		if (

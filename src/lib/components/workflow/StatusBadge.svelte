@@ -4,6 +4,8 @@
 	let { status, size = 'sm' }: { status: EditionStatus; size?: 'xs' | 'sm' | 'md' } = $props();
 
 	const badgeClass: Record<EditionStatus, string> = {
+		[EditionStatus.FinalAccepted]: 'badge-success',
+		[EditionStatus.PublicationRequested]: 'badge-info',
 		[EditionStatus.Draft]: 'badge-ghost',
 		[EditionStatus.ConceptSubmitted]: 'badge-info',
 		[EditionStatus.EditorialReview]: 'badge-warning',

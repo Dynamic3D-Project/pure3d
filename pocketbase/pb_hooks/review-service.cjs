@@ -17,7 +17,7 @@ function onlyFields(e, allowed) {
 function request(e, action) {
 	const r = e.record;
 	const name = e.collection.name;
-	const admin = access.admin(e);
+	const admin = alpha.isEditor(e);
 	if (action === 'delete') {
 		if (!admin) deny();
 		return e.next();
@@ -37,17 +37,25 @@ function request(e, action) {
 		}
 	}
 	const edition = e.app.findRecordById('editions', r.getString('editionId'));
-	if (name === 'editionReviews' && action === 'create' && r.getInt('reviewStage') !== 2) {
+	if (name === 'editionReviews' && action === 'create' && r.getInt('reviewStage') === 1) {
 		r.set('reviewRound', 0);
 		r.set('reviewStatus', 'submitted');
 		r.set('submittedAt', new Date().toISOString());
 	}
 	if (name === 'reviewAssignments') {
 		if (action === 'create') {
-			r.set('reviewRound', r.getInt('reviewStage') === 2 ? edition.getInt('alphaReviewRound') : 0);
+			r.set(
+				'reviewRound',
+				r.getInt('reviewStage') >= 2
+					? edition.getInt(r.getInt('reviewStage') === 3 ? 'finalReviewRound' : 'alphaReviewRound')
+					: 0
+			);
 			r.set('editionTitle', edition.getString('title'));
-			if (r.getInt('reviewStage') === 2) {
-				if (edition.getString('status') !== 'alpha_review')
+			if ([2, 3].includes(r.getInt('reviewStage'))) {
+				if (
+					edition.getString('status') !==
+					(r.getInt('reviewStage') === 3 ? 'final_review' : 'alpha_review')
+				)
 					throw new BadRequestError(
 						'The author must request Alpha Review before reviewers are assigned.'
 					);
@@ -89,11 +97,15 @@ function request(e, action) {
 			deny();
 		return e.next();
 	}
-	if (name === 'editionReviews' && r.getInt('reviewStage') === 2) {
-		if (action === 'update') onlyFields(e, [...alpha.answerFields, 'reviewStatus']);
+	if (name === 'editionReviews' && [2, 3].includes(r.getInt('reviewStage'))) {
+		if (action === 'update')
+			onlyFields(e, [
+				...(r.getInt('reviewStage') === 3 ? ['finalAnswers'] : alpha.answerFields),
+				'reviewStatus'
+			]);
 		return alpha.reviewRequest(e, action, edition);
 	}
-	if (name === 'reviewFeedback' && r.getInt('reviewStage') === 2)
+	if (name === 'reviewFeedback' && [2, 3].includes(r.getInt('reviewStage')))
 		throw new BadRequestError('Use the Alpha questionnaire for moderated feedback.');
 	if (
 		name === 'editionReviews' &&
