@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ProposalQuestionnaire from '$lib/components/workflow/ProposalQuestionnaire.svelte';
+	import { workflowStages } from '$lib/workflow/presentation';
 	import CreditsEditor from '$lib/components/ui/CreditsEditor.svelte';
 	import type { Credit } from '$lib/types/credits';
 	import { readCredits, validateCredits } from '$lib/utils/credits';
@@ -30,11 +32,10 @@
 	import ProposalModelUploads from '$lib/components/uploads/ProposalModelUploads.svelte';
 	import ProposalSummary from '$lib/components/workflow/ProposalSummary.svelte';
 	import AlphaRequestForm from '$lib/components/workflow/AlphaRequestForm.svelte';
-	import AlphaReviewForm from '$lib/components/workflow/AlphaReviewForm.svelte';
+	import ReviewWorkspace from '$lib/components/workflow/ReviewWorkspace.svelte';
 	import AlphaReviewProgress from '$lib/components/workflow/AlphaReviewProgress.svelte';
 	import AlphaEditorialPanel from '$lib/components/workflow/AlphaEditorialPanel.svelte';
 	import FinalRequestForm from '$lib/components/workflow/FinalRequestForm.svelte';
-	import FinalReviewForm from '$lib/components/workflow/FinalReviewForm.svelte';
 	import FinalReviewProgress from '$lib/components/workflow/FinalReviewProgress.svelte';
 	import FinalEditorialPanel from '$lib/components/workflow/FinalEditorialPanel.svelte';
 	import { STATUS_LABELS } from '$lib/types/roles';
@@ -43,7 +44,6 @@
 	import CoverImageUpload from '$lib/components/uploads/CoverImageUpload.svelte';
 	import {
 		MODEL_SOURCES,
-		PROPOSAL_AUDIENCES,
 		PROPOSAL_TYPES,
 		proposalErrors,
 		proposalIsDirty,
@@ -74,7 +74,6 @@
 	let isCollaborator = $state(false);
 	let editionAssetsBusy = $state(false);
 	let coverBusy = $state(false);
-	let expandedReview = $state(false);
 	let isReviewer = $state(false);
 	let myAssignment = $state<ReviewAssignment | null>(null);
 	let myExistingReview = $state<EditionReview | null>(null);
@@ -115,34 +114,6 @@
 	let isUploadingSupporting = $state(false);
 	let isUploadingModel = $state(false);
 	let authorAffiliations = $state<Record<string, string>>({});
-	let proposalQuestions = $derived([
-		{
-			id: 'proposal-purpose',
-			label: 'For what purpose was the model created?',
-			hint: 'Please provide links to existing websites, research publications, videos, or graphics.',
-			value: proposalPurpose
-		},
-		{
-			id: 'proposal-argument',
-			label:
-				'What research argument or narrative would you like to develop, and how will the 3D model be its central component?',
-			hint: '',
-			value: proposalArgument
-		},
-		{
-			id: 'proposal-3d-rationale',
-			label:
-				'Why is 3D visualisation an appropriate means of presenting your argument or narrative?',
-			hint: '',
-			value: proposalThreeDRationale
-		},
-		{
-			id: 'proposal-context',
-			label: 'What material do you have available to contextualise your 3D models?',
-			hint: 'Indicate formats and quantities, including archival material, images, videos, or audio recordings.',
-			value: proposalContextualMaterial
-		}
-	]);
 	let isSaving = $state(false);
 	let isSubmitting = $state(false);
 	let submitDialog: HTMLDialogElement;
@@ -271,18 +242,13 @@
 	// Anonymized reviews for display
 	let displayReviews = $derived.by(() => {
 		if (!edition) return [];
-		const stage = currentStage ?? ReviewStage.Concept;
 		return anonymizeReviews(
 			reviews.filter((review) => review.reviewStage !== ReviewStage.Alpha),
 			assignments,
-			stage,
 			userLookup,
 			isAdmin
 		);
 	});
-
-	// Can the author resubmit?
-	const canResubmit = false; // Review requests require the guided submission form.
 
 	// Can the author manage collaborators?
 	let canManageCollaborators = $derived(
@@ -294,7 +260,8 @@
 				EditionStatus.ConceptAccepted,
 				EditionStatus.AlphaAccepted,
 				EditionStatus.AlphaRevisions,
-				EditionStatus.FinalRevisions
+				EditionStatus.FinalRevisions,
+				EditionStatus.FinalAccepted
 			].includes(edition.status)
 	);
 
@@ -305,38 +272,6 @@
 			[EditionStatus.AlphaRevisions, EditionStatus.FinalRevisions].includes(edition.status)
 	);
 	let canSubmitConcept = $derived(edition?.status === EditionStatus.Draft);
-
-	const workflowStages: Array<{ label: string; statuses: EditionStatus[] }> = [
-		{ label: 'Proposal', statuses: [EditionStatus.Draft] },
-		{
-			label: 'Proposal review',
-			statuses: [
-				EditionStatus.ConceptSubmitted,
-				EditionStatus.EditorialReview,
-				EditionStatus.ConceptAccepted,
-				EditionStatus.ConceptRejected
-			]
-		},
-		{
-			label: 'Alpha Review',
-			statuses: [
-				EditionStatus.AlphaReview,
-				EditionStatus.AlphaAccepted,
-				EditionStatus.AlphaRevisions,
-				EditionStatus.AlphaRejected
-			]
-		},
-		{
-			label: 'Final Review',
-			statuses: [
-				EditionStatus.FinalReview,
-				EditionStatus.FinalRevisions,
-				EditionStatus.FinalAccepted,
-				EditionStatus.PublicationRequested
-			]
-		},
-		{ label: 'Published', statuses: [EditionStatus.Published] }
-	];
 
 	const currentWorkflowStageIndex = $derived.by(() => {
 		const currentEdition = edition;
@@ -370,7 +305,6 @@
 			return 'Make final corrections, confirm material rights, and request publication from the Review tab.';
 		if (edition.status === EditionStatus.PublicationRequested)
 			return 'Publication has been requested. Editing is locked while the editors make their decision.';
-		if (canResubmit) return 'Address feedback, then resubmit the edition for review.';
 		if (edition.status === EditionStatus.Published)
 			return 'This edition is published and visible publicly.';
 		return 'Your proposal is submitted. You can view it while the editorial team reviews it.';
@@ -947,40 +881,6 @@
 	}
 
 	// --- Resubmit after revisions ---
-	async function resubmit() {
-		if (!edition) return;
-		const creditError = validateCredits(credits, true);
-		if (creditError) {
-			toast.error(creditError);
-			return;
-		}
-		if (isSaving) {
-			toast.error('Wait for the current save to finish, then submit again.');
-			return;
-		}
-		clearAutosaveTimer();
-		isSubmitting = true;
-		try {
-			await pb.collection('editions').update(edition.id, buildEditionData());
-			lastSavedSnapshot = formSnapshot();
-			saveStatus = 'saved';
-			const targetStatus =
-				edition.status === EditionStatus.AlphaRevisions
-					? EditionStatus.AlphaReview
-					: EditionStatus.FinalReview;
-
-			await updateEditionStatus(edition.id, targetStatus);
-
-			edition.status = targetStatus;
-			toast.success('Resubmitted for review');
-		} catch (error) {
-			console.error('Error resubmitting:', error);
-			toast.error('Failed to resubmit');
-		} finally {
-			isSubmitting = false;
-		}
-	}
-
 	function handleReviewSubmitted() {
 		loadData();
 	}
@@ -1163,57 +1063,13 @@
 							</div>
 						</section>
 
-						<section class="space-y-5 rounded-box border border-base-300 bg-base-100 p-5">
-							<div>
-								<h2 class="text-lg font-semibold">Submission questionnaire</h2>
-								<p class="text-sm text-base-content/65">
-									Each written answer is limited to 150 words.
-								</p>
-							</div>
-							{#each proposalQuestions as field (field.id)}
-								{@const id = field.id}
-								<label class="form-control" for={id}>
-									<span class="label-text font-semibold">{field.label}</span>
-									{#if field.hint}<span class="label-text-alt">{field.hint}</span>{/if}
-									<textarea
-										{id}
-										class="textarea-bordered textarea mt-1 min-h-28 w-full"
-										value={field.value}
-										aria-invalid={wordCount(field.value) > 150}
-										oninput={(event) => {
-											const value = event.currentTarget.value;
-											if (id === 'proposal-purpose') proposalPurpose = value;
-											else if (id === 'proposal-argument') proposalArgument = value;
-											else if (id === 'proposal-3d-rationale') proposalThreeDRationale = value;
-											else proposalContextualMaterial = value;
-										}}
-										required
-									></textarea>
-									<span class="mt-1 text-right text-xs text-base-content/50"
-										>{wordCount(field.value)}/150 words</span
-									>
-								</label>
-							{/each}
-							<fieldset class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-								<legend class="font-semibold">Intended audience</legend>
-								{#each PROPOSAL_AUDIENCES as [value, label] (value)}
-									<label class="flex items-center gap-2 text-sm">
-										<input
-											type="checkbox"
-											class="checkbox checkbox-sm"
-											checked={proposalAudience.includes(value)}
-											onchange={(event) =>
-												(proposalAudience = toggleSelection(
-													proposalAudience,
-													value,
-													event.currentTarget.checked
-												))}
-										/>
-										{label}
-									</label>
-								{/each}
-							</fieldset>
-						</section>
+						<ProposalQuestionnaire
+							bind:purpose={proposalPurpose}
+							bind:argument={proposalArgument}
+							bind:rationale={proposalThreeDRationale}
+							bind:context={proposalContextualMaterial}
+							bind:audience={proposalAudience}
+						/>
 
 						<section class="space-y-5 rounded-box border border-base-300 bg-base-100 p-5">
 							<h2 class="text-lg font-semibold">3D model</h2>
@@ -1713,19 +1569,6 @@
 									{/if}
 									Save Changes
 								</button>
-								{#if canResubmit}
-									<button
-										type="button"
-										class="btn btn-outline btn-sm btn-primary"
-										onclick={resubmit}
-										disabled={isSaving || isSubmitting}
-									>
-										{#if isSubmitting}
-											<span class="loading loading-xs loading-spinner"></span>
-										{/if}
-										Resubmit for Review
-									</button>
-								{/if}
 							</div>
 						</fieldset>
 					</form>
@@ -1736,65 +1579,20 @@
 		<!-- Review Form (for assigned reviewers) -->
 		{#if viewMode === 'review-form' && myAssignment && edition}
 			{#if (currentStage === ReviewStage.Alpha || currentStage === ReviewStage.Final) && editionRecord}
-				<div
-					class={expandedReview
-						? 'mx-auto max-w-4xl'
-						: 'grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_26rem]'}
-				>
-					<div class:hidden={expandedReview} class="space-y-4 lg:sticky lg:top-24">
-						<VoyagerPreview
-							edition={editionRecord}
-							{collectionPubNum}
-							{editionPubNum}
-							title={edition.title}
-						/>
-						<div class="rounded-box border border-base-300 p-4">
-							<h2 class="font-semibold">{edition.title}</h2>
-							<p class="mt-2 text-sm text-base-content/70">
-								This edition is read-only during review. Use the review form to record your
-								feedback.
-							</p>
-							<ul class="mt-2 text-sm">
-								{#each credits as credit, index (index)}<li>{credit.name}</li>{/each}
-							</ul>
-						</div>
-					</div>
-					<section class="min-w-0 rounded-box border border-base-300 bg-base-100 p-4">
-						<div class="mb-4 flex items-center justify-between border-b border-base-300 pb-3">
-							<h2 class="font-semibold">Review</h2>
-							<button
-								type="button"
-								class="btn btn-outline btn-sm"
-								aria-expanded={expandedReview}
-								onclick={() => (expandedReview = !expandedReview)}
-								>{expandedReview ? 'Show edition alongside' : 'Expand review form'}</button
-							>
-						</div>
-						<div class={expandedReview ? '' : 'lg:max-h-[75dvh] lg:overflow-y-auto lg:pr-2'}>
-							{#if currentStage === ReviewStage.Final}<FinalReviewForm
-									editionId={edition.id}
-									reviewerId={authStore.appUserId || ''}
-									round={editionRecord.finalReviewRound || 0}
-									context={editionRecord.finalRequest}
-									onsubmitted={() => {
-										toast.success('Final Review submitted');
-										void goto(resolve('/reviews'));
-									}}
-								/>{:else}
-								<AlphaReviewForm
-									editionId={edition.id}
-									reviewerId={authStore.appUserId || ''}
-									round={editionRecord.alphaReviewRound || 0}
-									context={editionRecord.alphaRequest}
-									onsubmitted={() => {
-										toast.success('Alpha Review submitted');
-										void goto(resolve('/reviews'));
-									}}
-								/>
-							{/if}
-						</div>
-					</section>
-				</div>
+				<ReviewWorkspace
+					edition={editionRecord}
+					stage={currentStage}
+					reviewerId={authStore.appUserId || ''}
+					{credits}
+					{collectionPubNum}
+					{editionPubNum}
+					onsubmitted={() => {
+						toast.success(
+							`${currentStage === ReviewStage.Final ? 'Final' : 'Alpha'} Review submitted`
+						);
+						void goto(resolve('/reviews'));
+					}}
+				/>
 			{:else}
 				<div class="space-y-6">
 					{#if editionRecord}<ProposalSummary record={editionRecord} />{/if}
@@ -2058,33 +1856,6 @@
 								isSaving ||
 								isSubmitting}
 						/>
-					</div>
-				{/if}
-
-				<!-- Resubmit button for authors with revisions -->
-				{#if canResubmit}
-					<div
-						id="revisions"
-						class="scroll-mt-24 rounded-box border border-base-300 bg-base-100 p-6"
-					>
-						<h2 class="mb-2 text-lg font-semibold">Revisions Requested</h2>
-						<p class="mb-4 text-base-content/70">
-							Please make the requested changes to your edition, then resubmit for review.
-						</p>
-						<div class="flex gap-2">
-							<a
-								href={resolve('/editions/[slug]', { slug: edition.id })}
-								class="btn btn-ghost btn-sm"
-							>
-								Edit Edition
-							</a>
-							<button class="btn btn-sm btn-primary" onclick={resubmit} disabled={isSubmitting}>
-								{#if isSubmitting}
-									<span class="loading loading-sm loading-spinner"></span>
-								{/if}
-								Resubmit for Review
-							</button>
-						</div>
 					</div>
 				{/if}
 			</div>

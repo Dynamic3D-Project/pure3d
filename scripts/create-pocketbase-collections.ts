@@ -3,7 +3,8 @@
  * Creates and upgrades the PocketBase schema required by the app.
  * Safe to re-run on an existing database.
  */
-import PocketBase from 'pocketbase';
+import PocketBase, { ClientResponseError } from 'pocketbase';
+import { mergeSchemaFields } from './schema-fields';
 import { alignOrcidSchema } from './configure-orcid';
 import schema from '../pocketbase/pb_schema/collections.json';
 
@@ -110,13 +111,8 @@ async function authenticate() {
 	try {
 		await pb.collection('_superusers').authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
 		console.log('Authenticated successfully\n');
-	} catch (err: any) {
-		console.error('Auth error:');
-		console.error('  url:      ', pb.baseUrl);
-		console.error('  email:    ', ADMIN_EMAIL);
-		console.error('  status:   ', err?.status);
-		console.error('  message:  ', err?.message);
-		console.error('  response: ', JSON.stringify(err?.response ?? err?.data ?? err, null, 2));
+	} catch (err) {
+		console.error('Authentication failed; verify the backend URL and administrator credentials.');
 		throw err;
 	}
 }
@@ -124,57 +120,10 @@ async function authenticate() {
 async function getCollection(name: string) {
 	try {
 		return await pb.collections.getOne(name);
-	} catch {
-		return null;
+	} catch (error) {
+		if (error instanceof ClientResponseError && error.status === 404) return null;
+		throw error;
 	}
-}
-
-function mergeFields(existingFields: Record<string, unknown>[], desiredFields: FieldDef[]) {
-	const mergedFields = [...existingFields];
-
-	for (const desiredField of desiredFields) {
-		const existingIndex = mergedFields.findIndex(
-			(field) => typeof field?.name === 'string' && field.name === desiredField.name
-		);
-
-		if (existingIndex === -1) {
-			mergedFields.push(desiredField);
-			continue;
-		}
-
-		mergedFields[existingIndex] = {
-			...mergedFields[existingIndex],
-			...desiredField
-		};
-	}
-
-	return mergedFields;
-}
-
-/**
- * Detect relation fields whose target collection changed. PB rejects this
- * in a single update with "validation_field_relation_change", so we have to
- * drop and re-add across two separate update calls.
- */
-function findRelationRetargets(
-	existingFields: Record<string, unknown>[],
-	desiredFields: FieldDef[]
-): string[] {
-	const names: string[] = [];
-	for (const desired of desiredFields) {
-		const existing = existingFields.find((f) => f?.name === desired.name);
-		if (!existing) continue;
-		if (
-			desired.type === 'relation' &&
-			existing.type === 'relation' &&
-			typeof desired.collectionId === 'string' &&
-			typeof existing.collectionId === 'string' &&
-			desired.collectionId !== existing.collectionId
-		) {
-			names.push(desired.name);
-		}
-	}
-	return names;
 }
 
 async function ensureCollection(definition: CollectionDef) {
@@ -192,40 +141,8 @@ async function ensureCollection(definition: CollectionDef) {
 
 	const existingFieldsArr = Array.isArray(existing.fields) ? existing.fields : [];
 
-	// Handle relation-target retargets with a pre-update that drops those
-	// fields, so the main update can add them fresh pointing at the new
-	// target. PB refuses to change a relation's collectionId in place.
-	const retargets = findRelationRetargets(existingFieldsArr, definition.fields);
-	let workingFields = existingFieldsArr;
-	if (retargets.length > 0) {
-		console.log(`   ${definition.name}: retargeting relation(s): ${retargets.join(', ')}`);
-		workingFields = existingFieldsArr.filter(
-			(f) => typeof f?.name !== 'string' || !retargets.includes(f.name as string)
-		);
-		try {
-			await pb.collections.update(existing.id, { fields: workingFields });
-		} catch (err: any) {
-			console.error(`   ${definition.name}: retarget-drop failed`);
-			console.error('     status: ', err?.status);
-			console.error('     message:', err?.message);
-			console.error('     response:', JSON.stringify(err?.response ?? err?.data ?? err, null, 2));
-			throw err;
-		}
-	}
-
-	const mergedFields = mergeFields(workingFields, definition.fields);
-
-	try {
-		await pb.collections.update(existing.id, {
-			fields: mergedFields
-		});
-	} catch (err: any) {
-		console.error(`   ${definition.name}: update failed`);
-		console.error('     status: ', err?.status);
-		console.error('     message:', err?.message);
-		console.error('     response:', JSON.stringify(err?.response ?? err?.data ?? err, null, 2));
-		throw err;
-	}
+	const mergedFields = mergeSchemaFields(existingFieldsArr, definition.fields);
+	await pb.collections.update(existing.id, { fields: mergedFields });
 
 	console.log(`   ${definition.name}: ensured`);
 	return existing.id;

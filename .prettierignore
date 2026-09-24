@@ -1,0 +1,2 @@
+# Pinned upstream Voyager distributions. Keep locally maintained bridges in scope.
+static/voyager/[0-9]*/**

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { workflowAnchor } from '$lib/workflow/presentation';
 	import { onMount } from 'svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
@@ -263,29 +264,7 @@
 
 	function workflowStepHref(editionId: string, status: EditionStatus): string {
 		const workflowPath = resolve('/editions/[slug]/workflow', { slug: editionId });
-
-		switch (status) {
-			case EditionStatus.Draft:
-				return `${workflowPath}#proposal`;
-			case EditionStatus.ConceptSubmitted:
-			case EditionStatus.EditorialReview:
-				return `${workflowPath}#proposal-summary`;
-			case EditionStatus.ConceptAccepted:
-			case EditionStatus.ConceptRejected:
-				return `${workflowPath}#concept`;
-			case EditionStatus.AlphaReview:
-			case EditionStatus.AlphaRevisions:
-			case EditionStatus.AlphaAccepted:
-			case EditionStatus.AlphaRejected:
-				return `${workflowPath}#alpha`;
-			case EditionStatus.FinalReview:
-			case EditionStatus.FinalRevisions:
-				return `${workflowPath}#final`;
-			case EditionStatus.Published:
-				return `${workflowPath}#published`;
-			default:
-				return workflowPath;
-		}
+		return workflowPath + workflowAnchor(status);
 	}
 </script>
 

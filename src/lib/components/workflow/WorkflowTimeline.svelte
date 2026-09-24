@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { EditionStatus, STATUS_LABELS } from '$lib/types/roles';
+	import { workflowStages } from '$lib/workflow/presentation';
 
 	let {
 		currentStatus,
@@ -10,46 +11,6 @@
 		hrefForStatus?: (status: EditionStatus) => string | null | undefined;
 		onselectStatus?: (status: EditionStatus, event: MouseEvent) => void;
 	} = $props();
-
-	const workflowStages: { label: string; statuses: EditionStatus[]; hrefStatus: EditionStatus }[] =
-		[
-			{ label: 'Proposal', statuses: [EditionStatus.Draft], hrefStatus: EditionStatus.Draft },
-			{
-				label: 'Proposal review',
-				statuses: [
-					EditionStatus.ConceptSubmitted,
-					EditionStatus.EditorialReview,
-					EditionStatus.ConceptAccepted,
-					EditionStatus.ConceptRejected
-				],
-				hrefStatus: EditionStatus.ConceptSubmitted
-			},
-			{
-				label: 'Alpha Review',
-				statuses: [
-					EditionStatus.AlphaReview,
-					EditionStatus.AlphaAccepted,
-					EditionStatus.AlphaRevisions,
-					EditionStatus.AlphaRejected
-				],
-				hrefStatus: EditionStatus.AlphaReview
-			},
-			{
-				label: 'Final Review',
-				statuses: [
-					EditionStatus.FinalReview,
-					EditionStatus.FinalRevisions,
-					EditionStatus.FinalAccepted,
-					EditionStatus.PublicationRequested
-				],
-				hrefStatus: EditionStatus.FinalReview
-			},
-			{
-				label: 'Published',
-				statuses: [EditionStatus.Published],
-				hrefStatus: EditionStatus.Published
-			}
-		];
 
 	const currentStageIndex = $derived.by(() => {
 		const index = workflowStages.findIndex((stage) => stage.statuses.includes(currentStatus));

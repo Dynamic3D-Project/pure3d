@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { workflowAnchor } from '$lib/workflow/presentation';
 	import { base, resolve } from '$app/paths';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { pb } from '$lib/database/client';
@@ -462,27 +463,7 @@
 
 	function workflowStepHref(editionId: string, status: EditionStatus): string {
 		const workflowPath = `${base}/editions/${editionId}/workflow`;
-
-		switch (status) {
-			case EditionStatus.Draft:
-			case EditionStatus.ConceptSubmitted:
-			case EditionStatus.EditorialReview:
-			case EditionStatus.ConceptAccepted:
-			case EditionStatus.ConceptRejected:
-				return `${workflowPath}#concept`;
-			case EditionStatus.AlphaReview:
-			case EditionStatus.AlphaRevisions:
-			case EditionStatus.AlphaAccepted:
-			case EditionStatus.AlphaRejected:
-				return `${workflowPath}#alpha`;
-			case EditionStatus.FinalReview:
-			case EditionStatus.FinalRevisions:
-				return `${workflowPath}#final`;
-			case EditionStatus.Published:
-				return `${workflowPath}#published`;
-			default:
-				return workflowPath;
-		}
+		return workflowPath + workflowAnchor(status);
 	}
 
 	async function deleteDraft(edition: DashEdition) {

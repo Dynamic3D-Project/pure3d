@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { workflowAnchor } from '$lib/workflow/presentation';
 	import { onMount } from 'svelte';
 	import { base, resolve } from '$app/paths';
 	import { pb } from '$lib/database/client';
@@ -9,6 +10,7 @@
 	import { updateEditionStatus, assignReviewer } from '$lib/database/edition-helpers';
 	import {
 		anonymizeReviews,
+		isCurrentReviewRound,
 		aggregateVerdicts,
 		getTargetStatusFromVerdict
 	} from '$lib/utils/review-helpers';
@@ -134,25 +136,23 @@
 	});
 
 	function editionAssignments(editionId: string, stage?: number): ReviewAssignment[] {
+		const edition = editions.find((edition) => edition.id === editionId);
 		return allAssignments.filter(
 			(a) =>
 				a.editionId === editionId &&
 				(stage === undefined || a.reviewStage === stage) &&
-				(a.reviewStage !== ReviewStage.Alpha ||
-					(a.reviewRound || 0) ===
-						(editions.find((edition) => edition.id === editionId)?.alphaReviewRound || 0))
+				isCurrentReviewRound(a, edition || {})
 		);
 	}
 
 	function editionReviews(editionId: string, stage?: number): EditionReview[] {
+		const edition = editions.find((edition) => edition.id === editionId);
 		return allReviews.filter(
 			(r) =>
 				r.editionId === editionId &&
 				r.reviewStatus !== 'draft' &&
 				(stage === undefined || r.reviewStage === stage) &&
-				(r.reviewStage !== ReviewStage.Alpha ||
-					(r.reviewRound || 0) ===
-						(editions.find((edition) => edition.id === editionId)?.alphaReviewRound || 0))
+				isCurrentReviewRound(r, edition || {})
 		);
 	}
 
@@ -432,27 +432,7 @@
 
 	function workflowStepHref(editionId: string, status: EditionStatus): string {
 		const workflowPath = `${base}/editions/${editionId}/workflow`;
-
-		switch (status) {
-			case EditionStatus.Draft:
-			case EditionStatus.ConceptSubmitted:
-			case EditionStatus.EditorialReview:
-			case EditionStatus.ConceptAccepted:
-			case EditionStatus.ConceptRejected:
-				return `${workflowPath}#concept`;
-			case EditionStatus.AlphaReview:
-			case EditionStatus.AlphaRevisions:
-			case EditionStatus.AlphaAccepted:
-			case EditionStatus.AlphaRejected:
-				return `${workflowPath}#alpha`;
-			case EditionStatus.FinalReview:
-			case EditionStatus.FinalRevisions:
-				return `${workflowPath}#final`;
-			case EditionStatus.Published:
-				return `${workflowPath}#published`;
-			default:
-				return workflowPath;
-		}
+		return workflowPath + workflowAnchor(status);
 	}
 </script>
 
@@ -833,7 +813,7 @@
 			{@const verdict = aggregateVerdicts(reviews, assignments.length)}
 			{@const verdictTarget =
 				verdict === 'pending' ? null : getTargetStatusFromVerdict(verdict, stage)}
-			{@const displayReviews = anonymizeReviews(reviews, assignments, stage, userLookup, true)}
+			{@const displayReviews = anonymizeReviews(reviews, assignments, userLookup, true)}
 			<div class="space-y-4 border-t border-base-300 px-4 pt-3 pb-4">
 				<!-- Timeline -->
 				<WorkflowTimeline

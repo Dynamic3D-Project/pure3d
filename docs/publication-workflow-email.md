@@ -32,10 +32,10 @@ I have implemented the publication workflow using the Miro wireframes and commen
 
 - Svelte/TypeScript checks pass with zero errors and warnings.
 - The backend journey covers two-reviewer gating, multiple Alpha/Final rounds, private drafts, submitted-review immutability, access lockout, editorial release, rights confirmation, publication returns, attribution and published-record locks.
-- The focused combined test run has 28 passes and one existing documentation-audit failure, unrelated to this workflow. That failure expects documentation audit events but receives none.
+- Following the cleanup pass, the full Bun test suite has 190 passes and zero failures. The audit test now checks the current content collection, its canonical schema has been aligned, and an obsolete direct-publication expectation has been corrected.
 - Browser checks on isolated synthetic data cover author statement save/reopen and submission, Final Review draft save/reopen and submission, editorial completion, author publication request, editorial publication and anonymous visitor access to named/anonymous published reviews. Desktop and mobile form layouts were inspected; the mobile page has no horizontal overflow. The minimal browser scene fixture fails Voyager schema validation, so this run does not establish 3D-rendering correctness.
-- The production build passes. Changed code passes ESLint except for 53 existing findings in the public edition page and schema-provisioning script, confirmed against HEAD. The full `bun run lint` command stops at 267 repository-wide Prettier findings. `git diff --check` passes.
-- The schema migration has been applied to the local backend only. No production migration, deployment, real publication or real email delivery has been performed. Changes remain uncommitted.
+- The production build passes. Repository-wide lint/formatting debt remains; upstream Voyager bundles are now correctly excluded rather than treated as application source. The cleanup changes are checked separately, without suppressing application lint rules.
+- The schema migration has been applied to the local backend only. No production migration, deployment, real publication or real email delivery has been performed. The workflow implementation is committed locally; the subsequent cleanup remains separate for review.
 
 The workflow is ready for local acceptance testing, not yet a claim of production sign-off. Please review the decisions above before rollout.
 

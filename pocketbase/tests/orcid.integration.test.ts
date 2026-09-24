@@ -1145,36 +1145,32 @@ integration(
 				method: 'POST',
 				body: { decision: 'revisions', comment: 'Another review round is required.' }
 			});
-			await author
-				.collection('editions')
-				.update(edition.id, {
-					status: 'final_review',
-					finalRequest: { ...finalRequest, comment: 'Final Review revisions completed.' }
-				});
+			await author.collection('editions').update(edition.id, {
+				status: 'final_review',
+				finalRequest: { ...finalRequest, comment: 'Final Review revisions completed.' }
+			});
 			await expect(other.collection('editions').getOne(edition.id)).rejects.toBeDefined();
 			await admin.send(endpoint + '/final-invitations', {
 				method: 'POST',
 				body: { dueAt: '2099-01-01T00:00:00Z' }
 			});
 			for (const reviewer of [other, second]) {
-				const review = await reviewer
-					.collection('editionReviews')
-					.create({
-						editionId: edition.id,
-						reviewerId: reviewer.authStore.record!.id,
-						reviewStage: 3,
-						reviewStatus: 'submitted',
-						finalAnswers: {
-							valueRating: 5,
-							valueExplanation: 'Revisions checked.',
-							experienceComments: 'Clear navigation.',
-							changesRating: 5,
-							changesExplanation: 'All addressed.',
-							recommendation: 'without_changes',
-							comments: '',
-							attribution: reviewer === other ? 'anonymous' : 'named'
-						}
-					});
+				const review = await reviewer.collection('editionReviews').create({
+					editionId: edition.id,
+					reviewerId: reviewer.authStore.record!.id,
+					reviewStage: 3,
+					reviewStatus: 'submitted',
+					finalAnswers: {
+						valueRating: 5,
+						valueExplanation: 'Revisions checked.',
+						experienceComments: 'Clear navigation.',
+						changesRating: 5,
+						changesExplanation: 'All addressed.',
+						recommendation: 'without_changes',
+						comments: '',
+						attribution: reviewer === other ? 'anonymous' : 'named'
+					}
+				});
 				expect(review.reviewRound).toBe(2);
 			}
 			await admin.send(endpoint + '/final-decision', {
@@ -1995,10 +1991,10 @@ integration(
 );
 
 integration(
-	'documentation mutations keep their audit trail after browser audit writers are removed',
+	'content mutations keep their audit trail after browser audit writers are removed',
 	async () => {
 		const documents = await root.collections.create({
-			name: 'documentation',
+			name: 'content',
 			type: 'base',
 			fields: [
 				{ name: 'title', type: 'text' },
@@ -2014,10 +2010,10 @@ integration(
 		});
 		try {
 			const doc = await admin
-				.collection('documentation')
+				.collection('content')
 				.create({ title: 'Audited document', slug: 'audited', order: 0 });
-			await admin.collection('documentation').update(doc.id, { order: 1 });
-			await admin.collection('documentation').delete(doc.id);
+			await admin.collection('content').update(doc.id, { order: 1 });
+			await admin.collection('content').delete(doc.id);
 			const entries = await admin
 				.collection('auditLog')
 				.getFullList({ filter: `targetId = '${doc.id}'` });
@@ -2029,7 +2025,7 @@ integration(
 			expect(
 				entries.every(
 					(entry) =>
-						entry.targetType === 'documentation' &&
+						entry.targetType === 'content' &&
 						entry.performedBy === 'users/' + admin.authStore.record!.id
 				)
 			).toBe(true);

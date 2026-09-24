@@ -9,19 +9,27 @@ export interface DisplayReview {
 	created: string;
 }
 
+export function isCurrentReviewRound(
+	review: { reviewStage: number; reviewRound?: number },
+	edition: { alphaReviewRound?: number; finalReviewRound?: number }
+): boolean {
+	if (review.reviewStage === ReviewStage.Concept) return true;
+	const round =
+		review.reviewStage === ReviewStage.Final ? edition.finalReviewRound : edition.alphaReviewRound;
+	return (review.reviewRound || 0) === (round || 0);
+}
+
 /**
- * Map reviews to display-friendly format with single-blind anonymization.
- * Alpha stage (stage=2): authors see "Reviewer 1", "Reviewer 2" etc.
- * Final stage (stage=3) or admin view: real names shown.
+ * Generic internal review summaries. Only editors see identities here.
+ * Public Final Review attribution is selected by the backend public-reviews endpoint.
  */
 export function anonymizeReviews(
 	reviews: EditionReview[],
 	assignments: ReviewAssignment[],
-	stage: number,
 	userLookup: Map<string, string>,
 	isAdmin: boolean
 ): DisplayReview[] {
-	const showRealNames = isAdmin || stage === ReviewStage.Final;
+	const showRealNames = isAdmin;
 
 	// Stable numbering: sort assignments by created date for consistent "Reviewer N"
 	const sortedAssignments = [...assignments].sort(
@@ -61,7 +69,7 @@ export function aggregateVerdicts(
 	reviews: EditionReview[],
 	expectedCount: number
 ): 'accept' | 'reject' | 'revisions' | 'pending' {
-	if (reviews.length < expectedCount) return 'pending';
+	if (expectedCount <= 0 || reviews.length < expectedCount) return 'pending';
 
 	const hasReject = reviews.some((r) => r.decision === ReviewDecision.Reject);
 	if (hasReject) return 'reject';
@@ -85,15 +93,7 @@ export function getTargetStatusFromVerdict(
 			if (verdict === 'accept') return EditionStatus.ConceptAccepted;
 			if (verdict === 'reject') return EditionStatus.ConceptRejected;
 			return null;
-		case ReviewStage.Alpha:
-			if (verdict === 'accept') return EditionStatus.AlphaAccepted;
-			if (verdict === 'reject') return EditionStatus.AlphaRejected;
-			if (verdict === 'revisions') return EditionStatus.AlphaRevisions;
-			return null;
-		case ReviewStage.Final:
-			if (verdict === 'accept') return EditionStatus.Published;
-			if (verdict === 'revisions') return EditionStatus.FinalRevisions;
-			return null;
+		// Later rounds require an explicit editorial decision and feedback release.
 		default:
 			return null;
 	}

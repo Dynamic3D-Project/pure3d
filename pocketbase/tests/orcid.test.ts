@@ -91,7 +91,9 @@ test('workflow cannot skip review or let authors publish', () => {
 	expect(v.canTransition('draft', 'published', { admin: true })).toBe(false);
 	expect(v.canTransition('draft', 'concept_submitted', { author: true })).toBe(true);
 	expect(!!v.canTransition('final_review', 'published', { author: true })).toBe(false);
-	expect(v.canTransition('final_review', 'published', { owner: true })).toBe(true);
+	expect(v.canTransition('final_review', 'published', { owner: true })).toBe(false);
+	expect(v.canTransition('publication_requested', 'published', { board: true })).toBe(true);
+	expect(!!v.canTransition('publication_requested', 'published', { owner: true })).toBe(false);
 	expect(!!v.canTransition('editorial_review', 'concept_accepted', { collaborator: true })).toBe(
 		false
 	);
