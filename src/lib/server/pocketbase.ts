@@ -1,4 +1,4 @@
-import PocketBase from 'pocketbase';
+import PocketBase, { type RecordModel } from 'pocketbase';
 import { creatorNames, readCredits, validateCredits } from '$lib/utils/credits';
 import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
 import {
@@ -32,7 +32,10 @@ export function createPocketBaseClient() {
  * Get public file URL (for browser access)
  * Uses PUBLIC_POCKETBASE_URL instead of internal Docker URL
  */
-export function getPublicFileUrl(record: any, filename: string): string {
+export function getPublicFileUrl(
+	record: Pick<RecordModel, 'id' | 'collectionId'>,
+	filename: string
+): string {
 	const baseUrl = PUBLIC_POCKETBASE_URL || 'http://localhost:60021';
 	return `${baseUrl}/api/files/${record.collectionId}/${record.id}/${filename}`;
 }
@@ -141,8 +144,6 @@ export async function getCollections() {
 		const records = result.items;
 
 		return records.map((record) => {
-			const pubNum = record.pubNum || 0;
-
 			// Thumbnail from asset URL (respects PUBLIC_ASSET_BASE_URL / R2)
 			const thumbnail =
 				record.thumbnail && record.pubNum > 0 ? getCollectionThumbnailUrl(record.pubNum) : '';
@@ -188,8 +189,6 @@ export async function getCollection(id: string) {
 
 	try {
 		const record = await pb.collection('collections').getOne(id);
-		const pubNum = record.pubNum || 0;
-
 		// Use uploaded thumbnail file if available, otherwise fall back to URL
 		let thumbnail = '';
 		if (record.thumbnailFile) {
@@ -233,7 +232,7 @@ export async function getCollection(id: string) {
 /**
  * Transform a PocketBase edition record to our Edition type
  */
-function transformEditionRecord(record: any, collection?: any) {
+function transformEditionRecord(record: RecordModel, collection?: RecordModel) {
 	const collectionPubNum = collection?.pubNum || 0;
 	const editionPubNum = record.pubNum || 1;
 

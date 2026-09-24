@@ -1,5 +1,4 @@
 import { expect, test } from 'bun:test';
-// @ts-expect-error -- The repository's minimal bun:test shim omits Bun's mock API.
 import { mock } from 'bun:test';
 import type { Credit } from '../../lib/types/credits';
 

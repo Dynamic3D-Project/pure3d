@@ -35,3 +35,7 @@ for callers before retiring these implementations:
 Removal affects source entry points only. No database, credentials, imported data,
 asset paths or live service configuration were changed. Historical implementations
 remain available in Git history; do not restore and run them on a current database.
+
+The later inventory also retired `verify-pocketbase-data.ts` and
+`view-pocketbase-data.ts`: both queried the retired `projects` collection with
+hard-coded credentials. Inspect the current local records through the admin UI.

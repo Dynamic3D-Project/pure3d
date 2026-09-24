@@ -178,7 +178,7 @@ describe('edition scene parser', () => {
 			]
 		});
 		expect(runtime.setups[0].reader).toEqual({ enabled: true, position: 'Right' });
-		expect(runtime.setups[1]!.reader).toEqual({ enabled: false });
+		expect<unknown>(runtime.setups[1]!.reader).toEqual({ enabled: false });
 		expect(runtime.setups[1]!.snapshots!.states![0]!.values).toEqual([false, 1, '']);
 		expect(runtime.setups[1]!.snapshots!.targets).toHaveLength(3);
 	});
