@@ -60,7 +60,7 @@ dev-prod:
 dev-web: dev-cert
 	@$(LOCAL_COMPOSE) up -d minio minio-setup pocketbase pocketbase-setup voyager-setup
 	@set -a; [ ! -f .env ] || . ./.env; set +a; \
-		export PUBLIC_POCKETBASE_URL="https://localhost:$${FRONTEND_PORT:-60020}"; \
+		export PUBLIC_POCKETBASE_URL="https://127.0.0.1:$${FRONTEND_PORT:-60020}"; \
 		export PUBLIC_ASSET_BASE_URL="$$PUBLIC_POCKETBASE_URL/assets"; \
 		export DEV_HTTPS=1 DEV_POCKETBASE_TARGET="http://127.0.0.1:$${POCKETBASE_PORT:-60021}"; \
 		export DEV_ASSET_TARGET="http://127.0.0.1:$${MINIO_API_PORT:-60023}" DEV_ASSET_BUCKET="$${R2_BUCKET:-pure3d-assets}"; \
