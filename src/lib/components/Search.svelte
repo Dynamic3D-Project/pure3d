@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { creatorNames } from '$lib/utils/credits';
 	import { base, resolve } from '$app/paths';
-	import type { RecordModel } from 'pocketbase';
 	import { contentPath } from '$lib/cms';
+	import type { RecordModel } from 'pocketbase';
 	import { pb } from '$lib/database';
 	import { debounce } from '$lib/utils/debounce';
-	import { editionMatchesQuery } from '$lib/utils/edition-search';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { computePosition, flip, shift, offset, size, autoUpdate } from '@floating-ui/dom';
@@ -35,91 +34,89 @@
 	let dropdownElement: HTMLDivElement | undefined = $state();
 	let resultsListElement: HTMLElement | undefined = $state();
 	let cleanupAutoUpdate: (() => void) | undefined;
+	let searchRequest = 0;
+	let suggestions: SearchResult[] | null = null;
+
+	function editionResults(items: RecordModel[]): SearchResult[] {
+		return items.map((edition) => {
+			const collectionPubNum = edition.expand?.collection?.pubNum || 0;
+			const editionPubNum = edition.pubNum || 1;
+			return {
+				type: 'edition',
+				id: edition.id,
+				title: edition.dcTitle || edition.title || 'Untitled',
+				subtitle: creatorNames(edition.credits) || edition.dcAbstract?.slice(0, 80),
+				thumbnail:
+					edition.thumbnail && collectionPubNum > 0
+						? getEditionThumbnailUrl(collectionPubNum, editionPubNum)
+						: '',
+				url: `${base}/editions/${edition.id}`
+			};
+		});
+	}
 
 	async function performSearch(query: string) {
 		const trimmedQuery = query.trim();
+		if (!trimmedQuery && !showResults) return;
+		const current = ++searchRequest;
 
-		if (!trimmedQuery && !showResults) {
-			results = [];
+		if (!trimmedQuery) {
+			results = suggestions || [];
 			selectedIndex = -1;
+			if (suggestions) return;
+			searching = true;
+			try {
+				const featured = await pb.collection('editions').getList(1, 4, {
+					filter: 'isPublished = true && pubNum > 0',
+					fields:
+						'id,title,dcTitle,dcAbstract,credits,pubNum,thumbnail,collection,expand.collection.pubNum',
+					expand: 'collection',
+					skipTotal: true
+				});
+				suggestions = editionResults(featured.items);
+				if (current === searchRequest) results = suggestions;
+			} catch (err) {
+				console.error('Edition suggestions error:', err);
+			} finally {
+				if (current === searchRequest) searching = false;
+			}
 			return;
 		}
 
 		searching = true;
 
 		try {
-			// Use fetch API directly to avoid PocketBase client issues
-			const baseUrl = pb.baseUrl;
-
-			const [editionsRes, collectionsRes, contentResult] = await Promise.all([
-				fetch(
-					`${baseUrl}/api/collections/editions/records?filter=${encodeURIComponent('isPublished=true')}&expand=collection&perPage=500`
-				),
-				fetch(
-					`${baseUrl}/api/collections/collections/records?filter=${encodeURIComponent('isVisible=true')}&perPage=100`
-				),
+			const [editions, collections, contentResult] = await Promise.all([
+				pb.collection('editions').getList(1, 8, {
+					filter: pb.filter(
+						'isPublished = true && (title ~ {:query} || dcTitle ~ {:query} || dcAbstract ~ {:query} || dcKeyword ~ {:query} || credits ~ {:query})',
+						{ query: trimmedQuery }
+					),
+					fields:
+						'id,title,dcTitle,dcAbstract,credits,pubNum,thumbnail,collection,expand.collection.pubNum',
+					expand: 'collection',
+					skipTotal: true
+				}),
+				pb.collection('collections').getList(1, 5, {
+					filter: pb.filter(
+						'isVisible = true && (title ~ {:query} || dcTitle ~ {:query} || dcAbstract ~ {:query} || credits ~ {:query})',
+						{ query: trimmedQuery }
+					),
+					fields: 'id,title,dcTitle,dcAbstract,pubNum,thumbnail',
+					skipTotal: true
+				}),
 				pb.collection('content').getList(1, 8, {
 					filter: pb.filter('isPublished = true && (title ~ {:query} || summary ~ {:query})', {
 						query: trimmedQuery
 					}),
 					fields: 'id,title,slug,summary,coverUrl,layout',
-					sort: '-publishedAt'
+					sort: '-publishedAt',
+					skipTotal: true
 				})
 			]);
-
-			let editionsResult = { items: [] as RecordModel[] };
-			let collectionsResult = { items: [] as RecordModel[] };
-
-			if (editionsRes.ok) {
-				const data = await editionsRes.json();
-				editionsResult = { items: data.items || [] };
-			} else {
-				const text = await editionsRes.text();
-				console.error('Editions fetch error:', editionsRes.status, text);
-			}
-
-			if (collectionsRes.ok) {
-				const data = await collectionsRes.json();
-				collectionsResult = { items: data.items || [] };
-			} else {
-				const text = await collectionsRes.text();
-				console.error('Collections fetch error:', collectionsRes.status, text);
-			}
-
-			// Client-side filtering for more reliable search
-
-			const filteredEditions = trimmedQuery
-				? editionsResult.items.filter((edition) => editionMatchesQuery(edition, trimmedQuery))
-				: editionsResult.items;
-
-			const filteredCollections = trimmedQuery
-				? collectionsResult.items.filter((collection) =>
-						editionMatchesQuery(collection, trimmedQuery)
-					)
-				: collectionsResult.items;
-
-			const editions = { items: filteredEditions.slice(0, 8) };
-			const collections = { items: filteredCollections.slice(0, 5) };
+			if (current !== searchRequest) return;
 
 			// Build combined results using asset-urls helpers (respects R2 / PUBLIC_ASSET_BASE_URL)
-			const editionResults: SearchResult[] = editions.items.map((edition) => {
-				const collectionPubNum = edition.expand?.collection?.pubNum || 0;
-				const editionPubNum = edition.pubNum || 1;
-				const thumbnail =
-					edition.thumbnail && collectionPubNum > 0
-						? getEditionThumbnailUrl(collectionPubNum, editionPubNum)
-						: '';
-
-				return {
-					type: 'edition' as const,
-					id: edition.id,
-					title: edition.dcTitle || edition.title || 'Untitled',
-					subtitle: creatorNames(edition.credits) || edition.dcAbstract?.slice(0, 80),
-					thumbnail,
-					url: `${base}/editions/${edition.id}`
-				};
-			});
-
 			const collectionResults: SearchResult[] = collections.items.map((collection) => {
 				const thumbnail =
 					collection.thumbnail && collection.pubNum > 0
@@ -138,7 +135,7 @@
 
 			// Prioritize editions, then collections
 			results = [
-				...editionResults,
+				...editionResults(editions.items),
 				...collectionResults,
 				...contentResult.items.map((item) => ({
 					type: 'content' as const,
@@ -152,11 +149,12 @@
 			selectedIndex = -1;
 			keyboardSelected = false;
 		} catch (err) {
+			if (current !== searchRequest) return;
 			console.error('Search error:', err);
 			results = [];
 			keyboardSelected = false;
 		} finally {
-			searching = false;
+			if (current === searchRequest) searching = false;
 		}
 	}
 
@@ -165,6 +163,12 @@
 	function openSearchResults() {
 		showResults = true;
 		void performSearch(searchQuery);
+	}
+	function queryChanged() {
+		++searchRequest;
+		searching = false;
+		results = [];
+		selectedIndex = -1;
 	}
 
 	$effect(() => {
@@ -405,11 +409,11 @@
 			type="text"
 			bind:this={searchInputElement}
 			bind:value={searchQuery}
+			oninput={queryChanged}
 			placeholder="Search editions, collections, resources…"
 			aria-label="Search editions, collections and resources"
 			class="grow border-none outline-none focus:ring-0 focus:outline-none"
 			onfocus={openSearchResults}
-			onclick={openSearchResults}
 			role="combobox"
 			aria-expanded={showResults}
 			aria-haspopup="listbox"
@@ -439,7 +443,7 @@
 						{#if searchQuery.trim()}
 							No results found for "{searchQuery}"
 						{:else}
-							No editions or collections available
+							No editions available
 						{/if}
 					</div>
 				{:else}
@@ -461,7 +465,9 @@
 										d={getTypeIcon(group.type)}
 									/>
 								</svg>
-								{getTypeLabel(group.type)}
+								{!searchQuery.trim() && group.type === 'edition'
+									? 'Explore editions'
+									: getTypeLabel(group.type)}
 							</div>
 							{#each group.items as item (item.id)}
 								{@const isSelected = selectedIndex === item.globalIndex}

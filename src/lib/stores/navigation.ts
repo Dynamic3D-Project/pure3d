@@ -16,20 +16,50 @@ export const menus = writable({
 	error: ''
 });
 let request = 0;
-export async function menuDirectory(preview = false): Promise<MenuDirectory> {
+export function referencedMenuTypes(configs: MenuConfig[]): Set<string> {
+	const types = new Set<string>();
+	const include = (link: MenuLink | null | undefined) => {
+		if (link?.visible) types.add(link.target.type);
+	};
+	for (const config of configs) {
+		include(config.primary);
+		include(config.helpLink);
+		for (const item of config.items) {
+			if (!item.visible) continue;
+			include(item.direct);
+			include(item.landing);
+			include(item.featured?.link);
+			for (const group of item.groups) group.links.forEach(include);
+		}
+	}
+	return types;
+}
+export async function menuDirectory(
+	preview = false,
+	configs?: MenuConfig[]
+): Promise<MenuDirectory> {
+	const needed = configs ? referencedMenuTypes(configs) : null;
 	const [content, categories, collections, editions] = await Promise.all([
-		pb.collection('content').getFullList({
-			filter: preview ? '' : 'isPublished = true',
-			fields: 'id,title,slug,layout,kind,isPublished'
-		}),
-		pb.collection('cms_categories').getFullList({ sort: 'name' }),
-		pb
-			.collection('collections')
-			.getFullList({ filter: preview ? '' : 'isVisible = true', fields: 'id,title,isVisible' }),
-		pb.collection('editions').getFullList({
-			filter: preview ? '' : 'isPublished = true',
-			fields: 'id,title,dcTitle,isPublished'
-		})
+		!needed || needed.has('content')
+			? pb.collection('content').getFullList({
+					filter: preview ? '' : 'isPublished = true',
+					fields: 'id,title,slug,layout,kind,isPublished'
+				})
+			: [],
+		!needed || needed.has('category')
+			? pb.collection('cms_categories').getFullList({ sort: 'name' })
+			: [],
+		!needed || needed.has('collection')
+			? pb
+					.collection('collections')
+					.getFullList({ filter: preview ? '' : 'isVisible = true', fields: 'id,title,isVisible' })
+			: [],
+		!needed || needed.has('edition')
+			? pb.collection('editions').getFullList({
+					filter: preview ? '' : 'isPublished = true',
+					fields: 'id,title,dcTitle,isPublished'
+				})
+			: []
 	]);
 	return { content, categories, collections, editions };
 }
@@ -48,10 +78,11 @@ export async function refreshMenus(force = false) {
 	}
 	const current = ++request;
 	try {
-		const [records, directory] = await Promise.all([
-			pb.collection('cms_menus').getFullList(),
-			menuDirectory()
-		]);
+		const records = await pb.collection('cms_menus').getFullList();
+		const directory = await menuDirectory(
+			false,
+			records.map((record) => record.config)
+		);
 		if (current !== request) return;
 		menus.set({
 			main: records.find((r) => r.slot === 'main')?.config || emptyMenu(),
