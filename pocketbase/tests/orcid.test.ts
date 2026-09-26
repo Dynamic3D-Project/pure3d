@@ -41,6 +41,8 @@ describe('ORCID and credits trust boundaries', () => {
 		);
 		expect(() => validate([], true)).toThrow('At least one');
 		expect(validate([person, { ...missing, role: 'contributor' }], true)).toHaveLength(2);
+		expect(v.credits([missing], [], true, () => user, true)).toEqual([missing]);
+		expect(() => v.credits([], [], true, () => user, true)).toThrow('At least one');
 	});
 	test('organizations cannot claim person identity or OAuth ownership', () => {
 		expect(validate([{ ...person, type: 'org', orcid: null }], true)).toHaveLength(1);

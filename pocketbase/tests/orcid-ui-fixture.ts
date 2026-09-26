@@ -14,6 +14,7 @@ await mkdir(hooks);
 for (const file of [
 	'orcid.pb.js',
 	'orcid-service.cjs',
+	'admin-workflow-service.cjs',
 	'proposal-service.cjs',
 	'alpha-review-service.cjs',
 	'publication-service.cjs',

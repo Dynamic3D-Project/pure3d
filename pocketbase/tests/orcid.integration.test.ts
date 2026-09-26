@@ -86,6 +86,7 @@ beforeAll(async () => {
 	for (const file of [
 		'orcid.pb.js',
 		'orcid-service.cjs',
+		'admin-workflow-service.cjs',
 		'orcid-validation.cjs',
 		'proposal-service.cjs',
 		'alpha-review-service.cjs',
@@ -752,6 +753,186 @@ integration('proposal round-trip, model groups, private files and submission loc
 	);
 	await root.collection('editions').delete(edition.id);
 });
+
+integration(
+	'administrative workflow overrides waive only legacy creator ORCID readiness and isolate review rounds',
+	async () => {
+		const credits = [
+			{
+				type: 'person',
+				name: 'Legacy creator',
+				orcid: null,
+				role: 'creator',
+				provenance: 'manual'
+			}
+		];
+		const collection = await root.collection('collections').create({
+			title: 'Legacy parent collection',
+			credits
+		});
+		const edition = await root.collection('editions').create({
+			title: 'Legacy administrative intervention',
+			status: 'draft',
+			collection: collection.id,
+			credits
+		});
+		const endpoint = `/api/pure3d/editions/${edition.id}/admin-workflow-override`;
+		const override = (status: string, expectedStatus: string, reason: string, extra = {}) =>
+			admin.send(endpoint, { method: 'POST', body: { status, expectedStatus, reason, ...extra } });
+		try {
+			await expect(
+				other.send(endpoint, {
+					method: 'POST',
+					body: {
+						status: 'concept_submitted',
+						expectedStatus: 'draft',
+						reason: 'Unauthorized test.'
+					}
+				})
+			).rejects.toBeDefined();
+			await expect(override('concept_submitted', 'draft', '')).rejects.toBeDefined();
+			expect((await root.collection('editions').getOne(edition.id)).status).toBe('draft');
+			expect(
+				await root
+					.collection('auditLog')
+					.getFullList({ filter: `targetId = "${edition.id}" && action = "workflow_override"` })
+			).toHaveLength(0);
+			await expect(
+				admin.collection('editions').update(edition.id, { status: 'concept_submitted' })
+			).rejects.toBeDefined();
+			expect((await root.collection('editions').getOne(edition.id)).status).toBe('draft');
+
+			await override(
+				'concept_submitted',
+				'draft',
+				'Legacy attribution predates ORCID onboarding.',
+				{
+					credits: []
+				}
+			);
+			expect((await root.collection('editions').getOne(edition.id)).credits).toEqual(credits);
+			expect((await root.collection('collections').getOne(collection.id)).credits).toEqual(credits);
+			await override(
+				'editorial_review',
+				'concept_submitted',
+				'Editor is taking over the legacy proposal.'
+			);
+			await override('concept_accepted', 'editorial_review', 'Editorial exception is documented.');
+			let started = await override(
+				'alpha_review',
+				'concept_accepted',
+				'Start an audited Alpha round for the legacy record.'
+			);
+			expect(started).toMatchObject({ status: 'alpha_review', alphaReviewRound: 1 });
+			await expect(
+				override('alpha_accepted', 'concept_accepted', 'The modal state is deliberately stale.')
+			).rejects.toBeDefined();
+			expect((await root.collection('editions').getOne(edition.id)).status).toBe('alpha_review');
+			const firstInvitation = await admin.collection('reviewAssignments').create({
+				editionId: edition.id,
+				reviewerId: other.authStore.record!.id,
+				reviewStage: 2,
+				status: 'pending'
+			});
+			expect(firstInvitation.reviewRound).toBe(1);
+			await override(
+				'alpha_accepted',
+				'alpha_review',
+				'Close this exceptional round without a decision.'
+			);
+			started = await override(
+				'alpha_review',
+				'alpha_accepted',
+				'Reopen as a distinct, audited Alpha round.'
+			);
+			expect(started).toMatchObject({ status: 'alpha_review', alphaReviewRound: 2 });
+			expect(await admin.send(`/api/pure3d/editions/${edition.id}/alpha-progress`)).toMatchObject({
+				round: 2,
+				total: 0,
+				submitted: 0
+			});
+			await override(
+				'alpha_accepted',
+				'alpha_review',
+				'Complete the second exceptional Alpha round.'
+			);
+			started = await override(
+				'final_review',
+				'alpha_accepted',
+				'Start an audited Final Review round.'
+			);
+			expect(started).toMatchObject({ status: 'final_review', finalReviewRound: 1 });
+			const firstFinalInvitation = await admin.collection('reviewAssignments').create({
+				editionId: edition.id,
+				reviewerId: other.authStore.record!.id,
+				reviewStage: 3,
+				status: 'pending'
+			});
+			expect(firstFinalInvitation.reviewRound).toBe(1);
+			await override(
+				'final_accepted',
+				'final_review',
+				'Close this exceptional Final Review round.'
+			);
+			started = await override(
+				'final_review',
+				'final_accepted',
+				'Reopen as a distinct, audited Final Review round.'
+			);
+			expect(started).toMatchObject({ status: 'final_review', finalReviewRound: 2 });
+			expect(await admin.send(`/api/pure3d/editions/${edition.id}/final-progress`)).toMatchObject({
+				round: 2,
+				total: 0,
+				submitted: 0
+			});
+			await override(
+				'final_accepted',
+				'final_review',
+				'Complete the second exceptional Final Review.'
+			);
+			await override(
+				'publication_requested',
+				'final_accepted',
+				'Escalate for normal publication confirmation.'
+			);
+			const audit = await root
+				.collection('auditLog')
+				.getFullList({ filter: `targetId = "${edition.id}" && action = "workflow_override"` });
+			expect(audit).toHaveLength(12);
+			expect(audit.find((entry) => entry.details?.to === 'alpha_review')).toMatchObject({
+				performedBy: 'users/' + admin.authStore.record!.id,
+				details: {
+					from: 'concept_accepted',
+					to: 'alpha_review',
+					reason: 'Start an audited Alpha round for the legacy record.'
+				}
+			});
+			await expect(
+				override(
+					'published',
+					'publication_requested',
+					'Publishing must use publication confirmation.'
+				)
+			).rejects.toBeDefined();
+			const afterFailure = await root.collection('editions').getOne(edition.id);
+			expect(afterFailure).toMatchObject({
+				status: 'publication_requested',
+				alphaReviewRound: 2,
+				finalReviewRound: 2,
+				isPublished: false,
+				peerReviewStamp: false
+			});
+			expect(
+				await root
+					.collection('auditLog')
+					.getFullList({ filter: `targetId = "${edition.id}" && action = "workflow_override"` })
+			).toHaveLength(12);
+		} finally {
+			await root.collection('editions').delete(edition.id);
+			await root.collection('collections').delete(collection.id);
+		}
+	}
+);
 
 integration(
 	'Alpha draft, confidential submission, editorial release and a second round',

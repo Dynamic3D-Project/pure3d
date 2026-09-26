@@ -7,7 +7,11 @@
 	import { EditionStatus, ReviewStage, STATUS_LABELS } from '$lib/types/roles';
 	import { ReviewDecision, ReviewAssignmentStatus } from '$lib/types/reviews';
 	import type { EditionReview, ReviewAssignment } from '$lib/types/reviews';
-	import { updateEditionStatus, assignReviewer } from '$lib/database/edition-helpers';
+	import {
+		updateEditionStatus,
+		assignReviewer,
+		removeReviewAssignment
+	} from '$lib/database/edition-helpers';
 	import {
 		anonymizeReviews,
 		isCurrentReviewRound,
@@ -23,6 +27,10 @@
 	import toast from 'svelte-french-toast';
 	import { readCredits, validateCredits } from '$lib/utils/credits';
 	import { canTransitionStatus } from '$lib/utils/permissions';
+	import {
+		conceptReviewCreditIssue,
+		needsConceptReviewerAssignment
+	} from '$lib/workflow/review-start';
 
 	interface WfEdition {
 		id: string;
@@ -90,6 +98,9 @@
 	let assignUserId = $state('');
 	let assignDueAt = $state('');
 	let replacementReason = $state('');
+	let overrideEdition = $state<WfEdition | null>(null);
+	let overrideStatus = $state<EditionStatus | ''>('');
+	let overrideReason = $state('');
 
 	// Publish modal state
 	let publishModalEdition = $state<WfEdition | null>(null);
@@ -123,7 +134,7 @@
 			(e) => e.status === EditionStatus.Published || e.status === EditionStatus.PublicationRequested
 		)
 	);
-	let allNonDraft = $derived(filteredBaseEditions.filter((e) => e.status !== EditionStatus.Draft));
+	let allEditions = $derived(filteredBaseEditions);
 
 	// Tab counts
 	let tabCounts = $derived({
@@ -132,8 +143,28 @@
 		alpha: alphaEditions.length,
 		final: finalEditions.length,
 		publish: publishEditions.length,
-		all: allNonDraft.length
+		all: allEditions.length
 	});
+
+	const overrideTargets: Partial<Record<EditionStatus, EditionStatus[]>> = {
+		[EditionStatus.Draft]: [EditionStatus.ConceptSubmitted],
+		[EditionStatus.ConceptSubmitted]: [EditionStatus.EditorialReview],
+		[EditionStatus.EditorialReview]: [EditionStatus.ConceptAccepted, EditionStatus.ConceptRejected],
+		[EditionStatus.ConceptAccepted]: [EditionStatus.AlphaReview],
+		[EditionStatus.ConceptRejected]: [EditionStatus.Draft],
+		[EditionStatus.AlphaReview]: [
+			EditionStatus.AlphaAccepted,
+			EditionStatus.AlphaRejected,
+			EditionStatus.AlphaRevisions
+		],
+		[EditionStatus.AlphaRevisions]: [EditionStatus.AlphaReview],
+		[EditionStatus.AlphaAccepted]: [EditionStatus.FinalReview, EditionStatus.AlphaReview],
+		[EditionStatus.AlphaRejected]: [EditionStatus.Draft, EditionStatus.AlphaReview],
+		[EditionStatus.FinalReview]: [EditionStatus.FinalAccepted, EditionStatus.FinalRevisions],
+		[EditionStatus.FinalRevisions]: [EditionStatus.FinalReview],
+		[EditionStatus.FinalAccepted]: [EditionStatus.PublicationRequested, EditionStatus.FinalReview],
+		[EditionStatus.PublicationRequested]: [EditionStatus.FinalAccepted, EditionStatus.FinalReview]
+	};
 
 	function editionAssignments(editionId: string, stage?: number): ReviewAssignment[] {
 		const edition = editions.find((edition) => edition.id === editionId);
@@ -161,16 +192,16 @@
 	async function loadData() {
 		isLoading = true;
 		try {
-			const [edResult, assignResult, reviewResult, userResult] = await Promise.all([
-				pb.collection('editions').getList(1, 500, { expand: 'collection' }),
-				pb.collection('reviewAssignments').getList(1, 1000, {
+			const [editionRecords, assignmentRecords, reviewRecords, userResult] = await Promise.all([
+				pb.collection('editions').getFullList({ expand: 'collection' }),
+				pb.collection('reviewAssignments').getFullList({
 					expand: 'reviewerId,assignedBy'
 				}),
-				pb.collection('editionReviews').getList(1, 1000, { expand: 'reviewerId' }),
+				pb.collection('editionReviews').getFullList({ expand: 'reviewerId' }),
 				pb.collection('users').getFullList()
 			]);
 
-			editions = edResult.items.map((r) => ({
+			editions = editionRecords.map((r) => ({
 				alphaReviewRound: r.alphaReviewRound || 0,
 				finalReviewRound: r.finalReviewRound || 0,
 				id: r.id,
@@ -184,7 +215,7 @@
 				publishedAt: r.publishedAt || null
 			}));
 
-			allAssignments = assignResult.items.map((r) => ({
+			allAssignments = assignmentRecords.map((r) => ({
 				reviewRound: r.reviewRound || 0,
 				editionTitle: r.editionTitle || '',
 				id: r.id,
@@ -197,7 +228,7 @@
 				updated: r.updated
 			}));
 
-			allReviews = reviewResult.items.map((r) => ({
+			allReviews = reviewRecords.map((r) => ({
 				reviewStatus: r.reviewStatus,
 				reviewRound: r.reviewRound || 0,
 				id: r.id,
@@ -230,42 +261,63 @@
 
 	// --- Submissions tab: assign board member and start editorial review ---
 	async function assignAndStartReview(edition: WfEdition) {
-		if (!assignUserId) {
-			toast.error('Select a reviewer first');
-			return;
-		}
 		actionLoading = true;
 		try {
-			await assignReviewer(
-				edition.id,
-				assignUserId,
-				ReviewStage.Concept,
-				authStore.appUserId || ''
-			);
+			const current = await pb.collection('editions').getOne(edition.id, {
+				fields: 'id,status,credits,collection'
+			});
+			if (current.status !== EditionStatus.ConceptSubmitted)
+				throw new Error('This proposal has changed. Refresh the workflow before starting review.');
+			const parentCredits = current.collection
+				? (await pb.collection('collections').getOne(current.collection, { fields: 'id,credits' }))
+						.credits
+				: undefined;
+			const creditIssue = conceptReviewCreditIssue(current.credits, parentCredits);
+			if (creditIssue) throw new Error(creditIssue);
+
+			const existing = await pb.collection('reviewAssignments').getFullList({
+				filter: pb.filter('editionId = {:id} && reviewStage = 1', { id: edition.id }),
+				fields: 'id,reviewerId,reviewStage,status,assignedBy,reviewRound,created,updated'
+			});
+			let assignment;
+			if (
+				needsConceptReviewerAssignment(
+					existing.map((row) => ({ reviewStage: row.reviewStage, status: row.status }))
+				)
+			) {
+				if (!assignUserId) throw new Error('Select a reviewer first.');
+				assignment = await assignReviewer(
+					edition.id,
+					assignUserId,
+					ReviewStage.Concept,
+					authStore.appUserId || ''
+				);
+			}
 
 			await updateEditionStatus(edition.id, EditionStatus.EditorialReview);
 
 			edition.status = EditionStatus.EditorialReview;
 			editions = [...editions];
-			allAssignments = [
-				...allAssignments,
-				{
-					id: 'temp-' + Date.now(),
-					editionId: edition.id,
-					reviewerId: assignUserId,
-					reviewStage: ReviewStage.Concept,
-					assignedBy: authStore.appUserId || '',
-					status: ReviewAssignmentStatus.Pending,
-					reviewRound: 0,
-					created: new Date().toISOString(),
-					updated: new Date().toISOString()
-				}
-			];
+			if (assignment)
+				allAssignments = [
+					...allAssignments,
+					{
+						id: assignment.id,
+						editionId: edition.id,
+						reviewerId: assignment.reviewerId,
+						reviewStage: ReviewStage.Concept,
+						assignedBy: assignment.assignedBy,
+						status: ReviewAssignmentStatus.Pending,
+						reviewRound: 0,
+						created: assignment.created,
+						updated: assignment.updated
+					}
+				];
 			assignUserId = '';
-			toast.success('Reviewer assigned, editorial review started');
+			toast.success('Editorial review started');
 		} catch (error) {
 			console.error('Error starting review:', error);
-			toast.error('Failed to start review');
+			toast.error(error instanceof Error ? error.message : 'Failed to start review');
 		} finally {
 			actionLoading = false;
 		}
@@ -324,7 +376,7 @@
 				throw new Error(
 					'Explain why a new reviewer is being invited instead of reusing the Alpha reviewers.'
 				);
-			await assignReviewer(
+			const assignment = await assignReviewer(
 				edition.id,
 				assignUserId,
 				stage,
@@ -336,27 +388,75 @@
 			allAssignments = [
 				...allAssignments,
 				{
-					id: 'temp-' + Date.now(),
+					id: assignment.id,
 					editionId: edition.id,
-					reviewerId: assignUserId,
+					reviewerId: assignment.reviewerId,
 					reviewStage: stage,
-					assignedBy: authStore.appUserId || '',
-					status: ReviewAssignmentStatus.Pending,
-					reviewRound:
-						stage === ReviewStage.Alpha
-							? edition.alphaReviewRound
-							: stage === ReviewStage.Final
-								? edition.finalReviewRound
-								: 0,
-					created: new Date().toISOString(),
-					updated: new Date().toISOString()
+					assignedBy: assignment.assignedBy,
+					status: assignment.status,
+					reviewRound: assignment.reviewRound,
+					created: assignment.created,
+					updated: assignment.updated
 				}
 			];
 			assignUserId = '';
+			assignDueAt = '';
+			replacementReason = '';
 			toast.success('Reviewer assigned');
 		} catch (error) {
 			console.error('Error assigning reviewer:', error);
 			toast.error('Failed to assign reviewer');
+		} finally {
+			actionLoading = false;
+		}
+	}
+
+	function openOverride(edition: WfEdition) {
+		overrideEdition = edition;
+		overrideStatus = overrideTargets[edition.status]?.[0] || '';
+		overrideReason = '';
+	}
+
+	async function applyOverride() {
+		if (!overrideEdition || !overrideStatus || !overrideReason.trim()) return;
+		actionLoading = true;
+		try {
+			const result = await pb.send<{
+				status: EditionStatus;
+				alphaReviewRound: number;
+				finalReviewRound: number;
+			}>(`/api/pure3d/editions/${overrideEdition.id}/admin-workflow-override`, {
+				method: 'POST',
+				body: {
+					status: overrideStatus,
+					expectedStatus: overrideEdition.status,
+					reason: overrideReason
+				}
+			});
+			overrideEdition.status = result.status;
+			overrideEdition.alphaReviewRound = result.alphaReviewRound;
+			overrideEdition.finalReviewRound = result.finalReviewRound;
+			editions = [...editions];
+			overrideEdition = null;
+			toast.success('Administrative workflow intervention recorded');
+		} catch (error) {
+			console.error('Error applying workflow override:', error);
+			toast.error(error instanceof Error ? error.message : 'Failed to apply workflow override');
+		} finally {
+			actionLoading = false;
+		}
+	}
+
+	async function removePendingAssignment(assignment: ReviewAssignment) {
+		if (!confirm('Remove this unsubmitted reviewer invitation?')) return;
+		actionLoading = true;
+		try {
+			await removeReviewAssignment(assignment.id);
+			allAssignments = allAssignments.filter((item) => item.id !== assignment.id);
+			toast.success('Reviewer invitation removed');
+		} catch (error) {
+			console.error('Error removing reviewer invitation:', error);
+			toast.error(error instanceof Error ? error.message : 'Failed to remove reviewer invitation');
 		} finally {
 			actionLoading = false;
 		}
@@ -440,7 +540,7 @@
 	<div class="mb-8">
 		<h1 class="text-3xl font-bold">Workflow Pipeline</h1>
 		<p class="mt-2 text-base-content/60">
-			Manage the review pipeline: assign reviewers, apply verdicts, and publish editions.
+			Manage all editions, review rounds, editorial decisions, and publication confirmation.
 		</p>
 	</div>
 
@@ -469,7 +569,7 @@
 			</div>
 			<div class="rounded-box border border-base-300 bg-base-100 p-3 text-center">
 				<div class="text-2xl font-bold">{tabCounts.all}</div>
-				<div class="text-xs text-base-content/60">All Active</div>
+				<div class="text-xs text-base-content/60">All Editions</div>
 			</div>
 		</div>
 	{/if}
@@ -686,31 +786,82 @@
 
 		<!-- All Tab -->
 		{#if activeTab === 'all'}
-			{#if allNonDraft.length === 0}
-				<p class="py-8 text-center text-base-content/60">No non-draft editions.</p>
+			{#if allEditions.length === 0}
+				<p class="py-8 text-center text-base-content/60">No editions match the selected filters.</p>
 			{:else}
 				<div class="space-y-2">
-					{#each allNonDraft as edition (edition.id)}
-						<div class="rounded-box border border-base-300 bg-base-100 p-4">
-							<div class="flex flex-wrap items-center gap-3">
-								<span class="font-medium">{edition.title}</span>
-								<StatusBadge status={edition.status} />
-								{#if edition.collectionTitle}
-									<span class="text-sm text-base-content/50">
-										in {edition.collectionTitle}
-									</span>
-								{/if}
-								<span class="text-sm text-base-content/40">
-									{formatDate(edition.created)}
-								</span>
-							</div>
-						</div>
+					{#each allEditions as edition (edition.id)}
+						{@render editionCard(
+							edition,
+							edition.status.startsWith('final') ||
+								edition.status === EditionStatus.PublicationRequested
+								? ReviewStage.Final
+								: edition.status.startsWith('alpha')
+									? ReviewStage.Alpha
+									: ReviewStage.Concept,
+							false
+						)}
 					{/each}
 				</div>
 			{/if}
 		{/if}
 	{/if}
 </div>
+
+{#if overrideEdition}
+	<div class="modal-open modal">
+		<div class="modal-box">
+			<h3 class="text-lg font-bold">Administrative workflow intervention</h3>
+			<p class="mt-2 text-sm text-base-content/70">
+				Move <strong>{overrideEdition.title}</strong> from
+				{STATUS_LABELS[overrideEdition.status]} with an audited reason.
+			</p>
+			<div class="mt-4 alert text-sm alert-warning">
+				This bypasses transition prerequisites only. It does not create or release reviews, apply a
+				peer-review stamp, confirm publication rights, or publish the edition.
+			</div>
+			<label class="form-control mt-4">
+				<span class="label"><span class="label-text">Target workflow stage</span></span>
+				<select class="select-bordered select" bind:value={overrideStatus}>
+					{#each overrideTargets[overrideEdition.status] || [] as status (status)}
+						<option value={status}>{STATUS_LABELS[status]}</option>
+					{/each}
+				</select>
+			</label>
+			<label class="form-control mt-4">
+				<span class="label"><span class="label-text">Override reason (audited)</span></span>
+				<textarea
+					class="textarea-bordered textarea"
+					rows="4"
+					maxlength="5000"
+					bind:value={overrideReason}
+					placeholder="Explain the prerequisite exception or why this review round is reopening."
+				></textarea>
+			</label>
+			<div class="modal-action">
+				<button
+					class="btn btn-ghost"
+					disabled={actionLoading}
+					onclick={() => (overrideEdition = null)}>Cancel</button
+				>
+				<button
+					class="btn btn-primary"
+					disabled={actionLoading || !overrideStatus || !overrideReason.trim()}
+					onclick={applyOverride}
+				>
+					{#if actionLoading}<span class="loading loading-sm loading-spinner"></span>{/if}
+					Record intervention
+				</button>
+			</div>
+		</div>
+		<button
+			class="modal-backdrop"
+			disabled={actionLoading}
+			onclick={() => (overrideEdition = null)}
+			aria-label="Close administrative workflow intervention"
+		></button>
+	</div>
+{/if}
 
 <!-- Publish Modal -->
 {#if publishModalEdition}
@@ -820,6 +971,12 @@
 					currentStatus={edition.status}
 					hrefForStatus={(status) => workflowStepHref(edition.id, status)}
 				/>
+				<a
+					class="btn btn-outline btn-sm"
+					href={resolve('/editions/[slug]/workflow', { slug: edition.id })}
+				>
+					Open edition workspace
+				</a>
 
 				<!-- Reviewer assignments -->
 				<div>
@@ -834,6 +991,7 @@
 										<th>Reviewer</th>
 										<th>Status</th>
 										<th>Assigned</th>
+										<th><span class="sr-only">Actions</span></th>
 									</tr>
 								</thead>
 								<tbody>
@@ -851,6 +1009,17 @@
 												{/if}
 											</td>
 											<td class="text-base-content/60">{formatDate(a.created)}</td>
+											<td>
+												{#if !hasReview && [ReviewAssignmentStatus.Pending, ReviewAssignmentStatus.Accepted].includes(a.status)}
+													<button
+														class="btn btn-ghost btn-xs"
+														disabled={actionLoading}
+														onclick={() => removePendingAssignment(a)}
+													>
+														Remove
+													</button>
+												{/if}
+											</td>
 										</tr>
 									{/each}
 								</tbody>
@@ -932,13 +1101,15 @@
 							{isSubmission ? 'Assign Board Member & Start Review' : 'Assign Reviewer'}
 						</h4>
 						<div class="flex flex-wrap items-end gap-2">
-							<div class="form-control">
-								<UserSearchSelect
-									users={allUsers.filter((u) => !assignments.some((a) => a.reviewerId === u.id))}
-									bind:value={assignUserId}
-									placeholder="Search user..."
-								/>
-							</div>
+							{#if !isSubmission || needsConceptReviewerAssignment(assignments)}<div
+									class="form-control"
+								>
+									<UserSearchSelect
+										users={allUsers.filter((u) => !assignments.some((a) => a.reviewerId === u.id))}
+										bind:value={assignUserId}
+										placeholder="Search user..."
+									/>
+								</div>{/if}
 							{#if !isSubmission}<label class="text-sm" for="assignment-deadline"
 									>Deadline<input
 										id="assignment-deadline"
@@ -960,14 +1131,34 @@
 									isSubmission
 										? assignAndStartReview(edition)
 										: assignStageReviewer(edition, stage)}
-								disabled={!assignUserId || actionLoading}
+								disabled={(!assignUserId &&
+									(!isSubmission || needsConceptReviewerAssignment(assignments))) ||
+									actionLoading}
 							>
 								{#if actionLoading}
 									<span class="loading loading-xs loading-spinner"></span>
 								{/if}
-								{isSubmission ? 'Assign & Start Review' : 'Assign'}
+								{isSubmission
+									? needsConceptReviewerAssignment(assignments)
+										? 'Assign & Start Review'
+										: 'Start Review'
+									: 'Assign'}
 							</button>
 						</div>
+					</div>
+				{/if}
+
+				{#if overrideTargets[edition.status]?.length}
+					<div class="border-t border-base-300 pt-3">
+						<h4 class="text-sm font-semibold text-base-content/60 uppercase">
+							Administrative intervention
+						</h4>
+						<p class="mt-1 text-sm text-base-content/60">
+							Advance or reopen this workflow when documented prerequisites require an exception.
+						</p>
+						<button class="btn mt-2 btn-outline btn-sm" onclick={() => openOverride(edition)}>
+							Override workflow
+						</button>
 					</div>
 				{/if}
 

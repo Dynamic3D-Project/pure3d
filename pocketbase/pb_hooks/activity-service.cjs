@@ -350,6 +350,7 @@ function markRead(e) {
 module.exports = {
 	actor,
 	actorKey,
+	audit,
 	request,
 	model,
 	createEvent,

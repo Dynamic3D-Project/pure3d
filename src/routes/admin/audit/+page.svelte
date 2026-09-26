@@ -38,6 +38,7 @@
 	const actionLabels: Record<string, string> = {
 		role_change: 'Role Change',
 		status_transition: 'Status Transition',
+		workflow_override: 'Workflow Override',
 		user_assigned: 'User Assigned',
 		user_removed: 'User Removed',
 		user_deleted: 'User Deleted',
@@ -49,6 +50,7 @@
 	const actionBadgeClass: Record<string, string> = {
 		role_change: 'badge-info',
 		status_transition: 'badge-warning',
+		workflow_override: 'badge-warning',
 		user_assigned: 'badge-success',
 		user_removed: 'badge-error',
 		user_deleted: 'badge-error',
@@ -60,6 +62,7 @@
 	const actionOptions = [
 		'role_change',
 		'status_transition',
+		'workflow_override',
 		'user_assigned',
 		'user_removed',
 		'user_deleted',

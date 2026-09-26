@@ -4,6 +4,7 @@ const proposal = require('./proposal-service.cjs');
 const identityFields = ['orcid', 'orcidVerifiedAt', 'pendingOrcid'];
 const profileFields = ['nickname', 'affiliation', 'bio', 'titleRole', 'socials'];
 const proofContext = 'pure3d.orcid.proof';
+const adminWorkflowOverrideContext = 'pure3d.adminWorkflowOverride';
 
 function bad(message) {
 	throw new BadRequestError(message);
@@ -534,6 +535,10 @@ function validateRecord(e) {
 		} else if (!r.getString('collection')) bad('Membership collection is required');
 	} else {
 		const edition = name === 'editions';
+		const adminWorkflowOverride =
+			edition && !!e.context.value(adminWorkflowOverrideContext) && !r.isNew();
+		if (adminWorkflowOverride && changed(r, 'credits'))
+			bad('Administrative workflow overrides cannot alter credits.');
 		const publishField = edition ? 'isPublished' : 'isVisible';
 		const entering =
 			(r.getBool(publishField) && !r.original().getBool(publishField)) ||
@@ -550,7 +555,8 @@ function validateRecord(e) {
 					json(r, 'credits') || [],
 					json(r.original(), 'credits') || [],
 					entering || editingPublic,
-					(id) => creditUser(e.app, id)
+					(id) => creditUser(e.app, id),
+					adminWorkflowOverride
 				)
 			);
 			r.set('credits', validated);
@@ -562,8 +568,12 @@ function validateRecord(e) {
 		) {
 			const parent = e.app.findRecordById('collections', r.getString('collection'));
 			checked(() =>
-				v.credits(json(parent, 'credits') || [], json(parent, 'credits') || [], true, (id) =>
-					creditUser(e.app, id)
+				v.credits(
+					json(parent, 'credits') || [],
+					json(parent, 'credits') || [],
+					true,
+					(id) => creditUser(e.app, id),
+					adminWorkflowOverride
 				)
 			);
 		}

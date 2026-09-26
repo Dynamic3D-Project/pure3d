@@ -35,7 +35,8 @@ function normalizeOrcidJwks(value) {
 				key.kid.length > 256 ||
 				kids.includes(key.kid) ||
 				typeof key.n !== 'string' ||
-				!/^[A-Za-z0-9_-]{342,1366}$/.test(key.n) ||
+				// Goja's RE2 rejects a single repeat upper bound above 1000; preserve 342–1366.
+				!/^[A-Za-z0-9_-]{342,1000}[A-Za-z0-9_-]{0,366}$/.test(key.n) ||
 				key.n.length % 4 === 1 ||
 				typeof key.e !== 'string' ||
 				!/^[A-Za-z0-9_-]{2,8}$/.test(key.e) ||
@@ -101,7 +102,7 @@ function sameCredits(a, b) {
 	);
 }
 
-function credits(value, previous, requireCreators, lookupUser) {
+function credits(value, previous, requireCreators, lookupUser, allowCreatorWithoutOrcid = false) {
 	if (!Array.isArray(value) || value.length > 200)
 		throw new Error('credits must be an array (max 200)');
 	let creators = 0;
@@ -153,7 +154,7 @@ function credits(value, previous, requireCreators, lookupUser) {
 		}
 		if (out.role === 'creator') {
 			creators++;
-			if (requireCreators && out.type === 'person' && !out.orcid)
+			if (requireCreators && out.type === 'person' && !out.orcid && !allowCreatorWithoutOrcid)
 				throw new Error('Every individual creator needs an ORCID before submission or publication');
 		}
 		return out;

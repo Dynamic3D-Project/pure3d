@@ -290,6 +290,12 @@ routerAdd(
 	(e) => require(__hooks + '/publication-service.cjs').reinvite(e),
 	$apis.requireAuth()
 );
+routerAdd(
+	'POST',
+	'/api/pure3d/editions/{editionId}/admin-workflow-override',
+	(e) => require(__hooks + '/admin-workflow-service.cjs').override(e),
+	$apis.requireAuth()
+);
 onRecordDelete(
 	(e) => require(__hooks + '/activity-service.cjs').model(e),
 	'users',
