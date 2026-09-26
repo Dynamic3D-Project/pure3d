@@ -111,7 +111,9 @@ const fields = {
 	reviewAssignments: ['editionId', 'reviewerId', 'reviewStage', 'assignedBy', 'status'],
 	editionReviews: ['editionId', 'reviewerId', 'reviewStage', 'decision'],
 	reviewFeedback: ['editionId', 'reviewerId', 'reviewStage', 'category', 'resolved'],
-	content: ['title', 'slug', 'kind', 'layout', 'parent', 'isPublished']
+	content: ['title', 'slug', 'kind', 'layout', 'parent', 'isPublished'],
+	// Production retains legacy documentation alongside the newer CMS content collection.
+	documentation: ['title', 'slug', 'isPublished']
 };
 
 function snapshot(record, name) {
@@ -177,8 +179,8 @@ function model(e) {
 				action = after.pendingOrcid ? 'orcid_mapping_approved' : 'orcid_mapping_cleared';
 			else if (before.role !== after.role) action = 'role_change';
 			else if (changed.length) action = 'user_updated';
-		} else if (name === 'content') {
-			targetType = 'content';
+		} else if (name === 'content' || name === 'documentation') {
+			targetType = name;
 			targetId = id || record.id;
 			if (operation !== 'update' || changed.length)
 				action = { create: 'doc_created', update: 'doc_updated', delete: 'doc_deleted' }[operation];
