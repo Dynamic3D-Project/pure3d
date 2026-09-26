@@ -6,6 +6,7 @@
  * Read-only is the default; --apply needs --backup KEY created immediately before it.
  */
 import PocketBase from 'pocketbase';
+import { appendFile, writeFile } from 'node:fs/promises';
 import schema from '../pocketbase/pb_schema/collections.json';
 import { mergeSchemaFields } from './schema-fields';
 
@@ -102,10 +103,13 @@ async function main() {
 	const args = new Set(process.argv.slice(2));
 	const apply = args.has('--apply');
 	const backup = process.argv[process.argv.indexOf('--backup') + 1];
+	const journal = process.argv[process.argv.indexOf('--journal') + 1];
 	if (process.env.POCKETBASE_URL && process.env.POCKETBASE_URL !== origin)
 		throw new Error('This migration is pinned to the production PocketBase origin.');
 	if (apply && (!backup || !/^[a-z0-9-]+\.zip$/.test(backup)))
 		throw new Error('--apply requires a lowercase verified --backup KEY.');
+	if (apply && (!journal || !journal.startsWith('/private/')))
+		throw new Error('--apply requires a new private --journal PATH.');
 	const email = process.env.POCKETBASE_ADMIN_EMAIL;
 	const password = process.env.POCKETBASE_ADMIN_PASSWORD;
 	if (!email || !password)
@@ -130,15 +134,42 @@ async function main() {
 		(item) => item.key === backup && item.size > 0
 	);
 	if (!verified) throw new Error('The supplied backup is absent or has no verified bytes.');
+	if (Date.now() - Date.parse(verified.modified || verified.created || '') > 60 * 60 * 1000)
+		throw new Error(
+			'The supplied backup is older than one hour. Create and verify a fresh backup.'
+		);
+	await writeFile(
+		journal,
+		JSON.stringify(
+			{ origin, backup, startedAt: new Date().toISOString(), phase: 'prepared', changes },
+			null,
+			2
+		) + '\n',
+		{ flag: 'wx', mode: 0o600 }
+	);
 	for (const change of changes)
-		if (change.changed)
+		if (change.changed) {
 			await pb.collections.update(change.id, { fields: change.fields, indexes: change.indexes });
+			await appendFile(
+				journal,
+				JSON.stringify({ phase: 'schema', collection: change.name, status: 'acknowledged' }) + '\n'
+			);
+		}
 	for (const change of changes)
-		if (Object.keys(change.changedRules).length)
+		if (Object.keys(change.changedRules).length) {
 			await pb.collections.update(change.id, change.changedRules);
+			await appendFile(
+				journal,
+				JSON.stringify({ phase: 'rules', collection: change.name, status: 'acknowledged' }) + '\n'
+			);
+		}
 	const after = plan(await pb.collections.getFullList());
 	if (after.some((change) => change.changed || Object.keys(change.changedRules).length))
 		throw new Error('Schema readback differs after alignment; do not deploy hooks.');
+	await appendFile(
+		journal,
+		JSON.stringify({ phase: 'complete', completedAt: new Date().toISOString() }) + '\n'
+	);
 	console.log(JSON.stringify({ mode: 'applied', origin, backup, collections: summary }, null, 2));
 }
 
