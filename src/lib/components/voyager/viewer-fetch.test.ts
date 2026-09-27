@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { installViewerFetch } from './viewer-fetch';
+import { installViewerFetch, type ViewerAssetRequestEvent } from './viewer-fetch';
 
 const root = 'https://assets.test/project/1/edition/1/';
 const scene = `${root}scene.svx.json?token=private`;
@@ -135,5 +135,80 @@ test('stream errors reach the caller rather than leaving a hanging response', as
 	const dispose = installViewerFetch(host, { root: () => root, progress: () => {} });
 	const response = await host.fetch(`${root}mesh.glb`);
 	await expect(response.text()).rejects.toThrow('stream failed');
+	dispose();
+});
+
+test('finishes unknown-length assets and tracks a later retry independently', async () => {
+	const events: ViewerAssetRequestEvent[] = [];
+	const host: Parameters<typeof installViewerFetch>[0] = {
+		fetch: async () => new Response('asset')
+	};
+	const dispose = installViewerFetch(host, {
+		root: () => root,
+		assetRequest: (event) => events.push(event)
+	});
+
+	await (await host.fetch(`${root}model.glb`)).text();
+	await (await host.fetch(`${root}model.glb`)).text();
+
+	expect(events.map((event) => event.type)).toEqual([
+		'start',
+		'response',
+		'finish',
+		'start',
+		'response',
+		'finish'
+	]);
+	expect(events.map((event) => event.url)).toEqual(Array(6).fill(`${root}model.glb`));
+	expect(events.map((event) => event.kind)).toEqual(Array(6).fill('model'));
+	expect(events[0].id).toBe(events[1].id);
+	expect(events[1].id).toBe(events[2].id);
+	expect(events[3].id).toBe(events[4].id);
+	expect(events[4].id).toBe(events[5].id);
+	expect(events[3].id).not.toBe(events[0].id);
+	expect(events[1]).toMatchObject({ type: 'response', total: null });
+	expect(events[4]).toMatchObject({ type: 'response', total: null });
+	dispose();
+});
+
+test('finishes failed asset requests so a retry is not left active', async () => {
+	const events: string[] = [];
+	let attempts = 0;
+	const host: Parameters<typeof installViewerFetch>[0] = {
+		fetch: async () => {
+			if (!attempts++) throw new Error('network failed');
+			return new Response('asset');
+		}
+	};
+	const dispose = installViewerFetch(host, {
+		root: () => root,
+		assetRequest: (event) => events.push(event.type)
+	});
+
+	await expect(host.fetch(`${root}model.glb`)).rejects.toThrow('network failed');
+	await (await host.fetch(`${root}model.glb`)).text();
+
+	expect(events).toEqual(['start', 'finish', 'start', 'response', 'finish']);
+	dispose();
+});
+test('observes scene JSON without a second download or consuming the response', async () => {
+	let requests = 0;
+	const source = { scenes: [{ nodes: [] }], nodes: [] };
+	const host: { fetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response> } = {
+		fetch: async () => {
+			requests++;
+			return Response.json(source);
+		}
+	};
+	const observed: unknown[] = [];
+	const dispose = installViewerFetch(host, {
+		root: () => 'https://example.test/',
+		sceneDocument: () => 'https://example.test/scene.svx.json',
+		documentLoaded: (document) => observed.push(document)
+	});
+	const response = await host.fetch('https://example.test/scene.svx.json');
+	expect(await response.json()).toEqual(source);
+	expect(observed).toEqual([source]);
+	expect(requests).toBe(1);
 	dispose();
 });

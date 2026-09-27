@@ -40,6 +40,8 @@ export interface Collection {
 	title: string;
 	description: string;
 	thumbnail: string;
+	fileCollectionId?: string;
+	fileCollectionName?: string;
 	editionIds: string[];
 	created: string;
 	// Full fields
@@ -72,6 +74,8 @@ export interface Edition {
 	authors: string;
 	thumbnail: string;
 	coverImage?: string;
+	fileCollectionId?: string;
+	fileCollectionName?: string;
 	modelSize?: string | null;
 	collectionName?: string;
 	voyagerUrl: string;

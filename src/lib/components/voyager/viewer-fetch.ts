@@ -3,7 +3,16 @@ export interface ViewerFetchOptions {
 	overrides?: () => { url: string; content: string; contentType?: string }[] | undefined;
 	companions?: () => { baseDir: string; byBasename: Record<string, string> } | undefined;
 	progress?: (total: number, loaded: number) => void;
+	assetRequest?: (event: ViewerAssetRequestEvent) => void;
+	sceneDocument?: () => string | undefined;
+	documentLoaded?: (source: unknown) => void;
 }
+
+export type ViewerAssetRequestEvent = {
+	id: number;
+	url: string;
+	kind: 'model' | 'asset';
+} & ({ type: 'start' } | { type: 'response'; total: number | null } | { type: 'finish' });
 
 type Fetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 type FetchHost = { fetch: Fetch };
@@ -12,7 +21,20 @@ const registries = new WeakMap<
 	FetchHost,
 	{ native: Fetch; dispatch: Fetch; entries: Registration[] }
 >();
-const assetExtension = /\.(glb|gltf|bin|jpg|jpeg|png|webp|ktx2|draco)$/i;
+const assetExtension = /\.(glb|gltf|obj|ply|bin|jpg|jpeg|png|webp|ktx2|draco)$/i;
+const modelExtension = /\.(glb|gltf|obj|ply)$/i;
+let nextRequestId = 0;
+
+async function observeDocument(response: Response, entry: Registration): Promise<Response> {
+	if (!response.ok || !entry.options.documentLoaded) return response;
+	try {
+		const source: unknown = await response.clone().json();
+		if (entry.active) entry.options.documentLoaded(source);
+	} catch {
+		// Leave invalid documents and aborted requests to Voyager's own error handling.
+	}
+	return response;
+}
 
 function companionUrl(requested: string, options: ViewerFetchOptions): string | null {
 	const assets = options.companions?.();
@@ -45,11 +67,27 @@ function companionUrl(requested: string, options: ViewerFetchOptions): string | 
 	}
 }
 
-async function trackedResponse(response: Response, entry: Registration): Promise<Response> {
+async function trackedResponse(
+	response: Response,
+	entry: Registration,
+	responseStarted: (total: number | null) => void,
+	finish: () => void
+): Promise<Response> {
 	const size = Number(response.headers.get('content-length'));
-	if (!entry.active || !response.body || !Number.isFinite(size) || size <= 0) return response;
-	entry.options.progress?.(size, 0);
+	const total = Number.isFinite(size) && size > 0 ? size : null;
+	responseStarted(total);
+	if (!response.body) {
+		finish();
+		return response;
+	}
+	if (entry.active && total) entry.options.progress?.(total, 0);
 	const reader = response.body.getReader();
+	let finished = false;
+	const complete = () => {
+		if (finished) return;
+		finished = true;
+		finish();
+	};
 	const stream = new ReadableStream<Uint8Array>({
 		async pull(controller) {
 			try {
@@ -57,6 +95,7 @@ async function trackedResponse(response: Response, entry: Registration): Promise
 				if (done) {
 					controller.close();
 					reader.releaseLock();
+					complete();
 					return;
 				}
 				if (entry.active) entry.options.progress?.(0, value.length);
@@ -64,6 +103,7 @@ async function trackedResponse(response: Response, entry: Registration): Promise
 			} catch (error) {
 				controller.error(error);
 				reader.releaseLock();
+				complete();
 			}
 		},
 		async cancel(reason) {
@@ -71,6 +111,7 @@ async function trackedResponse(response: Response, entry: Registration): Promise
 				await reader.cancel(reason);
 			} finally {
 				reader.releaseLock();
+				complete();
 			}
 		}
 	});
@@ -95,11 +136,15 @@ export function installViewerFetch(host: FetchHost, options: ViewerFetchOptions)
 			)
 				return native.call(host, input, init);
 			for (const entry of [...entries].reverse()) {
+				const sceneDocument = requested === entry.options.sceneDocument?.();
 				const override = entry.options.overrides?.()?.find((item) => item.url === requested);
-				if (override)
-					return new Response(override.content, {
+				if (override) {
+					const response = new Response(override.content, {
 						headers: { 'content-type': override.contentType ?? 'application/json' }
 					});
+					return sceneDocument ? observeDocument(response, entry) : response;
+				}
+				if (sceneDocument) return observeDocument(await native.call(host, input, init), entry);
 				const mapped = companionUrl(requested, entry.options);
 				let tracked = false;
 				try {
@@ -119,8 +164,39 @@ export function installViewerFetch(host: FetchHost, options: ViewerFetchOptions)
 							? new Request(mapped, input)
 							: mapped
 						: input;
-				const response = await native.call(host, redirected, init);
-				return tracked && entry.options.progress ? trackedResponse(response, entry) : response;
+				if (!tracked) return await native.call(host, redirected, init);
+				const kind = modelExtension.test(requested) ? 'model' : 'asset';
+				const id = ++nextRequestId;
+				entry.options.assetRequest?.({ type: 'start', id, url: requested, kind });
+				let finished = false;
+				const finish = () => {
+					if (finished) return;
+					finished = true;
+					if (entry.active)
+						entry.options.assetRequest?.({ type: 'finish', id, url: requested, kind });
+				};
+				try {
+					const response = await native.call(host, redirected, init);
+					return entry.options.progress || entry.options.assetRequest
+						? trackedResponse(
+								response,
+								entry,
+								(total) =>
+									entry.active &&
+									entry.options.assetRequest?.({
+										type: 'response',
+										id,
+										url: requested,
+										kind,
+										total
+									}),
+								finish
+							)
+						: response;
+				} catch (error) {
+					finish();
+					throw error;
+				}
 			}
 			return native.call(host, input, init);
 		};

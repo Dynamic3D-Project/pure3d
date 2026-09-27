@@ -184,6 +184,13 @@ test('release checkpoints build before atomic push and clears state only after p
 	);
 });
 
+test('verification includes backend performance and hook regressions', () => {
+	const config = readFileSync('release.config.mjs', 'utf8');
+	const checks = readFileSync('.github/workflows/release.yml', 'utf8');
+	expect(config).toContain("['bun', '--no-env-file', 'test', 'src', 'scripts', 'pocketbase']");
+	expect(checks).toContain('bun --no-env-file test src scripts pocketbase\n');
+});
+
 test('Pages is tag-only and deploys verified prebuilt bytes; all Actions remain build-free', () => {
 	const pages = readFileSync('.github/workflows/pages.yml', 'utf8');
 	const checks = readFileSync('.github/workflows/release.yml', 'utf8');

@@ -148,6 +148,12 @@ onRecordUpdateRequest(
 	'editionUsers'
 );
 
+onRecordsListRequest((e) => {
+	const info = e.requestInfo();
+	require(__hooks + '/orcid-service.cjs').batchRoles({ app: e.app, auth: info.auth }, e.records);
+	return e.next();
+}, 'editions');
+
 onRecordEnrich((e) => {
 	const access = require(__hooks + '/orcid-service.cjs').roles(
 		{ app: e.app, auth: e.requestInfo.auth },
@@ -374,6 +380,23 @@ routerAdd('GET', '/api/pure3d/orcid/ready', (e) => {
 		});
 	}
 });
+
+routerAdd(
+	'GET',
+	'/api/pure3d/orcid/credits-audit',
+	(e) => {
+		e.response.header().set('Cache-Control', 'no-store');
+		try {
+			return require(__hooks + '/orcid-readiness.cjs').creditsAudit(e);
+		} catch {
+			return e.json(503, {
+				ready: false,
+				checks: { hooks: false, auth: false, schema: false, credits: false }
+			});
+		}
+	},
+	$apis.requireSuperuserAuth()
+);
 
 onBootstrap((e) => {
 	e.next();

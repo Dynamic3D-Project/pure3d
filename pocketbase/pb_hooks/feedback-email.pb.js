@@ -1,64 +1,76 @@
-function feedbackPlainText(value) {
-	return String(value || '')
-		.replace(/&nbsp;/g, ' ')
-		.replace(/<[^>]*>/g, ' ')
-		.replace(/\s+/g, ' ')
-		.trim();
-}
+/* eslint-disable @typescript-eslint/no-require-imports -- PocketBase hooks use Goja's CommonJS loader. */
+onRecordCreateRequest((event) => {
+	for (const field of ['emailQueuedAt', 'emailAttemptedAt', 'emailSentAt'])
+		event.record.set(field, '');
+	event.record.set('emailAttempts', 0);
+	event.next();
+}, 'feedback');
 
 onRecordUpdateRequest((event) => {
-	const previousStatus = event.record.original().getString('status');
-	const currentStatus = event.record.getString('status');
+	const service = require(__hooks + '/feedback-email-service.cjs');
+	const original = event.record.original();
+	const queue = service.queueState(
+		original.getString('status'),
+		event.record.getString('status'),
+		new Date().toISOString(),
+		{
+			emailQueuedAt: original.getString('emailQueuedAt'),
+			emailAttemptedAt: original.getString('emailAttemptedAt'),
+			emailSentAt: original.getString('emailSentAt'),
+			emailAttempts: original.getInt('emailAttempts')
+		},
+		$os.getenv('PURE3D_FEEDBACK_EMAIL_ENABLED') === 'true'
+	);
+	for (const field in queue) event.record.set(field, queue[field]);
 	event.next();
+}, 'feedback');
 
-	if (previousStatus !== 'draft' || currentStatus !== 'submitted') return;
-
-	let recipients;
-	try {
-		recipients = event.app.findAllRecords('feedbackRecipients');
-	} catch (error) {
-		console.log('Feedback email recipients could not be loaded:', error);
+// Explicit opt-in only. Delivery failures never roll back or alter submitted feedback content.
+cronAdd('pure3d-feedback-email', '*/5 * * * *', () => {
+	const service = require(__hooks + '/feedback-email-service.cjs');
+	const settings = $app.settings();
+	if (!service.deliveryEnabled($os.getenv('PURE3D_FEEDBACK_EMAIL_ENABLED'), settings.smtp.enabled))
 		return;
-	}
-
-	if (!recipients.length) return;
-
-	const participant = event.record.getString('participantName') || 'Anonymous';
-	const participantEmail = event.record.getString('participantEmail') || 'Not provided';
-	const category = event.record.getString('category') || 'other';
-	const severity = event.record.getString('severity') || 'minor';
-	const pageUrl = event.record.getString('pageUrl') || event.record.getString('editionUrl');
-	const feedback =
-		feedbackPlainText(event.record.getString('feedbackHtml')) || 'No written feedback.';
-	const body = [
-		'New Pure3D feedback was submitted.',
-		'',
-		'Participant: ' + participant,
-		'Participant email: ' + participantEmail,
-		'Category: ' + category,
-		'Severity: ' + severity,
-		'Page: ' + (pageUrl || 'Not provided'),
-		'',
-		feedback
-	].join('\n');
-
-	for (const recipient of recipients) {
-		const email = recipient.getString('email');
-		if (!email) continue;
-
+	const records = $app.findRecordsByFilter(
+		'feedback',
+		'emailQueuedAt != "" && emailSentAt = "" && emailAttempts < 5',
+		'emailQueuedAt',
+		50,
+		0
+	);
+	const recipientEmails = $app
+		.findAllRecords('feedbackRecipients')
+		.map((record) => record.getString('email'));
+	for (const feedback of records) {
 		try {
-			const message = new MailerMessage({
-				from: {
-					address: event.app.settings().meta.senderAddress,
-					name: event.app.settings().meta.senderName
+			feedback.set('emailAttempts', feedback.getInt('emailAttempts') + 1);
+			feedback.set('emailAttemptedAt', new Date().toISOString());
+			$app.save(feedback);
+			const delivery = service.createDelivery(
+				{
+					participantName: feedback.getString('participantName'),
+					participantEmail: feedback.getString('participantEmail'),
+					category: feedback.getString('category'),
+					severity: feedback.getString('severity'),
+					pageUrl: feedback.getString('pageUrl'),
+					editionUrl: feedback.getString('editionUrl'),
+					feedbackHtml: feedback.getString('feedbackHtml')
 				},
-				to: [{ address: email }],
-				subject: 'New Pure3D feedback (' + severity + ')',
-				text: body
-			});
-			event.app.newMailClient().send(message);
-		} catch (error) {
-			console.log('Feedback email could not be sent to ' + email + ':', error);
+				recipientEmails
+			);
+			if (!delivery.recipients.length) throw new Error('No feedback email recipients configured.');
+			$app.newMailClient().send(
+				new MailerMessage({
+					from: { address: settings.meta.senderAddress, name: settings.meta.senderName },
+					bcc: delivery.recipients.map((address) => ({ address })),
+					subject: delivery.subject,
+					text: delivery.body
+				})
+			);
+			feedback.set('emailSentAt', new Date().toISOString());
+			$app.save(feedback);
+		} catch {
+			console.error('Feedback email delivery failed for feedback ' + feedback.id);
 		}
 	}
-}, 'feedback');
+});

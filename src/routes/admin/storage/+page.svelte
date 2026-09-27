@@ -8,6 +8,7 @@
 	import {
 		filterStorageObjects,
 		getStorageSummary,
+		legacyStoragePage,
 		type StorageObject,
 		type StorageSort
 	} from '$lib/utils/storage-dashboard';
@@ -15,6 +16,10 @@
 	interface StorageResponse {
 		bucket: string;
 		objects: StorageObject[];
+		hasMore: boolean;
+		nextCursor: string;
+		scanBounded: boolean;
+		limitation: string;
 	}
 
 	const pageSize = 25;
@@ -42,7 +47,13 @@
 	let query = $state('');
 	let sizeFilter = $state('all');
 	let sort = $state<StorageSort>('modified-desc');
-	let currentPage = $state(1);
+	let prefix = $state('');
+	let prefixDraft = $state('');
+	let cursor = $state('');
+	let nextCursor = $state('');
+	let cursorHistory = $state<string[]>([]);
+	let hasMore = $state(false);
+	let scanLimitation = $state('');
 
 	let sizeRange = $derived.by(() => {
 		if (sizeFilter === 'small') return [0, 1024 ** 2 - 1];
@@ -60,32 +71,42 @@
 		})
 	);
 	let summary = $derived(getStorageSummary(objects));
-	let totalPages = $derived(Math.max(1, Math.ceil(filteredObjects.length / pageSize)));
-	let visibleObjects = $derived(
-		filteredObjects.slice((currentPage - 1) * pageSize, currentPage * pageSize)
-	);
+	let visibleObjects = $derived(filteredObjects);
 	let hasFilters = $derived(Boolean(query || sizeFilter !== 'all'));
-
-	$effect(() => {
-		if (currentPage > totalPages) currentPage = totalPages;
-	});
 
 	onMount(() => {
 		if (authStore.globalRole === GlobalRole.Admin) void loadObjects();
 	});
 
-	async function loadObjects(refresh = false) {
+	async function loadObjects(refresh = false, targetCursor = cursor): Promise<boolean> {
 		if (refresh) refreshing = true;
 		else loading = true;
 		errorMessage = '';
 		try {
-			const response = await pb.send<StorageResponse>('/api/pure3d/storage', {});
+			const response = await pb.send<StorageResponse>('/api/pure3d/storage', {
+				query: { prefix, cursor: targetCursor, limit: pageSize }
+			});
+			if (typeof response.hasMore !== 'boolean' || typeof response.nextCursor !== 'string') {
+				Object.assign(
+					response,
+					legacyStoragePage(response.objects, prefix, targetCursor, pageSize)
+				);
+				response.scanBounded = false;
+				response.limitation =
+					'The server storage hook is awaiting its update. Inventory is paginated locally; each request still retrieves the full inventory.';
+			}
 			bucket = response.bucket;
 			objects = response.objects;
+			cursor = targetCursor;
+			nextCursor = response.nextCursor;
+			hasMore = response.hasMore;
+			scanLimitation = response.scanBounded ? '' : response.limitation;
+			return true;
 		} catch (error) {
 			console.error('Failed to load storage:', error);
 			errorMessage = 'Storage could not be loaded. Check the PocketBase storage connection.';
 			toast.error('Failed to load storage');
+			return false;
 		} finally {
 			loading = false;
 			refreshing = false;
@@ -137,6 +158,24 @@
 		}
 	}
 
+	async function applyPrefix() {
+		prefix = prefixDraft.trim();
+		cursorHistory = [];
+		await loadObjects(false, '');
+	}
+
+	async function nextPage() {
+		if (!nextCursor) return;
+		const previousCursor = cursor;
+		if (await loadObjects(false, nextCursor)) cursorHistory = [...cursorHistory, previousCursor];
+	}
+
+	async function previousPage() {
+		const previousCursor = cursorHistory.at(-1);
+		if (previousCursor === undefined) return;
+		if (await loadObjects(false, previousCursor)) cursorHistory = cursorHistory.slice(0, -1);
+	}
+
 	function formatSize(bytes: number): string {
 		if (bytes < 1024) return `${bytes} B`;
 		const units = ['KB', 'MB', 'GB', 'TB'];
@@ -182,18 +221,41 @@
 		<div class="rounded-box border border-base-300 bg-base-100 p-5 shadow-sm">
 			<p class="text-sm text-base-content/60">Objects</p>
 			<p class="mt-1 text-3xl font-semibold tabular-nums">{summary.count.toLocaleString()}</p>
-			<p class="mt-2 text-xs text-base-content/45">
-				{filteredObjects.length.toLocaleString()} visible
-			</p>
+			<p class="mt-2 text-xs text-base-content/45">Loaded page; {filteredObjects.length} visible</p>
 		</div>
 		<div class="rounded-box border border-base-300 bg-base-100 p-5 shadow-sm">
 			<p class="text-sm text-base-content/60">Total stored</p>
 			<p class="mt-1 text-3xl font-semibold tabular-nums">{formatSize(summary.size)}</p>
-			<p class="mt-2 text-xs text-base-content/45">Across the connected bucket</p>
+			<p class="mt-2 text-xs text-base-content/45">Across this loaded page only</p>
 		</div>
 	</section>
+	{#if scanLimitation}
+		<div class="mb-6 alert text-sm" role="note"><span>{scanLimitation}</span></div>
+	{/if}
 
 	<section class="mb-6 rounded-box border border-base-300 bg-base-100 p-4 shadow-sm">
+		<form
+			class="mb-4 flex items-end gap-2"
+			onsubmit={(event) => {
+				event.preventDefault();
+				void applyPrefix();
+			}}
+		>
+			<label class="form-control grow">
+				<span class="label pt-0 pb-1"><span class="label-text text-xs">Storage prefix</span></span>
+				<input
+					class="input-bordered input w-full font-mono"
+					placeholder="project/"
+					bind:value={prefixDraft}
+				/>
+			</label>
+			<button type="submit" class="btn btn-outline">Load prefix</button>
+		</form>
+		<p class="mb-4 text-xs text-base-content/50">
+			Search, totals, size filters, and sorting apply only to the loaded page{prefix
+				? ` under ${prefix}`
+				: ''}.
+		</p>
 		<div class="grid gap-3 xl:grid-cols-[minmax(16rem,1fr)_13rem_13rem_auto] xl:items-end">
 			<label class="form-control">
 				<span class="label pt-0 pb-1"
@@ -204,7 +266,6 @@
 					placeholder="project/12/edition/..."
 					class="input-bordered input w-full bg-base-200/40"
 					bind:value={query}
-					oninput={() => (currentPage = 1)}
 				/>
 			</label>
 			<label class="form-control">
@@ -215,7 +276,6 @@
 					options={sizeOptions}
 					onchange={(value) => {
 						sizeFilter = value;
-						currentPage = 1;
 					}}
 				/>
 			</label>
@@ -227,7 +287,6 @@
 					options={sortOptions}
 					onchange={(value) => {
 						sort = value as StorageSort;
-						currentPage = 1;
 					}}
 				/>
 			</label>
@@ -238,7 +297,6 @@
 					onclick={() => {
 						query = '';
 						sizeFilter = 'all';
-						currentPage = 1;
 					}}>Clear</button
 				>
 			{/if}
@@ -329,21 +387,18 @@
 			{/each}
 		</div>
 
-		{#if totalPages > 1}
+		{#if cursorHistory.length > 0 || hasMore}
 			<nav class="mt-6 flex items-center justify-between gap-4" aria-label="Storage pages">
-				<p class="text-sm text-base-content/50">Page {currentPage} of {totalPages}</p>
+				<p class="text-sm text-base-content/50">Loaded page {cursorHistory.length + 1}</p>
 				<div class="join">
 					<button
 						type="button"
 						class="btn join-item btn-sm"
-						onclick={() => currentPage--}
-						disabled={currentPage === 1}>Previous</button
+						onclick={previousPage}
+						disabled={cursorHistory.length === 0}>Previous</button
 					>
-					<button
-						type="button"
-						class="btn join-item btn-sm"
-						onclick={() => currentPage++}
-						disabled={currentPage === totalPages}>Next</button
+					<button type="button" class="btn join-item btn-sm" onclick={nextPage} disabled={!hasMore}
+						>Next</button
 					>
 				</div>
 			</nav>

@@ -6,6 +6,10 @@
 import PocketBase, { ClientResponseError } from 'pocketbase';
 import { mergeSchemaFields } from './schema-fields';
 import { alignOrcidSchema } from './configure-orcid';
+import {
+	feedbackEmailQueueFields,
+	planFeedbackEmailQueueSchema
+} from './feedback-email-queue-schema';
 import schema from '../pocketbase/pb_schema/collections.json';
 
 const POCKETBASE_URL = process.env.POCKETBASE_URL || 'http://localhost:60021';
@@ -609,7 +613,8 @@ async function main() {
 				maxSelect: 1,
 				values: feedbackStatuses
 			},
-			relationField('createdBy', collectionIds['users'])
+			relationField('createdBy', collectionIds['users']),
+			...feedbackEmailQueueFields
 		]
 	});
 	collectionIds['feedbackRecipients'] = await ensureCollection({
@@ -649,6 +654,18 @@ async function main() {
 		]
 	});
 	console.log('   feedbackRecipients: API rules restricted to admins');
+	const feedback = await pb.collections.getOne('feedback');
+	const feedbackQueuePlan = planFeedbackEmailQueueSchema(
+		feedback.fields || [],
+		feedback.indexes || []
+	);
+	if (feedbackQueuePlan.changed) {
+		await pb.collections.update(feedback.id, {
+			fields: feedbackQueuePlan.fields,
+			indexes: feedbackQueuePlan.indexes
+		});
+	}
+	console.log('   feedback: email queue schema ensured');
 
 	// Keep ORCID fields and authorization identical to the focused configuration command.
 	// OAuth credentials and password/OTP changes require configure-orcid.ts --apply.

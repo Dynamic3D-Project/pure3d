@@ -441,9 +441,14 @@
 				</div>
 			{:else if filteredEditions.length > 0}
 				<div class="columns-1 gap-6 sm:columns-2 lg:columns-3 xl:columns-4">
-					{#each filteredEditions as edition (edition.id)}
+					{#each filteredEditions as edition, index (edition.id)}
 						<div class="mb-6 break-inside-avoid">
-							<EditionCard {edition} discovery />
+							<EditionCard
+								{edition}
+								discovery
+								imageLoading={index < 4 ? 'eager' : 'lazy'}
+								imageFetchPriority={index < 4 ? 'high' : 'auto'}
+							/>
 						</div>
 					{/each}
 				</div>

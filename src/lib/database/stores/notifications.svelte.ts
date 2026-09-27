@@ -2,18 +2,23 @@ import { pb } from '../client';
 import { browser } from '$app/environment';
 import type { Notification } from '$lib/types/notifications';
 import type { NotificationType } from '$lib/types/notifications';
+import { SubscriptionOwner, type SubscriptionToken } from './subscription-owner';
 
 class NotificationStore {
 	notifications = $state<Notification[]>([]);
 	unreadCount = $derived(this.notifications.filter((n) => !n.read).length);
 
 	private recipientId: string | null = null;
-	private unsubscribeFn: (() => void) | null = null;
+	private subscriptionOwner = new SubscriptionOwner();
 
 	async subscribe(recipientId: string) {
 		if (!browser) return;
 
+		const owner = this.subscriptionOwner.begin(recipientId);
+		if (!owner) return;
 		this.recipientId = recipientId;
+		// Never show the previous account's notices while this account's initial query is pending.
+		this.notifications = [];
 
 		// Load initial unread notifications
 		try {
@@ -21,17 +26,17 @@ class NotificationStore {
 				filter: `recipientId = "${recipientId}" && read = false`,
 				sort: '-created'
 			});
+			if (!this.isCurrent(owner)) return;
 			this.notifications = result.items.map((r) => this.mapRecord(r));
 		} catch {
+			if (!this.isCurrent(owner)) return;
 			this.notifications = [];
 		}
 
 		// Subscribe to realtime updates for this recipient
-		this.unsubscribeFn?.();
-		this.unsubscribeFn = null;
-
 		try {
-			const unsub = pb.collection('notifications').subscribe('*', (e) => {
+			const unsub = await pb.collection('notifications').subscribe('*', (e) => {
+				if (!this.isCurrent(owner)) return;
 				const record = e.record;
 				if (record.recipientId !== recipientId) return;
 
@@ -45,20 +50,23 @@ class NotificationStore {
 					this.notifications = this.notifications.filter((n) => n.id !== record.id);
 				}
 			});
-			// subscribe returns a Promise that resolves to the unsubscribe fn
-			unsub.then((fn) => {
-				this.unsubscribeFn = fn;
-			});
+			this.subscriptionOwner.adopt(owner, unsub);
 		} catch {
 			// Realtime subscription failed; store still works with initial data
+			if (!this.isCurrent(owner)) return;
+			this.subscriptionOwner.abandon(owner);
+			this.recipientId = null;
 		}
 	}
 
 	unsubscribeAll() {
-		this.unsubscribeFn?.();
-		this.unsubscribeFn = null;
+		this.subscriptionOwner.clear();
 		this.recipientId = null;
 		this.notifications = [];
+	}
+
+	private isCurrent(owner: SubscriptionToken) {
+		return this.subscriptionOwner.isCurrent(owner) && this.recipientId === owner.recipientId;
 	}
 
 	async markRead(id: string) {

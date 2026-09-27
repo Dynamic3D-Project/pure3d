@@ -9,7 +9,6 @@
 	import editionsIcon from '$lib/assets/icons/editions.svg?raw';
 	import Login from '$lib/components/ui/Login/LoginButton.svelte';
 	import Search from '$lib/components/Search.svelte';
-	import ContextualMenuEditor from '$lib/components/ui/ContextualMenuEditor.svelte';
 	import { onMount } from 'svelte';
 	import {
 		menus,
@@ -54,6 +53,9 @@
 	let dirty = $state(false);
 	let saving = $state(false);
 	let editorError = $state('');
+	let ContextualMenuEditor = $state<
+		Awaited<typeof import('$lib/components/ui/ContextualMenuEditor.svelte')>['default'] | null
+	>(null);
 	const productionDb = dev && /^https:\/\/main\.57-129-98-223\.sslip\.io/.test(pb.baseURL);
 	let editingView = $derived(editing && !previewing);
 	let navigation = $derived(resolvedItems($menus.main, $menus.directory));
@@ -148,12 +150,16 @@
 		saving = true;
 		editorError = '';
 		try {
-			const [draft, live, directory] = await Promise.all([
-				pb.collection('cms_menu_drafts').getFirstListItem('slot = "main"'),
-				pb.collection('cms_menus').getFirstListItem('slot = "main"'),
-				menuDirectory(true)
+			const [editor, [draft, live, directory]] = await Promise.all([
+				import('$lib/components/ui/ContextualMenuEditor.svelte'),
+				Promise.all([
+					pb.collection('cms_menu_drafts').getFirstListItem('slot = "main"'),
+					pb.collection('cms_menus').getFirstListItem('slot = "main"'),
+					menuDirectory(true)
+				])
 			]);
 			if (pb.authStore.record?.id !== editorId || pb.authStore.record?.role !== 'admin') return;
+			ContextualMenuEditor = editor.default;
 			editorConfig = structuredClone(draft.config);
 			editorLiveConfig = structuredClone(live.config);
 			editorDirectory = directory;
@@ -441,7 +447,7 @@
 									></button
 								>{/if}{/each}{/if}
 				</div>{/if}
-			{#if editingView && editingSelected}
+			{#if editingView && editingSelected && ContextualMenuEditor}
 				<ContextualMenuEditor
 					bind:config={editorConfig}
 					bind:selectedId={open}

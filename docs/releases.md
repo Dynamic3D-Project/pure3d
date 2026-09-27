@@ -40,8 +40,9 @@ and prepends UTC-dated categorized notes to `CHANGELOG.md`. Bun's lockfile has n
 field. Schema, CFF format, dependency and bundled Voyager versions are independent, not bumped.
 Existing historical versions are not fabricated into a new changelog.
 
-`release.config.mjs` lists actual local gates: existing Bun unit tests (including Docker Compose
-configuration tests, requiring Docker CLI), Svelte/TypeScript checks, the existing ORCID backend
+`release.config.mjs` lists actual local gates: Bun tests under `src`, `scripts`, and `pocketbase`
+(including backend performance/hook regressions and Docker Compose configuration tests, requiring
+Docker CLI), Svelte/TypeScript checks, the existing ORCID backend
 readiness gate (network access only during an authorized real release), then existing production
 build and tar packaging. PocketBase binary integration tests remain separately opt-in and are
 not claimed as part of these gates. Dependencies must already be installed; no release-time install.

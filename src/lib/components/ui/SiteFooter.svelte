@@ -2,7 +2,6 @@
 	/* eslint-disable svelte/no-navigation-without-resolve -- Editable links are validated and resolved before rendering. */
 	import { base } from '$app/paths';
 	import { beforeNavigate } from '$app/navigation';
-	import ContextualMenuEditor from '$lib/components/ui/ContextualMenuEditor.svelte';
 	import { pb } from '$lib/database/client';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import {
@@ -41,6 +40,9 @@
 	let dirty = $state(false);
 	let saving = $state(false);
 	let editorError = $state('');
+	let ContextualMenuEditor = $state<
+		Awaited<typeof import('$lib/components/ui/ContextualMenuEditor.svelte')>['default'] | null
+	>(null);
 	let items = $derived(resolvedItems($menus.footer, $menus.directory));
 	let primary = $derived(resolvedLink($menus.footer.primary, $menus.directory));
 	let help = $derived(resolvedLink($menus.footer.helpLink, $menus.directory));
@@ -64,12 +66,16 @@
 		saving = true;
 		editorError = '';
 		try {
-			const [draft, live, directory] = await Promise.all([
-				pb.collection('cms_menu_drafts').getFirstListItem('slot = "footer"'),
-				pb.collection('cms_menus').getFirstListItem('slot = "footer"'),
-				menuDirectory(true)
+			const [editor, [draft, live, directory]] = await Promise.all([
+				import('$lib/components/ui/ContextualMenuEditor.svelte'),
+				Promise.all([
+					pb.collection('cms_menu_drafts').getFirstListItem('slot = "footer"'),
+					pb.collection('cms_menus').getFirstListItem('slot = "footer"'),
+					menuDirectory(true)
+				])
 			]);
 			if (pb.authStore.record?.id !== editorId || pb.authStore.record?.role !== 'admin') return;
+			ContextualMenuEditor = editor.default;
 			editorConfig = structuredClone(draft.config);
 			editorLiveConfig = structuredClone(live.config);
 			editorDirectory = directory;
@@ -202,7 +208,7 @@
 			</div>
 		</div>{/if}
 	{#if editorError}<div class="editor-error" role="alert">{editorError}</div>{/if}
-	{#if editing && !previewing}<ContextualMenuEditor
+	{#if editing && !previewing && ContextualMenuEditor}<ContextualMenuEditor
 			bind:config={editorConfig}
 			bind:selectedId
 			directory={editorDirectory}

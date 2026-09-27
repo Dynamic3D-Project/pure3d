@@ -167,19 +167,13 @@ function feedback(app, review, index) {
 }
 function progress(e, publicOnly = false) {
 	const edition = e.app.findRecordById('editions', e.request.pathValue('editionId'));
-	const roles = require('./orcid-service.cjs').roles(e, edition);
+	if (publicOnly && !edition.getBool('isPublished')) throw new ForbiddenError();
+	const roles = publicOnly ? null : require('./orcid-service.cjs').roles(e, edition);
 	if (
-		publicOnly
-			? !edition.getBool('isPublished')
-			: !['admin', 'board', 'owner', 'editor', 'author', 'collaborator'].some((key) => roles[key])
+		!publicOnly &&
+		!['admin', 'board', 'owner', 'editor', 'author', 'collaborator'].some((key) => roles[key])
 	)
 		throw new ForbiddenError();
-	const assigned = rows(e.app, 'reviewAssignments', edition);
-	const submitted = rows(e.app, 'editionReviews', edition).filter(
-		(r) =>
-			r.getString('reviewStatus') === 'submitted' &&
-			assigned.some((a) => a.getString('reviewerId') === r.getString('reviewerId'))
-	);
 	const released = e.app.findRecordsByFilter(
 		'editionReviews',
 		'editionId = {:id} && reviewStage = 3 && feedbackReleasedAt != ""',
@@ -189,14 +183,20 @@ function progress(e, publicOnly = false) {
 		{ id: edition.id }
 	);
 	const result = { feedback: released.map((r, i) => feedback(e.app, r, i)) };
-	if (!publicOnly)
-		Object.assign(result, {
-			total: assigned.length,
-			submitted: submitted.length,
-			round: edition.getInt('finalReviewRound'),
-			released: !!edition.getString('finalFeedbackReleasedAt'),
-			decision: edition.getString('workflowDecision')
-		});
+	if (publicOnly) return e.json(200, result);
+	const assigned = rows(e.app, 'reviewAssignments', edition);
+	const submitted = rows(e.app, 'editionReviews', edition).filter(
+		(r) =>
+			r.getString('reviewStatus') === 'submitted' &&
+			assigned.some((a) => a.getString('reviewerId') === r.getString('reviewerId'))
+	);
+	Object.assign(result, {
+		total: assigned.length,
+		submitted: submitted.length,
+		round: edition.getInt('finalReviewRound'),
+		released: !!edition.getString('finalFeedbackReleasedAt'),
+		decision: edition.getString('workflowDecision')
+	});
 	return e.json(200, result);
 }
 function decision(e) {

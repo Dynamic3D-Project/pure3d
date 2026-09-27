@@ -2,8 +2,8 @@
 const v = require('./orcid-validation.cjs');
 const activity = require('./activity-service.cjs');
 
-function ready(e) {
-	const checks = { hooks: false, auth: false, schema: false, credits: false };
+function ready(e, auditCredits = false) {
+	const checks = { hooks: false, auth: false, schema: false };
 	try {
 		checks.hooks =
 			e.app.store().get('pure3d.orcid.hooks') === 'trusted-events-v1' &&
@@ -113,7 +113,8 @@ function ready(e) {
 			activity.notificationTypes.every((type) =>
 				notifications.fields.getByName('type').values.includes(type)
 			);
-		if (checks.schema) {
+		if (auditCredits && checks.schema) {
+			checks.credits = false;
 			const linkedUsers = {};
 			const lookup = (id) => {
 				if (!linkedUsers[id])
@@ -139,10 +140,14 @@ function ready(e) {
 		}
 	} catch {
 		// No database errors, config values, names, counts or identities escape this public endpoint.
-		checks.credits = false;
+		if (auditCredits) checks.credits = false;
 	}
 	const ready = Object.values(checks).every(Boolean);
 	return e.json(ready ? 200 : 503, { ready, checks });
 }
 
-module.exports = { ready };
+function creditsAudit(e) {
+	return ready(e, true);
+}
+
+module.exports = { ready, creditsAudit };

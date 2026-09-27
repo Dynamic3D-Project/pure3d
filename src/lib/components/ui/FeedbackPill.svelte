@@ -4,7 +4,6 @@
 	import { page } from '$app/stores';
 	import { pb } from '$lib/database/client';
 	import { authStore } from '$lib/database/stores/auth.svelte';
-	import RichTextEditor from '$lib/components/ui/RichTextEditor.svelte';
 	import toast from 'svelte-french-toast';
 	import type { RecordModel } from 'pocketbase';
 
@@ -35,6 +34,10 @@
 	let category = $state('confusing');
 	let severity = $state('important');
 	let feedbackHtml = $state('');
+	let RichTextEditor = $state<
+		Awaited<typeof import('$lib/components/ui/RichTextEditor.svelte')>['default'] | null
+	>(null);
+	let editorLoadError = $state('');
 
 	let isFeedbackPage = $derived(
 		$page.url.pathname === `${base}/feedback` || $page.url.pathname === '/feedback'
@@ -49,6 +52,17 @@
 		relatedUrl = window.location.href;
 		isOpen = true;
 		modal?.showModal();
+		void loadRichTextEditor();
+	}
+
+	async function loadRichTextEditor() {
+		if (RichTextEditor) return;
+		editorLoadError = '';
+		try {
+			RichTextEditor = (await import('$lib/components/ui/RichTextEditor.svelte')).default;
+		} catch {
+			editorLoadError = 'The feedback editor could not load. Please try again.';
+		}
 	}
 
 	function closeFeedback() {
@@ -215,14 +229,23 @@
 				</div>
 
 				<div class="feedback-editor">
-					<RichTextEditor
-						content={feedbackHtml}
-						placeholder="Write feedback here. You can paste screenshots."
-						minHeight="220px"
-						enableImagePaste
-						uploadImage={uploadFeedbackImage}
-						onchange={(html) => (feedbackHtml = html)}
-					/>
+					{#if RichTextEditor}
+						<RichTextEditor
+							content={feedbackHtml}
+							placeholder="Write feedback here. You can paste screenshots."
+							minHeight="220px"
+							enableImagePaste
+							uploadImage={uploadFeedbackImage}
+							onchange={(html) => (feedbackHtml = html)}
+						/>
+					{:else if editorLoadError}
+						<p class="text-sm text-error" role="alert">{editorLoadError}</p>
+					{:else}
+						<div class="flex min-h-[220px] items-center justify-center" role="status">
+							<span class="loading loading-sm loading-spinner"></span>
+							<span class="ml-2 text-sm">Loading editor…</span>
+						</div>
+					{/if}
 				</div>
 
 				<div class="flex items-center justify-between gap-3 border-t border-base-300 pt-4">
@@ -231,7 +254,7 @@
 						<button type="button" class="btn btn-ghost btn-sm" onclick={closeFeedback}
 							>Cancel</button
 						>
-						<button class="btn btn-sm btn-primary" disabled={isSubmitting}>
+						<button class="btn btn-sm btn-primary" disabled={isSubmitting || !RichTextEditor}>
 							{#if isSubmitting}<span class="loading loading-xs loading-spinner"></span>{/if}
 							Submit
 						</button>

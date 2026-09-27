@@ -84,41 +84,116 @@ function member(app, collection, parentField, parentId, userId, roles) {
 		user: userId
 	}).some((row) => roles.indexOf(row.getString('role')) !== -1);
 }
-function roles(e, record) {
+const roleBatchField = '@pbInternalPure3dRoles';
+function emptyRoles() {
+	return {
+		admin: false,
+		board: false,
+		owner: false,
+		editor: false,
+		author: false,
+		collaborator: false,
+		reviewer: false
+	};
+}
+function roleIndex(app, userId, edition = true) {
+	const groups = { collections: {}, editions: {}, assignments: {} };
+	let queryCount = 0;
+	const sources = [['collectionUsers', 'collection', 'collections']];
+	if (edition)
+		sources.push(
+			['editionUsers', 'editionId', 'editions'],
+			['reviewAssignments', 'editionId', 'assignments']
+		);
+	for (const [collection, parent, target] of sources) {
+		queryCount++;
+		const rows = matches(
+			app,
+			collection,
+			collection === 'reviewAssignments'
+				? 'reviewerId = {:user} && status != "declined" && status != "completed"'
+				: 'userId = {:user}',
+			{ user: userId }
+		);
+		for (const row of rows) {
+			const id = row.getString(parent);
+			if (!groups[target][id]) groups[target][id] = [];
+			groups[target][id].push(row);
+		}
+	}
+	return { groups, queryCount };
+}
+function indexedRoles(e, record, index) {
 	const uid = e.auth ? e.auth.id : '';
+	const empty = emptyRoles();
+	if (admin(e)) return { ...empty, admin: true };
+	if (!uid) return empty;
 	const edition = record.collection().name === 'editions';
 	const cid = edition ? record.getString('collection') : record.id;
+	const collectionRoles = (index.collections[cid] || []).map((row) => row.getString('role'));
+	const editionRoles = edition
+		? (index.editions[record.id] || []).map((row) => row.getString('role'))
+		: [];
+	const stage = edition ? v.reviewStage(record.getString('status')) : 0;
+	const round = record.getInt(stage === 3 ? 'finalReviewRound' : 'alphaReviewRound');
 	return {
-		admin: admin(e),
+		admin: false,
 		board: !!(
 			e.auth &&
 			e.auth.collection().name === 'users' &&
 			e.auth.getString('role') === 'editorial_board'
 		),
-		owner: member(e.app, 'collectionUsers', 'collection', cid, uid, ['owner']),
-		editor: member(e.app, 'collectionUsers', 'collection', cid, uid, ['editor']),
-		author: edition && member(e.app, 'editionUsers', 'editionId', record.id, uid, ['author']),
-		collaborator:
-			edition && member(e.app, 'editionUsers', 'editionId', record.id, uid, ['collaborator']),
+		owner: collectionRoles.includes('owner'),
+		editor: collectionRoles.includes('editor'),
+		author: editionRoles.includes('author'),
+		collaborator: editionRoles.includes('collaborator'),
 		reviewer:
 			edition &&
-			!!uid &&
-			matches(
-				e.app,
-				'reviewAssignments',
-				'editionId = {:edition} && reviewerId = {:user} && reviewStage = {:stage} && status != "declined" && status != "completed" && (reviewStage = 1 || reviewRound = {:round})',
-				{
-					edition: record.id,
-					user: uid,
-					stage: v.reviewStage(record.getString('status')),
-					round: record.getInt(
-						v.reviewStage(record.getString('status')) === 3
-							? 'finalReviewRound'
-							: 'alphaReviewRound'
-					)
-				}
-			).length > 0
+			(index.assignments[record.id] || []).some(
+				(row) =>
+					row.getInt('reviewStage') === stage &&
+					(stage === 1 || row.getInt('reviewRound') === round)
+			)
 	};
+}
+function batchRoles(e, records) {
+	const uid = e.auth ? e.auth.id : '';
+	const batch =
+		uid && !admin(e) ? roleIndex(e.app, uid) : { groups: emptyRoleIndex(), queryCount: 0 };
+	for (const record of records || [])
+		record.setRaw(
+			roleBatchField,
+			JSON.stringify({
+				userId: uid,
+				queryCount: batch.queryCount,
+				access: indexedRoles(e, record, batch.groups)
+			})
+		);
+}
+function batchAccess(record, userId) {
+	try {
+		const batch = JSON.parse(record.getString(roleBatchField) || '');
+		if (
+			batch.userId === userId &&
+			batch.access &&
+			Object.keys(emptyRoles()).every((key) => typeof batch.access[key] === 'boolean')
+		)
+			return batch.access;
+	} catch {
+		/* Untrusted or absent custom fields fall back to direct server queries. */
+	}
+	return null;
+}
+function emptyRoleIndex() {
+	return { collections: {}, editions: {}, assignments: {} };
+}
+function roles(e, record) {
+	const uid = e.auth ? e.auth.id : '';
+	const batched = batchAccess(record, uid);
+	if (batched) return batched;
+	const edition = record.collection().name === 'editions';
+	const index = uid && !admin(e) ? roleIndex(e.app, uid, edition).groups : emptyRoleIndex();
+	return indexedRoles(e, record, index);
 }
 
 function oauth(e) {
@@ -728,6 +803,7 @@ module.exports = {
 	creditUser,
 	admin,
 	roles,
+	batchRoles,
 	oauth,
 	createRequest,
 	updateRequest,

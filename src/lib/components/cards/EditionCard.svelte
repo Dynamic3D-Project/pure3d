@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { SvelteSet } from 'svelte/reactivity';
 	import { creatorNames } from '$lib/utils/credits';
 	import { base, resolve } from '$app/paths';
 	import type { Edition } from '$lib/types/collection';
 	import { getEditionCoverUrl } from '$lib/utils/asset-urls';
+	import { getCardImageSources } from '$lib/utils/asset-image-sources';
 	import TrashIcon from '~icons/lucide/trash-2';
 
 	interface Props {
@@ -11,89 +11,46 @@
 		onRemove?: () => void;
 		removeDisabled?: boolean;
 		discovery?: boolean;
+		imageLoading?: 'eager' | 'lazy';
+		imageFetchPriority?: 'high' | 'low' | 'auto';
 	}
 
-	let { edition, onRemove, removeDisabled = false, discovery = false }: Props = $props();
+	let {
+		edition,
+		onRemove,
+		removeDisabled = false,
+		discovery = false,
+		imageLoading = 'lazy',
+		imageFetchPriority = 'auto'
+	}: Props = $props();
 	let imageError = $state(false);
-	let hasPrefetched = false;
+	let imageLoaded = $state(false);
+	let currentImageUrl = $state<string | null>(null);
 
 	let coverUrl = $derived(getEditionCoverUrl(edition));
+	let imageSources = $derived(coverUrl ? getCardImageSources(coverUrl) : null);
+
+	$effect(() => {
+		const nextCoverUrl = coverUrl;
+		if (nextCoverUrl !== currentImageUrl) {
+			currentImageUrl = nextCoverUrl;
+			imageError = false;
+			imageLoaded = false;
+		}
+	});
 
 	function handleImageError() {
 		imageError = true;
+	}
+
+	function handleImageLoad() {
+		imageLoaded = true;
 	}
 
 	function handleRemove(event: MouseEvent) {
 		event.preventDefault();
 		event.stopPropagation();
 		onRemove?.();
-	}
-
-	/**
-	 * Prefetch 3D assets on hover for faster loading
-	 * - Prefetches the scene.svx.json file
-	 * - Parses it to find and prefetch GLB model files
-	 */
-	async function prefetch3DAssets() {
-		// Only prefetch once per card, and only if we have a valid voyagerUrl (root path)
-		if (hasPrefetched || !edition.voyagerUrl) return;
-		hasPrefetched = true;
-
-		const root = edition.voyagerUrl;
-		const sceneFile = edition.settingsSceneFile || 'scene.svx.json';
-		const sceneUrl = `${root}${sceneFile}`;
-
-		try {
-			// Prefetch scene file with high priority
-			const sceneLink = document.createElement('link');
-			sceneLink.rel = 'prefetch';
-			sceneLink.href = sceneUrl;
-			sceneLink.as = 'fetch';
-			document.head.appendChild(sceneLink);
-
-			// Fetch and parse scene to find model files
-			const response = await fetch(sceneUrl, { priority: 'low' } as RequestInit);
-			if (!response.ok) return;
-
-			const scene = await response.json();
-
-			// Extract model URLs from scene (GLB/GLTF files)
-			const modelUrls = new SvelteSet<string>();
-
-			// Models are typically in scene.models[].uri or scene.nodes[].model.uri
-			if (scene.models) {
-				for (const model of scene.models) {
-					if (model.uri) modelUrls.add(model.uri);
-					// Also check derivatives for different quality levels
-					if (model.derivatives) {
-						for (const derivative of model.derivatives) {
-							if (derivative.assets) {
-								for (const asset of derivative.assets) {
-									if (asset.uri?.endsWith('.glb') || asset.uri?.endsWith('.gltf')) {
-										modelUrls.add(asset.uri);
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-
-			// Prefetch each model file (limit to first 3 to avoid over-fetching)
-			let count = 0;
-			for (const modelUri of modelUrls) {
-				if (count >= 3) break;
-				const modelUrl = modelUri.startsWith('http') ? modelUri : `${root}${modelUri}`;
-				const modelLink = document.createElement('link');
-				modelLink.rel = 'prefetch';
-				modelLink.href = modelUrl;
-				modelLink.as = 'fetch';
-				document.head.appendChild(modelLink);
-				count++;
-			}
-		} catch {
-			// Silently fail - prefetching is an optimization, not critical
-		}
 	}
 </script>
 
@@ -152,7 +109,7 @@
 		<!-- Placeholder: show on error -->
 		<div
 			class="absolute inset-0 flex items-center justify-center text-base-content/30"
-			class:hidden={coverUrl && !imageError}
+			class:hidden={imageLoaded && !imageError}
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
@@ -170,16 +127,23 @@
 			</svg>
 		</div>
 		<!-- Actual image -->
-		{#if coverUrl && !imageError}
+		{#if imageSources && !imageError}
 			<div class:h-full={!discovery} class="w-full">
 				<img
-					src={coverUrl}
+					src={imageSources.src}
+					srcset={imageSources.srcset}
+					sizes={discovery
+						? '(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw'
+						: '(min-width: 1024px) 256px, 50vw'}
 					alt={edition.title}
 					class="card-cover-image w-full object-cover"
 					class:card-parallax-image={!discovery}
 					class:card-masonry-image={discovery}
 					class:h-full={!discovery}
-					loading="lazy"
+					loading={imageLoading}
+					fetchpriority={imageFetchPriority}
+					decoding="async"
+					onload={handleImageLoad}
 					onerror={handleImageError}
 				/>
 			</div>
@@ -187,7 +151,6 @@
 		<a
 			href={resolve('/editions/[slug]', { slug: edition.slug })}
 			data-sveltekit-preload-data="hover"
-			onmouseenter={prefetch3DAssets}
 			class="absolute inset-0 z-[5]"
 			aria-label={`View ${edition.title}`}
 		></a>
@@ -196,7 +159,6 @@
 		<a
 			href={resolve('/editions/[slug]', { slug: edition.slug })}
 			data-sveltekit-preload-data="hover"
-			onmouseenter={prefetch3DAssets}
 		>
 			<h3 class="card-title line-clamp-2 text-base leading-tight font-semibold transition-colors">
 				{edition.title}

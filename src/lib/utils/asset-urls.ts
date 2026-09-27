@@ -10,6 +10,7 @@ import { PUBLIC_ASSET_BASE_URL } from '$env/static/public';
 import { base } from '$app/paths';
 import { dev } from '$app/environment';
 import { pb } from '$lib/database/client';
+import { getPocketBaseFileUrl } from '$lib/utils/pocketbase-file-url';
 
 const DEFAULT_ASSET_BASE_URL = 'https://main.57-129-98-223.sslip.io/assets';
 
@@ -102,11 +103,17 @@ export function getEditionCoverUrl(edition: {
 	id: string;
 	collectionId?: string;
 	collectionName?: string;
+	fileCollectionId?: string;
+	fileCollectionName?: string;
 	coverImage?: string;
 	thumbnail?: string;
 }): string | null {
 	const coverImage = (edition.coverImage as string | undefined) ?? '';
-	if (coverImage) return pb.files.getURL(edition, coverImage, { thumb: '400x300' });
+	if (coverImage) {
+		return getPocketBaseFileUrl(edition, coverImage, (record, filename) =>
+			pb.files.getURL(record, filename)
+		);
+	}
 	const thumbnail = (edition.thumbnail as string | undefined) ?? '';
 	if (thumbnail) return thumbnail;
 	return null;
@@ -117,7 +124,11 @@ export function getCollectionCoverUrl(
 	collectionPubNum?: number | null
 ): string | null {
 	const coverImage = (collection.coverImage as string | undefined) ?? '';
-	if (coverImage) return pb.files.getURL(collection, coverImage, { thumb: '400x300' });
+	if (coverImage) {
+		return getPocketBaseFileUrl(collection, coverImage, (record, filename) =>
+			pb.files.getURL(record, filename)
+		);
+	}
 	const thumbnail = (collection.thumbnail as string | undefined) ?? '';
 	if (thumbnail && collectionPubNum && collectionPubNum > 0) {
 		return getCollectionThumbnailUrl(collectionPubNum);

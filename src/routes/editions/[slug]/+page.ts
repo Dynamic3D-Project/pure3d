@@ -9,7 +9,8 @@ import {
 	MIN_DERIVATIVES_VERSION
 } from '$lib/utils/asset-urls';
 import { creatorNames, readCredits } from '$lib/utils/credits';
-import type { EditionViewData, EditionVersion } from '$lib/components/editions/edition-view';
+import type { EditionViewData } from '$lib/components/editions/edition-view';
+import { mapEditionVersions } from '$lib/utils/edition-version-history';
 
 /**
  * Compare semver versions (simple comparison for our use case)
@@ -126,37 +127,22 @@ export const load: PageLoad = async ({ params, fetch }) => {
 			collectionTitle: collection?.title || ''
 		};
 
-		// Fetch sibling editions (version history) for the same collection
-		let siblingEditions: EditionVersion[] = [];
-		if (collectionId) {
-			try {
-				const siblingsResult = await pb.collection('editions').getList(1, 100, {
-					sort: '-pubNum',
-					filter: `collection = "${collectionId}" && isPublished = true`,
-					fetch
-				});
-				siblingEditions = siblingsResult.items
-					.filter((r) => r.id !== record.id)
-					.map((r) => ({
-						id: r.id,
-						slug: r.id,
-						title: r.dcTitle || r.title,
-						pubNum: r.pubNum || 0,
-						status: r.status || null,
-						dcDoi: toArray(r.dcDoi),
-						modelSize: r.modelSize || null,
-						dcAbstract: r.dcAbstract || '',
-						created: r.created,
-						hasPeerReview: !!r.peerReviewKind && r.peerReviewKind !== 'No peer review',
-						thumbnail:
-							r.thumbnail && collectionPubNum > 0
-								? getEditionThumbnailUrl(collectionPubNum, r.pubNum || 1)
-								: ''
-					}));
-			} catch {
-				// Non-critical — sibling editions are bonus data
-			}
-		}
+		const siblingEditions = collectionId
+			? pb
+					.collection('editions')
+					.getList(1, 100, {
+						sort: '-pubNum',
+						filter: `collection = "${collectionId}" && isPublished = true`,
+						fields:
+							'id,title,dcTitle,pubNum,status,dcDoi,modelSize,dcAbstract,created,peerReviewKind,thumbnail',
+						skipTotal: true,
+						fetch
+					})
+					.then((result) =>
+						mapEditionVersions(result.items, record.id, collectionPubNum, getEditionThumbnailUrl)
+					)
+					.catch(() => [])
+			: Promise.resolve([]);
 
 		return {
 			edition,

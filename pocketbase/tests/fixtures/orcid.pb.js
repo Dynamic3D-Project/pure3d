@@ -185,6 +185,37 @@ routerAdd('GET', '/_test/jwks', (e) => {
 	}
 });
 
+routerAdd(
+	'POST',
+	'/_test/role-batch/reset',
+	(e) => {
+		e.app.store().set('test.roleBatch', JSON.stringify({ events: 0, queries: [], users: [] }));
+		return e.noContent(204);
+	},
+	$apis.requireSuperuserAuth()
+);
+routerAdd(
+	'GET',
+	'/_test/role-batch',
+	(e) => e.json(200, JSON.parse(e.app.store().get('test.roleBatch') || '{}')),
+	$apis.requireSuperuserAuth()
+);
+
+onRecordEnrich((e) => {
+	const result = e.next();
+	const batch = e.record.getString('@pbInternalPure3dRoles');
+	if (!batch) return result;
+	const metrics = JSON.parse(
+		e.app.store().get('test.roleBatch') || '{"events":0,"queries":[],"users":[]}'
+	);
+	const parsed = JSON.parse(batch);
+	metrics.events++;
+	metrics.queries.push(parsed.queryCount);
+	metrics.users.push(parsed.userId);
+	e.app.store().set('test.roleBatch', JSON.stringify(metrics));
+	return result;
+}, 'editions');
+
 // This simulates only the event AFTER upstream token verification, never the verifier itself.
 routerAdd('POST', '/_test/oauth', (e) => {
 	const body = e.requestInfo().body;

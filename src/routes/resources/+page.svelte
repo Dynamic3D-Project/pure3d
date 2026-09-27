@@ -3,9 +3,12 @@
 	import { resolve } from '$app/paths';
 	import { kindLabels } from '$lib/content';
 	import { authStore } from '$lib/database/stores/auth.svelte';
+	import { getCardImageSources } from '$lib/utils/asset-image-sources';
 	import type { PageData } from './$types';
 	let { data }: { data: PageData } = $props();
 	let query = $state('');
+	let loadedImages = $state<Record<string, boolean>>({});
+	let failedImages = $state<Record<string, boolean>>({});
 	let items = $derived(
 		data.items.filter((item) =>
 			`${item.title} ${item.summary}`.toLowerCase().includes(query.toLowerCase())
@@ -58,15 +61,30 @@
 			Admin preview includes drafts. Draft content is not visible to public visitors.
 		</p>{/if}
 	<div class="grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
-		{#each items as item (item.id)}<a
+		{#each items as item, index (item.id)}{@const imageSources = item.coverUrl
+				? getCardImageSources(item.coverUrl)
+				: null}<a
 				class="group overflow-hidden rounded-xl border border-base-300 bg-base-100"
 				href={resolve('/resources/[slug]', { slug: item.slug })}
-				><div class="aspect-[16/10] overflow-hidden bg-base-200">
-					{#if item.coverUrl}<img
-							src={item.coverUrl}
+				><div class="relative aspect-[16/10] overflow-hidden bg-base-200">
+					{#if imageSources && !failedImages[item.id]}<div
+							class="absolute inset-0 flex items-center justify-center text-3xl tracking-widest opacity-25"
+							class:hidden={loadedImages[item.id]}
+						>
+							PURE3D
+						</div>
+						<img
+							src={imageSources.src}
+							srcset={imageSources.srcset}
+							sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
 							alt=""
-							loading="lazy"
+							loading={index < 3 ? 'eager' : 'lazy'}
+							fetchpriority={index < 3 ? 'high' : 'auto'}
+							decoding="async"
+							onload={() => (loadedImages[item.id] = true)}
+							onerror={() => (failedImages[item.id] = true)}
 							class="h-full w-full object-cover"
+							class:opacity-0={!loadedImages[item.id]}
 						/>{:else}<div
 							class="flex h-full items-center justify-center text-3xl tracking-widest opacity-25"
 						>

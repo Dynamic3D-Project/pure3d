@@ -4,16 +4,13 @@
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
 	import CollectionCard from '$lib/components/cards/CollectionCard.svelte';
 	import { homeStore, fetchHomeData, isStale } from '$lib/stores/data.store';
+	import { selectDailyItems } from '$lib/utils/catalogue-performance';
 
 	// Reactive data from persisted stores - shows cached data immediately
 	let featuredEditions = $derived($homeStore.editions);
-	const heroRotation = Math.random();
 	let heroEditions = $derived.by(() => {
 		const editions = $homeStore.editions.filter((edition) => edition.thumbnail);
-		if (editions.length <= 5) return editions;
-
-		const start = Math.floor(heroRotation * editions.length);
-		return Array.from({ length: 5 }, (_, index) => editions[(start + index) % editions.length]);
+		return selectDailyItems(editions, 5);
 	});
 	let collections = $derived($homeStore.collections);
 	let totalEditions = $derived($homeStore.editionTotal);
@@ -255,8 +252,13 @@
 				</div>
 			{:else if collections.length > 0}
 				<div class="projects-grid">
-					{#each collections.slice(0, 4) as collection (collection.id)}
-						<CollectionCard {collection} showDescription={false} />
+					{#each collections.slice(0, 4) as collection, index (collection.id)}
+						<CollectionCard
+							{collection}
+							showDescription={false}
+							imageLoading={index < 4 ? 'eager' : 'lazy'}
+							imageFetchPriority={index < 4 ? 'high' : 'auto'}
+						/>
 					{/each}
 				</div>
 
@@ -361,9 +363,13 @@
 					class="scrollbar-hide carousel"
 					style="scroll-behavior: smooth; -webkit-overflow-scrolling: touch;"
 				>
-					{#each featuredEditions as edition (edition.id)}
+					{#each featuredEditions as edition, index (edition.id)}
 						<div class="w-64 flex-none snap-start">
-							<EditionCard {edition} />
+							<EditionCard
+								{edition}
+								imageLoading={index < 4 ? 'eager' : 'lazy'}
+								imageFetchPriority={index < 4 ? 'high' : 'auto'}
+							/>
 						</div>
 					{/each}
 				</div>

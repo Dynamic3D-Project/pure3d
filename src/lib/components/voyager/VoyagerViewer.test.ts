@@ -24,3 +24,13 @@ test('keeps custom viewer controls visible and reports unavailable actions', () 
 	expect(editionView).toContain('left: 0.75rem;');
 	expect(editionView).toContain('flex-direction: column;');
 });
+
+test('uses CVViewer sceneLoaded rather than model-load event counts for readiness', () => {
+	expect(source).toContain(".get?.('CVViewer')?.outs?.sceneLoaded");
+	expect(source).toContain('const outputs = [sceneLoaded, assetPath, busy]');
+	expect(source).toContain('emptySceneDocument = isEmptySceneDocument(source)');
+	expect(source).toContain("output.on?.('value', update, scope)");
+	expect(source).toContain("scope.defer(() => output.off?.('value', update, scope))");
+	expect(source).toContain('handleRuntimeSceneLoaded');
+	expect(source).not.toContain('onmodel-load={handleModelReady}');
+});

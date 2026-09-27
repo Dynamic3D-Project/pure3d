@@ -25,6 +25,15 @@ The frontend URL, `meta.appURL`, request Host and operator's tunnel are never us
 Full `--apply`, OAuth hooks, linked-account checks and readiness use the same expected bridge URL.
 After repair, check `/api/pure3d/orcid/ready` and perform a real ORCID sign-in separately.
 
+## Readiness and Credit Audit
+
+`GET /api/pure3d/orcid/ready` is a public, no-store deployment check for installed hooks, OAuth
+configuration and the required schema. It intentionally does not scan every credit record, so release
+probes remain cheap as the catalogue grows. Operators can run the authenticated superuser-only
+`GET /api/pure3d/orcid/credits-audit` endpoint when they need the full canonical-credit audit. That
+audit is no-store and scans collections, editions and linked identities; do not add it to public health
+checks or frequent monitoring.
+
 Public-source verification: ORCID's [JWKS](https://orcid.org/oauth/jwks) contains RSA `use: sig`
 keys without `alg`; its [discovery document](https://orcid.org/.well-known/openid-configuration)
 advertises `id_token_signing_alg_values_supported: ["RS256"]`. PocketBase

@@ -2,7 +2,7 @@
 export default {
 	repository: 'Dynamic3D-Project/pure3d',
 	checks: [
-		['bun', '--no-env-file', 'test', 'src', 'scripts', 'pocketbase/tests/orcid.test.ts'],
+		['bun', '--no-env-file', 'test', 'src', 'scripts', 'pocketbase'],
 		['bun', '--no-env-file', 'run', 'check'],
 		[
 			'curl',

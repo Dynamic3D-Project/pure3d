@@ -3,7 +3,12 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import CollectionCard from '$lib/components/cards/CollectionCard.svelte';
-	import { collectionsStore, fetchCollections, isStale } from '$lib/stores/data.store';
+	import {
+		collectionsStore,
+		fetchCollections,
+		isStale,
+		refreshCollectionCounts
+	} from '$lib/stores/data.store';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { pb } from '$lib/database/client';
 	import FloatingDropdown from '$lib/components/ui/FloatingDropdown.svelte';
@@ -18,7 +23,9 @@
 	);
 
 	function isPublicCollection(collection: (typeof allCollections)[number]) {
-		return collection.isVisible && (collection.editionCount ?? 0) > 0;
+		return (
+			collection.isVisible && (collection.editionCount === undefined || collection.editionCount > 0)
+		);
 	}
 
 	// Reactive data from persisted store
@@ -34,6 +41,9 @@
 		// If we have fresh cached data, skip loading
 		if (!authStore.isAuthenticated && hasCachedData && !isStale($collectionsStore.lastFetched)) {
 			isLoading = false;
+			if ($collectionsStore.countError || isStale($collectionsStore.countsLastFetched ?? null)) {
+				void refreshCollectionCounts();
+			}
 			return;
 		}
 
@@ -420,9 +430,13 @@
 		</div>
 	{:else}
 		<div class="masonry-grid">
-			{#each filteredCollections as collection (collection.id)}
+			{#each filteredCollections as collection, index (collection.id)}
 				<div class="masonry-item">
-					<CollectionCard {collection} />
+					<CollectionCard
+						{collection}
+						imageLoading={index < 4 ? 'eager' : 'lazy'}
+						imageFetchPriority={index < 4 ? 'high' : 'auto'}
+					/>
 				</div>
 			{/each}
 		</div>

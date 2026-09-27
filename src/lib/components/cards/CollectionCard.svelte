@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { getCardImageSources } from '$lib/utils/asset-image-sources';
 
 	interface CollectionCardData {
 		id: string;
@@ -15,14 +16,37 @@
 	interface Props {
 		collection: CollectionCardData;
 		showDescription?: boolean;
+		imageLoading?: 'eager' | 'lazy';
+		imageFetchPriority?: 'high' | 'low' | 'auto';
 	}
 
-	let { collection, showDescription = true }: Props = $props();
+	let {
+		collection,
+		showDescription = true,
+		imageLoading = 'lazy',
+		imageFetchPriority = 'auto'
+	}: Props = $props();
 
 	let imageError = $state(false);
+	let imageLoaded = $state(false);
+	let currentImageUrl = $state('');
+	const imageSources = $derived(getCardImageSources(collection.thumbnail));
+
+	$effect(() => {
+		const thumbnail = collection.thumbnail;
+		if (thumbnail !== currentImageUrl) {
+			currentImageUrl = thumbnail;
+			imageError = false;
+			imageLoaded = false;
+		}
+	});
 
 	function handleImageError() {
 		imageError = true;
+	}
+
+	function handleImageLoad() {
+		imageLoaded = true;
 	}
 
 	// Strip HTML tags for plain-text preview
@@ -67,7 +91,7 @@
 			<!-- Placeholder: show on error -->
 			<div
 				class="absolute inset-0 flex items-center justify-center text-base-content/30"
-				class:hidden={collection.thumbnail && !imageError}
+				class:hidden={imageLoaded && !imageError}
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -88,10 +112,15 @@
 			{#if collection.thumbnail && !imageError}
 				<div class="h-full w-full">
 					<img
-						src={collection.thumbnail}
+						src={imageSources.src}
+						srcset={imageSources.srcset}
+						sizes="(min-width: 1024px) 360px, (min-width: 640px) 45vw, 90vw"
 						alt={collection.title}
 						class="card-cover-image h-full w-full object-cover"
-						loading="lazy"
+						loading={imageLoading}
+						fetchpriority={imageFetchPriority}
+						decoding="async"
+						onload={handleImageLoad}
 						onerror={handleImageError}
 					/>
 				</div>

@@ -182,6 +182,120 @@ async function oauth(body: Record<string, unknown>, token = '') {
 	return { status: response.status, body: await response.json() };
 }
 
+integration('edition list enrichment uses a server-owned per-request role batch', async () => {
+	const editions = [];
+	for (const suffix of ['A', 'B', 'C'])
+		editions.push(
+			await root.collection('editions').create({
+				title: 'Role batch ' + suffix,
+				status: 'draft',
+				credits: [credit]
+			})
+		);
+	try {
+		for (const edition of editions)
+			await root.collection('editionUsers').create({
+				editionId: edition.id,
+				userId: author.authStore.record!.id,
+				role: 'author'
+			});
+		await root.send('/_test/role-batch/reset', { method: 'POST' });
+		const listed = await author.collection('editions').getFullList({
+			filter: 'title ~ "Role batch"',
+			fields: 'id,title,proposalPurpose'
+		});
+		expect(listed.map((edition) => edition.id).sort()).toEqual(
+			editions.map((edition) => edition.id).sort()
+		);
+		expect(await root.send('/_test/role-batch')).toEqual({
+			events: 3,
+			queries: [3, 3, 3],
+			users: [author.authStore.record!.id, author.authStore.record!.id, author.authStore.record!.id]
+		});
+		await author
+			.collection('editions')
+			.update(editions[0].id, {
+				'@pbInternalPure3dRoles': JSON.stringify({
+					userId: other.authStore.record!.id,
+					queryCount: 0,
+					access: {
+						admin: true,
+						board: false,
+						owner: false,
+						editor: false,
+						author: false,
+						collaborator: false,
+						reviewer: false
+					}
+				})
+			})
+			.catch(() => undefined);
+		await expect(other.collection('editions').getOne(editions[0].id)).rejects.toBeDefined();
+
+		await root.send('/_test/role-batch/reset', { method: 'POST' });
+		await root.collection('editionUsers').create({
+			editionId: editions[1].id,
+			userId: other.authStore.record!.id,
+			role: 'collaborator'
+		});
+		expect(
+			(await other.collection('editions').getFullList({ filter: 'title ~ "Role batch"' })).map(
+				(edition) => edition.id
+			)
+		).toEqual([editions[1].id]);
+		expect(await root.send('/_test/role-batch')).toEqual({
+			events: 1,
+			queries: [3],
+			users: [other.authStore.record!.id]
+		});
+
+		await root.send('/_test/role-batch/reset', { method: 'POST' });
+		await root.collection('editionUsers').delete(
+			(
+				await root.collection('editionUsers').getFullList({
+					filter: `editionId = "${editions[2].id}" && userId = "${author.authStore.record!.id}"`
+				})
+			)[0].id
+		);
+		expect(
+			(await author.collection('editions').getFullList({ filter: 'title ~ "Role batch"' }))
+				.map((edition) => edition.id)
+				.sort()
+		).toEqual([editions[0].id, editions[1].id].sort());
+		expect(await root.send('/_test/role-batch')).toEqual({
+			events: 2,
+			queries: [3, 3],
+			users: [author.authStore.record!.id, author.authStore.record!.id]
+		});
+
+		await root.send('/_test/role-batch/reset', { method: 'POST' });
+		expect(
+			(await root.collection('editions').getFullList({ filter: 'title ~ "Role batch"' })).map(
+				(edition) => edition.id
+			)
+		).toHaveLength(3);
+		expect(await root.send('/_test/role-batch')).toMatchObject({
+			events: 3,
+			queries: [0, 0, 0]
+		});
+
+		await root.send('/_test/role-batch/reset', { method: 'POST' });
+		const anonymous = new PocketBase(origin);
+		expect(
+			(await anonymous.collection('editions').getFullList({ filter: 'isPublished = true' })).length
+		).toBeGreaterThan(0);
+		expect(await root.send('/_test/role-batch')).toMatchObject({
+			queries: expect.any(Array),
+			users: expect.any(Array)
+		});
+		const anonymousMetrics = await root.send('/_test/role-batch');
+		expect(anonymousMetrics.queries.every((count: number) => count === 0)).toBe(true);
+		expect(anonymousMetrics.users.every((id: string) => id === '')).toBe(true);
+	} finally {
+		for (const edition of editions) await root.collection('editions').delete(edition.id);
+	}
+});
+
 integration(
 	'bootstrap and synthetic superuser imports work with the enforcing hooks mounted',
 	async () => {
@@ -2701,7 +2815,7 @@ integration(
 );
 
 integration(
-	'public readiness validates canonical credit presence without freezing retained legacy attribution',
+	'public readiness stays cheap while superuser credit audit validates canonical attribution',
 	async () => {
 		const endpoint = origin + '/api/pure3d/orcid/ready';
 		const invalid = orcidAuthConfig('test-client', 'test-secret', environment);
@@ -2719,7 +2833,7 @@ integration(
 		const body = await ready.json();
 		expect(body).toEqual({
 			ready: true,
-			checks: { hooks: true, auth: true, schema: true, credits: true }
+			checks: { hooks: true, auth: true, schema: true }
 		});
 		expect(ready.status).toBe(200);
 		const missing = await root.collection('editions').create({
@@ -2753,17 +2867,21 @@ integration(
 			}
 		];
 		try {
-			expect((await fetch(endpoint)).status).toBe(200); // An explicit array is sufficient, independent of legacy fields.
+			expect((await fetch(endpoint)).status).toBe(200);
 			await root.send('/_test/null-credits/' + missing.id, { method: 'POST' });
 			expect((await root.collection('editions').getOne(missing.id)).credits).toBeNull();
-			const incomplete = await fetch(endpoint);
-			expect(incomplete.status).toBe(503);
-			expect(await incomplete.json()).toEqual({
-				ready: false,
-				checks: { hooks: true, auth: true, schema: true, credits: false }
+			// Release readiness checks deployable hooks/auth/schema; exhaustive data audit is operator-only.
+			expect((await fetch(endpoint)).status).toBe(200);
+			expect((await fetch(endpoint + '/credits-audit')).status).toBe(404);
+			await expect(root.send('/api/pure3d/orcid/credits-audit')).rejects.toMatchObject({
+				status: 503,
+				response: {
+					ready: false,
+					checks: { hooks: true, auth: true, schema: true, credits: false }
+				}
 			});
 			await root.collection('editions').update(missing.id, { credits });
-			expect((await fetch(endpoint)).status).toBe(200); // Missing ORCIDs remain allowed in preserved/draft attribution.
+			expect(await root.send('/api/pure3d/orcid/credits-audit')).toMatchObject({ ready: true }); // Missing ORCIDs remain allowed in preserved/draft attribution.
 			await root.collection('editions').update(missing.id, { credits: [...credits].reverse() });
 			expect((await fetch(endpoint)).status).toBe(200);
 			const edited = [...credits]

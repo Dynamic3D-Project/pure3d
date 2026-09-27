@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test';
-import { filterStorageObjects, getStorageSummary, type StorageObject } from './storage-dashboard';
+import {
+	filterStorageObjects,
+	getStorageSummary,
+	legacyStoragePage,
+	type StorageObject
+} from './storage-dashboard';
 
 const objects: StorageObject[] = [
 	{ key: 'project/1/model.glb', size: 8_000_000, modified: '2026-09-01T10:00:00Z' },
@@ -8,6 +13,14 @@ const objects: StorageObject[] = [
 ];
 
 describe('storage dashboard', () => {
+	test('keeps old-hook responses paginated during the staged server rollout', () => {
+		const first = legacyStoragePage(objects, 'project/', '', 1);
+		expect(first.objects.map((object) => object.key)).toEqual(['project/1/icon.png']);
+		expect(first.hasMore).toBe(true);
+		const next = legacyStoragePage(objects, 'project/', first.nextCursor, 1);
+		expect(next.objects.map((object) => object.key)).toEqual(['project/1/model.glb']);
+		expect(next.hasMore).toBe(false);
+	});
 	test('filters by key and size range', () => {
 		expect(
 			filterStorageObjects(objects, {

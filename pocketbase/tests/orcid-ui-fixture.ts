@@ -155,7 +155,7 @@ form.append(
 	new File([JSON.stringify(triangle)], 'triangle.gltf', { type: 'model/gltf+json' })
 );
 await root.collection('editions').update(alphaEdition.id, form);
-assert.deepEqual(readiness.checks, { hooks: true, auth: false, schema: true, credits: true });
+assert.deepEqual(readiness.checks, { hooks: true, auth: false, schema: true });
 console.log(
 	JSON.stringify({ directory, origin, launcherPid: process.pid, backendPid: backend.pid })
 );

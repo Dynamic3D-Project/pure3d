@@ -4,12 +4,12 @@
 	import { contentPath } from '$lib/cms';
 	import type { RecordModel } from 'pocketbase';
 	import { pb } from '$lib/database';
-	import { debounce } from '$lib/utils/debounce';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { computePosition, flip, shift, offset, size, autoUpdate } from '@floating-ui/dom';
 
 	import { getEditionThumbnailUrl, getCollectionThumbnailUrl } from '$lib/utils/asset-urls';
+	import { SearchRequests } from './search-requests';
 
 	type SearchResultType = 'edition' | 'collection' | 'content';
 
@@ -36,6 +36,7 @@
 	let cleanupAutoUpdate: (() => void) | undefined;
 	let searchRequest = 0;
 	let suggestions: SearchResult[] | null = null;
+	const searchRequests = new SearchRequests();
 
 	function editionResults(items: RecordModel[]): SearchResult[] {
 		return items.map((edition) => {
@@ -57,8 +58,9 @@
 
 	async function performSearch(query: string) {
 		const trimmedQuery = query.trim();
-		if (!trimmedQuery && !showResults) return;
+		if (!showResults) return;
 		const current = ++searchRequest;
+		const signal = searchRequests.start();
 
 		if (!trimmedQuery) {
 			results = suggestions || [];
@@ -71,11 +73,13 @@
 					fields:
 						'id,title,dcTitle,dcAbstract,credits,pubNum,thumbnail,collection,expand.collection.pubNum',
 					expand: 'collection',
-					skipTotal: true
+					skipTotal: true,
+					signal
 				});
 				suggestions = editionResults(featured.items);
 				if (current === searchRequest) results = suggestions;
 			} catch (err) {
+				if (signal.aborted) return;
 				console.error('Edition suggestions error:', err);
 			} finally {
 				if (current === searchRequest) searching = false;
@@ -95,7 +99,8 @@
 					fields:
 						'id,title,dcTitle,dcAbstract,credits,pubNum,thumbnail,collection,expand.collection.pubNum',
 					expand: 'collection',
-					skipTotal: true
+					skipTotal: true,
+					signal
 				}),
 				pb.collection('collections').getList(1, 5, {
 					filter: pb.filter(
@@ -103,7 +108,8 @@
 						{ query: trimmedQuery }
 					),
 					fields: 'id,title,dcTitle,dcAbstract,pubNum,thumbnail',
-					skipTotal: true
+					skipTotal: true,
+					signal
 				}),
 				pb.collection('content').getList(1, 8, {
 					filter: pb.filter('isPublished = true && (title ~ {:query} || summary ~ {:query})', {
@@ -111,7 +117,8 @@
 					}),
 					fields: 'id,title,slug,summary,coverUrl,layout',
 					sort: '-publishedAt',
-					skipTotal: true
+					skipTotal: true,
+					signal
 				})
 			]);
 			if (current !== searchRequest) return;
@@ -149,6 +156,7 @@
 			selectedIndex = -1;
 			keyboardSelected = false;
 		} catch (err) {
+			if (signal.aborted) return;
 			if (current !== searchRequest) return;
 			console.error('Search error:', err);
 			results = [];
@@ -158,21 +166,24 @@
 		}
 	}
 
-	const debouncedSearch = debounce((query: string) => performSearch(query), 250);
-
 	function openSearchResults() {
 		showResults = true;
+		searchRequests.cancelPending();
 		void performSearch(searchQuery);
 	}
-	function queryChanged() {
+	function cancelSearch() {
 		++searchRequest;
+		searchRequests.cancel();
+	}
+	function queryChanged() {
+		cancelSearch();
 		searching = false;
 		results = [];
 		selectedIndex = -1;
 	}
 
 	$effect(() => {
-		debouncedSearch(searchQuery);
+		searchRequests.schedule(() => void performSearch(searchQuery), 250);
 	});
 
 	// Position dropdown using floating-ui
@@ -228,6 +239,7 @@
 	onMount(() => {
 		window.addEventListener('keydown', handleKeyDown);
 		return () => {
+			cancelSearch();
 			window.removeEventListener('keydown', handleKeyDown);
 			cleanupAutoUpdate?.();
 		};
@@ -237,6 +249,7 @@
 		const target = event.target as HTMLElement;
 		if (!target.closest('.search-container')) {
 			showResults = false;
+			cancelSearch();
 			selectedIndex = -1;
 			keyboardSelected = false;
 		}
@@ -280,6 +293,7 @@
 				if (!showResults) return;
 				event.preventDefault();
 				showResults = false;
+				cancelSearch();
 				selectedIndex = -1;
 				keyboardSelected = false;
 				searchInputElement?.blur();
@@ -288,6 +302,7 @@
 			case 'Tab':
 				if (showResults) {
 					showResults = false;
+					cancelSearch();
 					selectedIndex = -1;
 					keyboardSelected = false;
 				}
@@ -309,6 +324,7 @@
 
 	async function navigateToResult(result: SearchResult) {
 		showResults = false;
+		cancelSearch();
 		selectedIndex = -1;
 		keyboardSelected = false;
 		searchQuery = '';
@@ -319,6 +335,7 @@
 	async function navigateToSearchPage() {
 		const query = searchQuery.trim();
 		showResults = false;
+		cancelSearch();
 		selectedIndex = -1;
 		keyboardSelected = false;
 		// eslint-disable-next-line svelte/no-navigation-without-resolve -- The resolved path is followed by a query string.

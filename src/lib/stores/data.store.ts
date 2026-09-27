@@ -19,8 +19,16 @@ import { EditionStatus } from '$lib/types/roles';
 import {
 	getEditionThumbnailUrl,
 	getCollectionCoverUrl,
-	getEditionRoot
+	getEditionRoot,
+	getEditionCoverUrl
 } from '$lib/utils/asset-urls';
+import {
+	COLLECTION_CARD_FIELDS,
+	EDITION_CARD_FIELDS,
+	HOME_COLLECTION_FIELDS,
+	HOME_EDITION_FIELDS,
+	countEditionsByCollection
+} from '$lib/utils/catalogue-performance';
 
 // Store types
 interface EditionsData {
@@ -33,6 +41,8 @@ interface CollectionsData {
 	items: (Collection & { editionCount?: number })[];
 	total: number;
 	lastFetched: number | null;
+	countsLastFetched?: number | null;
+	countError?: string | null;
 }
 
 // Persisted stores with localStorage
@@ -47,7 +57,9 @@ export const collectionsStore = persisted<CollectionsData>(
 	{
 		items: [],
 		total: 0,
-		lastFetched: null
+		lastFetched: null,
+		countsLastFetched: null,
+		countError: null
 	}
 );
 
@@ -70,30 +82,39 @@ export async function fetchHomeData() {
 	const [editions, collections] = await Promise.all([
 		pb.collection('editions').getList(1, 8, {
 			filter: 'isPublished = true',
-			fields:
-				'id,title,dcTitle,dcAbstract,credits,thumbnail,pubNum,collection,settingsSceneFile,expand.collection.pubNum',
+			fields: HOME_EDITION_FIELDS,
 			expand: 'collection'
 		}),
 		pb.collection('collections').getList(1, 5, {
 			filter: 'isVisible = true',
-			fields: 'id,title,dcAbstract,pubNum,coverImage,thumbnail,isVisible'
+			fields: HOME_COLLECTION_FIELDS
 		})
 	]);
 	const value = {
 		editions: editions.items.map((record) => {
 			const collectionPubNum = record.expand?.collection?.pubNum || 0;
+			const legacyThumbnail =
+				record.thumbnail && collectionPubNum > 0
+					? getEditionThumbnailUrl(collectionPubNum, record.pubNum || 1)
+					: '';
+			const fileCollectionId = record.collectionId || '';
+			const fileCollectionName = record.collectionName || '';
 			return {
 				id: record.id,
 				slug: record.id,
 				title: record.dcTitle || record.title,
 				credits: readCredits(record.credits),
 				thumbnail:
-					record.thumbnail && collectionPubNum > 0
-						? getEditionThumbnailUrl(collectionPubNum, record.pubNum || 1)
-						: '',
-				voyagerUrl:
-					collectionPubNum > 0 ? getEditionRoot(collectionPubNum, record.pubNum || 1) : '',
-				settingsSceneFile: record.settingsSceneFile || 'scene.svx.json',
+					getEditionCoverUrl({
+						id: record.id,
+						coverImage: record.coverImage,
+						thumbnail: legacyThumbnail,
+						fileCollectionId,
+						fileCollectionName
+					}) || '',
+				coverImage: record.coverImage || '',
+				fileCollectionId,
+				fileCollectionName,
 				isPublished: true
 			} as Edition;
 		}),
@@ -122,6 +143,7 @@ export async function fetchEditions(): Promise<Edition[]> {
 	const result = await pb.collection('editions').getList(1, 500, {
 		filter: canRequestHidden ? undefined : 'isPublished = true',
 		expand: 'collection',
+		fields: EDITION_CARD_FIELDS,
 		$autoCancel: false // Prevent auto-cancellation when fetching in parallel with other requests
 	});
 
@@ -147,6 +169,8 @@ export async function fetchEditions(): Promise<Edition[]> {
 			authors: creatorNames(record.credits),
 			thumbnail,
 			coverImage: (record.coverImage as string | undefined) || '',
+			fileCollectionId: record.collectionId || '',
+			fileCollectionName: record.collectionName || '',
 			collectionName: record.collectionName || 'editions',
 			voyagerUrl,
 			usageConditions: '',
@@ -185,16 +209,15 @@ export async function fetchEditions(): Promise<Edition[]> {
 			dcProvenance: record.dcProvenance,
 			dcDoi: record.dcDoi || [],
 			peerReviewKind: record.peerReviewKind,
-			peerReviewContent: record.peerReviewContent,
 			hasPeerReview: record.hasPeerReview || false,
-			peerReviewRequested: record.peerReviewRequested || false,
-			reviewStage: record.reviewStage ?? null,
-			peerReviewStamp: record.peerReviewStamp || false,
-			publishedAt: record.publishedAt || null,
-			publishedBy: record.publishedBy || null,
-			settingsAuthorToolName: record.settingsAuthorToolName,
-			settingsAuthorToolVersion: record.settingsAuthorToolVersion,
-			settingsSceneFile: record.settingsSceneFile
+			peerReviewRequested: false,
+			reviewStage: null,
+			peerReviewStamp: false,
+			publishedAt: null,
+			publishedBy: null,
+			settingsAuthorToolName: null,
+			settingsAuthorToolVersion: null,
+			settingsSceneFile: null
 		} as Edition;
 	});
 
@@ -211,29 +234,50 @@ export async function fetchEditions(): Promise<Edition[]> {
  * Fetches all visible collections from Pocketbase with edition counts and updates the store.
  * Returns the mapped collections array.
  */
-export async function fetchCollections(): Promise<(Collection & { editionCount?: number })[]> {
-	const canRequestHidden = pb.authStore.isValid;
-	const [collectionsResult, editionsResult] = await Promise.all([
-		pb.collection('collections').getList(1, 500, {
-			sort: 'pubNum',
-			filter: canRequestHidden ? undefined : 'isVisible = true',
-			$autoCancel: false
-		}),
-		pb.collection('editions').getList(1, 500, {
+export async function refreshCollectionCounts() {
+	try {
+		const editionsResult = await pb.collection('editions').getList(1, 500, {
 			filter: 'isPublished = true',
 			fields: 'id,collection',
+			skipTotal: true,
 			$autoCancel: false
-		})
-	]);
-
-	// Count editions per collection
-	const countMap: Record<string, number> = {};
-	for (const edition of editionsResult.items) {
-		const colId = edition.collection;
-		if (colId) {
-			countMap[colId] = (countMap[colId] || 0) + 1;
-		}
+		});
+		const countMap = countEditionsByCollection(editionsResult.items);
+		collectionsStore.update((current) => ({
+			...current,
+			items: current.items.map((collection) => ({
+				...collection,
+				editionCount: countMap[collection.id] || 0
+			})),
+			countsLastFetched: Date.now(),
+			countError: null
+		}));
+	} catch (error) {
+		collectionsStore.update((current) => ({
+			...current,
+			countError: error instanceof Error ? error.message : 'Unable to load edition counts'
+		}));
 	}
+}
+
+export async function fetchCollections(): Promise<(Collection & { editionCount?: number })[]> {
+	const canRequestHidden = pb.authStore.isValid;
+	const collectionsResult = await pb.collection('collections').getList(1, 500, {
+		sort: 'pubNum',
+		filter: canRequestHidden ? undefined : 'isVisible = true',
+		fields: COLLECTION_CARD_FIELDS,
+		$autoCancel: false
+	});
+	let cachedCounts: Record<string, number> = {};
+	let cachedCountsLastFetched: number | null = null;
+	collectionsStore.subscribe((current) => {
+		cachedCounts = Object.fromEntries(
+			current.items
+				.filter((collection) => collection.editionCount !== undefined)
+				.map((collection) => [collection.id, collection.editionCount as number])
+		);
+		cachedCountsLastFetched = current.countsLastFetched ?? null;
+	})();
 
 	const mappedCollections = collectionsResult.items.map((record) => {
 		// Cover image: uploaded coverImage file → legacy thumbnail URL → asset URL from pubNum
@@ -246,8 +290,10 @@ export async function fetchCollections(): Promise<(Collection & { editionCount?:
 			title: record.title,
 			description: record.dcAbstract || '',
 			thumbnail,
+			fileCollectionId: record.collectionId || '',
+			fileCollectionName: record.collectionName || '',
 			editionIds: [],
-			editionCount: countMap[record.id] || 0,
+			editionCount: cachedCounts[record.id],
 			created: record.created || new Date().toISOString(),
 			site: record.site,
 			isVisible: record.isVisible,
@@ -271,8 +317,11 @@ export async function fetchCollections(): Promise<(Collection & { editionCount?:
 	collectionsStore.set({
 		items: mappedCollections,
 		total: collectionsResult.totalItems,
-		lastFetched: Date.now()
+		lastFetched: Date.now(),
+		countsLastFetched: cachedCountsLastFetched,
+		countError: null
 	});
+	void refreshCollectionCounts();
 
 	return mappedCollections;
 }

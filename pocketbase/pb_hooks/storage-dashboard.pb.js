@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- PocketBase hooks use Goja's CommonJS loader. */
 routerAdd(
 	'GET',
 	'/api/pure3d/storage',
@@ -7,18 +8,27 @@ routerAdd(
 		}
 		let filesystem;
 		try {
+			const service = require(__hooks + '/storage-dashboard-service.cjs');
+			const prefix = event.request.url.query().get('prefix') || '';
+			const cursor = event.request.url.query().get('cursor') || '';
+			if (!service.validPrefix(prefix) || (cursor && !cursor.startsWith(prefix))) {
+				throw new BadRequestError('Invalid storage prefix or cursor.');
+			}
+			const limit = service.pageSize(event.request.url.query().get('limit'));
 			filesystem = event.app.newFilesystem();
-			const objects = filesystem
-				.list('')
-				.filter((object) => !object.isDir)
-				.map((object) => ({
-					key: object.key,
-					size: object.size,
-					modified: object.modTime.format('2006-01-02T15:04:05.000Z07:00')
-				}));
+			const page = service.pageObjects(filesystem.list(prefix), cursor, limit);
+			page.objects = page.objects.map((object) => ({
+				key: object.key,
+				size: object.size,
+				modified: object.modTime.format('2006-01-02T15:04:05.000Z07:00')
+			}));
 			return event.json(200, {
 				bucket: event.app.settings().s3.bucket || 'local storage',
-				objects
+				...page,
+				prefix,
+				scanBounded: false,
+				limitation:
+					'PocketBase filesystem.list(prefix) returns every matching key; the response is paged, but the backing prefix scan is not memory-bounded.'
 			});
 		} finally {
 			filesystem?.close();

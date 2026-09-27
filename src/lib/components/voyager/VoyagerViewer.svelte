@@ -15,8 +15,8 @@
 	 *    - Enables camera control, annotation management, etc.
 	 */
 
-	import { onMount } from 'svelte';
-	import { SvelteURLSearchParams } from 'svelte/reactivity';
+	import { onMount, tick } from 'svelte';
+	import { SvelteSet, SvelteURLSearchParams } from 'svelte/reactivity';
 	import { installViewerFetch } from './viewer-fetch';
 	import {
 		ViewerResources,
@@ -30,6 +30,7 @@
 	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
 	import { parseAnnotationCategories } from './edition-content';
 	import { DEFAULT_VOYAGER_VERSION, getVoyagerResourceRoot } from '$lib/utils/asset-urls';
+	import { isEmptySceneDocument, isRuntimeSceneReady, SceneLoadingTracker } from './scene-loading';
 
 	interface Props {
 		/** URL for iframe mode OR root path for direct mode */
@@ -145,7 +146,26 @@
 		stepIndex: number;
 	}
 
+	interface RuntimeOutput<T> {
+		value: T;
+		on?: (event: 'value', listener: () => void, owner: unknown) => void;
+		off?: (event: 'value', listener: () => void, owner: unknown) => void;
+	}
+
 	interface CategoryViewer extends VoyagerElement {
+		application?: {
+			system?: {
+				components?: {
+					get?: (type: string) => {
+						outs?: {
+							sceneLoaded?: RuntimeOutput<boolean>;
+							assetPath?: RuntimeOutput<string>;
+							busy?: RuntimeOutput<boolean>;
+						};
+					};
+				};
+			};
+		};
 		viewer?: {
 			node?: {
 				setup?: {
@@ -243,7 +263,9 @@
 
 	// Loading progress state
 	let loadingProgress = $state(0);
-	let loadingPhase = $state<'script' | 'document' | 'model' | 'complete'>('script');
+	let loadingPhase = $state<'script' | 'document' | 'downloading' | 'preparing' | 'complete'>(
+		'script'
+	);
 	let totalBytes = $state(0);
 	let loadedBytes = $state(0);
 	let cleanupFetchInterceptor: (() => void) | null = null;
@@ -263,6 +285,11 @@
 		tours: false,
 		audio: false
 	};
+	let sceneLoading = new SceneLoadingTracker();
+	let sceneReady = false;
+	let completeScene: (() => Promise<void>) | null = null;
+	const unknownDownloadIds = new SvelteSet<number>();
+	let emptySceneDocument = false;
 
 	// Camera orbit state
 	let cameraYaw = $state(0);
@@ -303,16 +330,63 @@
 	function installFetchInterceptor() {
 		return installViewerFetch(window, {
 			root: () => new URL(url, window.location.href).href,
+			sceneDocument: () =>
+				model || geometry
+					? undefined
+					: new URL(documentPath || 'scene.svx.json', new URL(url, window.location.href)).href,
+			documentLoaded: (source) => {
+				emptySceneDocument = isEmptySceneDocument(source);
+				const json = JSON.stringify(source);
+				sceneFeatureNeeds = {
+					annotations: /"annotations"\s*:\s*\[\s*\{/.test(json),
+					reader: /"articles"\s*:\s*\[\s*\{/.test(json),
+					tours: /"tours"\s*:\s*\[\s*\{/.test(json),
+					audio: /"audio"\s*:\s*\[\s*\{/.test(json)
+				};
+			},
 			overrides: () => fetchOverrides,
 			companions: () => companionAssets,
 			progress: (total, loaded) => {
 				if (disposed || loadingPhase === 'complete') return;
-				if (loadingPhase === 'document') loadingPhase = 'model';
+				if (loadingPhase === 'document') loadingPhase = 'downloading';
 				totalBytes += total;
 				loadedBytes += loaded;
 				loadingProgress = totalBytes > 0 ? Math.round((loadedBytes / totalBytes) * 100) : 0;
+			},
+			assetRequest: (event) => {
+				if (disposed || sceneReady) return;
+				if (event.type === 'start') {
+					unknownDownloadIds.add(event.id);
+					sceneLoading.downloadStarted();
+				} else if (event.type === 'response') {
+					if (event.total) {
+						unknownDownloadIds.delete(event.id);
+					}
+				} else {
+					unknownDownloadIds.delete(event.id);
+					sceneLoading.downloadFinished();
+				}
+				updateSceneLoadingPhase();
 			}
 		});
+	}
+
+	function initializeViewer() {
+		if (disposed) return;
+		emptySceneDocument = false;
+		sceneLoading = new SceneLoadingTracker();
+		isScriptLoaded = true;
+		loadingPhase = 'document';
+		void tick().then(loadContent);
+	}
+
+	function updateSceneLoadingPhase() {
+		if (disposed || hasError || sceneReady) return;
+		if (sceneLoading.phase === 'complete') {
+			void completeScene?.();
+			return;
+		}
+		loadingPhase = sceneLoading.phase;
 	}
 
 	onMount(() => {
@@ -323,6 +397,9 @@
 			totalBytes = 0;
 			loadedBytes = 0;
 			loadingPhase = 'script';
+			sceneLoading = new SceneLoadingTracker();
+			sceneReady = false;
+			unknownDownloadIds.clear();
 
 			resources.defer(retainCanvasCapture(HTMLCanvasElement.prototype));
 
@@ -343,9 +420,7 @@
 			void ensureViewerScript(document, customElements, scriptUrl)
 				.then(() => {
 					if (disposed) return;
-					isScriptLoaded = true;
-					loadingPhase = 'document';
-					resources.timeout(loadContent, 500);
+					void initializeViewer();
 				})
 				.catch(handleVoyagerError);
 			return () => resources.dispose();
@@ -357,15 +432,17 @@
 		contentResources?.dispose();
 		const contentScope = new ViewerResources();
 		contentResources = contentScope;
+		contentScope.defer(() => {
+			if (contentResources === contentScope) completeScene = null;
+		});
 
 		// Fix Voyager modal z-index to appear above sticky header (Shadow DOM)
 		fixVoyagerModalZIndex();
 		observeVoyagerChrome();
 
-		// Handler for when model is ready
-		async function handleModelReady() {
-			if (disposed || contentScope.disposed || loadingPhase === 'complete' || hasError) return;
-
+		completeScene = async () => {
+			if (disposed || contentScope.disposed || sceneReady || hasError) return;
+			sceneReady = true;
 			hasError = false;
 			loadingPhase = 'complete';
 			loadingProgress = 100;
@@ -381,12 +458,8 @@
 				onModelLoaded(totalBytes);
 			}
 
-			// Load available content
-			getContent();
-			const features = await detectSceneFeatures();
 			const ar = await supportsAR();
 			if (disposed || contentScope.disposed) return;
-			sceneFeatureNeeds = features;
 			arAvailable = ar;
 
 			// Expose API to parent
@@ -419,38 +492,7 @@
 					setView
 				});
 			}
-		}
-
-		// Listen for model load event
-		contentScope.listen(voyagerElement, 'model-load', () => {
-			handleModelReady();
-		});
-		contentScope.listen(voyagerElement, 'scene-content-load', getContent);
-
-		// Check if model is already loaded (e.g., from cache)
-		// Poll for the presence of models/annotations as indicator
-		const checkIfAlreadyLoaded = () => {
-			if (disposed || contentScope.disposed || loadingPhase === 'complete' || hasError) return;
-
-			try {
-				// Check if Voyager has models loaded
-				const hasModels = (voyagerElement?.getModels?.()?.length ?? 0) > 0;
-				const hasAnnotations = (voyagerElement?.getAnnotations?.()?.length ?? -1) >= 0;
-
-				if (hasModels || hasAnnotations) {
-					handleModelReady();
-				} else {
-					// Keep checking for a bit
-					contentScope.timeout(checkIfAlreadyLoaded, 200);
-				}
-			} catch {
-				// API not ready yet, keep checking
-				contentScope.timeout(checkIfAlreadyLoaded, 200);
-			}
 		};
-
-		// Start checking after a short delay
-		contentScope.timeout(checkIfAlreadyLoaded, 1000);
 
 		// Listen for Voyager error events
 		contentScope.listen(voyagerElement, 'error', handleVoyagerError);
@@ -458,6 +500,50 @@
 
 		// Also listen for global errors that might come from Voyager
 		contentScope.defer(captureViewerErrors((message) => handleVoyagerError({ message })));
+		watchRuntimeSceneLoaded(contentScope);
+	}
+
+	function handleRuntimeSceneLoaded() {
+		if (disposed || sceneReady || hasError) return;
+		sceneLoading.sceneLoaded();
+		getContent();
+		updateSceneLoadingPhase();
+	}
+
+	function watchRuntimeSceneLoaded(scope: ViewerResources) {
+		if (scope.disposed || disposed || hasError || sceneReady) return;
+		const components = (voyagerElement as CategoryViewer | undefined)?.application?.system
+			?.components;
+		const sceneLoaded = components?.get?.('CVViewer')?.outs?.sceneLoaded;
+		const sceneDocument = components?.get?.('CVDocument');
+		const assetPath = sceneDocument?.outs?.assetPath;
+		const busy = components?.get?.('CVAssetManager')?.outs?.busy;
+		if (!sceneLoaded || !assetPath || !busy) {
+			scope.timeout(() => watchRuntimeSceneLoaded(scope), 50);
+			return;
+		}
+		const update = () => {
+			if (
+				isRuntimeSceneReady({
+					sceneLoaded: sceneLoaded.value,
+					documentLoaded: !!assetPath.value,
+					emptyDocument: emptySceneDocument,
+					assetsBusy: busy.value
+				})
+			)
+				handleRuntimeSceneLoaded();
+		};
+		update();
+		if (sceneReady || scope.disposed) return;
+		const outputs = [sceneLoaded, assetPath, busy];
+		if (outputs.every((output) => output.on && output.off)) {
+			for (const output of outputs) {
+				output.on?.('value', update, scope);
+				scope.defer(() => output.off?.('value', update, scope));
+			}
+		} else {
+			scope.timeout(() => watchRuntimeSceneLoaded(scope), 50);
+		}
 	}
 
 	$effect(() => {
@@ -676,28 +762,6 @@
 			reset: true,
 			audio: sceneFeatureNeeds.audio
 		};
-	}
-
-	async function detectSceneFeatures() {
-		const none = { annotations: false, reader: false, tours: false, audio: false };
-		if (model || geometry) return none;
-
-		try {
-			const rootUrl = new URL(url, window.location.href);
-			const documentUrl = new URL(documentPath || 'scene.svx.json', rootUrl);
-			const response = await fetch(documentUrl);
-			if (!response.ok) return none;
-			const scene = await response.text();
-
-			return {
-				annotations: /"annotations"\s*:\s*\[\s*\{/.test(scene),
-				reader: /"articles"\s*:\s*\[\s*\{/.test(scene),
-				tours: /"tours"\s*:\s*\[\s*\{/.test(scene),
-				audio: /"audio"\s*:\s*\[\s*\{/.test(scene)
-			};
-		} catch {
-			return none;
-		}
 	}
 
 	// API Methods - Camera Control
@@ -1135,15 +1199,16 @@
 		totalBytes = 0;
 		loadedBytes = 0;
 		loadingPhase = 'script';
+		sceneLoading = new SceneLoadingTracker();
+		sceneReady = false;
+		unknownDownloadIds.clear();
 
 		// Re-mount the voyager element with new uiMode
 		isScriptLoaded = false;
 		resources.timeout(() => {
 			// Reinstall fetch interceptor
 			cleanupFetchInterceptor = installFetchInterceptor();
-			isScriptLoaded = true;
-			loadingPhase = 'document';
-			resources.timeout(loadContent, 500);
+			void initializeViewer();
 		}, 100);
 	}
 </script>
@@ -1162,9 +1227,18 @@
 		</div>
 	{:else if activeMode === 'viewer' && loadingPhase !== 'complete'}
 		<div class="pointer-events-none absolute right-0 bottom-0 left-0 z-10">
+			<div class="sr-only" role="status" aria-live="polite">
+				{loadingPhase === 'downloading'
+					? `Downloading 3D scene${loadingProgress ? `, ${loadingProgress}%` : ''}`
+					: loadingPhase === 'preparing'
+						? 'Preparing 3D scene'
+						: 'Loading 3D viewer'}
+			</div>
 			<progress
 				class="progress h-1 w-full rounded-none progress-primary"
-				value={loadingPhase === 'model' ? loadingProgress : undefined}
+				value={loadingPhase === 'downloading' && !unknownDownloadIds.size
+					? loadingProgress
+					: undefined}
 				max="100"
 			></progress>
 		</div>
