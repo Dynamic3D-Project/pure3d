@@ -1,4 +1,5 @@
 import createDOMPurify from 'dompurify';
+import { localContentAssetUrl } from './local-content-asset';
 import { contentTags, embedHosts, normaliseContentHtml } from '$lib/content';
 import {
 	isCalloutStyle,
@@ -10,6 +11,8 @@ import {
 const purifier = typeof window !== 'undefined' ? createDOMPurify(window) : null;
 purifier?.addHook('afterSanitizeAttributes', (node) => {
 	if (node.tagName === 'A') node.setAttribute('rel', 'noopener noreferrer');
+	if (node.tagName === 'IMG' && node.hasAttribute('src'))
+		node.setAttribute('src', localContentAssetUrl(node.getAttribute('src') || ''));
 	for (const attribute of Array.from(node.attributes)) {
 		if (!attribute.name.startsWith('data-cms-')) continue;
 		const allowed =

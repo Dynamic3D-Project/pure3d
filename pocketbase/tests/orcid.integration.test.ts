@@ -1955,6 +1955,66 @@ integration(
 	}
 );
 
+integration('a unique stored ORCID links its existing account only after valid OAuth', async () => {
+	const candidate = 'https://orcid.org/0000-0001-6350-2380';
+	const first = await root.collection('users').create({
+		email: 'curated-admin@example.test',
+		role: 'admin',
+		password: 'local-test-password-only',
+		passwordConfirm: 'local-test-password-only'
+	});
+	const duplicate = await root.collection('users').create({
+		email: 'curated-duplicate@example.test',
+		role: 'user',
+		password: 'local-test-password-only',
+		passwordConfirm: 'local-test-password-only'
+	});
+	try {
+		await expect(
+			other.send('/api/pure3d/orcid/curated/' + first.id, {
+				method: 'POST',
+				body: { orcid: candidate }
+			})
+		).rejects.toBeDefined();
+		await expect(
+			root.send('/api/pure3d/orcid/curated/' + first.id, {
+				method: 'POST',
+				body: { orcid: '0000-0003-1072-5199' }
+			})
+		).rejects.toBeDefined();
+		await root.send('/api/pure3d/orcid/curated/' + first.id, {
+			method: 'POST',
+			body: { orcid: candidate }
+		});
+		expect((await root.collection('users').getOne(first.id)).orcidVerifiedAt).toBe('');
+		await expect(
+			root.send('/api/pure3d/orcid/curated/' + duplicate.id, {
+				method: 'POST',
+				body: { orcid: candidate }
+			})
+		).rejects.toBeDefined();
+		expect((await root.collection('users').getOne(first.id)).orcidVerifiedAt).toBe('');
+		const signedIn = await oauth({ subject: candidate.slice(18) });
+		expect(signedIn.status).toBe(200);
+		expect(signedIn.body.record).toMatchObject({ id: first.id, role: 'admin', orcid: candidate });
+		expect(signedIn.body.record.orcidVerifiedAt).toBeTruthy();
+		expect(signedIn.body.meta).toEqual({ isNew: false });
+		await expect(
+			author
+				.collection('users')
+				.update(first.id, { orcid: 'https://orcid.org/0000-0002-1825-0097' })
+		).rejects.toBeDefined();
+	} finally {
+		await root.collection('users').delete(first.id);
+		await root
+			.collection('users')
+			.delete(duplicate.id)
+			.catch((error) => {
+				if (error.status !== 404) throw error;
+			});
+	}
+});
+
 integration(
 	'new OAuth ignores createData privileges and repeated exact login keeps identity',
 	async () => {

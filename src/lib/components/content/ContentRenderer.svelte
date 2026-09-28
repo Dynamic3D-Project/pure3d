@@ -7,11 +7,90 @@
 	interface Props {
 		content?: string;
 		className?: string;
+		imported?: boolean;
+		team?: boolean;
 	}
 
-	let { content = '', className = 'prose max-w-none' }: Props = $props();
+	let {
+		content = '',
+		className = 'prose max-w-none',
+		imported = false,
+		team = false
+	}: Props = $props();
 	let element = $state<HTMLElement>();
-	let html = $derived(cleanContent(content));
+	let prepared = $derived.by(() => {
+		const safeHtml = cleanContent(content);
+		if (!imported || typeof window === 'undefined') return { html: safeHtml, sections: [] };
+		const document = new DOMParser().parseFromString(`<main>${safeHtml}</main>`, 'text/html');
+		const root = document.querySelector('main')!;
+		const sections = Array.from(root.querySelectorAll('h2')).map((heading, index) => {
+			const id = `section-${index + 1}`;
+			heading.id = id;
+			return { id, title: heading.textContent?.trim() || `Section ${index + 1}` };
+		});
+		// WordPress used a bullet character in separate paragraphs instead of list markup.
+		let lastGeneratedList: Element | null = null;
+		for (const paragraph of Array.from(root.querySelectorAll('p'))) {
+			if (!paragraph.textContent?.trimStart().startsWith('•')) continue;
+			let list = paragraph.previousElementSibling;
+			if (!list || list !== lastGeneratedList) {
+				list = document.createElement('ul');
+				paragraph.before(list);
+			}
+			lastGeneratedList = list;
+			const first = paragraph.firstChild;
+			if (first?.nodeType === Node.TEXT_NODE)
+				first.textContent = first.textContent?.replace(/^\s*•\s*/, '') || '';
+			const item = document.createElement('li');
+			item.append(...Array.from(paragraph.childNodes));
+			list.append(item);
+			paragraph.remove();
+		}
+		if (team) {
+			for (const link of Array.from(root.querySelectorAll('a:has(> img)'))) {
+				if (link.querySelector('img')?.getAttribute('alt')) continue;
+				try {
+					link.setAttribute(
+						'aria-label',
+						`Visit ${new URL(link.getAttribute('href') || '').hostname.replace(/^www\./, '')}`
+					);
+				} catch {
+					// The sanitizer has already rejected unsafe destinations.
+				}
+			}
+			const menu = root.firstElementChild;
+			if (menu?.tagName === 'H4' && menu.textContent?.trim() === 'Menu') {
+				const links = menu.nextElementSibling;
+				if (links?.tagName === 'UL') {
+					const details = document.createElement('details');
+					const summary = document.createElement('summary');
+					summary.textContent = 'Explore related pages';
+					details.append(summary, links);
+					menu.replaceWith(details);
+				}
+			}
+			for (const heading of Array.from(root.querySelectorAll('h2'))) {
+				if (!/^(Meet Our Team|Past Members)$/i.test(heading.textContent?.trim() || '')) continue;
+				const grid = document.createElement('div');
+				grid.className = 'import-team-grid';
+				heading.after(grid);
+				let card: HTMLElement | null = null;
+				let current = grid.nextElementSibling;
+				while (current && current.tagName !== 'H2') {
+					const next = current.nextElementSibling;
+					if (current.tagName === 'IMG') {
+						card = document.createElement('div');
+						card.className = 'import-team-card';
+						grid.append(card);
+					}
+					if (card) card.append(current);
+					current = next;
+				}
+			}
+		}
+		return { html: root.innerHTML, sections };
+	});
+	let html = $derived(prepared.html);
 
 	$effect(() => {
 		void html;
@@ -26,8 +105,24 @@
 	});
 </script>
 
-<!-- eslint-disable-next-line svelte/no-at-html-tags -- cleanContent uses a strict allowlist before rendering. -->
-<article id="content-renderer" bind:this={element} class={className}>{@html html}</article>
+<article id="content-renderer" bind:this={element} class={className} class:imported>
+	{#if prepared.sections.length >= 4}<nav
+			aria-label="On this page"
+			class="not-prose mb-12 rounded-lg border border-base-300 bg-base-200/60 p-5 md:p-7"
+		>
+			<p class="mb-4 text-xs font-semibold tracking-[.15em] text-primary uppercase">On this page</p>
+			<ul class="grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
+				{#each prepared.sections as section (section.id)}<li>
+						<a
+							class="underline decoration-base-300 underline-offset-4 hover:decoration-primary"
+							href={`#${section.id}`}>{section.title}</a
+						>
+					</li>{/each}
+			</ul>
+		</nav>{/if}
+	<!-- eslint-disable-next-line svelte/no-at-html-tags -- cleanContent uses a strict allowlist before rendering. -->
+	{@html html}
+</article>
 
 <style>
 	#content-renderer :global([data-cms-callout]) {
@@ -92,5 +187,109 @@
 	}
 	#content-renderer :global(a) {
 		overflow-wrap: anywhere;
+	}
+	#content-renderer.imported {
+		--tw-prose-body: var(--color-ink-2);
+		--tw-prose-headings: var(--color-ink);
+		--tw-prose-links: var(--color-forest);
+		line-height: 1.75;
+	}
+	#content-renderer.imported :global(h2) {
+		margin-top: 3.5rem;
+		padding-top: 1.25rem;
+		border-top: 1px solid var(--color-base-300);
+		font-family: var(--font-serif);
+		font-size: clamp(1.75rem, 3vw, 2.5rem);
+		font-weight: 400;
+		line-height: 1.2;
+	}
+	#content-renderer.imported :global(h3) {
+		font-family: var(--font-serif);
+		font-weight: 500;
+	}
+	#content-renderer.imported :global(img) {
+		display: block;
+		max-height: 34rem;
+		margin-inline: auto;
+		object-fit: contain;
+	}
+	#content-renderer.imported :global(img:has(+ img)),
+	#content-renderer.imported :global(img + img) {
+		display: inline-block;
+		width: auto;
+		max-width: min(100%, 12rem);
+		max-height: 6rem;
+		margin: 0.75rem 1.5rem 0.75rem 0;
+		vertical-align: middle;
+	}
+	#content-renderer.imported :global(p:has(> a > img):not(:has(> :not(a, img, br)))) {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 1.5rem;
+		padding: 1.5rem;
+		border: 1px solid var(--color-base-300);
+		border-radius: var(--radius-surface);
+		background: var(--color-base-100);
+	}
+	#content-renderer.imported :global(p:has(> a > img):not(:has(> :not(a, img, br))) a) {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		max-width: min(100%, 12rem);
+		min-height: 5rem;
+	}
+	#content-renderer.imported :global(p:has(> a > img):not(:has(> :not(a, img, br))) img) {
+		max-height: 6rem;
+		width: auto;
+		margin: 0;
+	}
+	#content-renderer.imported :global(blockquote) {
+		border-color: var(--color-primary);
+		font-family: var(--font-serif);
+		font-weight: 400;
+	}
+	#content-renderer.imported :global(.import-team-grid) {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+		gap: 1.25rem;
+		margin-top: 1.5rem;
+	}
+	#content-renderer.imported :global(.import-team-card) {
+		padding: 1.5rem;
+		border: 1px solid var(--color-base-300);
+		border-radius: var(--radius-surface);
+		background: var(--color-base-100);
+	}
+	#content-renderer.imported :global(.import-team-card > img) {
+		width: 7rem;
+		height: 7rem;
+		margin: 0 0 1.25rem;
+		border-radius: 50%;
+		object-fit: cover;
+	}
+	#content-renderer.imported :global(.import-team-card p) {
+		margin: 0.35rem 0;
+	}
+	#content-renderer.imported :global(.import-team-card a:has(img)) {
+		display: inline-flex;
+		margin: 1rem 0.6rem 0 0;
+		vertical-align: middle;
+	}
+	#content-renderer.imported :global(.import-team-card a img) {
+		width: auto;
+		max-width: 5rem;
+		height: 1.75rem;
+		margin: 0;
+		object-fit: contain;
+	}
+	@media (max-width: 640px) {
+		#content-renderer.imported :global(h2) {
+			margin-top: 2.5rem;
+		}
+		#content-renderer.imported :global(p:has(> a > img):not(:has(> :not(a, img, br)))) {
+			gap: 1rem;
+			padding: 1rem;
+		}
 	}
 </style>

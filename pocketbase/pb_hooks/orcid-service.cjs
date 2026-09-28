@@ -246,8 +246,8 @@ function oauth(e) {
 		if (target && candidates.length && candidates[0].id !== target.id)
 			bad('Conflicting ORCID identity');
 		if (!target && candidates.length) {
-			if (candidates[0].getString('pendingOrcid') !== orcid)
-				bad('This account needs an administrator-approved ORCID mapping');
+			// A stored ORCID is curated account data. OAuth proves control of that exact ID;
+			// never infer an account from a name or email alone.
 			target = candidates[0];
 		}
 		// PB already chose e.record by external link, logged-in account, or email.
@@ -732,6 +732,51 @@ function pending(e, apply) {
 	return e.json(200, result);
 }
 
+function curate(e) {
+	if (!admin(e)) deny();
+	const orcid = checked(() => v.canonicalOrcid(e.requestInfo().body.orcid));
+	let result;
+	e.app.runInTransaction((tx) => {
+		let user = tx.findRecordById('users', e.request.pathValue('userId'));
+		if (user.getString('orcidVerifiedAt')) bad('A verified ORCID cannot be remapped');
+		if (
+			(user.getString('orcid') && user.getString('orcid') !== orcid) ||
+			(user.getString('pendingOrcid') && user.getString('pendingOrcid') !== orcid)
+		)
+			bad('Existing ORCID mapping must be reviewed before changing it');
+		if (
+			matches(tx, 'users', 'id != {:id} && (orcid = {:orcid} || pendingOrcid = {:orcid})', {
+				id: user.id,
+				orcid
+			}).length ||
+			matches(
+				tx,
+				'_externalAuths',
+				'collectionRef = {:collection} && ((provider = "oidc" && providerId = {:subject}) || recordRef = {:id})',
+				{ collection: user.collection().id, subject: orcid.slice(18), id: user.id }
+			).length
+		)
+			bad('Conflicting ORCID identity');
+		if (user.getString('orcid') !== orcid || user.getString('pendingOrcid')) {
+			user.set('orcid', orcid);
+			user.set('pendingOrcid', '');
+			tx.saveWithContext(
+				new Context(
+					new Context(null, proofContext, true),
+					'pure3d.actor',
+					require('./activity-service.cjs').actor(e.auth)
+				),
+				user
+			);
+			user = tx.findRecordById('users', user.id);
+		}
+		if (user.getString('orcid') !== orcid || user.getString('orcidVerifiedAt'))
+			bad('Curated ORCID readback failed');
+		result = { userId: user.id, orcid, orcidVerifiedAt: null };
+	});
+	return e.json(200, result);
+}
+
 function jwks(e) {
 	const { issuer } = v.orcidEndpoints($os.getenv('ORCID_ISSUER') || 'https://orcid.org');
 	try {
@@ -812,5 +857,6 @@ module.exports = {
 	validateRecord,
 	deleteUser,
 	pending,
+	curate,
 	refresh
 };

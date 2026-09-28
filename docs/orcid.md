@@ -1,5 +1,19 @@
 # ORCID Attribution and Rollout
 
+## Existing Account Sign-in
+
+An exact, unique, canonical ORCID stored on an existing user is treated as a curated
+account mapping. On the first successful ORCID OAuth sign-in, the backend links that
+identity to the existing account and retains its role; no separate pending approval is
+required. A pending mapping remains available when no ORCID is stored. New ORCID users
+receive a regular account. Names and email addresses alone never authorize linking;
+duplicate ORCIDs and conflicting external identities fail closed. Stored ORCIDs are
+therefore security-sensitive, especially on privileged accounts: curate and audit them
+before inviting users, and never set `orcidVerifiedAt` without OAuth proof. Admins can set
+an exact ORCID on an unverified account via `POST /api/pure3d/orcid/curated/{userId}` with
+`{ "orcid": "https://orcid.org/..." }`. It rejects invalid IDs, existing different mappings,
+duplicates and external-link conflicts; it never sets verification or changes roles.
+
 ## Missing-Algorithm JWKS Recovery
 
 For an already configured ORCID-only deployment, deploy the current `pocketbase/pb_hooks/`

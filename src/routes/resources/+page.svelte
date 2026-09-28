@@ -4,6 +4,7 @@
 	import { kindLabels } from '$lib/content';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { getCardImageSources } from '$lib/utils/asset-image-sources';
+	import { localContentAssetUrl } from '$lib/utils/local-content-asset';
 	import type { PageData } from './$types';
 	let { data }: { data: PageData } = $props();
 	let query = $state('');
@@ -62,7 +63,7 @@
 		</p>{/if}
 	<div class="grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
 		{#each items as item, index (item.id)}{@const imageSources = item.coverUrl
-				? getCardImageSources(item.coverUrl)
+				? getCardImageSources(localContentAssetUrl(item.coverUrl))
 				: null}<a
 				class="group overflow-hidden rounded-xl border border-base-300 bg-base-100"
 				href={resolve('/resources/[slug]', { slug: item.slug })}

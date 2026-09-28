@@ -369,6 +369,13 @@ routerAdd(
 	$apis.requireAuth()
 );
 
+routerAdd(
+	'POST',
+	'/api/pure3d/orcid/curated/{userId}',
+	(e) => require(__hooks + '/orcid-service.cjs').curate(e),
+	$apis.requireAuth()
+);
+
 routerAdd('GET', '/api/pure3d/orcid/ready', (e) => {
 	e.response.header().set('Cache-Control', 'no-store');
 	try {
