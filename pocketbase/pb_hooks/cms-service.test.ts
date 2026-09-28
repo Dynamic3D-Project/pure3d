@@ -6,13 +6,13 @@ class BadRequestError extends Error {}
 (globalThis as typeof globalThis & { BadRequestError: typeof BadRequestError }).BadRequestError =
 	BadRequestError;
 
-const { enforceMenuVersion, validateComponentHtml, validateMenu } = createRequire(import.meta.url)(
-	'./cms-service.cjs'
-) as {
-	enforceMenuVersion: (event: ReturnType<typeof requestEvent>) => void;
-	validateComponentHtml: (html: string) => string | null;
-	validateMenu: (event: ReturnType<typeof validateEvent>) => void;
-};
+const { enforceContentVersion, enforceMenuVersion, validateComponentHtml, validateMenu } =
+	createRequire(import.meta.url)('./cms-service.cjs') as {
+		enforceContentVersion: (event: ReturnType<typeof requestEvent>) => void;
+		enforceMenuVersion: (event: ReturnType<typeof requestEvent>) => void;
+		validateComponentHtml: (html: string) => string | null;
+		validateMenu: (event: ReturnType<typeof validateEvent>) => void;
+	};
 
 function record(config: unknown, collection = 'cms_menu_drafts') {
 	return {
@@ -28,7 +28,9 @@ function requestEvent(version: string | null, current = 'current') {
 	const tx = { findRecordById: () => ({ getString: () => current }) };
 	return {
 		record: record({}),
-		requestInfo: () => ({ headers: { x_pure3d_menu_version: version } }),
+		requestInfo: () => ({
+			headers: { x_pure3d_menu_version: version, x_pure3d_content_version: version }
+		}),
 		app: {
 			runInTransaction: (callback: (transaction: typeof tx) => void) => {
 				transacted = true;
@@ -68,6 +70,20 @@ test('menu API updates compare the supplied version against a fresh record', () 
 	enforceMenuVersion(event);
 	expect(event.called).toBe(true);
 	expect(event.transacted).toBe(true);
+});
+
+test('versioned content updates compare inside the save transaction', () => {
+	const ordinary = requestEvent(null);
+	enforceContentVersion(ordinary);
+	expect(ordinary.called).toBe(true);
+	expect(ordinary.transacted).toBe(false);
+	expect(() => enforceContentVersion(requestEvent('stale'))).toThrow(
+		'This content changed. Reload before saving.'
+	);
+	const versioned = requestEvent('current');
+	enforceContentVersion(versioned);
+	expect(versioned.called).toBe(true);
+	expect(versioned.transacted).toBe(true);
 });
 
 test('model validation has no request dependency and live menus reject private targets', () => {

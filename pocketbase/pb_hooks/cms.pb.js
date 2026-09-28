@@ -10,6 +10,10 @@ onRecordUpdateRequest(
 	'cms_menus',
 	'cms_menu_drafts'
 );
+onRecordUpdateRequest(
+	(e) => require(__hooks + '/cms-service.cjs').enforceContentVersion(e),
+	'content'
+);
 onRecordDeleteRequest((e) => require(__hooks + '/cms-service.cjs').deleteContent(e), 'content');
 onRecordDeleteRequest(
 	(e) => require(__hooks + '/cms-service.cjs').deleteMedia(e),

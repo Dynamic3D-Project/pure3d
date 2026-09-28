@@ -346,6 +346,17 @@ function enforceMenuVersion(e) {
 		e.next();
 	});
 }
+function enforceContentVersion(e) {
+	const expected = e.requestInfo().headers['x_pure3d_content_version'];
+	if (!expected) return e.next();
+	e.app.runInTransaction((tx) => {
+		e.app = tx;
+		const current = tx.findRecordById('content', e.record.id);
+		if (expected !== current.getString('updated'))
+			throw new BadRequestError('This content changed. Reload before saving.');
+		e.next();
+	});
+}
 function deleteContent(e) {
 	if (e.record.getString('layout') === 'guide' && e.record.getString('slug') === 'documentation')
 		throw new BadRequestError(
@@ -370,6 +381,7 @@ module.exports = {
 	validateComponentHtml,
 	validateMenu,
 	enforceMenuVersion,
+	enforceContentVersion,
 	deleteContent,
 	deleteMedia
 };
