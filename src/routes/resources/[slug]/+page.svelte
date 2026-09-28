@@ -76,7 +76,7 @@
 				src={localContentAssetUrl(item.coverUrl)}
 				alt=""
 			/>{/if}
-		<div class="mx-auto max-w-3xl pt-10 md:pt-16">
+		<div class="mx-auto max-w-6xl pt-10 md:pt-16">
 			<ContentRenderer
 				content={item.body || ''}
 				imported={isImported}
@@ -99,3 +99,14 @@
 		</div>
 	</div>
 </main>
+
+<style>
+	#resource-page
+		:global(
+			#content-renderer
+				> :is(p, h2, h3, h4, ul, ol, blockquote, pre, table, details, nav, aside, figure, iframe)
+		) {
+		max-width: 48rem;
+		margin-inline: auto;
+	}
+</style>

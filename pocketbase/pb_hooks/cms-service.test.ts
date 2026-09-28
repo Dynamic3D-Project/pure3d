@@ -155,4 +155,57 @@ test('content components only accept constrained attributes and safe action URLs
 			'<div data-cms-actions="true"><a data-cms-action="primary" href="javascript:alert(1)">Read</a></div>'
 		)
 	).toBe('Unsafe content component link.');
+	expect(
+		validateComponentHtml(
+			'<section data-cms-columns="3"><div data-cms-column="true"><p>First</p></div><div data-cms-column="true"><p>Second</p></div><div data-cms-column="true"><p>Third</p></div></section><section data-cms-profiles="true"><article data-cms-profile="true" data-name="Ada" data-role="Researcher" data-bio="Bio" data-image="/people/ada.jpg" data-alt="Ada portrait" data-href="https://example.org/ada" data-link-label="Profile"></article></section><div data-cms-logo-grid="true"><figure data-cms-logo="true" data-name="Museum" data-image="/logos/museum.svg" data-alt="Museum logo"></figure></div><dl data-cms-project-facts="true"><div data-cms-project-fact="true" data-label="Date" data-value="2026"></div></dl>'
+		)
+	).toBeNull();
+	expect(
+		validateComponentHtml(
+			'<section data-cms-columns="5"><div data-cms-column="true"></div></section>'
+		)
+	).toBe('Invalid content component.');
+	expect(
+		validateComponentHtml(
+			'<article data-cms-profile="true" data-name="Ada" data-image="javascript:alert(1)"></article>'
+		)
+	).toBe('Invalid content component.');
+	expect(validateComponentHtml('<p data-name="Unexpected">Text</p>')).toBe(
+		'Invalid content component.'
+	);
+	expect(
+		validateComponentHtml(
+			'<section data-cms-columns="2"><div data-cms-column="true"></div><section data-cms-columns="2"><div data-cms-column="true"></div><div data-cms-column="true"></div></section></section>'
+		)
+	).toBe('Invalid content component.');
+	expect(
+		validateComponentHtml(
+			'<div data-cms-logo-grid="true">' +
+				Array.from(
+					{ length: 25 },
+					() => '<figure data-cms-logo="true" data-name="Logo" data-image="/logo.svg"></figure>'
+				).join('') +
+				'</div>'
+		)
+	).toBe('Invalid content component.');
+	expect(
+		validateComponentHtml(
+			'<section data-cms-profiles="true"><article data-cms-profile="true" data-name="Ada" data-href="https://user:password@example.org"></article></section>'
+		)
+	).toBe('Invalid content component.');
+	expect(
+		validateComponentHtml(
+			'<section data-cms-profiles="true"><article data-cms-profile="true" data-name="Ada"><div data-cms-profile-links="true"><a data-cms-profile-link="true" href="https://example.org">Institution</a><a data-cms-profile-link="true" href="https://orcid.org/0000">ORCID</a></div></article></section>'
+		)
+	).toBeNull();
+	expect(
+		validateComponentHtml(
+			'<section data-cms-profiles="true"><article data-cms-profile="true" data-name="Ada"><div data-cms-profile-links="true">' +
+				Array.from(
+					{ length: 9 },
+					() => '<a data-cms-profile-link="true" href="https://example.org">Link</a>'
+				).join('') +
+				'</div></article></section>'
+		)
+	).toBe('Invalid content component.');
 });

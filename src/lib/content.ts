@@ -32,6 +32,13 @@ export const contentTags = [
 	'iframe',
 	'aside',
 	'div',
+	'section',
+	'article',
+	'figure',
+	'figcaption',
+	'dl',
+	'dt',
+	'dd',
 	'details',
 	'summary'
 ];
@@ -44,9 +51,11 @@ export const embedHosts = [
 
 // Avada can produce paragraphs nested in headings. Normalise before the browser parses it.
 export function normaliseContentHtml(html: string) {
-	return html
-		.replace(/<(h[2-4])>\s*<p>([\s\S]*?)<\/p>\s*<\/\1>/g, '<$1>$2</$1>')
-		.replace(/<p>(?:\s|&nbsp;|<br\s*\/?>)*<\/p>/g, '');
+	const normalised = html.replace(/<(h[2-4])>\s*<p>([\s\S]*?)<\/p>\s*<\/\1>/g, '<$1>$2</$1>');
+	// A blank paragraph is the editable placeholder in an empty CMS column.
+	return normalised.includes('data-cms-columns=')
+		? normalised
+		: normalised.replace(/<p>(?:\s|&nbsp;|<br\s*\/?>)*<\/p>/g, '');
 }
 
 export function classifyContent(slug: string, type: string, categories: string[]) {

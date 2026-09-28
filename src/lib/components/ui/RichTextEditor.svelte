@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { Editor } from '@tiptap/core';
+	import { NodeSelection, TextSelection } from '@tiptap/pm/state';
 	import StarterKit from '@tiptap/starter-kit';
 	import Link from '@tiptap/extension-link';
 	import Image from '@tiptap/extension-image';
@@ -14,19 +15,43 @@
 	import {
 		CmsActions,
 		CmsCallout,
+		CmsColumn,
+		CmsColumns,
+		ContentImageFigure,
 		CmsEditionGrid,
 		CmsExpandable,
+		CmsLogoGrid,
+		CmsProfileCards,
+		CmsProjectFacts,
 		CmsSummary,
 		calloutContent,
-		expandableContent
+		columnsContent,
+		contentImageFigure,
+		expandableContent,
+		logoGridContent,
+		profileCardsContent,
+		projectFactsContent
 	} from '$lib/utils/editor-content-components';
 	import {
 		calloutStyles,
+		isCmsColumnCount,
 		maxEditionReferences,
+		maxLogoItems,
+		maxProfileCards,
+		maxProfileLinks,
+		maxProjectFacts,
+		normaliseContentImage,
+		normaliseLogoItems,
+		normaliseProfileCards,
+		normaliseProjectFacts,
 		parseEditionIds,
 		safeContentUrl,
 		serialiseEditionIds,
-		type CalloutStyle
+		type CalloutStyle,
+		type ContentImage,
+		type LogoItem,
+		type ProfileCard,
+		type ProjectFact
 	} from '$lib/utils/content-components';
 	import ArrowDownIcon from '~icons/lucide/arrow-down';
 	import ArrowUpIcon from '~icons/lucide/arrow-up';
@@ -84,6 +109,15 @@
 	let editionLimitReached = $state(false);
 	let insertMenu = $state<HTMLDetailsElement>();
 	let insertMenuSummary = $state<HTMLElement>();
+	type ComponentEditorKind = 'profiles' | 'logos' | 'facts' | 'image';
+	let componentDialog = $state<HTMLDialogElement>();
+	let componentEditorKind = $state<ComponentEditorKind>();
+	let componentEditorError = $state('');
+	let componentEditorTarget = $state<{ name: string; position: number }>();
+	let draftProfiles = $state<ProfileCard[]>([]);
+	let draftLogos = $state<LogoItem[]>([]);
+	let draftFacts = $state<ProjectFact[]>([]);
+	let draftImage = $state<ContentImage>({ src: '', alt: '', caption: '' });
 	let matchingEditions = $derived(
 		cmsEditions.filter(
 			(edition) =>
@@ -100,6 +134,7 @@
 				Underline,
 				Link.configure({ openOnClick: false }),
 				Image,
+				ContentImageFigure,
 				VideoEmbed,
 				Table.configure({ resizable: true }),
 				TableRow,
@@ -110,12 +145,17 @@
 					? [
 							CmsCallout,
 							CmsActions,
+							CmsColumn,
+							CmsColumns,
 							CmsEditionGrid.configure({
 								editionTitle: (id: string) =>
 									cmsEditions.find((edition) => edition.id === id)?.title || id
 							}),
 							CmsSummary,
-							CmsExpandable
+							CmsExpandable,
+							CmsProfileCards,
+							CmsLogoGrid,
+							CmsProjectFacts
 						]
 					: [])
 			],
@@ -153,11 +193,7 @@
 	}
 
 	function addImage() {
-		if (!editor) return;
-		const url = window.prompt('Image URL');
-		if (url) {
-			editor.chain().focus().setImage({ src: url }).run();
-		}
+		openComponentEditor('image');
 	}
 	function addVideo() {
 		const value = window.prompt('YouTube, Vimeo or SoundCloud player URL');
@@ -196,6 +232,216 @@
 	function insertCallout() {
 		setCallout('info');
 		closeInsertMenu();
+	}
+
+	function activeNode(name: string) {
+		if (!editor) return null;
+		for (let depth = editor.state.selection.$from.depth; depth > 0; depth--) {
+			if (editor.state.selection.$from.node(depth).type.name === name)
+				return {
+					node: editor.state.selection.$from.node(depth),
+					position: editor.state.selection.$from.before(depth)
+				};
+		}
+		return null;
+	}
+
+	function setColumns(value: number) {
+		if (!editor || !isCmsColumnCount(value)) return;
+		const active = activeNode('cmsColumns');
+		if (!active) editor.chain().focus().insertContent(columnsContent(value)).run();
+		else {
+			const schema = editor.schema;
+			const columnType = schema.nodes.cmsColumn;
+			const columns = Array.from({ length: value }, (_, index) => {
+				const content = Array.from(active.node.maybeChild(index)?.content.content || []);
+				if (index === value - 1)
+					for (let extra = value; extra < active.node.childCount; extra++)
+						content.push(...active.node.child(extra).content.content);
+				if (!content.length) content.push(schema.nodes.paragraph.create());
+				return columnType.create(null, content);
+			});
+			const replacement = schema.nodes.cmsColumns.create({ count: value }, columns);
+			editor.commands.command(({ tr, dispatch }) => {
+				if (dispatch)
+					dispatch(
+						tr
+							.replaceWith(active.position, active.position + active.node.nodeSize, replacement)
+							.setSelection(TextSelection.near(tr.doc.resolve(active.position + 1)))
+							.scrollIntoView()
+					);
+				return true;
+			});
+		}
+		closeInsertMenu();
+	}
+
+	function selectedNode(name: string) {
+		if (!editor || !(editor.state.selection instanceof NodeSelection)) return null;
+		return editor.state.selection.node.type.name === name
+			? { node: editor.state.selection.node, position: editor.state.selection.from }
+			: null;
+	}
+
+	function openComponentEditor(kind: ComponentEditorKind) {
+		if (!editor) return;
+		const names = {
+			profiles: 'cmsProfileCards',
+			logos: 'cmsLogoGrid',
+			facts: 'cmsProjectFacts',
+			image: 'contentImageFigure'
+		} as const;
+		const selected = selectedNode(names[kind]);
+		componentEditorTarget = selected
+			? { name: names[kind], position: selected.position }
+			: undefined;
+		componentEditorError = '';
+		if (kind === 'profiles') {
+			const items = normaliseProfileCards(selected?.node.attrs.items || []);
+			draftProfiles = items.length
+				? items
+				: [{ name: '', role: '', bio: '', image: '', alt: '', links: [] }];
+		}
+		if (kind === 'logos') {
+			const items = normaliseLogoItems(selected?.node.attrs.items || []);
+			draftLogos = items.length ? items : [{ name: '', image: '', alt: '', href: '' }];
+		}
+		if (kind === 'facts') {
+			const items = normaliseProjectFacts(selected?.node.attrs.items || []);
+			draftFacts = items.length ? items : [{ label: '', value: '' }];
+		}
+		if (kind === 'image') {
+			const legacyImage = selectedNode('image');
+			componentEditorTarget = legacyImage
+				? { name: 'image', position: legacyImage.position }
+				: componentEditorTarget;
+			draftImage = normaliseContentImage(selected?.node.attrs || legacyImage?.node.attrs || {}) || {
+				src: '',
+				alt: '',
+				caption: ''
+			};
+		}
+		componentEditorKind = kind;
+		componentDialog?.showModal();
+		closeInsertMenu();
+	}
+
+	function closeComponentEditor() {
+		componentDialog?.close();
+	}
+
+	function addComponentItem(kind: Exclude<ComponentEditorKind, 'image'>) {
+		if (kind === 'profiles')
+			draftProfiles = [
+				...draftProfiles,
+				{ name: '', role: '', bio: '', image: '', alt: '', links: [] }
+			];
+		if (kind === 'logos') draftLogos = [...draftLogos, { name: '', image: '', alt: '', href: '' }];
+		if (kind === 'facts') draftFacts = [...draftFacts, { label: '', value: '' }];
+	}
+
+	function moveComponentItem(
+		kind: Exclude<ComponentEditorKind, 'image'>,
+		index: number,
+		direction: -1 | 1
+	) {
+		const move = <T,>(items: T[]) => {
+			const next = [...items];
+			const target = index + direction;
+			if (target < 0 || target >= next.length) return next;
+			[next[index], next[target]] = [next[target], next[index]];
+			return next;
+		};
+		if (kind === 'profiles') draftProfiles = move(draftProfiles);
+		if (kind === 'logos') draftLogos = move(draftLogos);
+		if (kind === 'facts') draftFacts = move(draftFacts);
+	}
+
+	function removeComponentItem(kind: Exclude<ComponentEditorKind, 'image'>, index: number) {
+		if (kind === 'profiles')
+			draftProfiles = draftProfiles.filter((_, itemIndex) => itemIndex !== index);
+		if (kind === 'logos') draftLogos = draftLogos.filter((_, itemIndex) => itemIndex !== index);
+		if (kind === 'facts') draftFacts = draftFacts.filter((_, itemIndex) => itemIndex !== index);
+	}
+
+	function addProfileLink(index: number) {
+		draftProfiles = draftProfiles.map((profile, profileIndex) =>
+			profileIndex === index && profile.links.length < maxProfileLinks
+				? { ...profile, links: [...profile.links, { label: '', href: '' }] }
+				: profile
+		);
+	}
+
+	function moveProfileLink(profileIndex: number, linkIndex: number, direction: -1 | 1) {
+		draftProfiles = draftProfiles.map((profile, index) => {
+			if (index !== profileIndex) return profile;
+			const target = linkIndex + direction;
+			if (target < 0 || target >= profile.links.length) return profile;
+			const links = [...profile.links];
+			[links[linkIndex], links[target]] = [links[target], links[linkIndex]];
+			return { ...profile, links };
+		});
+	}
+
+	function removeProfileLink(profileIndex: number, linkIndex: number) {
+		draftProfiles = draftProfiles.map((profile, index) =>
+			index === profileIndex
+				? { ...profile, links: profile.links.filter((_, itemIndex) => itemIndex !== linkIndex) }
+				: profile
+		);
+	}
+
+	function saveComponentEditor() {
+		if (!editor || !componentEditorKind) return;
+		const component = componentEditorKind;
+		const normalised =
+			component === 'profiles'
+				? normaliseProfileCards(draftProfiles)
+				: component === 'logos'
+					? normaliseLogoItems(draftLogos)
+					: component === 'facts'
+						? normaliseProjectFacts(draftFacts)
+						: normaliseContentImage(draftImage);
+		const expected =
+			component === 'profiles'
+				? draftProfiles.length
+				: component === 'logos'
+					? draftLogos.length
+					: component === 'facts'
+						? draftFacts.length
+						: 1;
+		if (
+			!normalised ||
+			(Array.isArray(normalised) && (!normalised.length || normalised.length !== expected))
+		) {
+			componentEditorError = 'Complete all required fields with safe, valid URLs before saving.';
+			return;
+		}
+		const content =
+			component === 'profiles'
+				? profileCardsContent(normalised as ProfileCard[])
+				: component === 'logos'
+					? logoGridContent(normalised as LogoItem[])
+					: component === 'facts'
+						? projectFactsContent(normalised as ProjectFact[])
+						: contentImageFigure(normalised as ContentImage);
+		editor.commands.command(({ state, tr, dispatch }) => {
+			const target = componentEditorTarget;
+			if (target && state.doc.nodeAt(target.position)?.type.name === target.name) {
+				const node = state.doc.nodeAt(target.position)!;
+				if (target.name === 'image')
+					tr.replaceWith(
+						target.position,
+						target.position + node.nodeSize,
+						state.schema.nodeFromJSON(content)
+					);
+				else
+					tr.setNodeMarkup(target.position, undefined, { ...node.attrs, ...(content.attrs || {}) });
+			} else tr.replaceSelectionWith(state.schema.nodeFromJSON(content));
+			if (dispatch) dispatch(tr.scrollIntoView());
+			return true;
+		});
+		closeComponentEditor();
 	}
 
 	function setActions() {
@@ -437,6 +683,24 @@
 					>
 					<div class="component-menu dropdown-content">
 						<button type="button" onclick={insertCallout}><InfoIcon /><span>Callout</span></button>
+						<button type="button" onclick={() => setColumns(2)}
+							><LayoutGridIcon /><span>Two columns</span></button
+						>
+						<button type="button" onclick={() => setColumns(3)}
+							><LayoutGridIcon /><span>Three columns</span></button
+						>
+						<button type="button" onclick={() => setColumns(4)}
+							><LayoutGridIcon /><span>Four columns</span></button
+						>
+						<button type="button" onclick={() => openComponentEditor('profiles')}
+							><LayoutGridIcon /><span>Profile cards</span></button
+						>
+						<button type="button" onclick={() => openComponentEditor('logos')}
+							><LayoutGridIcon /><span>Logo grid</span></button
+						>
+						<button type="button" onclick={() => openComponentEditor('facts')}
+							><LayoutGridIcon /><span>Project facts</span></button
+						>
 						<button
 							type="button"
 							onclick={() => {
@@ -482,6 +746,44 @@
 						aria-label="Edit edition grid"
 						title="Edit edition grid"
 						onclick={editEditionGrid}><LayoutGridIcon /></button
+					>
+				{/if}
+				{#if editor?.isActive('cmsColumns')}
+					<label class="callout-style" title="Column count"
+						><span class="sr-only">Column count</span><LayoutGridIcon /><select
+							value={editor.getAttributes('cmsColumns').count}
+							onchange={(event) => setColumns(Number(event.currentTarget.value))}
+							><option value="2">2 columns</option><option value="3">3 columns</option><option
+								value="4">4 columns</option
+							></select
+						></label
+					>
+				{/if}
+				{#if editor?.isActive('cmsProfileCards')}
+					<button
+						type="button"
+						class="toolbar-button"
+						aria-label="Edit profile cards"
+						title="Edit profile cards"
+						onclick={() => openComponentEditor('profiles')}><PencilIcon /></button
+					>
+				{/if}
+				{#if editor?.isActive('cmsLogoGrid')}
+					<button
+						type="button"
+						class="toolbar-button"
+						aria-label="Edit logo grid"
+						title="Edit logo grid"
+						onclick={() => openComponentEditor('logos')}><PencilIcon /></button
+					>
+				{/if}
+				{#if editor?.isActive('cmsProjectFacts')}
+					<button
+						type="button"
+						class="toolbar-button"
+						aria-label="Edit project facts"
+						title="Edit project facts"
+						onclick={() => openComponentEditor('facts')}><PencilIcon /></button
 					>
 				{/if}
 			</div>
@@ -571,6 +873,308 @@
 			</div>
 		</div>
 	{/if}
+	<dialog
+		bind:this={componentDialog}
+		class="modal"
+		aria-labelledby="content-component-editor-title"
+		onkeydown={(event) => {
+			event.stopPropagation();
+			if (event.key === 'Enter' && event.target instanceof HTMLInputElement) {
+				event.preventDefault();
+				saveComponentEditor();
+			}
+		}}
+		onclose={() => {
+			componentEditorKind = undefined;
+			componentEditorError = '';
+			componentEditorTarget = undefined;
+		}}
+	>
+		<div class="modal-box max-h-[calc(100vh-2rem)] max-w-3xl overflow-y-auto">
+			<h2 id="content-component-editor-title" class="text-lg font-semibold">
+				{componentEditorKind === 'profiles'
+					? 'Edit profile cards'
+					: componentEditorKind === 'logos'
+						? 'Edit logo grid'
+						: componentEditorKind === 'facts'
+							? 'Edit project facts'
+							: 'Edit image'}
+			</h2>
+			<p class="mt-1 text-sm opacity-70">Changes are saved only when you select Save.</p>
+			{#if componentEditorKind === 'profiles'}
+				<div class="component-form-list">
+					{#each draftProfiles as profile, index (index)}
+						<fieldset class="component-form-card">
+							<legend>Profile {index + 1}</legend>
+							<div class="component-form-actions">
+								<button
+									type="button"
+									class="btn btn-ghost btn-xs"
+									disabled={index === 0}
+									onclick={() => moveComponentItem('profiles', index, -1)}>Move up</button
+								>
+								<button
+									type="button"
+									class="btn btn-ghost btn-xs"
+									disabled={index === draftProfiles.length - 1}
+									onclick={() => moveComponentItem('profiles', index, 1)}>Move down</button
+								>
+								<button
+									type="button"
+									class="btn text-error btn-ghost btn-xs"
+									onclick={() => removeComponentItem('profiles', index)}>Remove</button
+								>
+							</div>
+							<label
+								>Name<input
+									class="input-bordered input w-full"
+									maxlength="120"
+									required
+									bind:value={profile.name}
+								/></label
+							>
+							<label
+								>Role or affiliation<input
+									class="input-bordered input w-full"
+									maxlength="120"
+									bind:value={profile.role}
+								/></label
+							>
+							<label
+								>Biography<textarea
+									class="textarea-bordered textarea w-full"
+									maxlength="500"
+									bind:value={profile.bio}
+								></textarea></label
+							>
+							<label
+								>Image URL<input
+									class="input-bordered input w-full"
+									type="text"
+									inputmode="url"
+									maxlength="2048"
+									bind:value={profile.image}
+								/></label
+							>
+							<label
+								>Image description<input
+									class="input-bordered input w-full"
+									maxlength="240"
+									bind:value={profile.alt}
+								/></label
+							>
+							<fieldset class="component-link-list">
+								<legend>Links</legend>
+								{#each profile.links as link, linkIndex (linkIndex)}
+									<div class="component-link-row">
+										<label
+											>Label<input
+												class="input-bordered input w-full"
+												maxlength="80"
+												required
+												bind:value={link.label}
+											/></label
+										>
+										<label
+											>Destination<input
+												class="input-bordered input w-full"
+												type="text"
+												inputmode="url"
+												maxlength="2048"
+												required
+												bind:value={link.href}
+											/></label
+										>
+										<div class="component-form-actions">
+											<button
+												type="button"
+												class="btn btn-ghost btn-xs"
+												disabled={linkIndex === 0}
+												onclick={() => moveProfileLink(index, linkIndex, -1)}>Move up</button
+											>
+											<button
+												type="button"
+												class="btn btn-ghost btn-xs"
+												disabled={linkIndex === profile.links.length - 1}
+												onclick={() => moveProfileLink(index, linkIndex, 1)}>Move down</button
+											>
+											<button
+												type="button"
+												class="btn text-error btn-ghost btn-xs"
+												onclick={() => removeProfileLink(index, linkIndex)}>Remove</button
+											>
+										</div>
+									</div>
+								{/each}
+								<button
+									type="button"
+									class="btn btn-ghost btn-sm"
+									disabled={profile.links.length >= maxProfileLinks}
+									onclick={() => addProfileLink(index)}>Add link</button
+								>
+							</fieldset>
+						</fieldset>
+					{/each}
+				</div>
+				<button
+					type="button"
+					class="btn mt-3 btn-sm"
+					disabled={draftProfiles.length >= maxProfileCards}
+					onclick={() => addComponentItem('profiles')}>Add profile</button
+				>
+			{:else if componentEditorKind === 'logos'}
+				<div class="component-form-list">
+					{#each draftLogos as logo, index (index)}
+						<fieldset class="component-form-card">
+							<legend>Logo {index + 1}</legend>
+							<div class="component-form-actions">
+								<button
+									type="button"
+									class="btn btn-ghost btn-xs"
+									disabled={index === 0}
+									onclick={() => moveComponentItem('logos', index, -1)}>Move up</button
+								>
+								<button
+									type="button"
+									class="btn btn-ghost btn-xs"
+									disabled={index === draftLogos.length - 1}
+									onclick={() => moveComponentItem('logos', index, 1)}>Move down</button
+								>
+								<button
+									type="button"
+									class="btn text-error btn-ghost btn-xs"
+									onclick={() => removeComponentItem('logos', index)}>Remove</button
+								>
+							</div>
+							<label
+								>Name<input
+									class="input-bordered input w-full"
+									maxlength="120"
+									required
+									bind:value={logo.name}
+								/></label
+							>
+							<label
+								>Image URL<input
+									class="input-bordered input w-full"
+									type="text"
+									inputmode="url"
+									maxlength="2048"
+									required
+									bind:value={logo.image}
+								/></label
+							>
+							<label
+								>Image description<input
+									class="input-bordered input w-full"
+									maxlength="240"
+									bind:value={logo.alt}
+								/></label
+							>
+							<label
+								>Link<input
+									class="input-bordered input w-full"
+									type="text"
+									inputmode="url"
+									maxlength="2048"
+									bind:value={logo.href}
+								/></label
+							>
+						</fieldset>
+					{/each}
+				</div>
+				<button
+					type="button"
+					class="btn mt-3 btn-sm"
+					disabled={draftLogos.length >= maxLogoItems}
+					onclick={() => addComponentItem('logos')}>Add logo</button
+				>
+			{:else if componentEditorKind === 'facts'}
+				<div class="component-form-list">
+					{#each draftFacts as fact, index (index)}
+						<fieldset class="component-form-card">
+							<legend>Fact {index + 1}</legend>
+							<div class="component-form-actions">
+								<button
+									type="button"
+									class="btn btn-ghost btn-xs"
+									disabled={index === 0}
+									onclick={() => moveComponentItem('facts', index, -1)}>Move up</button
+								>
+								<button
+									type="button"
+									class="btn btn-ghost btn-xs"
+									disabled={index === draftFacts.length - 1}
+									onclick={() => moveComponentItem('facts', index, 1)}>Move down</button
+								>
+								<button
+									type="button"
+									class="btn text-error btn-ghost btn-xs"
+									onclick={() => removeComponentItem('facts', index)}>Remove</button
+								>
+							</div>
+							<label
+								>Label<input
+									class="input-bordered input w-full"
+									maxlength="120"
+									required
+									bind:value={fact.label}
+								/></label
+							>
+							<label
+								>Value<textarea
+									class="textarea-bordered textarea w-full"
+									maxlength="500"
+									required
+									bind:value={fact.value}
+								></textarea></label
+							>
+						</fieldset>
+					{/each}
+				</div>
+				<button
+					type="button"
+					class="btn mt-3 btn-sm"
+					disabled={draftFacts.length >= maxProjectFacts}
+					onclick={() => addComponentItem('facts')}>Add fact</button
+				>
+			{:else if componentEditorKind === 'image'}
+				<div class="component-form-list">
+					<label
+						>Image URL<input
+							class="input-bordered input w-full"
+							type="text"
+							inputmode="url"
+							maxlength="2048"
+							required
+							bind:value={draftImage.src}
+						/></label
+					>
+					<label
+						>Image description<input
+							class="input-bordered input w-full"
+							maxlength="240"
+							bind:value={draftImage.alt}
+						/></label
+					>
+					<label
+						>Caption<textarea
+							class="textarea-bordered textarea w-full"
+							maxlength="500"
+							bind:value={draftImage.caption}
+						></textarea></label
+					>
+				</div>
+			{/if}
+			{#if componentEditorError}<p class="mt-3 text-sm text-error" role="alert">
+					{componentEditorError}
+				</p>{/if}
+			<div class="modal-action">
+				<button type="button" class="btn" onclick={closeComponentEditor}>Cancel</button>
+				<button type="button" class="btn btn-primary" onclick={saveComponentEditor}>Save</button>
+			</div>
+		</div>
+	</dialog>
 
 	<!-- Editor content -->
 	<div class="relative">
@@ -788,6 +1392,107 @@
 		width: 100%;
 		font-size: 0.875rem;
 	}
+	.editor-wrapper :global([data-cms-columns]) {
+		display: grid;
+		grid-template-columns: repeat(var(--cms-columns, 2), minmax(0, 1fr));
+		gap: 1rem;
+		margin: 1rem 0;
+	}
+	.editor-wrapper :global([data-cms-columns='2']) {
+		--cms-columns: 2;
+	}
+	.editor-wrapper :global([data-cms-columns='3']) {
+		--cms-columns: 3;
+	}
+	.editor-wrapper :global([data-cms-columns='4']) {
+		--cms-columns: 4;
+	}
+	.editor-wrapper :global([data-cms-column]) {
+		min-width: 0;
+		padding: 0.75rem;
+		border: 1px dashed var(--color-base-300);
+		border-radius: var(--radius-box);
+	}
+	.editor-wrapper :global([data-cms-columns]:focus-within) {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 0.25rem;
+	}
+	.editor-wrapper :global([data-cms-profiles]),
+	.editor-wrapper :global([data-cms-logo-grid]),
+	.editor-wrapper :global([data-cms-project-facts]) {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+		gap: 0.75rem;
+		margin: 1rem 0;
+	}
+	.editor-wrapper :global([data-cms-profile]),
+	.editor-wrapper :global([data-cms-logo]),
+	.editor-wrapper :global([data-cms-project-fact]),
+	.editor-wrapper :global(figure[data-content-image]) {
+		min-width: 0;
+		margin: 0;
+		padding: 0.75rem;
+		border: 1px dashed var(--color-base-300);
+		border-radius: var(--radius-box);
+		background: var(--color-base-200);
+	}
+	.editor-wrapper :global([data-cms-profile] > img) {
+		width: 4rem;
+		height: 4rem;
+		margin: 0 0 0.75rem;
+		border-radius: 50%;
+		object-fit: cover;
+	}
+	.editor-wrapper :global([data-cms-profile-links]) {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+	.editor-wrapper :global([data-cms-profile-link]) {
+		font-size: 0.875rem;
+		text-decoration: underline;
+		text-underline-offset: 0.2em;
+	}
+	.editor-wrapper :global([data-cms-logo] img),
+	.editor-wrapper :global(figure[data-content-image] img) {
+		display: block;
+		max-width: 100%;
+		height: auto;
+		margin: 0 auto;
+	}
+	.editor-wrapper :global([data-cms-logo] figcaption),
+	.editor-wrapper :global(figure[data-content-image] figcaption) {
+		margin-top: 0.5rem;
+		font-size: 0.875rem;
+	}
+	.component-form-list {
+		display: grid;
+		gap: 1rem;
+		margin-top: 1rem;
+	}
+	.component-form-card {
+		display: grid;
+		gap: 0.75rem;
+		padding: 1rem;
+		border: 1px solid var(--color-base-300);
+		border-radius: var(--radius-box);
+	}
+	.component-form-card legend {
+		padding: 0 0.25rem;
+		font-weight: 600;
+	}
+	.component-form-card label,
+	.component-form-list > label {
+		display: grid;
+		gap: 0.25rem;
+		font-size: 0.875rem;
+		font-weight: 600;
+	}
+	.component-form-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem;
+	}
 	.editor-wrapper :global(details[data-cms-expandable]) {
 		margin: 1rem 0;
 		padding: 0.75rem;
@@ -796,5 +1501,16 @@
 	}
 	.editor-wrapper :global(.cms-editor-expandable-content) {
 		padding-top: 0.5rem;
+	}
+	@media (min-width: 40.0625rem) and (max-width: 64rem) {
+		.editor-wrapper :global([data-cms-columns='3']),
+		.editor-wrapper :global([data-cms-columns='4']) {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+	@media (max-width: 40rem) {
+		.editor-wrapper :global([data-cms-columns]) {
+			grid-template-columns: 1fr;
+		}
 	}
 </style>

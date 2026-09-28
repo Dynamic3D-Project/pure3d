@@ -3,8 +3,55 @@ function attribute(tag, name) {
 	const match = tag.match(new RegExp(`(?:^|\\s)${name}=(['"])(.*?)\\1`, 'i'));
 	return match ? match[2] : null;
 }
+function hasUnsafeUrlCharacters(value) {
+	return (
+		/\s/.test(value) ||
+		Array.from(value).some((character) => {
+			const code = character.charCodeAt(0);
+			return code < 32 || code === 127;
+		})
+	);
+}
+function safeRelativeComponentUrl(value) {
+	if (!/^\/(?![\\/])/.test(value) || value.length > 2048 || hasUnsafeUrlCharacters(value))
+		return false;
+	try {
+		return /^\/(?![\\/])/.test(decodeURIComponent(value));
+	} catch {
+		return false;
+	}
+}
 function safeComponentUrl(value) {
-	return /^\/(?![\\/])/.test(value) || /^(https?:\/\/[^\s]+|mailto:[^\s]+)$/i.test(value);
+	if (typeof value !== 'string' || value.length > 2048 || hasUnsafeUrlCharacters(value))
+		return false;
+	if (safeRelativeComponentUrl(value)) return true;
+	try {
+		const url = new URL(value);
+		if (['http:', 'https:'].includes(url.protocol))
+			return Boolean(url.hostname && !url.username && !url.password);
+		return url.protocol === 'mailto:' && /^[^@\s]+@[^@\s]+$/.test(url.pathname);
+	} catch {
+		return false;
+	}
+}
+function safeComponentImageUrl(value) {
+	if (typeof value !== 'string' || value.length > 2048 || hasUnsafeUrlCharacters(value))
+		return false;
+	if (safeRelativeComponentUrl(value)) return true;
+	try {
+		const url = new URL(value);
+		return (
+			['http:', 'https:'].includes(url.protocol) &&
+			Boolean(url.hostname && !url.username && !url.password)
+		);
+	} catch {
+		return false;
+	}
+}
+function componentText(value, maxLength) {
+	return (
+		typeof value === 'string' && value.trim() && value.length <= maxLength && !/[<>]/.test(value)
+	);
 }
 function validateComponentHtml(html) {
 	for (const match of html.matchAll(/\sdata-cms-[\w-]+=(['"])(.*?)\1/gi)) {
@@ -12,7 +59,12 @@ function validateComponentHtml(html) {
 	}
 	for (const tag of html.matchAll(/<([a-z][\w-]*)\b[^>]*>/gi)) {
 		const [, tagName] = tag;
-		for (const match of tag[0].matchAll(/\s(data-cms-[\w-]+)=(['"])(.*?)\2/gi)) {
+		const profile = tagName === 'article' && attribute(tag[0], 'data-cms-profile') === 'true';
+		const logo = tagName === 'figure' && attribute(tag[0], 'data-cms-logo') === 'true';
+		const fact = tagName === 'div' && attribute(tag[0], 'data-cms-project-fact') === 'true';
+		for (const match of tag[0].matchAll(
+			/\s(data-(?:cms-[\w-]+|name|role|bio|image|alt|href|link-label|label|value|content-image))=(['"])(.*?)\2/gi
+		)) {
 			const [, name, , value] = match;
 			if (
 				(name === 'data-cms-callout' &&
@@ -26,11 +78,119 @@ function validateComponentHtml(html) {
 				(name === 'data-cms-editions' &&
 					tagName === 'div' &&
 					value.split(',').length <= 24 &&
-					value.split(',').every((id) => editionIdPattern.test(id.trim())))
+					value.split(',').every((id) => editionIdPattern.test(id.trim()))) ||
+				(name === 'data-cms-columns' && tagName === 'section' && ['2', '3', '4'].includes(value)) ||
+				(name === 'data-cms-column' && tagName === 'div' && value === 'true') ||
+				(name === 'data-cms-profiles' && tagName === 'section' && value === 'true') ||
+				(name === 'data-cms-profile' && tagName === 'article' && value === 'true') ||
+				(name === 'data-cms-profile-links' && tagName === 'div' && value === 'true') ||
+				(name === 'data-cms-profile-link' && tagName === 'a' && value === 'true') ||
+				(name === 'data-cms-logo-grid' && tagName === 'div' && value === 'true') ||
+				(name === 'data-cms-logo' && tagName === 'figure' && value === 'true') ||
+				(name === 'data-cms-project-facts' && tagName === 'dl' && value === 'true') ||
+				(name === 'data-cms-project-fact' && tagName === 'div' && value === 'true') ||
+				(name === 'data-name' && (profile || logo) && componentText(value, 120)) ||
+				(name === 'data-role' && profile && componentText(value, 120)) ||
+				(name === 'data-bio' && profile && componentText(value, 500)) ||
+				(name === 'data-image' && (profile || logo) && safeComponentImageUrl(value)) ||
+				(name === 'data-alt' && (profile || logo) && componentText(value, 240)) ||
+				(name === 'data-href' && (profile || logo) && safeComponentUrl(value)) ||
+				(name === 'data-link-label' && profile && componentText(value, 80)) ||
+				(name === 'data-label' && fact && componentText(value, 120)) ||
+				(name === 'data-value' && fact && componentText(value, 500)) ||
+				(name === 'data-content-image' && tagName === 'figure' && value === 'true')
 			)
 				continue;
 			return 'Invalid content component.';
 		}
+	}
+	for (const match of html.matchAll(
+		/<section\b[^>]*\bdata-cms-columns=(['"])([234])\1[^>]*>([\s\S]*?)<\/section>/gi
+	)) {
+		const [, , count, contents] = match;
+		const columns = contents.match(/<div\b[^>]*\bdata-cms-column=(['"])true\1[^>]*>/gi) || [];
+		if (columns.length !== Number(count) || /data-cms-columns/i.test(contents))
+			return 'Invalid content component.';
+	}
+	const containers = [
+		['section', 'data-cms-profiles', 'article', 'data-cms-profile', 12],
+		['div', 'data-cms-logo-grid', 'figure', 'data-cms-logo', 24],
+		['dl', 'data-cms-project-facts', 'div', 'data-cms-project-fact', 16]
+	];
+	for (const [containerTag, containerAttribute, itemTag, itemAttribute, maximum] of containers) {
+		const pattern = new RegExp(
+			`<${containerTag}\\b[^>]*\\b${containerAttribute}=(['"])true\\1[^>]*>([\\s\\S]*?)<\\/${containerTag}>`,
+			'gi'
+		);
+		let withoutContainers = html;
+		for (const match of html.matchAll(pattern)) {
+			const items =
+				match[2].match(
+					new RegExp(`<${itemTag}\\b[^>]*\\b${itemAttribute}=(['"])true\\1[^>]*>`, 'gi')
+				) || [];
+			if (!items.length || items.length > maximum) return 'Invalid content component.';
+			withoutContainers = withoutContainers.replace(match[0], '');
+		}
+		if (new RegExp(`\\b${itemAttribute}=`, 'i').test(withoutContainers))
+			return 'Invalid content component.';
+	}
+	for (const tag of html.matchAll(/<article\b[^>]*\bdata-cms-profile=(['"])true\1[^>]*>/gi)) {
+		const value = tag[0];
+		if (
+			!componentText(attribute(value, 'data-name'), 120) ||
+			(attribute(value, 'data-image') && !safeComponentImageUrl(attribute(value, 'data-image'))) ||
+			(attribute(value, 'data-href') && !safeComponentUrl(attribute(value, 'data-href')))
+		)
+			return 'Invalid content component.';
+	}
+	let withoutProfiles = html;
+	for (const profile of html.matchAll(
+		/<article\b[^>]*\bdata-cms-profile=(['"])true\1[^>]*>([\s\S]*?)<\/article>/gi
+	)) {
+		let withoutLinkContainers = profile[2];
+		for (const container of profile[2].matchAll(
+			/<div\b[^>]*\bdata-cms-profile-links=(['"])true\1[^>]*>([\s\S]*?)<\/div>/gi
+		)) {
+			const links =
+				container[2].match(/<a\b[^>]*\bdata-cms-profile-link=(['"])true\1[^>]*>/gi) || [];
+			if (!links.length || links.length > 8) return 'Invalid content component.';
+			withoutLinkContainers = withoutLinkContainers.replace(container[0], '');
+		}
+		if (/\bdata-cms-profile-link=|\bdata-cms-profile-links=/i.test(withoutLinkContainers))
+			return 'Invalid content component.';
+		withoutProfiles = withoutProfiles.replace(profile[0], '');
+	}
+	if (/\bdata-cms-profile-link=|\bdata-cms-profile-links=/i.test(withoutProfiles))
+		return 'Invalid content component.';
+	for (const tag of html.matchAll(
+		/<a\b[^>]*\bdata-cms-profile-link=(['"])true\1[^>]*>([\s\S]*?)<\/a>/gi
+	)) {
+		const href = attribute(tag[0], 'href');
+		if (!href || !safeComponentUrl(href) || !componentText(tag[2].replace(/<[^>]+>/g, ''), 80))
+			return 'Invalid content component.';
+	}
+	for (const tag of html.matchAll(/<figure\b[^>]*\bdata-cms-logo=(['"])true\1[^>]*>/gi)) {
+		const value = tag[0];
+		if (
+			!componentText(attribute(value, 'data-name'), 120) ||
+			!safeComponentImageUrl(attribute(value, 'data-image') || '')
+		)
+			return 'Invalid content component.';
+	}
+	for (const figure of html.matchAll(
+		/<figure\b[^>]*\bdata-content-image=(['"])true\1[^>]*>([\s\S]*?)<\/figure>/gi
+	)) {
+		const image = figure[2].match(/<img\b[^>]*>/i)?.[0];
+		if (!image || !safeComponentImageUrl(attribute(image, 'src') || ''))
+			return 'Invalid content component.';
+	}
+	for (const tag of html.matchAll(/<div\b[^>]*\bdata-cms-project-fact=(['"])true\1[^>]*>/gi)) {
+		const value = tag[0];
+		if (
+			!componentText(attribute(value, 'data-label'), 120) ||
+			!componentText(attribute(value, 'data-value'), 500)
+		)
+			return 'Invalid content component.';
 	}
 	for (const tag of html.matchAll(
 		/<a\b[^>]*\bdata-cms-action=(['"])(?:primary|secondary)\1[^>]*>/gi

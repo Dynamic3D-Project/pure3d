@@ -46,6 +46,17 @@
 			list.append(item);
 			paragraph.remove();
 		}
+		const menu = root.firstElementChild;
+		if (menu?.tagName === 'H4' && menu.textContent?.trim() === 'Menu') {
+			const links = menu.nextElementSibling;
+			if (links?.tagName === 'UL') {
+				const details = document.createElement('details');
+				const summary = document.createElement('summary');
+				summary.textContent = 'Explore related pages';
+				details.append(summary, links);
+				menu.replaceWith(details);
+			}
+		}
 		if (team) {
 			for (const link of Array.from(root.querySelectorAll('a:has(> img)'))) {
 				if (link.querySelector('img')?.getAttribute('alt')) continue;
@@ -56,17 +67,6 @@
 					);
 				} catch {
 					// The sanitizer has already rejected unsafe destinations.
-				}
-			}
-			const menu = root.firstElementChild;
-			if (menu?.tagName === 'H4' && menu.textContent?.trim() === 'Menu') {
-				const links = menu.nextElementSibling;
-				if (links?.tagName === 'UL') {
-					const details = document.createElement('details');
-					const summary = document.createElement('summary');
-					summary.textContent = 'Explore related pages';
-					details.append(summary, links);
-					menu.replaceWith(details);
 				}
 			}
 			for (const heading of Array.from(root.querySelectorAll('h2'))) {
@@ -171,6 +171,116 @@
 		cursor: pointer;
 		font-weight: 600;
 	}
+	#content-renderer :global([data-cms-columns]) {
+		display: grid;
+		grid-template-columns: repeat(var(--cms-columns, 2), minmax(0, 1fr));
+		gap: clamp(1rem, 3vw, 2rem);
+		margin: 1.5rem 0;
+	}
+	#content-renderer :global([data-cms-columns='2']) {
+		--cms-columns: 2;
+	}
+	#content-renderer :global([data-cms-columns='3']) {
+		--cms-columns: 3;
+	}
+	#content-renderer :global([data-cms-columns='4']) {
+		--cms-columns: 4;
+	}
+	#content-renderer :global([data-cms-column]) {
+		min-width: 0;
+	}
+	#content-renderer :global([data-cms-profiles]) {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+		gap: 1.25rem;
+		margin: 1.5rem 0;
+	}
+	#content-renderer :global([data-cms-profile]) {
+		display: grid;
+		gap: 1rem;
+		padding: 1.25rem;
+		border: 1px solid var(--color-base-300);
+		border-radius: var(--radius-surface);
+		background: var(--color-base-100);
+	}
+	#content-renderer :global([data-cms-profile] > img) {
+		width: 5rem;
+		height: 5rem;
+		margin: 0;
+		border-radius: 50%;
+		object-fit: cover;
+	}
+	#content-renderer :global([data-cms-profile] h3),
+	#content-renderer :global([data-cms-profile] p) {
+		margin: 0.25rem 0;
+	}
+	#content-renderer :global([data-cms-profile-links]) {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+	#content-renderer :global([data-cms-profile-link]) {
+		font-size: 0.875rem;
+		text-decoration: underline;
+		text-underline-offset: 0.2em;
+	}
+	#content-renderer :global([data-cms-logo-grid]) {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+		gap: 1rem;
+		margin: 1.5rem 0;
+	}
+	#content-renderer :global([data-cms-logo]) {
+		display: grid;
+		min-height: 7rem;
+		place-items: center;
+		gap: 0.75rem;
+		margin: 0;
+		padding: 1rem;
+		border: 1px solid var(--color-base-300);
+		border-radius: var(--radius-box);
+	}
+	#content-renderer :global([data-cms-logo] img) {
+		width: auto;
+		max-width: 100%;
+		height: 3rem;
+		margin: 0;
+		object-fit: contain;
+	}
+	#content-renderer :global([data-cms-logo] figcaption),
+	#content-renderer :global([data-cms-logo] > p) {
+		font-size: 0.875rem;
+		text-align: center;
+	}
+	#content-renderer :global([data-cms-project-facts]) {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+		gap: 1rem;
+		margin: 1.5rem 0;
+	}
+	#content-renderer :global([data-cms-project-fact]) {
+		padding: 1rem;
+		border-left: 0.2rem solid var(--color-primary);
+		background: var(--color-base-200);
+	}
+	#content-renderer :global([data-cms-project-fact] dt) {
+		font-size: 0.75rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+	#content-renderer :global([data-cms-project-fact] dd) {
+		margin: 0.35rem 0 0;
+	}
+	#content-renderer :global(figure[data-content-image]) {
+		margin: 1.5rem 0;
+	}
+	#content-renderer :global(figure[data-content-image] figcaption) {
+		margin-top: 0.75rem;
+		font-size: 0.875rem;
+		line-height: 1.5;
+		color: color-mix(in oklch, var(--color-base-content) 72%, transparent);
+	}
 	#content-renderer :global(img) {
 		max-width: 100%;
 		height: auto;
@@ -194,7 +304,7 @@
 		--tw-prose-links: var(--color-forest);
 		line-height: 1.75;
 	}
-	#content-renderer.imported :global(h2) {
+	#content-renderer.imported > :global(h2) {
 		margin-top: 3.5rem;
 		padding-top: 1.25rem;
 		border-top: 1px solid var(--color-base-300);
@@ -283,8 +393,17 @@
 		margin: 0;
 		object-fit: contain;
 	}
+	@media (min-width: 641px) and (max-width: 1024px) {
+		#content-renderer :global([data-cms-columns='3']),
+		#content-renderer :global([data-cms-columns='4']) {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
 	@media (max-width: 640px) {
-		#content-renderer.imported :global(h2) {
+		#content-renderer :global([data-cms-columns]) {
+			grid-template-columns: 1fr;
+		}
+		#content-renderer.imported > :global(h2) {
 			margin-top: 2.5rem;
 		}
 		#content-renderer.imported :global(p:has(> a > img):not(:has(> :not(a, img, br)))) {

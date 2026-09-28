@@ -2,11 +2,80 @@ import { Node } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
 import {
 	isCalloutStyle,
+	isCmsColumnCount,
+	normaliseContentImage,
+	normaliseLogoItems,
+	normaliseProfileCards,
+	normaliseProjectFacts,
 	parseEditionIds,
 	safeContentUrl,
 	serialiseEditionIds,
-	type CalloutStyle
+	type CalloutStyle,
+	type ContentImage,
+	type CmsColumnCount,
+	type LogoItem,
+	type ProfileCard,
+	type ProjectFact
 } from './content-components';
+
+function profileCards(element: HTMLElement) {
+	return normaliseProfileCards(
+		Array.from(
+			element.querySelectorAll<HTMLElement>(':scope > article[data-cms-profile="true"]')
+		).map((card) => {
+			const links = Array.from(
+				card.querySelectorAll<HTMLAnchorElement>(
+					':scope > [data-cms-profile-links="true"] > a[data-cms-profile-link="true"]'
+				)
+			).map((link) => ({ label: link.textContent || '', href: link.getAttribute('href') || '' }));
+			const legacyLink = card.querySelector<HTMLAnchorElement>('a[href]');
+			return {
+				name: card.dataset.name,
+				role: card.dataset.role,
+				bio: card.dataset.bio,
+				image: card.dataset.image,
+				alt: card.dataset.alt,
+				...(links.length ? { links } : {}),
+				href: card.dataset.href || legacyLink?.getAttribute('href'),
+				linkLabel: card.dataset.linkLabel || legacyLink?.textContent
+			};
+		})
+	);
+}
+
+function logoItems(element: HTMLElement) {
+	return normaliseLogoItems(
+		Array.from(element.querySelectorAll<HTMLElement>(':scope > figure[data-cms-logo="true"]')).map(
+			(logo) => ({
+				name: logo.dataset.name,
+				image: logo.dataset.image,
+				alt: logo.dataset.alt,
+				href: logo.dataset.href
+			})
+		)
+	);
+}
+
+function projectFacts(element: HTMLElement) {
+	return normaliseProjectFacts(
+		Array.from(
+			element.querySelectorAll<HTMLElement>(':scope > div[data-cms-project-fact="true"]')
+		).map((fact) => ({ label: fact.dataset.label, value: fact.dataset.value }))
+	);
+}
+
+function dataAttributes(values: Record<string, string>) {
+	return Object.fromEntries(Object.entries(values).filter(([, value]) => value));
+}
+
+function contentImage(element: HTMLElement) {
+	const image = element.querySelector(':scope > img');
+	return normaliseContentImage({
+		src: image?.getAttribute('src'),
+		alt: image?.getAttribute('alt'),
+		caption: element.querySelector(':scope > figcaption')?.textContent || ''
+	});
+}
 
 function actionAttrs(element: HTMLElement) {
 	const links = Array.from(element.querySelectorAll('a[data-cms-action]'));
@@ -89,6 +158,235 @@ export const CmsActions = Node.create({
 			dom.addEventListener('click', (event) => event.preventDefault());
 			return { dom };
 		};
+	}
+});
+
+export const ContentImageFigure = Node.create({
+	name: 'contentImageFigure',
+	group: 'block',
+	atom: true,
+	selectable: true,
+	addAttributes() {
+		return {
+			src: { default: '' },
+			alt: { default: '' },
+			caption: { default: '' }
+		};
+	},
+	parseHTML() {
+		return [
+			{
+				tag: 'figure[data-content-image="true"]',
+				getAttrs: (element) => contentImage(element as HTMLElement) || false
+			}
+		];
+	},
+	renderHTML({ HTMLAttributes }) {
+		const image = normaliseContentImage(HTMLAttributes);
+		if (!image) return ['figure', { 'data-content-image': 'invalid' }];
+		return [
+			'figure',
+			{ 'data-content-image': 'true' },
+			['img', { src: image.src, alt: image.alt }],
+			...(image.caption ? [['figcaption', {}, image.caption]] : [])
+		];
+	}
+});
+
+export const CmsColumn = Node.create({
+	name: 'cmsColumn',
+	content:
+		'(paragraph | heading | bulletList | orderedList | blockquote | codeBlock | horizontalRule | image | contentImageFigure | videoEmbed | table)+',
+	defining: true,
+	parseHTML() {
+		return [{ tag: 'div[data-cms-column="true"]' }];
+	},
+	renderHTML() {
+		return ['div', { 'data-cms-column': 'true' }, 0];
+	}
+});
+
+export const CmsColumns = Node.create({
+	name: 'cmsColumns',
+	group: 'block',
+	content: 'cmsColumn{2,4}',
+	defining: true,
+	isolating: true,
+	addAttributes() {
+		return { count: { default: 2 } };
+	},
+	parseHTML() {
+		return [
+			{
+				tag: 'section[data-cms-columns]',
+				getAttrs: (element) => {
+					const container = element as HTMLElement;
+					const count = Number(container.getAttribute('data-cms-columns'));
+					return isCmsColumnCount(count) && container.children.length === count ? { count } : false;
+				}
+			}
+		];
+	},
+	renderHTML({ HTMLAttributes }) {
+		return ['section', { 'data-cms-columns': HTMLAttributes.count }, 0];
+	},
+	addKeyboardShortcuts() {
+		return {
+			Escape: () =>
+				this.editor.commands.command(({ state, tr, dispatch }) => {
+					for (let depth = state.selection.$from.depth; depth > 0; depth--) {
+						if (state.selection.$from.node(depth).type.name !== 'cmsColumns') continue;
+						const insertAt = state.selection.$from.after(depth);
+						if (dispatch) {
+							const paragraph = state.schema.nodes.paragraph.create();
+							dispatch(
+								tr
+									.insert(insertAt, paragraph)
+									.setSelection(TextSelection.create(tr.doc, insertAt + 1))
+									.scrollIntoView()
+							);
+						}
+						return true;
+					}
+					return false;
+				})
+		};
+	}
+});
+
+export const CmsProfileCards = Node.create({
+	name: 'cmsProfileCards',
+	group: 'block',
+	atom: true,
+	selectable: true,
+	addAttributes() {
+		return { items: { default: [] as ProfileCard[] } };
+	},
+	parseHTML() {
+		return [
+			{
+				tag: 'section[data-cms-profiles="true"]',
+				getAttrs: (element) => {
+					const items = profileCards(element as HTMLElement);
+					return items.length ? { items } : false;
+				}
+			}
+		];
+	},
+	renderHTML({ HTMLAttributes }) {
+		const items = normaliseProfileCards(HTMLAttributes.items);
+		return [
+			'section',
+			{ 'data-cms-profiles': 'true' },
+			...items.map((item) => [
+				'article',
+				dataAttributes({
+					'data-cms-profile': 'true',
+					'data-name': item.name,
+					'data-role': item.role,
+					'data-bio': item.bio,
+					'data-image': item.image,
+					'data-alt': item.alt
+				}),
+				...(item.image ? [['img', { src: item.image, alt: item.alt }]] : []),
+				[
+					'div',
+					{},
+					['h3', {}, item.name],
+					...(item.role ? [['p', {}, item.role]] : []),
+					...(item.bio ? [['p', {}, item.bio]] : [])
+				],
+				...(item.links.length
+					? [
+							[
+								'div',
+								{ 'data-cms-profile-links': 'true' },
+								...item.links.map((link) => [
+									'a',
+									{ href: link.href, 'data-cms-profile-link': 'true' },
+									link.label
+								])
+							]
+						]
+					: [])
+			])
+		];
+	}
+});
+
+export const CmsLogoGrid = Node.create({
+	name: 'cmsLogoGrid',
+	group: 'block',
+	atom: true,
+	selectable: true,
+	addAttributes() {
+		return { items: { default: [] as LogoItem[] } };
+	},
+	parseHTML() {
+		return [
+			{
+				tag: 'div[data-cms-logo-grid="true"]',
+				getAttrs: (element) => {
+					const items = logoItems(element as HTMLElement);
+					return items.length ? { items } : false;
+				}
+			}
+		];
+	},
+	renderHTML({ HTMLAttributes }) {
+		const items = normaliseLogoItems(HTMLAttributes.items);
+		return [
+			'div',
+			{ 'data-cms-logo-grid': 'true' },
+			...items.map((item) => [
+				'figure',
+				dataAttributes({
+					'data-cms-logo': 'true',
+					'data-name': item.name,
+					'data-image': item.image,
+					'data-alt': item.alt,
+					'data-href': item.href
+				}),
+				...(item.href
+					? [['a', { href: item.href }, ['img', { src: item.image, alt: item.alt || item.name }]]]
+					: [['img', { src: item.image, alt: item.alt || item.name }]]),
+				['figcaption', {}, item.name]
+			])
+		];
+	}
+});
+
+export const CmsProjectFacts = Node.create({
+	name: 'cmsProjectFacts',
+	group: 'block',
+	atom: true,
+	selectable: true,
+	addAttributes() {
+		return { items: { default: [] as ProjectFact[] } };
+	},
+	parseHTML() {
+		return [
+			{
+				tag: 'dl[data-cms-project-facts="true"]',
+				getAttrs: (element) => {
+					const items = projectFacts(element as HTMLElement);
+					return items.length ? { items } : false;
+				}
+			}
+		];
+	},
+	renderHTML({ HTMLAttributes }) {
+		const items = normaliseProjectFacts(HTMLAttributes.items);
+		return [
+			'dl',
+			{ 'data-cms-project-facts': 'true' },
+			...items.map((item) => [
+				'div',
+				{ 'data-cms-project-fact': 'true', 'data-label': item.label, 'data-value': item.value },
+				['dt', {}, item.label],
+				['dd', {}, item.value]
+			])
+		];
 	}
 });
 
@@ -211,4 +509,36 @@ export function expandableContent() {
 			{ type: 'paragraph', content: [{ type: 'text', text: 'Section content' }] }
 		]
 	};
+}
+
+export function columnsContent(count: CmsColumnCount) {
+	return {
+		type: 'cmsColumns',
+		attrs: { count },
+		content: Array.from({ length: count }, (_, index) => ({
+			type: 'cmsColumn',
+			content: [
+				{
+					type: 'paragraph',
+					content: [{ type: 'text', text: `Column ${index + 1}` }]
+				}
+			]
+		}))
+	};
+}
+
+export function profileCardsContent(items: ProfileCard[]) {
+	return { type: 'cmsProfileCards', attrs: { items: normaliseProfileCards(items) } };
+}
+
+export function logoGridContent(items: LogoItem[]) {
+	return { type: 'cmsLogoGrid', attrs: { items: normaliseLogoItems(items) } };
+}
+
+export function projectFactsContent(items: ProjectFact[]) {
+	return { type: 'cmsProjectFacts', attrs: { items: normaliseProjectFacts(items) } };
+}
+
+export function contentImageFigure(image: ContentImage) {
+	return { type: 'contentImageFigure', attrs: normaliseContentImage(image) };
 }
