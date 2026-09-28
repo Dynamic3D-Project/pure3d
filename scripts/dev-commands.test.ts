@@ -177,9 +177,12 @@ test('Make targets select explicit overrides; production starts only frontend', 
 	expect(output.includes('mkcert')).toBe(false);
 	expect(output.includes('Connected to production: changes affect live data.')).toBe(true);
 	const commands = output.split('\n').filter((line) => line.includes('docker compose'));
-	expect(commands.length === 1).toBe(true);
+	expect(commands.length === 2).toBe(true);
+	expect(commands[0].trim()).toBe(
+		'docker compose -f docker-compose.yml -f docker-compose.prod.yml stop minio minio-setup pocketbase pocketbase-setup voyager-setup'
+	);
 	expect(
-		commands[0].trim() ===
+		commands[1].trim() ===
 			'docker compose -f docker-compose.yml -f docker-compose.prod.yml up --no-deps frontend'
 	).toBe(true);
 });

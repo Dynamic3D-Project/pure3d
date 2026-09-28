@@ -42,9 +42,14 @@
 	};
 
 	const decisionStyles: Record<ReviewDecision, string> = {
-		[ReviewDecision.Approve]: 'border-success/50 bg-success/5',
-		[ReviewDecision.Reject]: 'border-error/50 bg-error/5',
-		[ReviewDecision.RequestRevisions]: 'border-warning/50 bg-warning/5'
+		[ReviewDecision.Approve]: 'border-success bg-success/10',
+		[ReviewDecision.Reject]: 'border-error bg-error/10',
+		[ReviewDecision.RequestRevisions]: 'border-warning bg-warning/10'
+	};
+	const indicatorStyles: Record<ReviewDecision, string> = {
+		[ReviewDecision.Approve]: 'text-success',
+		[ReviewDecision.Reject]: 'text-error',
+		[ReviewDecision.RequestRevisions]: 'text-warning'
 	};
 
 	async function handleSubmit() {
@@ -82,25 +87,41 @@
 	}}
 	class="space-y-4"
 >
-	<div>
-		<span class="label">
-			<span class="label-text font-semibold">Verdict</span>
-		</span>
-		<div class="grid gap-2 sm:grid-cols-{availableDecisions.length}">
+	<fieldset>
+		<legend class="mb-2 font-semibold">Verdict</legend>
+		<div class="grid gap-3 {availableDecisions.length === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}">
 			{#each availableDecisions as d (d)}
-				<button
-					type="button"
-					class="cursor-pointer rounded-lg border-2 p-3 text-left transition-all {decision === d
-						? decisionStyles[d] + ' ring-2 ring-offset-1'
-						: 'border-base-300 hover:border-base-content/20'}"
-					onclick={() => (decision = d)}
+				<label
+					class="flex min-h-28 cursor-pointer flex-col justify-between gap-4 rounded-xl border-2 p-4 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-base-content/60 {decision ===
+					d
+						? decisionStyles[d]
+						: 'border-base-300 hover:border-base-content/40 hover:bg-base-200/50'}"
 				>
-					<div class="font-medium">{decisionLabels[d]}</div>
-					<div class="mt-1 text-xs text-base-content/60">{decisionDescriptions[d]}</div>
-				</button>
+					<input
+						type="radio"
+						name="review-verdict"
+						value={d}
+						checked={decision === d}
+						onchange={() => (decision = d)}
+						class="sr-only"
+					/>
+					<span class="flex items-center justify-between gap-3 text-base font-semibold">
+						{decisionLabels[d]}
+						<span
+							aria-hidden="true"
+							class="flex size-5 shrink-0 items-center justify-center rounded-full border-2 {decision ===
+							d
+								? 'border-current ' + indicatorStyles[d]
+								: 'border-base-content/40'}"
+						>
+							{#if decision === d}<span class="size-2.5 rounded-full bg-current"></span>{/if}
+						</span>
+					</span>
+					<span class="text-sm leading-snug text-base-content/70">{decisionDescriptions[d]}</span>
+				</label>
 			{/each}
 		</div>
-	</div>
+	</fieldset>
 
 	<div>
 		<label class="label" for="review-comment">

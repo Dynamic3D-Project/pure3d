@@ -55,6 +55,7 @@ dev: dev-cert
 
 dev-prod:
 	@echo "Connected to production: changes affect live data."
+	@$(PROD_COMPOSE) stop minio minio-setup pocketbase pocketbase-setup voyager-setup
 	$(PROD_COMPOSE) up --no-deps frontend
 
 dev-web: dev-cert

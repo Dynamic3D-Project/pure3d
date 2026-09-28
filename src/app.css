@@ -57,7 +57,7 @@
 	--color-accent-content: #ffffff;
 	--color-neutral: var(--color-ink-2);
 	--color-neutral-content: var(--color-paper);
-	--color-info: oklch(55% 0.15 220);
+	--color-info: oklch(50% 0.15 220);
 	--color-info-content: var(--color-paper);
 	--color-success: oklch(45% 0.12 150);
 	--color-success-content: var(--color-paper);
@@ -85,6 +85,24 @@
 	}
 }
 
+/* Status labels need to remain readable even when a view asks for a compact badge. */
+.badge:is(.badge-info, .badge-success, .badge-warning, .badge-error) {
+	font-weight: 600;
+}
+
+.badge-warning {
+	--badge-color: oklch(42% 0.13 70);
+	--badge-fg: #fff;
+}
+
+.badge:is(.badge-info, .badge-success, .badge-warning, .badge-error):is(.badge-xs, .badge-sm) {
+	min-height: 1.5rem;
+	height: auto;
+	padding-block: 0.125rem;
+	font-size: 0.8125rem;
+	line-height: 1.25rem;
+}
+
 /*
   The default border color has changed to `currentcolor` in Tailwind CSS v4,
   so we've added these compatibility styles to make sure everything still
@@ -105,10 +123,6 @@
 	html {
 		scrollbar-gutter: stable;
 	}
-}
-
-div {
-	color: var(--color-base-content);
 }
 
 pre code {

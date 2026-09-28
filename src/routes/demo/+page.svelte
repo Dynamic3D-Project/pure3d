@@ -59,7 +59,7 @@
 			/>
 		{:else if topTab === 'controls'}
 			<section class="space-y-6">
-				<div class="alert bg-info/10 text-info-content">
+				<div class="alert border-info/30 bg-info/10 text-base-content">
 					<div>
 						<p class="font-semibold">API Controls Sandbox</p>
 						<p class="text-sm">
