@@ -25,28 +25,18 @@ function safeComponentUrl(value) {
 	if (typeof value !== 'string' || value.length > 2048 || hasUnsafeUrlCharacters(value))
 		return false;
 	if (safeRelativeComponentUrl(value)) return true;
-	try {
-		const url = new URL(value);
-		if (['http:', 'https:'].includes(url.protocol))
-			return Boolean(url.hostname && !url.username && !url.password);
-		return url.protocol === 'mailto:' && /^[^@\s]+@[^@\s]+$/.test(url.pathname);
-	} catch {
-		return false;
-	}
+	return safeHttpComponentUrl(value) || /^mailto:[^@\s]+@[^@\s]+$/i.test(value);
+}
+// PocketBase's JSVM does not expose the browser URL constructor.
+function safeHttpComponentUrl(value) {
+	return /^https?:\/\/(?:\[[0-9a-f:.]+\]|[a-z0-9.-]+)(?::[0-9]{1,5})?(?:[/?#][^\s]*)?$/i.test(
+		value
+	);
 }
 function safeComponentImageUrl(value) {
 	if (typeof value !== 'string' || value.length > 2048 || hasUnsafeUrlCharacters(value))
 		return false;
-	if (safeRelativeComponentUrl(value)) return true;
-	try {
-		const url = new URL(value);
-		return (
-			['http:', 'https:'].includes(url.protocol) &&
-			Boolean(url.hostname && !url.username && !url.password)
-		);
-	} catch {
-		return false;
-	}
+	return safeRelativeComponentUrl(value) || safeHttpComponentUrl(value);
 }
 function componentText(value, maxLength) {
 	return (

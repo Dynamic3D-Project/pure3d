@@ -162,6 +162,16 @@ test('content components only accept constrained attributes and safe action URLs
 	).toBeNull();
 	expect(
 		validateComponentHtml(
+			'<div data-cms-logo-grid="true"><figure data-cms-logo="true" data-name="Museum" data-image="https://example.org/logo.png" data-alt="Museum"><img src="https://example.org/logo.png" alt="Museum"></figure></div>'
+		)
+	).toBeNull();
+	expect(
+		validateComponentHtml(
+			'<div data-cms-logo-grid="true"><figure data-cms-logo="true" data-name="Museum" data-image="https://example.org@evil.test/logo.png"><img src="/logo.png"></figure></div>'
+		)
+	).toBe('Invalid content component.');
+	expect(
+		validateComponentHtml(
 			'<section data-cms-columns="5"><div data-cms-column="true"></div></section>'
 		)
 	).toBe('Invalid content component.');
