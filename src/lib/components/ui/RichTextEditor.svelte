@@ -56,8 +56,13 @@
 	import ArrowDownIcon from '~icons/lucide/arrow-down';
 	import ArrowUpIcon from '~icons/lucide/arrow-up';
 	import BoldIcon from '~icons/lucide/bold';
+	import BookOpenCheckIcon from '~icons/lucide/book-open-check';
 	import ChevronDownIcon from '~icons/lucide/chevron-down';
+	import Columns2Icon from '~icons/lucide/columns-2';
+	import Columns3Icon from '~icons/lucide/columns-3';
+	import Columns4Icon from '~icons/lucide/columns-4';
 	import ExternalLinkIcon from '~icons/lucide/external-link';
+	import GalleryThumbnailsIcon from '~icons/lucide/gallery-thumbnails';
 	import Heading1Icon from '~icons/lucide/heading-1';
 	import Heading2Icon from '~icons/lucide/heading-2';
 	import Heading3Icon from '~icons/lucide/heading-3';
@@ -67,6 +72,7 @@
 	import LayoutGridIcon from '~icons/lucide/layout-grid';
 	import LinkIcon from '~icons/lucide/link';
 	import ListIcon from '~icons/lucide/list';
+	import ListChecksIcon from '~icons/lucide/list-checks';
 	import ListOrderedIcon from '~icons/lucide/list-ordered';
 	import PanelTopOpenIcon from '~icons/lucide/panel-top-open';
 	import PencilIcon from '~icons/lucide/pencil';
@@ -76,6 +82,7 @@
 	import TableIcon from '~icons/lucide/table-2';
 	import TrashIcon from '~icons/lucide/trash-2';
 	import UnderlineIcon from '~icons/lucide/underline';
+	import UsersRoundIcon from '~icons/lucide/users-round';
 	import VideoIcon from '~icons/lucide/video';
 
 	interface Props {
@@ -682,24 +689,36 @@
 						title="Insert component"><PlusIcon /><ChevronDownIcon class="chevron" /></summary
 					>
 					<div class="component-menu dropdown-content">
+						<div class="column-options" role="group" aria-label="Insert columns">
+							<span class="column-options-label" aria-hidden="true">Columns</span>
+							<button
+								type="button"
+								aria-label="Two columns"
+								title="Two columns"
+								onclick={() => setColumns(2)}><Columns2Icon /><span>2</span></button
+							>
+							<button
+								type="button"
+								aria-label="Three columns"
+								title="Three columns"
+								onclick={() => setColumns(3)}><Columns3Icon /><span>3</span></button
+							>
+							<button
+								type="button"
+								aria-label="Four columns"
+								title="Four columns"
+								onclick={() => setColumns(4)}><Columns4Icon /><span>4</span></button
+							>
+						</div>
 						<button type="button" onclick={insertCallout}><InfoIcon /><span>Callout</span></button>
-						<button type="button" onclick={() => setColumns(2)}
-							><LayoutGridIcon /><span>Two columns</span></button
-						>
-						<button type="button" onclick={() => setColumns(3)}
-							><LayoutGridIcon /><span>Three columns</span></button
-						>
-						<button type="button" onclick={() => setColumns(4)}
-							><LayoutGridIcon /><span>Four columns</span></button
-						>
 						<button type="button" onclick={() => openComponentEditor('profiles')}
-							><LayoutGridIcon /><span>Profile cards</span></button
+							><UsersRoundIcon /><span>Profile cards</span></button
 						>
 						<button type="button" onclick={() => openComponentEditor('logos')}
-							><LayoutGridIcon /><span>Logo grid</span></button
+							><GalleryThumbnailsIcon /><span>Logo grid</span></button
 						>
 						<button type="button" onclick={() => openComponentEditor('facts')}
-							><LayoutGridIcon /><span>Project facts</span></button
+							><ListChecksIcon /><span>Project facts</span></button
 						>
 						<button
 							type="button"
@@ -709,7 +728,7 @@
 							}}><ExternalLinkIcon /><span>Action links</span></button
 						>
 						<button type="button" onclick={editEditionGrid}
-							><LayoutGridIcon /><span>Edition grid</span></button
+							><BookOpenCheckIcon /><span>Edition grid</span></button
 						>
 						<button
 							type="button"
@@ -1309,6 +1328,27 @@
 	}
 	.component-menu button:hover {
 		background: var(--color-base-200);
+	}
+	.column-options {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 0.25rem;
+		padding: 0.25rem 0;
+	}
+	.column-options-label {
+		grid-column: 1 / -1;
+		padding: 0 0.625rem;
+		color: color-mix(in oklch, var(--color-base-content) 65%, transparent);
+		font-size: 0.75rem;
+	}
+	.component-menu .column-options button {
+		justify-content: center;
+		gap: 0.375rem;
+		padding-inline: 0.25rem;
+		background: var(--color-base-200);
+	}
+	.component-menu .column-options button:hover {
+		background: var(--color-base-300);
 	}
 	.callout-style {
 		display: flex;

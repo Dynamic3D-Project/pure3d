@@ -55,6 +55,7 @@ dev: dev-cert
 
 dev-prod:
 	@echo "Connected to production: changes affect live data."
+	@echo "Open http://localhost:$${FRONTEND_PORT:-60020} (Vite's 14273 is inside Docker only)."
 	@$(PROD_COMPOSE) stop minio minio-setup pocketbase pocketbase-setup voyager-setup
 	$(PROD_COMPOSE) up --no-deps frontend
 
