@@ -54,6 +54,16 @@ export default defineConfig(({ command, isPreview }) => ({
 		__BUILD_DATE__: JSON.stringify(new Date().toISOString())
 	},
 	plugins: [
+		{
+			name: 'docker-public-url',
+			configureServer(server) {
+				if (process.env.DEV_PUBLIC_URL) {
+					server.printUrls = () => {
+						server.config.logger.info(`  ➜  Local:   ${process.env.DEV_PUBLIC_URL}`);
+					};
+				}
+			}
+		},
 		sveltekit(),
 		paraglideVitePlugin({
 			project: './locale/project.inlang',
