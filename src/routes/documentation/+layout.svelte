@@ -42,10 +42,9 @@
 
 			<!-- Desktop: vertical sidebar -->
 			<div class="hidden lg:block">
-				<p class="text-xs font-bold tracking-[0.18em] text-vermillion uppercase">
-					{data.root?.title || 'Documentation'}
-				</p>
-				<h2 class="mt-2 mb-5 text-2xl font-bold tracking-tight">Guide contents</h2>
+				<h2 class="mt-2 mb-5 text-2xl font-bold tracking-tight text-[#800020]">
+					Publish with us
+				</h2>
 				<ul class="w-full border-t border-base-300">
 					<li class="border-b border-base-300">
 						<a
