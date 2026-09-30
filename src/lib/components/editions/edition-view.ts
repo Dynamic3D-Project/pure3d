@@ -32,6 +32,9 @@ export interface EditionViewData {
 		description: string;
 		authors: string;
 		thumbnail: string;
+		coverImage?: string;
+		fileCollectionId?: string;
+		fileCollectionName?: string;
 		voyagerUrl: string;
 		voyagerRoot: string;
 		voyagerResourceRoot: string;

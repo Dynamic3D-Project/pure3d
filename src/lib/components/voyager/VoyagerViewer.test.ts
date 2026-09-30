@@ -34,3 +34,12 @@ test('uses CVViewer sceneLoaded rather than model-load event counts for readines
 	expect(source).toContain('handleRuntimeSceneLoaded');
 	expect(source).not.toContain('onmodel-load={handleModelReady}');
 });
+
+test('keeps the edition cover reactive until the active viewer is ready', () => {
+	expect(source).toContain('let sceneReady = $state(false)');
+	expect(source).toContain('const viewerReady = $derived(direct ? sceneReady : iframeLoaded)');
+	expect(source).toContain('class:is-ready={viewerReady}');
+	expect(source).toContain('sceneLoaded === true && assetsBusy === false');
+	expect(source).toContain('onload={handleIframeLoad}');
+	expect(editionView).toContain('coverUrl={editionCoverUrl}');
+});

@@ -1,0 +1,19 @@
+Baby Yoda particle cloud
+
+Source edition: Baby Yoda: Cutifying a Franchise
+PURE3D record: qww56hmx3c1u4va (collection 13, edition 7)
+Source scene: https://main.57-129-98-223.sslip.io/assets/project/13/edition/7/scene.svx.json
+Source mesh: DCU4012-3DModel_Baby_Yoda_Remco_Anaelle_Final_Reduced.glb
+Creators: Remco Poeliejoe; Anaelle Démare
+Rights holder: Maastricht University
+License supplied by the record: CC BY: Attribution required.
+
+Derived asset: baby-yoda.bin
+Method: deterministic area-weighted triangle-surface sampling (18,000 points), after applying
+embedded GLB node transforms followed by the Voyager model and scene-node transforms. The sampled
+bounds are centred, uniformly scaled and turned around the upright axis for the landing artwork,
+then quantized to signed 16-bit xyz.
+The source GLB and its textures are not distributed with this derived point cloud.
+
+Orange highlights in the landing artwork are conceptual interaction accents. They are not sampled
+from, and do not represent, annotation coordinates in the source edition.

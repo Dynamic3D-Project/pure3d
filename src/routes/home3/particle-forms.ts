@@ -1,6 +1,6 @@
 /**
- * Procedural point clouds for the landing-page artwork. The forms are conceptual: they suggest the
- * kinds of objects 3D editions document, but none of them is derived from a real scan.
+ * Point clouds for the landing-page artwork. Edition forms are pre-sampled from published meshes;
+ * the remaining forms are conceptual examples of the objects that 3D editions document.
  */
 
 export interface ParticleForm {
@@ -8,9 +8,42 @@ export interface ParticleForm {
 	label: string;
 	title: string;
 	note: string;
+	sourceSlug?: string;
+	credit?: string;
+	license?: string;
 }
 
-export const PARTICLE_FORMS: ParticleForm[] = [
+export const EDITION_PARTICLE_FORMS: ParticleForm[] = [
+	{
+		id: 'baby-yoda',
+		label: 'Baby Yoda',
+		title: 'Baby Yoda: Cutifying a Franchise',
+		note: 'Surface points sampled from the published edition mesh. Orange highlights are conceptual and do not represent its annotations.',
+		sourceSlug: 'qww56hmx3c1u4va',
+		credit: 'Remco Poeliejoe and Anaelle Démare · Maastricht University',
+		license: 'CC BY: Attribution required.'
+	},
+	{
+		id: 'rembrandts-birthplace',
+		label: "Rembrandt's Birthplace",
+		title: "Rembrandt's Birthplace",
+		note: 'Surface points sampled from the published edition building mesh. Orange highlights are conceptual and do not represent its annotations.',
+		sourceSlug: '2boeb1g2jhgrzfx',
+		credit: 'PJ De Vos · Erfgoed Leiden en Omstreken; Mr. The Rich',
+		license: 'All rights reserved.'
+	},
+	{
+		id: 'petrol-lamp',
+		label: 'Petrol Lamp',
+		title: 'Petrol Lamp: Safety and Hazards in the Mines',
+		note: 'Surface points sampled from the published edition mesh. Orange highlights are conceptual and do not represent its annotations.',
+		sourceSlug: '8mlt1kcw2pimn3c',
+		credit: 'Miriam Paloni, Kevin Raetsen and Kirstin Römer · Nederlands Mijnmuseum',
+		license: 'CC - BY - NC - ND'
+	}
+];
+
+export const CONCEPTUAL_PARTICLE_FORMS: ParticleForm[] = [
 	{
 		id: 'vessel',
 		label: 'Vessel',
@@ -36,12 +69,6 @@ export const PARTICLE_FORMS: ParticleForm[] = [
 		note: 'Piers, vault, voussoirs and attic of a single-bay arch, as a monument survey records them.'
 	},
 	{
-		id: 'bust',
-		label: 'Bust',
-		title: 'A portrait bust',
-		note: 'Head, shoulders and socle of a sculpted portrait, framed the way a museum capture is.'
-	},
-	{
 		id: 'codex',
 		label: 'Codex',
 		title: 'An open manuscript',
@@ -61,8 +88,11 @@ export const PARTICLE_FORMS: ParticleForm[] = [
 	}
 ];
 
+export const PARTICLE_FORMS = [...EDITION_PARTICLE_FORMS, ...CONCEPTUAL_PARTICLE_FORMS];
+
 export interface ParticleCloud {
 	count: number;
+	formDefinitions: ParticleForm[];
 	/** One xyz array per form, in the order of `PARTICLE_FORMS`. */
 	forms: Float32Array[];
 	/** Unit vectors each particle travels along when the cloud disperses. */
@@ -138,14 +168,6 @@ function sampleBox(
 	half: readonly number[]
 ) {
 	write(out, index, ...boxPoint(random, centre, half));
-}
-
-/** A uniformly distributed unit vector. */
-function spherePoint(random: Random): [number, number, number] {
-	const lift = random() * 2 - 1;
-	const angle = random() * TAU;
-	const ring = Math.sqrt(1 - lift * lift);
-	return [ring * Math.cos(angle), lift, ring * Math.sin(angle)];
 }
 
 // ---------- vessel ----------
@@ -384,78 +406,6 @@ const sampleArch: Sampler = (random, out, index) => {
 	}
 };
 
-// ---------- bust ----------
-
-const HEAD_Y = 0.5;
-const HEAD = [0.21, 0.28, 0.25];
-
-/** Narrows the lower half of the head towards the jaw; `dy` runs from chin (-1) to crown (1). */
-const jaw = (dy: number) => 1 - 0.3 * Math.max(0, -dy) ** 1.5;
-
-const sampleBust: Sampler = (random, out, index) => {
-	const pick = random();
-	const angle = random() * TAU;
-	if (pick < 0.34) {
-		const [dx, dy, dz] = spherePoint(random);
-		const narrow = jaw(dy);
-		write(out, index, dx * HEAD[0] * narrow, HEAD_Y + dy * HEAD[1], dz * HEAD[2] * narrow - 0.02);
-		return;
-	}
-	if (pick < 0.38) {
-		// Nose: a wedge from the brow to its tip, standing off the face.
-		const t = Math.sqrt(random());
-		const across = random() * 2 - 1;
-		const y = HEAD_Y + 0.05 - 0.14 * t;
-		const dy = (y - HEAD_Y) / HEAD[1];
-		const face = HEAD[2] * jaw(dy) * Math.sqrt(1 - dy * dy) - 0.02;
-		write(out, index, across * (0.012 + 0.028 * t), y, face + 0.055 * t * (1 - Math.abs(across)));
-		return;
-	}
-	if (pick < 0.42) {
-		const side = random() < 0.5 ? -1 : 1;
-		const radius = Math.sqrt(random());
-		write(
-			out,
-			index,
-			side * HEAD[0] * 0.98,
-			HEAD_Y - 0.02 + 0.065 * radius * Math.sin(angle),
-			-0.03 + 0.04 * radius * Math.cos(angle)
-		);
-		return;
-	}
-	if (pick < 0.5) {
-		const y = 0.06 + random() * 0.24;
-		write(out, index, 0.105 * Math.cos(angle), y, 0.1 * Math.sin(angle) - 0.03);
-		return;
-	}
-	if (pick < 0.84) {
-		// Shoulders and chest, cut away underneath in a rounded arc.
-		let x: number;
-		let y: number;
-		let z: number;
-		do {
-			const [dx, dy, dz] = spherePoint(random);
-			x = dx * 0.54;
-			y = -0.24 + dy * 0.36;
-			z = dz * 0.25;
-		} while (y < -0.5 + 0.34 * (x / 0.54) ** 2);
-		write(out, index, x, y, z);
-		return;
-	}
-	if (pick < 0.9) {
-		// Socle stem, flaring towards the chest.
-		const y = -0.78 + random() * 0.3;
-		const radius = 0.08 + 0.05 * ((y + 0.78) / 0.3) ** 2;
-		write(out, index, radius * Math.cos(angle), y, radius * Math.sin(angle));
-		return;
-	}
-	// Socle drum and its top face.
-	const top = random() < 0.5;
-	const radius = top ? 0.24 * Math.sqrt(random()) : 0.24;
-	const y = top ? -0.78 : -0.95 + random() * 0.17;
-	write(out, index, radius * Math.cos(angle), y, radius * Math.sin(angle));
-};
-
 // ---------- codex ----------
 
 const PAGE_WIDTH = 0.8;
@@ -603,7 +553,6 @@ const SAMPLERS: Record<string, Sampler> = {
 	column: sampleColumn,
 	site: sampleSite,
 	arch: sampleArch,
-	bust: sampleBust,
 	codex: sampleCodex,
 	fossil: sampleFossil,
 	theatre: sampleTheatre
@@ -641,6 +590,8 @@ export interface CloudOptions {
 	anchorPoints?: number;
 	/** Radius of an annotation cluster in model space. */
 	anchorRadius?: number;
+	/** Pre-sampled positions for edition forms, keyed by form id. */
+	editionPoints?: Readonly<Record<string, Float32Array>>;
 }
 
 /**
@@ -651,7 +602,7 @@ export interface CloudOptions {
 export function buildParticleCloud(
 	formCount: number,
 	dustCount: number,
-	{ anchorPoints = ANCHOR_POINTS, anchorRadius = 0.035 }: CloudOptions = {}
+	{ anchorPoints = ANCHOR_POINTS, anchorRadius = 0.035, editionPoints = {} }: CloudOptions = {}
 ): ParticleCloud {
 	const random = mulberry32(20260927);
 	const count = formCount + dustCount;
@@ -661,8 +612,19 @@ export function buildParticleCloud(
 	for (let i = markers; i < ringEnd; i++) write(fixed, i, ...sampleRing(random));
 	for (let i = formCount; i < count; i++) write(fixed, i, ...sampleDust(random));
 
-	const forms = PARTICLE_FORMS.map(({ id }) => {
-		const sample = SAMPLERS[id];
+	const formDefinitions = [
+		...EDITION_PARTICLE_FORMS.filter(({ id }) => editionPoints[id]?.length),
+		...CONCEPTUAL_PARTICLE_FORMS
+	];
+	const forms = formDefinitions.map(({ id }) => {
+		const edition = editionPoints[id];
+		const sample = edition
+			? (_random: Random, out: Float32Array, index: number) => {
+					const source = ((index - ringEnd) % (edition.length / 3)) * 3;
+					write(out, index, edition[source], edition[source + 1], edition[source + 2]);
+				}
+			: SAMPLERS[id];
+		if (!sample) throw new Error(`Particle form has no sampler: ${id}`);
 		const out = new Float32Array(count * 3);
 		out.set(fixed.subarray(markers * 3, ringEnd * 3), markers * 3);
 		out.set(fixed.subarray(formCount * 3), formCount * 3);
@@ -696,5 +658,5 @@ export function buildParticleCloud(
 		write(meta, i, random(), i < markers ? 1 : 0, i >= formCount ? 1 : 0);
 	}
 
-	return { count, forms, directions, meta };
+	return { count, formDefinitions, forms, directions, meta };
 }

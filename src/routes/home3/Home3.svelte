@@ -1,44 +1,20 @@
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
+	import { onMount } from 'svelte';
 	import { base, resolve } from '$app/paths';
 	import CollectionCard from '$lib/components/cards/CollectionCard.svelte';
 	import { homeStore, fetchHomeData, isStale } from '$lib/stores/data.store';
 	import ParticleHero from './ParticleHero.svelte';
-	import SpecimenStage from './SpecimenStage.svelte';
-	import SpecimenTray from './SpecimenTray.svelte';
-	import { fetchSpecimens, type Specimen } from './specimens';
 	import type { GlyphSource } from './particle-field';
 
 	// /home4 renders this component with letters instead of dots; /home3 passes nothing.
 	let { glyphs }: { glyphs?: GlyphSource } = $props();
 
-	let specimens = $state<Specimen[]>([]);
-	let specimensLoading = $state(true);
-	let activeId = $state('');
 	let homeLoading = $state(true);
-	// Artwork and Voyager never share the hero: opening an edition unmounts the particle canvas.
-	let showEdition = $state(false);
-	let editionView = $state<HTMLDivElement>();
-	let inspectButton = $state<HTMLButtonElement>();
-
-	const activeIndex = $derived(specimens.findIndex((specimen) => specimen.id === activeId));
-	const active = $derived(specimens[activeIndex]);
 	const collections = $derived($homeStore.collections.slice(0, 4));
 	const hasCachedHome = $derived(
 		$homeStore.editions.length > 0 || $homeStore.collections.length > 0
 	);
 	const statsPending = $derived(homeLoading && !hasCachedHome);
-
-	async function loadSpecimens() {
-		try {
-			specimens = await fetchSpecimens();
-			activeId = specimens[0]?.id ?? '';
-		} catch {
-			specimens = [];
-		} finally {
-			specimensLoading = false;
-		}
-	}
 
 	async function loadHome() {
 		try {
@@ -50,20 +26,7 @@
 		}
 	}
 
-	async function openEdition() {
-		showEdition = true;
-		await tick();
-		editionView?.focus();
-	}
-
-	async function closeEdition() {
-		showEdition = false;
-		await tick();
-		inspectButton?.focus();
-	}
-
 	onMount(() => {
-		void loadSpecimens();
 		void loadHome();
 	});
 
@@ -146,9 +109,6 @@
 
 <div id="home3">
 	{#snippet heroCopy()}
-		<p class="eyebrow on-ink rise" style="--i: 0">
-			<span class="dot" aria-hidden="true"></span> PURE3D · 3D scholarly publishing infrastructure
-		</p>
 		<h1 id="home3-title" class="rise" style="--i: 1">
 			An infrastructure for the preservation and publication of <em>3D scholarship</em>
 		</h1>
@@ -165,8 +125,10 @@
 				Publish with us
 			</a>
 		</div>
+	{/snippet}
 
-		<dl class="rise stats" style="--i: 4">
+	{#snippet catalogueStats()}
+		<dl class="catalogue-stats">
 			<div class="stat">
 				<dt>3D Editions</dt>
 				<dd>
@@ -190,76 +152,22 @@
 		</dl>
 	{/snippet}
 
-	{#snippet artworkFoot()}
-		{#if active}
-			<button bind:this={inspectButton} type="button" class="button inspect" onclick={openEdition}>
-				<span class="dot" aria-hidden="true"></span>
-				<span class="inspect-text">
-					Inspect a published edition in 3D
-					<small>{active.title}</small>
-				</span>
-			</button>
-		{:else}
-			<p class="stage-note" aria-busy={specimensLoading}>
-				{specimensLoading
-					? 'Loading a published edition…'
-					: 'Each edition is a citable, permalinked record of a 3D object.'}
-			</p>
-		{/if}
-		<a class="more" href={resolve('/editions')}>
-			View all editions <span aria-hidden="true">↗</span>
-		</a>
-	{/snippet}
-
 	<section class="hero" aria-labelledby="home3-title">
-		{#if showEdition && active}
-			<div class="shell hero-grid">
-				<div class="hero-copy">
-					{@render heroCopy()}
-				</div>
-				<div class="hero-stage">
-					<div
-						bind:this={editionView}
-						class="edition-view"
-						role="region"
-						aria-label="Published edition in 3D"
-						tabindex="-1"
-					>
-						{#key active.id}
-							<SpecimenStage
-								specimen={active}
-								autoload
-								plate={`Plate ${String(activeIndex + 1).padStart(2, '0')} / ${String(specimens.length).padStart(2, '0')}`}
-							/>
-						{/key}
-					</div>
-					<div class="stage-foot">
-						{#if specimens.length > 1}
-							<SpecimenTray {specimens} {activeId} onselect={(id) => (activeId = id)} />
-						{/if}
-						<button type="button" class="more" onclick={closeEdition}>
-							<span aria-hidden="true">←</span> Back to the artwork
-						</button>
-						<a class="more" href={resolve('/editions')}>
-							View all editions <span aria-hidden="true">↗</span>
-						</a>
-					</div>
-				</div>
-			</div>
-		{:else}
-			<ParticleHero copy={heroCopy} foot={artworkFoot} {glyphs} />
-		{/if}
+		<ParticleHero copy={heroCopy} {glyphs} minimal />
 	</section>
 
 	<section class="evidence" aria-labelledby="home3-evidence">
 		<div class="shell">
-			<header class="section-head reveal">
-				<p class="eyebrow"><span class="dot" aria-hidden="true"></span> 3D evidence</p>
-				<h2 id="home3-evidence">A model as source</h2>
-				<p class="section-sub">
-					A 3D edition makes the object, its documentation and its interpretation available in the
-					same place, so they can be inspected, cited, reviewed, and preserved.
-				</p>
+			<header class="section-head evidence-head reveal">
+				<div>
+					<p class="eyebrow"><span class="dot" aria-hidden="true"></span> 3D evidence</p>
+					<h2 id="home3-evidence">A model as source</h2>
+					<p class="section-sub">
+						A 3D edition makes the object, its documentation and its interpretation available in the
+						same place, so they can be inspected, cited, reviewed, and preserved.
+					</p>
+				</div>
+				{@render catalogueStats()}
 			</header>
 			<ol class="plates">
 				{#each storySteps as step (step.kicker)}
@@ -436,8 +344,7 @@
 		text-transform: uppercase;
 		color: var(--color-ink-3);
 	}
-	.eyebrow .dot,
-	.inspect .dot {
+	.eyebrow .dot {
 		flex: none;
 		width: 6px;
 		height: 6px;
@@ -525,22 +432,10 @@
 	#home3 .hero em {
 		color: #f4b5a0;
 	}
-	.hero-grid {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) minmax(0, 1.02fr);
-		gap: clamp(40px, 6vw, 88px);
-		align-items: start;
-		padding-block: clamp(56px, 7vw, 96px);
-	}
-	.hero-copy {
-		display: grid;
-		gap: 32px;
-		padding-top: clamp(0px, 3vw, 40px);
-	}
 	h1 {
 		margin: 0;
 		font-weight: 500;
-		font-size: clamp(40px, 5.4vw, 80px);
+		font-size: clamp(38px, 4.8vw, 72px);
 		line-height: 0.98;
 		letter-spacing: -0.035em;
 		text-wrap: balance;
@@ -558,25 +453,40 @@
 	.hero .button-primary {
 		box-shadow: inset 0 0 0 1px rgba(244, 241, 235, 0.18);
 	}
-	.stats {
+	.section-head.evidence-head {
+		max-width: none;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		align-items: center;
+		gap: 48px;
+	}
+	.evidence-head > div {
+		display: grid;
+		gap: 16px;
+	}
+	.catalogue-stats {
 		display: grid;
 		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 20px;
-		margin: 16px 0 0;
-		padding-top: 24px;
-		border-top: 1px solid var(--on-ink-rule);
+		gap: 16px;
+		margin: 0;
+		padding-block: 24px;
+		border-block: 1px solid var(--rule);
 	}
 	.stat {
 		display: grid;
 		align-content: start;
 		gap: 8px;
+		padding: 0;
+		min-width: 0;
+		border: 0;
+		white-space: normal;
 	}
 	.stat a {
 		color: inherit;
 		text-decoration: none;
 	}
 	.stat a:hover {
-		color: #f4b5a0;
+		color: var(--color-vermillion-ink);
 	}
 	.stat dt {
 		order: 2;
@@ -585,7 +495,7 @@
 		line-height: 1.3;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
-		color: var(--on-ink-muted);
+		color: var(--color-ink-3);
 	}
 	.stat dd {
 		order: 1;
@@ -596,75 +506,6 @@
 		letter-spacing: -0.025em;
 		font-variant-numeric: tabular-nums;
 		transition: color 0.18s ease;
-	}
-	/* The edition viewer keeps its paper plate, set into the ink field. */
-	.hero-stage {
-		display: grid;
-		gap: 16px;
-		min-width: 0;
-		padding: clamp(14px, 2vw, 20px);
-		border-radius: var(--radius-surface);
-		background: var(--color-paper);
-		color: var(--color-ink);
-		box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.6);
-	}
-	.stage-foot {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		justify-content: space-between;
-		gap: 16px;
-	}
-	.edition-view:focus:not(:focus-visible) {
-		outline: none;
-	}
-	.inspect {
-		min-width: 0;
-		max-width: 100%;
-		min-height: 56px;
-		padding: 10px 18px 10px 16px;
-		border-color: var(--color-paper);
-		background: var(--color-paper);
-		color: var(--color-ink);
-		cursor: pointer;
-		text-align: left;
-	}
-	.inspect:hover {
-		border-color: #f4b5a0;
-		background: #fff;
-	}
-	.hero .more {
-		color: var(--on-ink);
-		text-decoration-color: rgba(244, 241, 235, 0.4);
-	}
-	.hero-stage .more {
-		color: var(--color-ink-2);
-		text-decoration-color: var(--rule-strong);
-	}
-	.inspect-text {
-		display: grid;
-		gap: 3px;
-		min-width: 0;
-	}
-	.inspect small {
-		max-width: 32ch;
-		overflow: hidden;
-		font: 400 12px/1.3 var(--font-mono);
-		letter-spacing: 0.02em;
-		color: var(--color-ink-3);
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	button.more {
-		padding: 0;
-		border: 0;
-		background: none;
-		cursor: pointer;
-	}
-	.stage-note {
-		margin: 0;
-		font: italic 400 16px/1.45 var(--font-serif);
-		color: var(--on-ink-muted);
 	}
 
 	/* ---------- shared section chrome ---------- */
@@ -1003,7 +844,10 @@
 		}
 	}
 	@media (max-width: 960px) {
-		.hero-grid,
+		.section-head.evidence-head {
+			grid-template-columns: minmax(0, 1fr);
+			gap: 28px;
+		}
 		.call-plate {
 			grid-template-columns: 1fr;
 		}
@@ -1025,7 +869,7 @@
 		}
 	}
 	@media (max-width: 640px) {
-		.stats {
+		.catalogue-stats {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
 			row-gap: 24px;
 		}

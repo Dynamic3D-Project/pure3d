@@ -14,6 +14,7 @@
 		isFullWindow: boolean;
 		doi: string;
 		hasHelp: boolean;
+		coverUrl?: string | null;
 		fetchOverrides?: Array<{ url: string; content: string }>;
 		onReady: (api: VoyagerAPI) => void;
 		onModelLoaded: (bytes: number) => void;
@@ -26,6 +27,7 @@
 		isFullWindow,
 		doi,
 		hasHelp,
+		coverUrl,
 		fetchOverrides,
 		onReady,
 		onModelLoaded,
@@ -49,6 +51,7 @@
 			{direct}
 			voyagerVersion={edition.voyagerVersion}
 			resourceRoot={edition.voyagerResourceRoot}
+			{coverUrl}
 			uiMode="menu|title|language"
 			{fetchOverrides}
 			companionAssets={edition.uploadedAssetMap

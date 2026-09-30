@@ -1,0 +1,21 @@
+Petrol Lamp particle cloud
+
+Source edition: Petrol Lamp: Safety and Hazards in the Mines
+PURE3D record: 8mlt1kcw2pimn3c (collection 2, edition 2)
+Source scene: https://main.57-129-98-223.sslip.io/assets/project/2/edition/2/scene.svx.json
+Source mesh: Lamp_004010_new.glb (Web3D Medium derivative)
+Creators: Miriam Paloni; Kevin Raetsen; Kirstin Römer
+Contributor: Kelly Gillikin Schoueri
+Rights holder: Nederlands Mijnmuseum
+License supplied by the record: CC - BY - NC - ND
+
+Derived asset: petrol-lamp.bin
+Method: deterministic area-weighted triangle-surface sampling (18,000 points) from the lamp's
+100,000 triangles. The unrelated plane and tube scene meshes are intentionally excluded. Embedded
+GLB node transforms are applied before the Voyager model and scene-node transforms. The sampled
+bounds are centred, uniformly fitted to the landing artwork, turned around the upright axis, and
+quantized to signed 16-bit xyz. The source GLB and its textures are not distributed with this
+derived point cloud.
+
+Orange highlights in the landing artwork are conceptual interaction accents. They are not sampled
+from, and do not represent, annotation coordinates in the source edition.

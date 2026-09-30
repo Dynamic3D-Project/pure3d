@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, type Snippet } from 'svelte';
-	import { base } from '$app/paths';
+	import { base, resolve } from '$app/paths';
 	import {
 		ParticleField,
 		type FieldFocus,
@@ -8,7 +8,12 @@
 		type GlyphSource,
 		type ParticleGlyphs
 	} from './particle-field';
-	import { PARTICLE_FORMS, buildParticleCloud } from './particle-forms';
+	import {
+		CONCEPTUAL_PARTICLE_FORMS,
+		buildParticleCloud,
+		type ParticleForm
+	} from './particle-forms';
+	import { loadEditionParticles } from './edition-particles';
 
 	interface Props {
 		/** Headline, lede and calls to action, laid over the artwork. */
@@ -17,11 +22,13 @@
 		foot?: Snippet;
 		/** Draws every particle as a letter from the copy instead of a dot. */
 		glyphs?: GlyphSource;
+		/** Keep the artwork without its explanatory panels and form selector. */
+		minimal?: boolean;
 	}
 
 	type Status = 'pending' | 'live' | 'fallback';
 
-	let { copy, foot, glyphs }: Props = $props();
+	let { copy, foot, glyphs, minimal = false }: Props = $props();
 
 	/**
 	 * Dots read as a dense scan. Letters need far fewer, larger particles to stay readable rather
@@ -49,7 +56,7 @@
 	/** Caps the drawing buffer on very large screens; the points stay sharp well below this. */
 	const MAX_CANVAS_PIXELS = 4_200_000;
 	/** Share of the art region's shorter side the form and its ring fill. */
-	const FORM_FILL = 0.46;
+	const FORM_FILL = 0.6;
 	const MORPH_SECONDS = 2.6;
 	const HOLD_SECONDS = 7;
 	const DRIFT_PER_SECOND = 0.12;
@@ -71,8 +78,9 @@
 	let paused = $state(false);
 	let reducedMotion = $state(false);
 	let particleCount = $state(0);
+	let activeForms = $state<ParticleForm[]>(CONCEPTUAL_PARTICLE_FORMS);
 
-	const form = $derived(PARTICLE_FORMS[formIndex]);
+	const form = $derived(activeForms[formIndex]);
 	const unit = $derived(glyphs ? 'letters' : 'points');
 	const pad = (value: number) => String(value).padStart(2, '0');
 
@@ -143,7 +151,7 @@
 				yawTarget += dt * DRIFT_PER_SECOND;
 				held += dt;
 				if (held > HOLD_SECONDS && frame.morph >= 1) {
-					showForm((frame.to + 1) % PARTICLE_FORMS.length);
+					showForm((frame.to + 1) % activeForms.length);
 				}
 			}
 			const ease = 1 - Math.exp(-dt * 6);
@@ -292,9 +300,18 @@
 		let resize: ResizeObserver | undefined;
 		let visibility: IntersectionObserver | undefined;
 
-		const start = (letters?: ParticleGlyphs) => {
+		const start = (
+			letters?: ParticleGlyphs,
+			editionPoints: Readonly<Record<string, Float32Array>> = {}
+		) => {
 			if (signal.aborted) return;
-			const cloud = buildParticleCloud(particleCount, density.dust[tier], density.clusters);
+			const cloud = buildParticleCloud(particleCount, density.dust[tier], {
+				...density.clusters,
+				editionPoints
+			});
+			activeForms = cloud.formDefinitions;
+			formIndex = 0;
+			frame.from = frame.to = 0;
 			const options = {
 				pointScale: density.size[tier],
 				maxPointSize: density.maxSize,
@@ -343,9 +360,9 @@
 				const box = host.getBoundingClientRect();
 				const region = anchor.getBoundingClientRect();
 				const focus: FieldFocus = {
-					x: region.left - box.left + region.width / 2,
-					y: region.top - box.top + region.height / 2,
-					radius: Math.min(region.width, region.height) * FORM_FILL
+					x: region.left - box.left + region.width * (box.width > 960 ? 0.44 : 0.5),
+					y: region.top - box.top + region.height * (box.width > 960 ? 0.4 : 0.5),
+					radius: Math.min(region.width, region.height) * (box.width > 960 ? FORM_FILL : 0.46)
 				};
 				const pixelRatio = Math.min(
 					window.devicePixelRatio || 1,
@@ -368,14 +385,19 @@
 			visibility.observe(host);
 		};
 
-		// Letters wait for the headline font, so the atlas is set in the face the copy uses.
-		if (glyphs && copyBox) {
-			void glyphs(copyBox, particleCount + density.dust[tier]).then(start, () => {
+		// Edition points and, when needed, the headline glyph atlas load together. A missing edition
+		// cloud only removes that form; it never delays or disables the conceptual artwork.
+		const points = loadEditionParticles(signal, fetch, base).catch(() => ({}));
+		const letters =
+			glyphs && copyBox
+				? glyphs(copyBox, particleCount + density.dust[tier])
+				: Promise.resolve(undefined);
+		void Promise.all([letters, points]).then(
+			([loadedLetters, loadedPoints]) => start(loadedLetters, loadedPoints),
+			() => {
 				if (!signal.aborted) status = 'fallback';
-			});
-		} else {
-			start();
-		}
+			}
+		);
 
 		return () => {
 			listeners.abort();
@@ -414,28 +436,40 @@
 			bind:this={art}
 			class="art"
 			role="group"
-			aria-label={`Conceptual ${glyphs ? 'letterform' : 'particle'} artwork: ${form.title}`}
-			aria-describedby="particle-hero-hint particle-hero-note"
+			aria-label={`${form.sourceSlug ? 'Published edition' : 'Conceptual'} ${glyphs ? 'letterform' : 'particle'} artwork: ${form.title}`}
+			aria-describedby={minimal ? 'particle-hero-hint' : 'particle-hero-hint particle-hero-note'}
 			tabindex={status === 'live' ? 0 : -1}
 			{onkeydown}
 		>
-			<span class="crop crop-tl" aria-hidden="true"></span>
-			<span class="crop crop-tr" aria-hidden="true"></span>
-			<span class="crop crop-bl" aria-hidden="true"></span>
-			<span class="crop crop-br" aria-hidden="true"></span>
+			{#if !minimal}
+				<span class="crop crop-tl" aria-hidden="true"></span>
+				<span class="crop crop-tr" aria-hidden="true"></span>
+				<span class="crop crop-bl" aria-hidden="true"></span>
+				<span class="crop crop-br" aria-hidden="true"></span>
 
-			<div class="plate-bar" aria-hidden="true">
-				<span>Form {pad(formIndex + 1)} / {pad(PARTICLE_FORMS.length)}</span>
-				<span>
-					{particleCount ? `${particleCount.toLocaleString('en')} ${unit} · ` : ''}Procedural
-				</span>
-			</div>
+				<div class="plate-bar" aria-hidden="true">
+					<span>Form {pad(formIndex + 1)} / {pad(activeForms.length)}</span>
+					<span>
+						{particleCount
+							? `${particleCount.toLocaleString('en')} ${unit} · `
+							: ''}{form.sourceSlug ? 'Mesh sample' : 'Procedural'}
+					</span>
+				</div>
+			{/if}
 
 			{#if status === 'fallback'}
 				<div class="fallback">
 					<img src={`${base}/images/landing/capture.webp`} alt="" />
 					<p>This browser cannot draw the interactive artwork, so a still diagram is shown.</p>
 				</div>
+			{/if}
+
+			{#if form.sourceSlug}
+				<p class:minimal-credit={minimal} class="source-credit" data-hero-ui>
+					<a href={resolve('/editions/[slug]', { slug: form.sourceSlug })}>Source edition</a>
+					<span aria-hidden="true"> · </span>{form.credit}
+					<span aria-hidden="true"> · </span>{form.license}
+				</p>
 			{/if}
 		</div>
 
@@ -446,56 +480,94 @@
 		{/if}
 	</div>
 
-	<div class="rail" data-hero-ui>
-		<div class="caption">
-			<span class="kicker">Conceptual artwork · not a scan</span>
-			<p class="title">{form.title}</p>
-			<p id="particle-hero-note" class="note">
-				{form.note} Vermillion clusters stand for the annotations an edition attaches to its model.
-				{#if glyphs}
-					Each particle is a letter set from the text on this page.
-				{/if}
-			</p>
-		</div>
-		<div class="tools">
-			{#if status === 'live'}
-				<div class="controls">
-					<div class="forms" role="group" aria-label="Choose a form">
-						{#each PARTICLE_FORMS as item, index (item.id)}
-							<button
-								type="button"
-								aria-pressed={index === formIndex}
-								onclick={() => showForm(index)}
-							>
-								<span class="index" aria-hidden="true">{pad(index + 1)}</span>
-								<span class="label">{item.label}</span>
-							</button>
-						{/each}
-					</div>
-					{#if !reducedMotion}
-						<button type="button" class="pause" aria-pressed={paused} onclick={togglePause}>
-							Pause motion
-						</button>
+	{#if minimal}
+		<p id="particle-hero-hint" class="sr-only">
+			{form.sourceSlug ? 'Published edition mesh sample.' : 'Conceptual artwork, not a scan.'} Drag or
+			use the arrow keys to turn the form; press Space to scatter it and Home to reset the view.
+		</p>
+		{#if status === 'live' && !reducedMotion}
+			<button
+				type="button"
+				class="minimal-pause"
+				aria-label={paused ? 'Resume artwork motion' : 'Pause artwork motion'}
+				aria-pressed={paused}
+				onclick={togglePause}
+			>
+				<span aria-hidden="true">{paused ? '▶' : 'Ⅱ'}</span>
+			</button>
+		{/if}
+	{:else}
+		<div class="rail" data-hero-ui>
+			<div class="caption">
+				<span class="kicker"
+					>{form.sourceSlug ? 'Published mesh sample' : 'Conceptual artwork · not a scan'}</span
+				>
+				<p class="title">{form.title}</p>
+				<p id="particle-hero-note" class="note">
+					{form.note} Vermillion clusters stand for the annotations an edition attaches to its model.
+					{#if glyphs}
+						Each particle is a letter set from the text on this page.
 					{/if}
-				</div>
-				<p id="particle-hero-hint" class="hint">
-					{reducedMotion
-						? 'Drag or use the arrow keys to turn the focused form; Home resets the view.'
-						: 'Move across the form to disperse it. Click, tap or press Space to scatter and reassemble; drag or use the arrow keys to turn it.'}
 				</p>
-			{:else}
-				<p id="particle-hero-hint" class="hint">
-					A procedural point cloud standing for the objects PURE3D editions document.
-				</p>
-			{/if}
+			</div>
+			<div class="tools">
+				{#if status === 'live'}
+					<div class="controls">
+						<div class="forms" role="group" aria-label="Choose a form">
+							{#each activeForms as item, index (item.id)}
+								<button
+									type="button"
+									aria-pressed={index === formIndex}
+									onclick={() => showForm(index)}
+								>
+									<span class="index" aria-hidden="true">{pad(index + 1)}</span>
+									<span class="label">{item.label}</span>
+								</button>
+							{/each}
+						</div>
+						{#if !reducedMotion}
+							<button type="button" class="pause" aria-pressed={paused} onclick={togglePause}>
+								Pause motion
+							</button>
+						{/if}
+					</div>
+					<p id="particle-hero-hint" class="hint">
+						{reducedMotion
+							? 'Drag or use the arrow keys to turn the focused form; Home resets the view.'
+							: 'Move across the form to disperse it. Click, tap or press Space to scatter and reassemble; drag or use the arrow keys to turn it.'}
+					</p>
+				{:else}
+					<p id="particle-hero-hint" class="hint">
+						A procedural point cloud standing for the objects PURE3D editions document.
+					</p>
+				{/if}
+			</div>
 		</div>
-	</div>
+	{/if}
 </div>
 
 <style>
+	.minimal-pause {
+		position: absolute;
+		z-index: 3;
+		right: clamp(20px, 4vw, 48px);
+		bottom: 16px;
+		width: 44px;
+		height: 44px;
+		border: 1px solid rgba(244, 241, 235, 0.28);
+		border-radius: var(--radius-control);
+		background: var(--color-ink);
+		color: var(--color-paper);
+		cursor: pointer;
+	}
+	.minimal-pause:focus-visible {
+		outline: 2px solid var(--color-paper);
+		outline-offset: 3px;
+	}
 	#particle-hero {
 		--hero-ink: 18, 18, 17;
 		--hero-paper: 244, 241, 235;
+		width: 100%;
 		position: relative;
 		isolation: isolate;
 		overflow: hidden;
@@ -565,13 +637,13 @@
 		position: relative;
 		z-index: 2;
 		width: 100%;
-		max-width: 1320px;
+		max-width: 1480px;
 		margin: 0 auto;
 		padding-inline: clamp(20px, 4vw, 48px);
 	}
 	.stage {
 		display: grid;
-		grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+		grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
 		grid-template-rows: minmax(0, 1fr) auto;
 		column-gap: clamp(32px, 5vw, 72px);
 		row-gap: 12px;
@@ -674,6 +746,27 @@
 		max-width: 36ch;
 		font: italic 400 16px/1.45 var(--font-serif);
 		color: var(--color-ink-3);
+	}
+	.source-credit {
+		position: absolute;
+		right: 0;
+		bottom: 0;
+		left: 0;
+		margin: 0;
+		font: 10px/1.45 var(--font-mono);
+		letter-spacing: 0.015em;
+		color: rgba(var(--hero-paper), 0.58);
+		cursor: auto;
+	}
+	.source-credit a {
+		color: rgba(var(--hero-paper), 0.82);
+		text-underline-offset: 3px;
+	}
+	.source-credit.minimal-credit {
+		right: 54px;
+		left: auto;
+		max-width: min(56ch, calc(100% - 70px));
+		text-align: right;
 	}
 	.is-fallback {
 		cursor: auto;

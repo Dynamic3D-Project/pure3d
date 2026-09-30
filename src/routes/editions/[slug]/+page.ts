@@ -94,6 +94,9 @@ export const load: PageLoad = async ({ params, fetch }) => {
 			description: record.dcAbstract || '',
 			authors: creatorNames(record.credits),
 			thumbnail,
+			coverImage: record.coverImage || '',
+			fileCollectionId: record.collectionId || '',
+			fileCollectionName: record.collectionName || '',
 			voyagerUrl: '',
 			// Voyager direct mode configuration
 			voyagerRoot,

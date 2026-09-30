@@ -13,6 +13,9 @@ test('recognizes a loaded empty document without treating a pending model scene 
 	expect(isRuntimeSceneReady({ ...state, assetsBusy: true })).toBe(false);
 	expect(isRuntimeSceneReady({ ...state, emptyDocument: false })).toBe(false);
 	expect(isRuntimeSceneReady({ ...state, emptyDocument: false, sceneLoaded: true })).toBe(true);
+	expect(
+		isRuntimeSceneReady({ ...state, emptyDocument: false, sceneLoaded: true, assetsBusy: true })
+	).toBe(false);
 });
 
 test('only accepts a valid active scene with no model references as empty', () => {

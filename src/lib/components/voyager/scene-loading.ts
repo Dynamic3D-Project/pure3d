@@ -8,7 +8,7 @@ export function isRuntimeSceneReady(state: {
 }): boolean {
 	// Voyager never emits sceneLoaded for zero models. Verify emptiness from the downloaded
 	// document, not a temporarily empty runtime graph while model nodes are being created.
-	return state.sceneLoaded || (state.documentLoaded && state.emptyDocument && !state.assetsBusy);
+	return !state.assetsBusy && (state.sceneLoaded || (state.documentLoaded && state.emptyDocument));
 }
 
 export function isEmptySceneDocument(value: unknown): boolean {

@@ -1,0 +1,21 @@
+Rembrandt's Birthplace particle cloud
+
+Source edition: Rembrandt's Birthplace
+PURE3D record: 2boeb1g2jhgrzfx (collection 6, edition 1)
+Source scene: https://main.57-129-98-223.sslip.io/assets/project/6/edition/1/scene.svx.json
+Source mesh: millhouse.glb (Web3D Medium derivative)
+Creator: PJ De Vos
+Rights holder: Erfgoed Leiden en Omstreken; Mr. The Rich
+License supplied by the record: All rights reserved.
+
+Derived asset: rembrandts-birthplace.bin
+Method: deterministic area-weighted triangle-surface sampling (18,000 points) from the two
+SchaalMiddenHuis building primitives and 1,360 triangles. The other houses, grass, ground, garden,
+tree and loose scene-item meshes are intentionally excluded so the birthplace's gabled building
+remains legible. Embedded GLB node transforms are applied before the Voyager model and scene-node
+transforms. The sampled bounds are centred, uniformly fitted to the landing artwork, turned to the
+published view's oblique architectural angle, and quantized to signed 16-bit xyz. The source GLB
+and its textures are not distributed with this derived point cloud.
+
+Orange highlights in the landing artwork are conceptual interaction accents. They are not sampled
+from, and do not represent, annotation coordinates in the source edition.

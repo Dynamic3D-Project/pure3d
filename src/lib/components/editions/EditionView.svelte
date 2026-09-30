@@ -21,6 +21,7 @@
 		useExperimentalEditionViewer
 	} from '$lib/components/voyager/edition-viewer-experiment';
 	import { cachePrefix } from '$lib/database/client';
+	import { getEditionCoverUrl } from '$lib/utils/asset-urls';
 	import FlaskConicalIcon from '~icons/lucide/flask-conical';
 	import {
 		createRuntimeScene,
@@ -143,6 +144,9 @@
 	let siblingEditions = $derived(data.siblingEditions ?? []);
 	let viewerHelp = $derived(data.viewerHelp);
 	let viewerHelpVideoUrl = $derived(data.viewerHelpVideoUrl);
+	const editionCoverUrl = $derived(
+		getEditionCoverUrl({ ...edition, collectionId: edition.collectionId ?? undefined })
+	);
 
 	// Get view presets from edition (if available)
 	const viewPresets = $derived<ViewPreset[]>(edition.viewPresets || []);
@@ -727,7 +731,7 @@
 				>
 					{#key useExperimentalLayout}
 						{#if !useExperimentalLayout}
-							{#key edition.id}
+							{#key loadedScene ?? edition.id}
 								{#if needsPreparedScene && useDirectMode && !loadedScene}
 									<div
 										class="flex h-[495px] items-center justify-center text-sm text-base-content/60"
@@ -739,6 +743,7 @@
 										{edition}
 										{isFullWindow}
 										doi={primaryDoi}
+										coverUrl={editionCoverUrl}
 										hasHelp={!!(viewerHelp || viewerHelpVideoUrl)}
 										fetchOverrides={runtimeSceneOverride}
 										onReady={handleViewerReady}
@@ -767,6 +772,7 @@
 											url={useDirectMode ? edition.voyagerRoot : edition.voyagerUrl}
 											document={edition.sceneFile}
 											title={edition.title}
+											coverUrl={editionCoverUrl}
 											direct={useDirectMode}
 											voyagerVersion={edition.voyagerVersion}
 											resourceRoot={edition.voyagerResourceRoot}

@@ -52,6 +52,8 @@
 		companionAssets?: { baseDir: string; byBasename: Record<string, string> };
 		/** Title for accessibility */
 		title: string;
+		/** Edition cover shown until the scene and its assets are ready */
+		coverUrl?: string | null;
 		/** Use direct embedding instead of iframe */
 		direct?: boolean;
 		/** Show control toolbar (only available in direct mode) */
@@ -225,6 +227,7 @@
 		fetchOverrides,
 		companionAssets,
 		title,
+		coverUrl,
 		direct = false,
 		showControls = false,
 		uiMode = 'none',
@@ -254,7 +257,10 @@
 	);
 
 	let voyagerElement: CategoryViewer | undefined = $state();
+	let iframeElement: HTMLIFrameElement | undefined = $state();
 	let isScriptLoaded = $state(false);
+	let iframeLoaded = $state(false);
+	let coverImageError = $state(false);
 	let hasError = $state(false);
 	let errorMessage = $state('');
 	let annotations = $state<VoyagerItem[]>([]);
@@ -286,10 +292,12 @@
 		audio: false
 	};
 	let sceneLoading = new SceneLoadingTracker();
-	let sceneReady = false;
+	let sceneReady = $state(false);
 	let completeScene: (() => Promise<void>) | null = null;
 	const unknownDownloadIds = new SvelteSet<number>();
 	let emptySceneDocument = false;
+	let iframeReadyTimer: ReturnType<typeof setTimeout> | undefined;
+	const IFRAME_READY_TIMEOUT_MS = 60_000;
 
 	// Camera orbit state
 	let cameraYaw = $state(0);
@@ -380,6 +388,46 @@
 		void tick().then(loadContent);
 	}
 
+	const viewerReady = $derived(direct ? sceneReady : iframeLoaded);
+
+	function waitForIframeScene(startedAt = performance.now()) {
+		if (disposed || !iframeElement) return;
+		let iframeDocument: Document | null;
+		try {
+			iframeDocument = iframeElement.contentDocument;
+		} catch {
+			// Cross-origin iframe runtimes cannot be inspected; the document load is the best signal.
+			iframeLoaded = true;
+			return;
+		}
+		if (!iframeDocument) {
+			// Browsers expose a null document for cross-origin frames.
+			iframeLoaded = true;
+			return;
+		}
+		const runtime = iframeDocument.querySelector('voyager-explorer') as CategoryViewer | null;
+		const components = runtime?.application?.system?.components;
+		const sceneLoaded = components?.get?.('CVViewer')?.outs?.sceneLoaded?.value;
+		const assetsBusy = components?.get?.('CVAssetManager')?.outs?.busy?.value;
+		if (sceneLoaded === true && assetsBusy === false) {
+			iframeLoaded = true;
+			return;
+		}
+		if (performance.now() - startedAt >= IFRAME_READY_TIMEOUT_MS) {
+			handleVoyagerError({ message: 'The 3D scene is taking too long to load.' });
+			return;
+		}
+		iframeReadyTimer = setTimeout(() => waitForIframeScene(startedAt), 200);
+	}
+
+	function handleIframeLoad() {
+		clearTimeout(iframeReadyTimer);
+		hasError = false;
+		errorMessage = '';
+		iframeLoaded = false;
+		waitForIframeScene();
+	}
+
 	function updateSceneLoadingPhase() {
 		if (disposed || hasError || sceneReady) return;
 		if (sceneLoading.phase === 'complete') {
@@ -390,8 +438,8 @@
 	}
 
 	onMount(() => {
+		disposed = false;
 		if (direct) {
-			disposed = false;
 			// Reset progress state
 			loadingProgress = 0;
 			totalBytes = 0;
@@ -425,6 +473,10 @@
 				.catch(handleVoyagerError);
 			return () => resources.dispose();
 		}
+		return () => {
+			disposed = true;
+			clearTimeout(iframeReadyTimer);
+		};
 	});
 
 	function loadContent() {
@@ -1245,6 +1297,21 @@
 	{/if}
 {/snippet}
 
+{#snippet loadingCover()}
+	{#if coverUrl && !coverImageError && !hasError}
+		<div class="edition-loading-cover" class:is-ready={viewerReady} aria-hidden={viewerReady}>
+			<img
+				src={coverUrl}
+				alt={viewerReady ? '' : `Cover image of the edition ${title}`}
+				decoding="async"
+				fetchpriority="high"
+				onerror={() => (coverImageError = true)}
+			/>
+			{#if !viewerReady}<div class="edition-loading-scan" aria-hidden="true"></div>{/if}
+		</div>
+	{/if}
+{/snippet}
+
 <div id="voyager-viewer" class="voyager-viewer-shell">
 	{#if activeMode === 'editor'}
 		<div
@@ -1307,6 +1374,7 @@
 								</div>
 							{/if}
 							{@render progressBar()}
+							{@render loadingCover()}
 						</div>
 					</div>
 
@@ -1663,6 +1731,7 @@
 						</div>
 					{/if}
 					{@render progressBar()}
+					{@render loadingCover()}
 				</div>
 			{/if}
 		</div>
@@ -1673,13 +1742,17 @@
 			style="{containerStyle} background: radial-gradient(ellipse at center, #35424F 0%, #03070B 100%);"
 		>
 			<iframe
+				bind:this={iframeElement}
 				name="Smithsonian Voyager"
 				src={url}
 				{title}
 				class="absolute top-0 left-0 h-full w-full border-0"
 				loading="eager"
 				allow="xr; xr-spatial-tracking; fullscreen"
+				onload={handleIframeLoad}
 			></iframe>
+			{@render progressBar()}
+			{@render loadingCover()}
 		</div>
 	{/if}
 
@@ -1722,6 +1795,61 @@
 	.voyager-viewer-shell {
 		position: relative;
 		width: 100%;
+	}
+
+	.edition-loading-cover {
+		position: absolute;
+		inset: 0;
+		z-index: 20;
+		overflow: hidden;
+		background: var(--color-base-200);
+		transition: opacity 0.9s ease;
+	}
+	.edition-loading-cover img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		transition: transform 1.4s cubic-bezier(0.2, 0.7, 0.1, 1);
+	}
+	.edition-loading-cover.is-ready {
+		opacity: 0;
+		pointer-events: none;
+	}
+	.edition-loading-cover.is-ready img {
+		transform: scale(1.04);
+	}
+	.edition-loading-scan {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		background: linear-gradient(
+			180deg,
+			transparent 0%,
+			color-mix(in srgb, var(--color-accent) 28%, transparent) 49%,
+			var(--color-accent) 50%,
+			transparent 51%
+		);
+		background-size: 100% 220%;
+		mix-blend-mode: screen;
+		animation: edition-cover-scan 2.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+	}
+	@keyframes edition-cover-scan {
+		from {
+			background-position: 0 110%;
+		}
+		to {
+			background-position: 0 -10%;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.edition-loading-cover,
+		.edition-loading-cover img {
+			transition-duration: 0.01ms;
+		}
+		.edition-loading-scan {
+			animation: none;
+			display: none;
+		}
 	}
 
 	/* Custom element styles */
