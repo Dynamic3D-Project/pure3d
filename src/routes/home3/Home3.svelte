@@ -30,6 +30,22 @@
 		void loadHome();
 	});
 
+	function reveal(node: HTMLElement, delay = 0) {
+		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return {};
+		node.style.setProperty('--reveal-delay', `${delay}ms`);
+		node.classList.add('reveal-pending');
+		const observer = new IntersectionObserver(
+			([entry]) => {
+				if (!entry.isIntersecting) return;
+				node.classList.add('reveal-visible');
+				observer.disconnect();
+			},
+			{ threshold: 0.1, rootMargin: '0px 0px -24px 0px' }
+		);
+		observer.observe(node);
+		return { destroy: () => observer.disconnect() };
+	}
+
 	const storySteps = [
 		{
 			kicker: '01 · Capture',
@@ -158,9 +174,8 @@
 
 	<section class="evidence" aria-labelledby="home3-evidence">
 		<div class="shell">
-			<header class="section-head evidence-head reveal">
+			<header class="section-head evidence-head" use:reveal>
 				<div>
-					<p class="eyebrow"><span class="dot" aria-hidden="true"></span> 3D evidence</p>
 					<h2 id="home3-evidence">A model as source</h2>
 					<p class="section-sub">
 						A 3D edition makes the object, its documentation and its interpretation available in the
@@ -170,8 +185,8 @@
 				{@render catalogueStats()}
 			</header>
 			<ol class="plates">
-				{#each storySteps as step (step.kicker)}
-					<li class="plate reveal">
+				{#each storySteps as step, i (step.kicker)}
+					<li class="plate" use:reveal={i * 80}>
 						<img src={`${base}${step.image}`} alt={step.alt} loading="lazy" decoding="async" />
 						<div>
 							<span class="kicker">{step.kicker}</span>
@@ -186,10 +201,7 @@
 
 	<section class="workflow" aria-labelledby="home3-workflow">
 		<div class="shell">
-			<header class="section-head reveal">
-				<p class="eyebrow on-ink">
-					<span class="dot" aria-hidden="true"></span> Editorial infrastructure
-				</p>
+			<header class="section-head" use:reveal>
 				<h2 id="home3-workflow">From proposal to published edition</h2>
 				<p class="section-sub">
 					Pure3D provides a supportive environment for authors/editors to publish 3D scholarship,
@@ -198,7 +210,7 @@
 			</header>
 			<ol class="track">
 				{#each workflow as item, i (item)}
-					<li class="reveal" style={`--i: ${i}`}>
+					<li use:reveal={i * 80}>
 						<span class="node">{String(i + 1).padStart(2, '0')}</span>
 						<span class="step">{item}</span>
 					</li>
@@ -209,7 +221,7 @@
 
 	<section class="collections" aria-labelledby="home3-collections">
 		<div class="shell">
-			<header class="section-head split reveal">
+			<header class="section-head split" use:reveal>
 				<div>
 					<h2 id="home3-collections">Collections as <em>scholarly contexts</em></h2>
 					<p class="section-sub">
@@ -223,8 +235,10 @@
 			</header>
 			{#if collections.length > 0}
 				<div class="collection-grid">
-					{#each collections as collection (collection.id)}
-						<CollectionCard {collection} showDescription={false} imageLoading="lazy" />
+					{#each collections as collection, i (collection.id)}
+						<div use:reveal={i * 80}>
+							<CollectionCard {collection} showDescription={false} imageLoading="lazy" />
+						</div>
 					{/each}
 				</div>
 			{:else if statsPending}
@@ -234,14 +248,14 @@
 					{/each}
 				</div>
 			{:else}
-				<p class="empty">No collections available yet.</p>
+				<p class="empty" use:reveal>No collections available yet.</p>
 			{/if}
 		</div>
 	</section>
 
 	<section class="promises" aria-labelledby="home3-promises">
 		<div class="shell">
-			<header class="section-head reveal">
+			<header class="section-head" use:reveal>
 				<h2 id="home3-promises">What <em>PURE3D</em> brings together.</h2>
 				<p class="section-sub">
 					The platform serves both creators and readers of 3D research: researchers, educators,
@@ -250,8 +264,7 @@
 			</header>
 			<div class="promise-grid">
 				{#each promiseCards as card, i (card.title)}
-					<article class="promise reveal">
-						<span class="kicker">{String(i + 1).padStart(2, '0')}</span>
+					<article class="promise" use:reveal={i * 80}>
 						<h3>{card.title}</h3>
 						<p>{card.text}</p>
 					</article>
@@ -262,11 +275,8 @@
 
 	<section class="call" aria-labelledby="home3-call">
 		<div class="shell">
-			<div class="call-plate reveal">
+			<div class="call-plate" use:reveal>
 				<div>
-					<p class="eyebrow on-ink">
-						<span class="dot" aria-hidden="true"></span> Call for editions
-					</p>
 					<h2 id="home3-call">Propose your own <em>edition.</em></h2>
 				</div>
 				<div>
@@ -289,11 +299,11 @@
 
 	<section class="partners" aria-labelledby="home3-partners">
 		<div class="shell">
-			<h2 id="home3-partners" class="partners-head">Supported by</h2>
+			<h2 id="home3-partners" class="partners-head" use:reveal>Supported by</h2>
 			<ul class="partner-list">
 				<!-- eslint-disable svelte/no-navigation-without-resolve -->
-				{#each partnerLogos as partner (partner.name)}
-					<li>
+				{#each partnerLogos as partner, i (partner.name)}
+					<li use:reveal={i * 80}>
 						<a href={partner.href} target="_blank" rel="noreferrer">
 							<img src={`${base}${partner.image}`} alt={partner.name} loading="lazy" />
 						</a>
@@ -331,29 +341,6 @@
 		max-width: 1320px;
 		margin: 0 auto;
 		padding: 0 clamp(20px, 4vw, 48px);
-	}
-
-	.eyebrow {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		margin: 0;
-		font-family: var(--font-mono);
-		font-size: 11.5px;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: var(--color-ink-3);
-	}
-	.eyebrow .dot {
-		flex: none;
-		width: 6px;
-		height: 6px;
-		border-radius: 50%;
-		background: var(--color-vermillion);
-		box-shadow: 0 0 18px color-mix(in srgb, var(--color-vermillion) 70%, transparent);
-	}
-	.eyebrow.on-ink {
-		color: rgba(244, 241, 235, 0.64);
 	}
 
 	.button {
@@ -740,7 +727,7 @@
 	.call-plate h2 :global(em) {
 		color: #f4b5a0;
 	}
-	.call-plate p:not(.eyebrow) {
+	.call-plate p {
 		margin: 0;
 		max-width: 50ch;
 		font-family: var(--font-serif);
@@ -799,24 +786,23 @@
 			animation: rise 0.9s var(--ease-out) both;
 			animation-delay: calc(var(--i, 0) * 90ms + 60ms);
 		}
-		@supports (animation-timeline: view()) {
-			.reveal {
-				animation: reveal linear both;
-				animation-timeline: view();
-				animation-range: entry 0% entry 45%;
-			}
+		#home3 :global(.reveal-pending) {
+			opacity: 0;
+			translate: 0 24px;
+			transition:
+				opacity 0.8s var(--ease-out) var(--reveal-delay, 0ms),
+				translate 0.8s var(--ease-out) var(--reveal-delay, 0ms);
+		}
+		#home3 :global(.reveal-visible),
+		#home3 :global(.reveal-pending:focus-within) {
+			opacity: 1;
+			translate: 0 0;
 		}
 	}
 	@keyframes rise {
 		from {
 			opacity: 0;
 			translate: 0 24px;
-		}
-	}
-	@keyframes reveal {
-		from {
-			opacity: 0;
-			translate: 0 32px;
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {

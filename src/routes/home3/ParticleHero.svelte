@@ -511,13 +511,33 @@
 				</div>
 			{/if}
 
-			{#if form.sourceSlug}
-				<p class:minimal-credit={minimal} class="source-credit" data-hero-ui>
-					<a href={resolve('/editions/[slug]', { slug: form.sourceSlug })}>Source edition</a>
-					<span aria-hidden="true"> · </span>{form.credit}
-					<span aria-hidden="true"> · </span>{form.license}
+			<div class="model-navigation" class:minimal-navigation={minimal} data-hero-ui>
+				{#if status === 'live'}
+					<button
+						type="button"
+						aria-label="Previous model"
+						onclick={() => showForm((formIndex - 1 + activeForms.length) % activeForms.length)}
+						><span aria-hidden="true">‹</span></button
+					>
+				{/if}
+				<p class="source-credit">
+					{#if form.sourceSlug}
+						<a href={resolve('/editions/[slug]', { slug: form.sourceSlug })}>Source edition</a>
+						<span aria-hidden="true"> · </span>{form.credit}
+						<span aria-hidden="true"> · </span>{form.license}
+					{:else}
+						{form.title}
+					{/if}
 				</p>
-			{/if}
+				{#if status === 'live'}
+					<button
+						type="button"
+						aria-label="Next model"
+						onclick={() => showForm((formIndex + 1) % activeForms.length)}
+						><span aria-hidden="true">›</span></button
+					>
+				{/if}
+			</div>
 		</div>
 
 		{#if foot}
@@ -794,26 +814,66 @@
 		font: italic 400 16px/1.45 var(--font-serif);
 		color: var(--color-ink-3);
 	}
-	.source-credit {
+	.model-navigation {
 		position: absolute;
 		right: 0;
 		bottom: 0;
 		left: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 12px;
+		cursor: auto;
+	}
+	.model-navigation button {
+		opacity: 0.1;
+		flex: 0 0 44px;
+		width: 44px;
+		height: 44px;
+		border-radius: var(--radius-control);
+		color: rgba(var(--hero-paper), 0.75);
+		font-size: 34px;
+		line-height: 1;
+		cursor: pointer;
+		transition:
+			opacity 0.25s ease,
+			color 0.18s ease,
+			background 0.18s ease;
+	}
+	.model-navigation:hover button,
+	.model-navigation:focus-within button {
+		opacity: 0.85;
+	}
+	.model-navigation button:hover {
+		color: var(--color-paper);
+		background: rgba(var(--hero-paper), 0.08);
+	}
+	.model-navigation button:focus-visible {
+		outline: 2px solid var(--color-paper);
+		outline-offset: 2px;
+	}
+	@media (hover: none) {
+		.model-navigation button {
+			opacity: 0.5;
+		}
+	}
+	.source-credit {
+		min-width: 0;
 		margin: 0;
 		font: 10px/1.45 var(--font-mono);
 		letter-spacing: 0.015em;
 		color: rgba(var(--hero-paper), 0.58);
 		cursor: auto;
+		text-align: center;
 	}
 	.source-credit a {
 		color: rgba(var(--hero-paper), 0.82);
 		text-underline-offset: 3px;
 	}
-	.source-credit.minimal-credit {
+	.model-navigation.minimal-navigation {
 		right: 54px;
 		left: auto;
-		max-width: min(56ch, calc(100% - 70px));
-		text-align: right;
+		width: min(560px, calc(100% - 54px));
 	}
 	.is-fallback {
 		cursor: auto;
