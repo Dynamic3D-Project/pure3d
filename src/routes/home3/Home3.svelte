@@ -36,11 +36,11 @@
 		node.classList.add('reveal-pending');
 		const observer = new IntersectionObserver(
 			([entry]) => {
-				if (!entry.isIntersecting) return;
+				if (!entry.isIntersecting || entry.intersectionRatio < 0.18) return;
 				node.classList.add('reveal-visible');
 				observer.disconnect();
 			},
-			{ threshold: 0.1, rootMargin: '0px 0px -24px 0px' }
+			{ threshold: 0.18, rootMargin: '0px 0px -48px 0px' }
 		);
 		observer.observe(node);
 		return { destroy: () => observer.disconnect() };
@@ -144,7 +144,7 @@
 	{/snippet}
 
 	{#snippet catalogueStats()}
-		<dl class="catalogue-stats">
+		<dl class="catalogue-stats" use:reveal={120}>
 			<div class="stat">
 				<dt>3D Editions</dt>
 				<dd>
@@ -174,10 +174,10 @@
 
 	<section class="evidence" aria-labelledby="home3-evidence">
 		<div class="shell">
-			<header class="section-head evidence-head" use:reveal>
+			<header class="section-head evidence-head">
 				<div>
-					<h2 id="home3-evidence">A model as source</h2>
-					<p class="section-sub">
+					<h2 id="home3-evidence" use:reveal>A model as source</h2>
+					<p class="section-sub" use:reveal={80}>
 						A 3D edition makes the object, its documentation and its interpretation available in the
 						same place, so they can be inspected, cited, reviewed, and preserved.
 					</p>
@@ -186,7 +186,7 @@
 			</header>
 			<ol class="plates">
 				{#each storySteps as step, i (step.kicker)}
-					<li class="plate" use:reveal={i * 80}>
+					<li class="plate" use:reveal={i * 140}>
 						<img src={`${base}${step.image}`} alt={step.alt} loading="lazy" decoding="async" />
 						<div>
 							<span class="kicker">{step.kicker}</span>
@@ -789,14 +789,14 @@
 		#home3 :global(.reveal-pending) {
 			opacity: 0;
 			translate: 0 24px;
-			transition:
-				opacity 0.8s var(--ease-out) var(--reveal-delay, 0ms),
-				translate 0.8s var(--ease-out) var(--reveal-delay, 0ms);
 		}
 		#home3 :global(.reveal-visible),
 		#home3 :global(.reveal-pending:focus-within) {
 			opacity: 1;
 			translate: 0 0;
+			transition:
+				opacity 0.8s var(--ease-out) var(--reveal-delay, 0ms),
+				translate 0.8s var(--ease-out) var(--reveal-delay, 0ms);
 		}
 	}
 	@keyframes rise {

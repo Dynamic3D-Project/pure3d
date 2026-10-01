@@ -872,6 +872,7 @@
 	}
 	.model-navigation.minimal-navigation {
 		right: 54px;
+		bottom: 64px;
 		left: auto;
 		width: min(560px, calc(100% - 54px));
 	}
@@ -1017,6 +1018,9 @@
 	}
 
 	@media (max-width: 960px) {
+		.model-navigation.minimal-navigation {
+			bottom: 0;
+		}
 		#particle-hero {
 			min-height: 0;
 			background:
