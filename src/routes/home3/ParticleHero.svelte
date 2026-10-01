@@ -14,6 +14,15 @@
 		type ParticleForm
 	} from './particle-forms';
 	import { loadEditionParticles } from './edition-particles';
+	import {
+		POINTER_TRAIL_SAMPLES,
+		POINTER_TRAIL_STRIDE,
+		advancePointerTrail,
+		decayPointerTarget,
+		easePointerStrength,
+		pointerStrengthFromSpeed,
+		savePointerTrailSample
+	} from './particle-pointer';
 
 	interface Props {
 		/** Headline, lede and calls to action, laid over the artwork. */
@@ -95,6 +104,7 @@
 		pointerX: 0,
 		pointerY: 0,
 		pointerStrength: 0,
+		pointerTrail: new Float32Array(POINTER_TRAIL_SAMPLES * POINTER_TRAIL_STRIDE),
 		burst: 0,
 		time: 0,
 		scan: -9
@@ -102,7 +112,12 @@
 	let yawTarget = REST_YAW;
 	let pitchTarget = REST_PITCH;
 	let pointerTarget = 0;
-	let burstAge = 0.22;
+	let trailIndex = 0;
+	let trailSavedAt = 0;
+	let pointerKnown = false;
+	let pointerMovedAt = 0;
+	// The first form is already assembled; bursts only follow an explicit scatter or interrupted morph.
+	let burstAge = Infinity;
 	let held = 0;
 	let raf = 0;
 	let last = 0;
@@ -126,6 +141,7 @@
 			frame.burst < 0.002 &&
 			frame.pointerStrength < 0.002 &&
 			pointerTarget < 0.002 &&
+			frame.pointerTrail.every((value, index) => index % 4 !== 2 || value < 0.002) &&
 			Math.abs(yawTarget - frame.yaw) < 0.0005 &&
 			Math.abs(pitchTarget - frame.pitch) < 0.0005
 		);
@@ -145,6 +161,7 @@
 			frame.pitch = pitchTarget;
 			frame.burst = 0;
 			frame.pointerStrength = pointerTarget = 0;
+			frame.pointerTrail.fill(0);
 		} else {
 			frame.morph = Math.min(1, frame.morph + dt / MORPH_SECONDS);
 			if (moving && dragId < 0) {
@@ -157,8 +174,9 @@
 			const ease = 1 - Math.exp(-dt * 6);
 			frame.yaw += (yawTarget - frame.yaw) * ease;
 			frame.pitch += (pitchTarget - frame.pitch) * ease;
-			pointerTarget *= Math.exp(-dt * 0.8);
-			frame.pointerStrength += (pointerTarget - frame.pointerStrength) * (1 - Math.exp(-dt * 8));
+			pointerTarget = decayPointerTarget(pointerTarget, dt);
+			frame.pointerStrength = easePointerStrength(frame.pointerStrength, pointerTarget, dt);
+			advancePointerTrail(frame.pointerTrail, dt);
 			burstAge += dt;
 			frame.burst = burstEnvelope(burstAge);
 		}
@@ -207,9 +225,37 @@
 	function trackPointer(event: PointerEvent) {
 		if (!root) return;
 		const rect = root.getBoundingClientRect();
-		frame.pointerX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-		frame.pointerY = 1 - ((event.clientY - rect.top) / rect.height) * 2;
-		if (!reducedMotion) pointerTarget = 1;
+		const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+		const y = 1 - ((event.clientY - rect.top) / rect.height) * 2;
+		const now = performance.now();
+		if (pointerKnown && !reducedMotion && dragId < 0 && !onInterface(event.target)) {
+			const dx = x - frame.pointerX;
+			const dy = y - frame.pointerY;
+			const distance = Math.hypot((dx * rect.width) / 2, (dy * rect.height) / 2);
+			if (distance > 0.2) {
+				const saved = savePointerTrailSample({
+					trail: frame.pointerTrail,
+					trailIndex,
+					lastSavedAt: trailSavedAt,
+					now,
+					x: frame.pointerX,
+					y: frame.pointerY,
+					strength: frame.pointerStrength
+				});
+				trailIndex = saved.trailIndex;
+				trailSavedAt = saved.lastSavedAt;
+				const speed = (distance * 1000) / Math.max(now - pointerMovedAt, 8);
+				// Small, slow gestures barely stir the grains; stronger sweeps build up gradually.
+				pointerTarget = pointerStrengthFromSpeed(speed);
+			}
+		}
+		if (!pointerKnown && !reducedMotion && dragId < 0 && !onInterface(event.target)) {
+			pointerTarget = 0;
+		}
+		frame.pointerX = x;
+		frame.pointerY = y;
+		pointerKnown = true;
+		pointerMovedAt = now;
 	}
 
 	function onpointerdown(event: PointerEvent) {
@@ -254,6 +300,7 @@
 
 	function onpointerleave(event: PointerEvent) {
 		if (event.pointerType === 'mouse') pointerTarget = 0;
+		pointerKnown = false;
 	}
 
 	function onkeydown(event: KeyboardEvent) {

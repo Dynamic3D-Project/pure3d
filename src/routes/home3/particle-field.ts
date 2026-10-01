@@ -1,4 +1,5 @@
 import type { ParticleCloud } from './particle-forms';
+import { POINTER_TRAIL_MIN_SETTLE_SECONDS, POINTER_TRAIL_SAMPLES } from './particle-pointer';
 
 /** Everything the shader needs for one frame. The caller reuses a single object. */
 export interface FieldFrame {
@@ -11,6 +12,8 @@ export interface FieldFrame {
 	pointerX: number;
 	pointerY: number;
 	pointerStrength: number;
+	/** Recent brush positions retain their disturbance while the grains settle. */
+	pointerTrail: Float32Array;
 	burst: number;
 	time: number;
 	/** Height of the scanning band in model space; far outside the form hides it. */
@@ -75,6 +78,7 @@ uniform vec2 uOffset;
 uniform vec2 uDust;
 uniform float uReach;
 uniform vec3 uPointer;
+uniform vec4 uPointerTrail[${POINTER_TRAIL_SAMPLES}];
 uniform float uBurst;
 uniform float uTime;
 uniform float uScan;
@@ -118,26 +122,42 @@ void main() {
 	vec4 view = vec4(p.xy, p.z - uDistance, 1.0);
 	vec2 offset = uOffset * (1.0 - dust);
 
-	// Push particles away from the pointer in screen space; they spring back as it fades.
+	// Gently stir nearby grains in their own directions, like a hand passing over sand.
 	vec4 clip = uProjection * view;
 	vec2 delta = clip.xy / clip.w + offset - uPointer.xy;
 	delta.x *= uAspect;
-	float reach = uPointer.z * (1.0 - smoothstep(0.0, 0.34, length(delta)));
-	view.xy += (normalize(delta + 1e-4) * 0.32 + aDirection.xy * 0.12) * reach * uReach;
-	view.z += aDirection.z * reach * 0.2 * uReach;
+	// Different offsets and elliptical brush sizes avoid a uniform circular footprint.
+	vec2 brushSize = vec2(mix(0.07, 0.32, seed), mix(0.08, 0.27, fract(seed * 7.3)));
+	vec2 grainOffset = aDirection.xy * 0.12;
+	grainOffset += vec2(sin(p.y * 9.0 + p.z * 5.0), cos(p.x * 7.0 - p.z * 6.0)) * 0.055;
+	float grainResponse = mix(0.2, 1.0, fract(seed * 31.7));
+	vec2 brush = (delta + grainOffset) / brushSize;
+	float reach = uPointer.z * grainResponse * exp(-dot(brush, brush));
+	for (int i = 0; i < ${POINTER_TRAIL_SAMPLES}; i++) {
+		vec2 trailDelta = clip.xy / clip.w + offset - uPointerTrail[i].xy;
+		trailDelta.x *= uAspect;
+		vec2 trailBrush = (trailDelta + grainOffset) / brushSize;
+		// Each grain settles on its own gently eased timeline. Samples expire before reuse.
+		float settle = 1.0 - smoothstep(0.0, ${POINTER_TRAIL_MIN_SETTLE_SECONDS.toFixed(1)} + seed * 0.4, uPointerTrail[i].w);
+		reach = max(reach, uPointerTrail[i].z * settle * grainResponse * exp(-dot(trailBrush, trailBrush)));
+	}
+	// Varied travel distances leave grains near the surface while a few drift much farther out.
+	float travel = 0.12 + seed * seed * 1.3;
+	view.xy += aDirection.xy * travel * reach * uReach;
+	view.z += aDirection.z * travel * reach * 0.65 * uReach;
 
 	gl_Position = uProjection * view;
 	gl_Position.xy += offset * gl_Position.w;
 
 	float depth = max(-view.z, 0.05);
-	float size = (1.0 + aMeta.y * ACCENT_SIZE + scan * SCAN_SIZE + reach * 0.6) * mix(1.0, 0.7 + seed * 0.9, dust);
+	float size = (1.0 + aMeta.y * ACCENT_SIZE + scan * SCAN_SIZE + reach * seed * 0.9) * mix(1.0, 0.7 + seed * 0.9, dust);
 	gl_PointSize = min(uPointSize * size / depth, uMaxPointSize);
 
 	float front = clamp(0.5 + p.z * 0.45, 0.0, 1.0);
 	float formAlpha = mix(0.28, 0.9, front) * (1.0 - uBurst * 0.25) + scan * 0.35;
 	float dustAlpha = (0.1 + seed * 0.2) * (0.6 + 0.4 * sin(uTime * 0.9 + seed * 60.0));
-	vAlpha = mix(formAlpha, dustAlpha, dust) * smoothstep(0.4, 1.6, depth);
-	vAccent = max(max(aMeta.y, scan * 0.75), dust * step(0.965, seed) * 0.85);
+	vAlpha = (mix(formAlpha, dustAlpha, dust) + reach * seed * 0.1) * smoothstep(0.4, 1.6, depth);
+	vAccent = max(max(max(aMeta.y, scan * 0.75), reach * step(0.9, seed) * 0.5), dust * step(0.965, seed) * 0.85);
 
 #ifdef GLYPHS
 	vGlyph = aGlyph;
@@ -189,6 +209,7 @@ const UNIFORMS = [
 	'uDust',
 	'uReach',
 	'uPointer',
+	'uPointerTrail[0]',
 	'uBurst',
 	'uTime',
 	'uScan',
@@ -417,6 +438,7 @@ export class ParticleField {
 		gl.uniform2fv(uniforms.uDust, this.dust);
 		gl.uniform1f(uniforms.uReach, this.distance / REFERENCE_DISTANCE);
 		gl.uniform3f(uniforms.uPointer, frame.pointerX, frame.pointerY, frame.pointerStrength);
+		gl.uniform4fv(uniforms['uPointerTrail[0]'], frame.pointerTrail);
 		gl.uniform1f(uniforms.uBurst, frame.burst);
 		gl.uniform1f(uniforms.uTime, frame.time);
 		gl.uniform1f(uniforms.uScan, frame.scan);
