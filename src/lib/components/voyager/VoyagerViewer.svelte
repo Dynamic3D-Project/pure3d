@@ -161,6 +161,7 @@
 					get?: (type: string) => {
 						outs?: {
 							sceneLoaded?: RuntimeOutput<boolean>;
+							sceneContentLoaded?: RuntimeOutput<boolean>;
 							assetPath?: RuntimeOutput<string>;
 							busy?: RuntimeOutput<boolean>;
 						};
@@ -293,6 +294,7 @@
 	};
 	let sceneLoading = new SceneLoadingTracker();
 	let sceneReady = $state(false);
+	let firstModelVisible = $state(false);
 	let completeScene: (() => Promise<void>) | null = null;
 	const unknownDownloadIds = new SvelteSet<number>();
 	let emptySceneDocument = false;
@@ -389,6 +391,21 @@
 	}
 
 	const viewerReady = $derived(direct ? sceneReady : iframeLoaded);
+	const coverRevealed = $derived(firstModelVisible || viewerReady);
+	const downloadPercentage = $derived(
+		direct && loadingPhase === 'downloading' && totalBytes > 0 && !unknownDownloadIds.size
+			? Math.min(100, Math.max(0, loadingProgress))
+			: undefined
+	);
+	const loadingLabel = $derived(
+		firstModelVisible
+			? 'Refining details…'
+			: loadingPhase === 'downloading'
+				? 'Downloading model…'
+				: loadingPhase === 'preparing'
+					? 'Preparing model…'
+					: 'Loading 3D viewer…'
+	);
 
 	function waitForIframeScene(startedAt = performance.now()) {
 		if (disposed || !iframeElement) return;
@@ -408,6 +425,9 @@
 		const runtime = iframeDocument.querySelector('voyager-explorer') as CategoryViewer | null;
 		const components = runtime?.application?.system?.components;
 		const sceneLoaded = components?.get?.('CVViewer')?.outs?.sceneLoaded?.value;
+		if (components?.get?.('CVViewer')?.outs?.sceneContentLoaded?.value === true) {
+			firstModelVisible = true;
+		}
 		const assetsBusy = components?.get?.('CVAssetManager')?.outs?.busy?.value;
 		if (sceneLoaded === true && assetsBusy === false) {
 			iframeLoaded = true;
@@ -425,6 +445,7 @@
 		hasError = false;
 		errorMessage = '';
 		iframeLoaded = false;
+		firstModelVisible = false;
 		waitForIframeScene();
 	}
 
@@ -447,6 +468,7 @@
 			loadingPhase = 'script';
 			sceneLoading = new SceneLoadingTracker();
 			sceneReady = false;
+			firstModelVisible = false;
 			unknownDownloadIds.clear();
 
 			resources.defer(retainCanvasCapture(HTMLCanvasElement.prototype));
@@ -549,6 +571,11 @@
 		// Listen for Voyager error events
 		contentScope.listen(voyagerElement, 'error', handleVoyagerError);
 		contentScope.listen(voyagerElement, 'load-error', handleVoyagerError);
+		// Voyager emits this after attaching each loaded quality level to the scene.
+		// Reveal the first usable model without marking the whole scene as ready.
+		contentScope.listen(voyagerElement, 'model-load', () => {
+			if (!disposed && !hasError) firstModelVisible = true;
+		});
 
 		// Also listen for global errors that might come from Voyager
 		contentScope.defer(captureViewerErrors((message) => handleVoyagerError({ message })));
@@ -1253,6 +1280,7 @@
 		loadingPhase = 'script';
 		sceneLoading = new SceneLoadingTracker();
 		sceneReady = false;
+		firstModelVisible = false;
 		unknownDownloadIds.clear();
 
 		// Re-mount the voyager element with new uiMode
@@ -1277,20 +1305,18 @@
 					You can still explore the edition content below.
 				</p>{/if}
 		</div>
-	{:else if activeMode === 'viewer' && loadingPhase !== 'complete'}
-		<div class="pointer-events-none absolute right-0 bottom-0 left-0 z-10">
-			<div class="sr-only" role="status" aria-live="polite">
-				{loadingPhase === 'downloading'
-					? `Downloading 3D scene${loadingProgress ? `, ${loadingProgress}%` : ''}`
-					: loadingPhase === 'preparing'
-						? 'Preparing 3D scene'
-						: 'Loading 3D viewer'}
+	{:else if activeMode === 'viewer' && !viewerReady}
+		<div class="edition-loading-status" class:is-refining={firstModelVisible}>
+			<div class="edition-loading-label" role="status" aria-live="polite">
+				<span>{loadingLabel}</span>
+				{#if downloadPercentage !== undefined}
+					<span class="tabular-nums">{downloadPercentage}%</span>
+				{/if}
 			</div>
 			<progress
-				class="progress h-1 w-full rounded-none progress-primary"
-				value={loadingPhase === 'downloading' && !unknownDownloadIds.size
-					? loadingProgress
-					: undefined}
+				class="progress h-1 w-full progress-primary"
+				aria-label={firstModelVisible ? 'Downloading remaining details' : 'Downloading model'}
+				value={downloadPercentage}
 				max="100"
 			></progress>
 		</div>
@@ -1299,15 +1325,15 @@
 
 {#snippet loadingCover()}
 	{#if coverUrl && !coverImageError && !hasError}
-		<div class="edition-loading-cover" class:is-ready={viewerReady} aria-hidden={viewerReady}>
+		<div class="edition-loading-cover" class:is-ready={coverRevealed} aria-hidden={coverRevealed}>
 			<img
 				src={coverUrl}
-				alt={viewerReady ? '' : `Cover image of the edition ${title}`}
+				alt={coverRevealed ? '' : `Cover image of the edition ${title}`}
 				decoding="async"
 				fetchpriority="high"
 				onerror={() => (coverImageError = true)}
 			/>
-			{#if !viewerReady}<div class="edition-loading-scan" aria-hidden="true"></div>{/if}
+			{#if !coverRevealed}<div class="edition-loading-scan" aria-hidden="true"></div>{/if}
 		</div>
 	{/if}
 {/snippet}
@@ -1795,6 +1821,44 @@
 	.voyager-viewer-shell {
 		position: relative;
 		width: 100%;
+	}
+
+	.edition-loading-status {
+		position: absolute;
+		right: 1rem;
+		bottom: 1rem;
+		left: 1rem;
+		z-index: 30;
+		max-width: 24rem;
+		margin-inline: auto;
+		padding: 0.75rem 1rem;
+		border: 1px solid rgb(255 255 255 / 16%);
+		border-radius: 0.75rem;
+		background:
+			linear-gradient(145deg, rgb(255 255 255 / 13%), rgb(255 255 255 / 3%)), rgb(10 17 20 / 30%);
+		box-shadow:
+			0 0.5rem 1.5rem rgb(0 0 0 / 22%),
+			inset 0 1px 0 rgb(255 255 255 / 28%),
+			inset 0 -1px 0 rgb(0 0 0 / 18%);
+		-webkit-backdrop-filter: blur(14px) saturate(165%);
+		backdrop-filter: blur(14px) saturate(165%);
+		color: white;
+		pointer-events: none;
+	}
+	.edition-loading-status progress {
+		color: rgb(163 199 173);
+		background-color: rgb(255 255 255 / 18%);
+	}
+	.edition-loading-status.is-refining {
+		left: auto;
+		width: min(18rem, calc(100% - 2rem));
+	}
+	.edition-loading-label {
+		display: flex;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-bottom: 0.375rem;
+		font-size: 0.875rem;
 	}
 
 	.edition-loading-cover {

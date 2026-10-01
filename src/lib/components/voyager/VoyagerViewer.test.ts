@@ -35,11 +35,30 @@ test('uses CVViewer sceneLoaded rather than model-load event counts for readines
 	expect(source).not.toContain('onmodel-load={handleModelReady}');
 });
 
-test('keeps the edition cover reactive until the active viewer is ready', () => {
+test('reveals the edition cover independently from full scene readiness', () => {
 	expect(source).toContain('let sceneReady = $state(false)');
 	expect(source).toContain('const viewerReady = $derived(direct ? sceneReady : iframeLoaded)');
-	expect(source).toContain('class:is-ready={viewerReady}');
+	expect(source).toContain('const coverRevealed = $derived(firstModelVisible || viewerReady)');
+	expect(source).toContain('class:is-ready={coverRevealed}');
+	expect(source).toContain("contentScope.listen(voyagerElement, 'model-load', () => {");
+	expect(source).toContain('if (!disposed && !hasError) firstModelVisible = true');
 	expect(source).toContain('sceneLoaded === true && assetsBusy === false');
 	expect(source).toContain('onload={handleIframeLoad}');
 	expect(editionView).toContain('coverUrl={editionCoverUrl}');
+});
+
+test('shows honest transfer progress and visible loading stages above the cover', () => {
+	expect(source).toContain(
+		"direct && loadingPhase === 'downloading' && totalBytes > 0 && !unknownDownloadIds.size"
+	);
+	expect(source).toContain('Math.min(100, Math.max(0, loadingProgress))');
+	expect(source).toContain("? 'Refining details…'");
+	expect(source).toContain("? 'Downloading model…'");
+	expect(source).toContain("? 'Preparing model…'");
+	expect(source).toContain('<span>{loadingLabel}</span>');
+	expect(source).toContain('{#if downloadPercentage !== undefined}');
+	expect(source).toContain('value={downloadPercentage}');
+	expect(source).toContain('z-index: 30;');
+	expect(source).toContain('backdrop-filter: blur(14px) saturate(165%)');
+	expect(source).toContain('@media (prefers-reduced-motion: reduce)');
 });
