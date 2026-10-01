@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.17.0 - 2026-10-01
+
+### Features
+
+- reveal progressive model loading (d042ee6c)
+
 ## v0.16.1 - 2026-10-01
 
 ### Fixes
