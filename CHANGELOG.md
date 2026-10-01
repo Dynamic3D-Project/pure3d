@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.16.1 - 2026-10-01
+
+### Fixes
+
+- refine landing reveals and model navigation spacing (9bce6c29)
+
 ## v0.16.0 - 2026-10-01
 
 ### Features
