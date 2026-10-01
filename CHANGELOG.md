@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.16.0 - 2026-10-01
+
+### Features
+
+- add model navigation and landing reveals (60292c7c)
+- make particle hover organic (f432fe96)
+- refresh landing and model transitions (fb329adf)
+
+### Fixes
+
+- clarify documentation sidebar heading (d048ff36)
+- show correct Docker frontend URL (c341cf08)
+- clarify component insertion options (eb32549c)
+
 ## v0.15.0 - 2026-09-28
 
 ### Features
