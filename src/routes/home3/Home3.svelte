@@ -126,12 +126,12 @@
 <div id="home3">
 	{#snippet heroCopy()}
 		<h1 id="home3-title" class="rise" style="--i: 1">
-			An infrastructure for the preservation and publication of <em>3D scholarship</em>
+			Publishing and preserving <em>3D scholarly editions.</em>
 		</h1>
 		<p class="lede rise" style="--i: 2">
-			PURE3D is an infrastructure for publishing, depositing, preserving, and exploring interactive
-			3D Scholarly Editions: annotated, reviewable, citable records that connect models with
-			evidence, interpretation, paradata, and long-term access.
+			PURE3D for the publication, peer review and preservation of interactive 3D scholarly
+			editions. Annotated, citable records bringing models into dialogue with evidence,
+			interpretation and paradata.
 		</p>
 		<div class="actions rise" style="--i: 3">
 			<a href={resolve('/editions')} class="button button-primary">
@@ -265,6 +265,7 @@
 			<div class="promise-grid">
 				{#each promiseCards as card, i (card.title)}
 					<article class="promise" use:reveal={i * 80}>
+						<span class="kicker">{String(i + 1).padStart(2, '0')} /</span>
 						<h3>{card.title}</h3>
 						<p>{card.text}</p>
 					</article>
@@ -285,7 +286,7 @@
 						our growing community edition editors/authors.
 					</p>
 					<div class="actions">
-						<a href={resolve('/documentation/submission')} class="button button-accent">
+						<a href={resolve('/documentation/submission')} class="button button-primary">
 							Submission guidelines <span aria-hidden="true">→</span>
 						</a>
 						<a href={resolve('/documentation')} class="button button-on-ink">
@@ -368,13 +369,6 @@
 	.button-primary:hover {
 		background: var(--color-forest-hover);
 	}
-	.button-accent {
-		background: var(--color-vermillion);
-		color: #fff;
-	}
-	.button-accent:hover {
-		background: var(--color-vermillion-ink);
-	}
 	.button-on-ink {
 		border-color: rgba(244, 241, 235, 0.35);
 		color: var(--color-paper);
@@ -422,7 +416,7 @@
 	h1 {
 		margin: 0;
 		font-weight: 500;
-		font-size: clamp(38px, 4.8vw, 72px);
+		font-size: clamp(42px, 5.3vw, 80px);
 		line-height: 0.98;
 		letter-spacing: -0.035em;
 		text-wrap: balance;
@@ -431,9 +425,9 @@
 	.lede {
 		margin: 0;
 		max-width: 46ch;
-		font-family: var(--font-serif);
-		font-size: clamp(18px, 1.6vw, 21px);
-		line-height: 1.45;
+		font-family: var(--font-sans);
+		font-size: clamp(17px, 1.4vw, 20px);
+		line-height: 1.6;
 		color: var(--on-ink);
 		text-wrap: pretty;
 	}
@@ -453,7 +447,7 @@
 	}
 	.catalogue-stats {
 		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 16px;
 		margin: 0;
 		padding-block: 24px;
@@ -487,7 +481,7 @@
 	.stat dd {
 		order: 1;
 		margin: 0;
-		font-size: clamp(26px, 2.6vw, 34px);
+		font-size: clamp(38px, 4vw, 56px);
 		font-weight: 500;
 		line-height: 1;
 		letter-spacing: -0.025em;
@@ -679,20 +673,17 @@
 	.promise-grid {
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 16px;
+		gap: 32px;
 	}
 	.promise {
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
-		min-height: 260px;
-		padding: clamp(24px, 3vw, 40px);
-		border: 1px solid var(--rule);
-		border-radius: var(--radius-surface);
-		background: var(--color-paper);
+		padding: 24px 0 0;
+		border-top: 1px solid var(--rule-strong);
 	}
 	.promise h3 {
-		margin-top: auto;
+		margin-top: 16px;
 		font-size: clamp(22px, 2.4vw, 30px);
 		line-height: 1.08;
 	}

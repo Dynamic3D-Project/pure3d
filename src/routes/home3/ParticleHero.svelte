@@ -463,6 +463,7 @@
 	bind:this={root}
 	class:is-live={status === 'live'}
 	class:is-fallback={status === 'fallback'}
+	class:is-minimal={minimal}
 	{onpointerdown}
 	{onpointermove}
 	{onpointerup}
@@ -538,6 +539,19 @@
 					>
 				{/if}
 			</div>
+			{#if minimal && status === 'live'}
+				{#if !reducedMotion}
+					<button
+						type="button"
+						class="minimal-pause"
+						aria-label={paused ? 'Resume artwork motion' : 'Pause artwork motion'}
+						aria-pressed={paused}
+						onclick={togglePause}
+					>
+						<span aria-hidden="true">{paused ? '▶' : 'Ⅱ'}</span>
+					</button>
+				{/if}
+			{/if}
 		</div>
 
 		{#if foot}
@@ -552,17 +566,6 @@
 			{form.sourceSlug ? 'Published edition mesh sample.' : 'Conceptual artwork, not a scan.'} Drag or
 			use the arrow keys to turn the form; press Space to scatter it and Home to reset the view.
 		</p>
-		{#if status === 'live' && !reducedMotion}
-			<button
-				type="button"
-				class="minimal-pause"
-				aria-label={paused ? 'Resume artwork motion' : 'Pause artwork motion'}
-				aria-pressed={paused}
-				onclick={togglePause}
-			>
-				<span aria-hidden="true">{paused ? '▶' : 'Ⅱ'}</span>
-			</button>
-		{/if}
 	{:else}
 		<div class="rail" data-hero-ui>
 			<div class="caption">
@@ -617,8 +620,8 @@
 	.minimal-pause {
 		position: absolute;
 		z-index: 3;
-		right: clamp(20px, 4vw, 48px);
-		bottom: 16px;
+		right: 0;
+		top: 0;
 		width: 44px;
 		height: 44px;
 		border: 1px solid rgba(244, 241, 235, 0.28);
@@ -630,6 +633,9 @@
 	.minimal-pause:focus-visible {
 		outline: 2px solid var(--color-paper);
 		outline-offset: 3px;
+	}
+	.minimal-navigation button {
+		opacity: 0.7;
 	}
 	#particle-hero {
 		--hero-ink: 18, 18, 17;
@@ -1019,7 +1025,14 @@
 
 	@media (max-width: 960px) {
 		.model-navigation.minimal-navigation {
+			right: 0;
 			bottom: 0;
+			left: 0;
+			width: 100%;
+			transform: translateY(100%);
+		}
+		.source-credit {
+			font-size: 10px;
 		}
 		#particle-hero {
 			min-height: 0;
@@ -1037,6 +1050,15 @@
 				rgba(var(--hero-ink), 0) min(76vw, 440px),
 				rgba(var(--hero-ink), 0.7) calc(min(76vw, 440px) + 160px),
 				rgba(var(--hero-ink), 0.78) 100%
+			);
+		}
+		.is-minimal .veil {
+			background: linear-gradient(
+				180deg,
+				rgba(var(--hero-ink), 0.94) 0,
+				rgba(var(--hero-ink), 0.85) 38%,
+				rgba(var(--hero-ink), 0) 65%,
+				rgba(var(--hero-ink), 0.6) 100%
 			);
 		}
 		.stage {
@@ -1057,6 +1079,15 @@
 			grid-column: 1;
 			grid-row: auto;
 			padding-top: 12px;
+		}
+		.is-minimal .stage {
+			padding-block: 36px 100px;
+		}
+		.is-minimal .art {
+			order: 0;
+		}
+		.is-minimal .copy {
+			gap: 24px;
 		}
 		.foot {
 			grid-column: 1;
