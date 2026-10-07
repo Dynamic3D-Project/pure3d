@@ -2,8 +2,9 @@
  * Deterministically samples a Voyager GLB into the compact point format used by the home artwork.
  *
  * Usage:
- *   bun scripts/sample-edition-particles.ts INPUT.glb SCENE.svx.json OUTPUT.bin \
+ *   bun scripts/sample-edition-particles.ts INPUT.glb [SCENE.svx.json] OUTPUT.bin \
  *     [--include-node REGEXP] [--yaw DEGREES]
+ * Without a scene document, only the embedded GLB transforms are applied.
  */
 
 const SAMPLE_COUNT = 18_000;
@@ -56,12 +57,18 @@ interface Gltf {
 	extensionsRequired?: string[];
 }
 
-const [inputPath, scenePath, outputPath, ...rawOptions] = Bun.argv.slice(2);
-if (!inputPath || !scenePath || !outputPath) {
+const args = Bun.argv.slice(2);
+const optionsStart = args.findIndex((arg) => arg.startsWith('--'));
+const paths = optionsStart < 0 ? args : args.slice(0, optionsStart);
+const rawOptions = optionsStart < 0 ? [] : args.slice(optionsStart);
+if (paths.length !== 2 && paths.length !== 3) {
 	throw new Error(
-		'Expected INPUT.glb SCENE.svx.json OUTPUT.bin [--include-node REGEXP] [--yaw DEGREES]'
+		'Expected INPUT.glb [SCENE.svx.json] OUTPUT.bin [--include-node REGEXP] [--yaw DEGREES]'
 	);
 }
+const inputPath = paths[0];
+const scenePath = paths.length === 3 ? paths[1] : undefined;
+const outputPath = paths[paths.length - 1];
 
 function option(name: string) {
 	const index = rawOptions.indexOf(name);
@@ -182,23 +189,26 @@ function readAccessor(index: number): number[][] {
 	return rows;
 }
 
-const sceneDocument = JSON.parse(await Bun.file(scenePath).text());
-if (sceneDocument.models?.length !== 1) {
-	throw new Error(
-		`Scene contains ${sceneDocument.models?.length ?? 0} models; choose and combine them explicitly before sampling.`
+let voyagerTransform = compose();
+if (scenePath) {
+	const sceneDocument = JSON.parse(await Bun.file(scenePath).text());
+	if (sceneDocument.models?.length !== 1) {
+		throw new Error(
+			`Scene contains ${sceneDocument.models?.length ?? 0} models; choose and combine them explicitly before sampling.`
+		);
+	}
+	const sceneModel = sceneDocument.models[0];
+	const sceneNodes =
+		sceneDocument.nodes?.filter((node: { model?: number }) => node.model === 0) ?? [];
+	if (sceneNodes.length !== 1) {
+		throw new Error(`Expected one scene node for model 0, found ${sceneNodes.length}.`);
+	}
+	const sceneNode = sceneNodes[0];
+	voyagerTransform = multiply(
+		compose(sceneNode.translation, sceneNode.rotation, sceneNode.scale),
+		compose(sceneModel.translation, sceneModel.rotation, sceneModel.scale)
 	);
 }
-const sceneModel = sceneDocument.models[0];
-const sceneNodes =
-	sceneDocument.nodes?.filter((node: { model?: number }) => node.model === 0) ?? [];
-if (sceneNodes.length !== 1) {
-	throw new Error(`Expected one scene node for model 0, found ${sceneNodes.length}.`);
-}
-const sceneNode = sceneNodes[0];
-const voyagerTransform = multiply(
-	compose(sceneNode.translation, sceneNode.rotation, sceneNode.scale),
-	compose(sceneModel.translation, sceneModel.rotation, sceneModel.scale)
-);
 
 const triangles: Array<[Vec3, Vec3, Vec3]> = [];
 const cumulativeAreas: number[] = [];
