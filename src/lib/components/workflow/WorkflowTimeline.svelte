@@ -103,7 +103,7 @@
 				{:else if currentStatus === EditionStatus.EditorialReview}
 					Proposal is under editorial review.
 				{:else if currentStatus === EditionStatus.ConceptAccepted}
-					Proposal was accepted and is ready for alpha review.
+					Proposal approved. Authors can now build the draft edition before requesting Alpha Review.
 				{:else if currentStatus === EditionStatus.AlphaRejected}
 					Alpha review rejected. Author can revise and resubmit from draft.
 				{:else if currentStatus === EditionStatus.AlphaRevisions}

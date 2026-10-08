@@ -7,14 +7,18 @@ export const workflowStages: {
 }[] = [
 	{ label: 'Proposal', statuses: [EditionStatus.Draft], hrefStatus: EditionStatus.Draft },
 	{
-		label: 'Proposal review',
+		label: 'Proposal Review',
 		statuses: [
 			EditionStatus.ConceptSubmitted,
 			EditionStatus.EditorialReview,
-			EditionStatus.ConceptAccepted,
 			EditionStatus.ConceptRejected
 		],
 		hrefStatus: EditionStatus.ConceptSubmitted
+	},
+	{
+		label: 'Draft',
+		statuses: [EditionStatus.ConceptAccepted],
+		hrefStatus: EditionStatus.ConceptAccepted
 	},
 	{
 		label: 'Alpha Review',

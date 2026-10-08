@@ -258,6 +258,15 @@
 			[EditionStatus.AlphaRevisions, EditionStatus.FinalRevisions].includes(edition.status)
 	);
 	let canSubmitConcept = $derived(edition?.status === EditionStatus.Draft);
+	let canViewEdition = $derived(
+		edition !== null &&
+			![
+				EditionStatus.Draft,
+				EditionStatus.ConceptSubmitted,
+				EditionStatus.EditorialReview,
+				EditionStatus.ConceptRejected
+			].includes(edition.status)
+	);
 
 	const currentWorkflowStageIndex = $derived.by(() => {
 		const currentEdition = edition;
@@ -940,9 +949,11 @@
 
 			<div class="ml-auto flex flex-col items-end gap-2">
 				<div class="flex flex-wrap items-center justify-end gap-2">
-					<a href={resolve('/editions/[slug]', { slug: edition.id })} class="btn btn-ghost btn-sm"
-						>View Edition</a
-					>
+					{#if canViewEdition}
+						<a href={resolve('/editions/[slug]', { slug: edition.id })} class="btn btn-ghost btn-sm"
+							>View Edition</a
+						>
+					{/if}
 					{#if canDelete}
 						<button
 							type="button"

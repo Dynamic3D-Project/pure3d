@@ -27,6 +27,9 @@ export async function seedLocalDemoUsers(pb: PocketBase) {
 	);
 
 	for (const user of demoUsers) {
+		const existing = existingByEmail.get(user.email.toLowerCase());
+		// Verified identities have server-owned profiles and credentials; preserve them.
+		if (existing?.orcidVerifiedAt) continue;
 		const data = {
 			...user,
 			passwordConfirm: user.password,
@@ -34,7 +37,6 @@ export async function seedLocalDemoUsers(pb: PocketBase) {
 			verified: true,
 			userHash: user.email
 		};
-		const existing = existingByEmail.get(user.email.toLowerCase());
 		if (existing) await users.update(existing.id, data);
 		else await users.create(data);
 	}
