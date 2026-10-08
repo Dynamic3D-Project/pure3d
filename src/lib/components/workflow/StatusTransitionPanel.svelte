@@ -58,11 +58,13 @@
 	{:else if transitions.length > 0}
 		<div class="flex flex-wrap gap-2">
 			{#each transitions as target (target)}
-				{#if [EditionStatus.AlphaReview, EditionStatus.FinalReview, EditionStatus.PublicationRequested].includes(target)}
+				{#if [EditionStatus.ConceptSubmitted, EditionStatus.AlphaReview, EditionStatus.FinalReview, EditionStatus.PublicationRequested].includes(target)}
 					<a
 						class="btn btn-outline btn-sm"
 						href={resolve('/editions/[slug]/workflow', { slug: editionId })}
-						>Prepare submission request</a
+						>{target === EditionStatus.ConceptSubmitted
+							? 'Complete proposal submission'
+							: 'Prepare submission request'}</a
 					>
 				{:else}
 					<button
