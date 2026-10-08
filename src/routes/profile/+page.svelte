@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { workflowAnchor } from '$lib/workflow/presentation';
-	import { base, resolve } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import { pb } from '$lib/database/client';
 	import { goto } from '$app/navigation';
@@ -8,28 +7,15 @@
 	import { ROLE_LABELS } from '$lib/types/roles';
 	import EditionCard from '$lib/components/cards/EditionCard.svelte';
 	import CollectionCard from '$lib/components/cards/CollectionCard.svelte';
+	import MyWork from '$lib/components/workflow/MyWork.svelte';
+	import IconPencil from '~icons/lucide/pencil';
 	import {
 		getCollectionThumbnailUrl,
 		getEditionRoot,
 		getEditionThumbnailUrl
 	} from '$lib/utils/asset-urls';
-	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
-	import WorkflowTimeline from '$lib/components/workflow/WorkflowTimeline.svelte';
-	import { EditionStatus } from '$lib/types/roles';
-	import type { ReviewAssignment, EditionReview } from '$lib/types/reviews';
-	import { ReviewDecision } from '$lib/types/reviews';
-	import toast from 'svelte-french-toast';
 	import { creatorNames, normalizeOrcid, readCredits } from '$lib/utils/credits';
 	import type { RecordModel } from 'pocketbase';
-
-	interface DashEdition {
-		id: string;
-		title: string;
-		status: EditionStatus;
-		collectionTitle: string;
-		thumbnail: string;
-		created: string;
-	}
 
 	interface ProfileData {
 		displayName: string;
@@ -56,29 +42,6 @@
 	let isRefreshing = $state(false);
 	let editions = $state<ReturnType<typeof mapEdition>[]>([]);
 	let collections = $state<ReturnType<typeof mapCollection>[]>([]);
-	let myEditions = $state<DashEdition[]>([]);
-	let myAssignments = $state<(ReviewAssignment & { edition?: DashEdition })[]>([]);
-	let myReviews = $state<EditionReview[]>([]);
-	let workTab = $state<'editions' | 'reviews'>('editions');
-	let deletingId = $state<string | null>(null);
-
-	let pendingAssignments = $derived(
-		myAssignments.filter((assignment) => {
-			const hasReview = myReviews.some(
-				(review) =>
-					review.editionId === assignment.editionId && review.reviewStage === assignment.reviewStage
-			);
-			return !hasReview;
-		})
-	);
-	let completedAssignments = $derived(
-		myAssignments.filter((assignment) =>
-			myReviews.some(
-				(review) =>
-					review.editionId === assignment.editionId && review.reviewStage === assignment.reviewStage
-			)
-		)
-	);
 
 	let tempData = $state({
 		displayName: '',
@@ -246,75 +209,14 @@
 	}
 
 	async function loadProfileContent(userId: string) {
-		const [assignmentResult, reviewResult, editionUsers, creditedEditions, creditedCollections] =
-			await Promise.all([
-				pb.collection('reviewAssignments').getFullList({
-					filter: `reviewerId = "${userId}"`,
-					sort: '-created'
-				}),
-				pb.collection('editionReviews').getFullList({
-					filter: `reviewerId = "${userId}"`,
-					sort: '-created'
-				}),
-				pb.collection('editionUsers').getFullList({
-					filter: `userId = "${userId}" && role = "author"`,
-					expand: 'editionId,editionId.collection'
-				}),
-				pb.collection('editions').getFullList({ expand: 'collection' }),
-				pb.collection('collections').getFullList()
-			]);
-
-		myReviews = reviewResult.map((review) => ({
-			id: review.id,
-			editionId: review.editionId,
-			reviewerId: review.reviewerId,
-			reviewStage: review.reviewStage,
-			decision: review.decision as ReviewDecision,
-			comment: review.comment || null,
-			created: review.created,
-			updated: review.updated
-		}));
-
-		const authorEditionIds = editionUsers.map((item) => item.editionId);
-		const dashboardEditions: Record<string, DashEdition> = {};
-		for (const record of creditedEditions) {
-			const collection = record.expand?.collection;
-			const collectionPubNum = collection?.pubNum || 0;
-			const editionPubNum = record.pubNum || 0;
-			const thumbnail =
-				record.thumbnail && collectionPubNum > 0 && editionPubNum > 0
-					? getEditionThumbnailUrl(collectionPubNum, editionPubNum)
-					: '';
-
-			dashboardEditions[record.id] = {
-				id: record.id,
-				title: record.dcTitle || record.title,
-				status: (record.status as EditionStatus) || EditionStatus.Draft,
-				collectionTitle: collection?.title || '',
-				thumbnail,
-				created: record.created
-			};
-		}
+		const [creditedEditions, creditedCollections] = await Promise.all([
+			pb.collection('editions').getFullList({ expand: 'collection' }),
+			pb.collection('collections').getFullList()
+		]);
 
 		editions = creditedEditions
 			.filter((record) => readCredits(record.credits).some((credit) => credit.userId === userId))
 			.map(mapEdition);
-
-		myEditions = authorEditionIds
-			.map((id) => dashboardEditions[id])
-			.filter((edition): edition is DashEdition => !!edition);
-
-		myAssignments = assignmentResult.map((assignment) => ({
-			id: assignment.id,
-			editionId: assignment.editionId,
-			reviewerId: assignment.reviewerId,
-			reviewStage: assignment.reviewStage,
-			assignedBy: assignment.assignedBy,
-			status: assignment.status,
-			created: assignment.created,
-			updated: assignment.updated,
-			edition: dashboardEditions[assignment.editionId]
-		}));
 
 		const editionCounts: Record<string, number> = {};
 		for (const edition of editions) {
@@ -437,52 +339,6 @@
 		];
 	}
 
-	function formatDate(dateStr: string): string {
-		if (!dateStr) return '';
-		const date = new Date(dateStr);
-		if (Number.isNaN(date.getTime())) return '';
-		return date.toLocaleDateString('en-US', {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric'
-		});
-	}
-
-	function getStageLabel(stage: number): string {
-		switch (stage) {
-			case 1:
-				return 'Concept';
-			case 2:
-				return 'Alpha';
-			case 3:
-				return 'Final';
-			default:
-				return `Stage ${stage}`;
-		}
-	}
-
-	function workflowStepHref(editionId: string, status: EditionStatus): string {
-		const workflowPath = `${base}/editions/${editionId}/workflow`;
-		return workflowPath + workflowAnchor(status);
-	}
-
-	async function deleteDraft(edition: DashEdition) {
-		if (edition.status !== EditionStatus.Draft) return;
-		const confirmed = confirm(`Delete draft "${edition.title}"? This cannot be undone.`);
-		if (!confirmed) return;
-
-		deletingId = edition.id;
-		try {
-			await pb.collection('editions').delete(edition.id);
-			myEditions = myEditions.filter((item) => item.id !== edition.id);
-			toast.success(`Deleted "${edition.title}"`);
-		} catch (error) {
-			console.error('Delete failed:', error);
-			toast.error((error as Error).message || 'Failed to delete edition');
-		} finally {
-			deletingId = null;
-		}
-	}
 </script>
 
 <div id="page">
@@ -499,7 +355,7 @@
 				<div class="h-24 bg-gradient-to-r from-base-300 via-base-200 to-base-100"></div>
 				<div class="flex flex-col gap-6 p-6 pt-0 sm:flex-row sm:items-end">
 					<div class="-mt-12 shrink-0">
-						<div class="placeholder avatar block">
+						<div class="placeholder avatar relative block">
 							{#if profilePicturePreviewUrl || profileData.profilePictureUrl}
 								<div class="w-32 rounded-full bg-base-200 ring-4 ring-base-100">
 									<img
@@ -513,6 +369,15 @@
 								>
 									<span class="text-4xl">{profileData.displayName.charAt(0).toUpperCase()}</span>
 								</div>
+							{/if}
+							{#if !isEditing}
+								<button
+									type="button"
+									class="btn absolute right-0 bottom-0 btn-circle border border-base-300 bg-base-100 btn-sm"
+									onclick={startEdit}
+									aria-label="Edit profile photo"
+									title="Edit profile photo"
+								><IconPencil class="size-4" aria-hidden="true" /></button>
 							{/if}
 						</div>
 						{#if isEditing}
@@ -599,13 +464,6 @@
 							<button class="btn btn-ghost btn-sm" onclick={cancelEdit} disabled={isSaving}
 								>Cancel</button
 							>
-						{:else}
-							<button onclick={startEdit} class="btn btn-sm btn-primary">Edit Photo</button>
-							<button
-								onclick={refreshOrcidProfile}
-								class="btn btn-outline btn-sm"
-								disabled={isRefreshing || !profileData.orcidVerifiedAt}>Refresh from ORCID</button
-							>
 						{/if}
 						<button
 							type="button"
@@ -659,14 +517,19 @@
 
 				<div class="grid gap-8 border-t border-base-300 p-6 lg:grid-cols-[1fr_20rem]">
 					<div class="space-y-6">
-						<p class="text-sm text-base-content/60">
-							Name, affiliation, biography, title and links are synced from ORCID and read-only
-							here. Your photo stays local.
-						</p>
 						<div>
-							<h3 class="text-sm font-semibold tracking-wide text-base-content/50 uppercase">
-								Bio
-							</h3>
+							<div class="flex items-center gap-2">
+								<h3 class="text-sm font-semibold tracking-wide text-base-content/50 uppercase">Bio</h3>
+								<button
+									type="button"
+									class="btn btn-ghost btn-xs font-normal"
+									onclick={refreshOrcidProfile}
+									disabled={isRefreshing || isEditing || !profileData.orcidVerifiedAt}
+									aria-label="Refresh from ORCID"
+									title="Refresh from ORCID"
+									aria-busy={isRefreshing}
+								>{isRefreshing ? 'Refreshing…' : 'Refresh from ORCID'}</button>
+							</div>
 							{#if isEditing}
 								<textarea
 									id="bio"
@@ -684,9 +547,9 @@
 					</div>
 
 					<aside class="space-y-3">
-						<div class="rounded-xl bg-base-200 p-4">
-							<div class="text-xs font-semibold tracking-wide text-base-content/50 uppercase">
-								Profile links
+						<div>
+							<div class="flex items-center justify-between gap-2">
+								<span class="text-xs font-semibold tracking-wide text-base-content/50 uppercase">Profile links</span>
 							</div>
 							{#if isEditing}
 								<label for="orcid" class="mt-3 block text-xs font-medium text-base-content/60"
@@ -711,21 +574,22 @@
 									placeholder="One link per line"
 								></textarea>
 							{:else if profileData.orcid || profileData.socials}
-								<div class="mt-3 flex flex-col gap-2">
+								<div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
 									{#if profileData.orcid}
 										<a
-											class="btn justify-start btn-outline btn-sm"
+											class="link text-sm underline-offset-4"
 											href={`https://orcid.org/${profileData.orcid.slice(18)}`}
+											title={profileData.orcid}
 											target="_blank"
 											rel="noreferrer"
 										>
-											ORCID: {socialLabel(profileData.orcid)}
+											ORCID
 										</a>
 									{/if}
 									{#each socialLinks(profileData.socials) as social (social)}
 										<!-- eslint-disable svelte/no-navigation-without-resolve -- External ORCID profile URL, not an app route. -->
 										<a
-											class="btn justify-start btn-outline btn-sm"
+											class="link max-w-full break-all text-sm underline-offset-4"
 											href={socialHref(social)}
 											target="_blank"
 											rel="noreferrer"
@@ -743,192 +607,7 @@
 				</div>
 			</section>
 
-			<section class="mt-10 rounded-box border border-base-300 bg-base-100 p-6 shadow-sm">
-				<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
-					<div>
-						<h2 class="text-2xl font-semibold">My Work</h2>
-						<p class="mt-1 text-sm text-base-content/60">
-							Authored editions and review assignments.
-						</p>
-					</div>
-					<div class="tabs-bordered tabs">
-						<button
-							class="tab"
-							class:tab-active={workTab === 'editions'}
-							onclick={() => (workTab = 'editions')}
-						>
-							My Editions
-							{#if myEditions.length > 0}
-								<span class="ml-1 badge badge-sm">{myEditions.length}</span>
-							{/if}
-						</button>
-						<button
-							class="tab"
-							class:tab-active={workTab === 'reviews'}
-							onclick={() => (workTab = 'reviews')}
-						>
-							My Reviews
-							{#if pendingAssignments.length > 0}
-								<span class="ml-1 badge badge-sm badge-primary">{pendingAssignments.length}</span>
-							{/if}
-						</button>
-					</div>
-				</div>
-
-				{#if workTab === 'editions'}
-					{#if myEditions.length === 0}
-						<p class="py-8 text-center text-base-content/60">
-							You are not listed as an author on any editions.
-						</p>
-					{:else}
-						<div class="space-y-3">
-							{#each myEditions as edition (edition.id)}
-								<div class="rounded-box border border-base-300 bg-base-100 p-4">
-									<div class="flex gap-4">
-										{#if edition.thumbnail}
-											<img
-												src={edition.thumbnail}
-												alt={edition.title}
-												class="size-16 shrink-0 rounded-lg object-cover"
-											/>
-										{:else}
-											<div
-												class="flex size-16 shrink-0 items-center justify-center rounded-lg bg-base-200 text-base-content/30"
-											>
-												<svg
-													xmlns="http://www.w3.org/2000/svg"
-													fill="none"
-													viewBox="0 0 24 24"
-													stroke-width="1.5"
-													stroke="currentColor"
-													class="size-6"
-												>
-													<path
-														stroke-linecap="round"
-														stroke-linejoin="round"
-														d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"
-													/>
-												</svg>
-											</div>
-										{/if}
-										<div class="min-w-0 flex-1">
-											<div class="flex flex-wrap items-center justify-between gap-3">
-												<div class="flex flex-wrap items-center gap-3">
-													<span class="font-medium">{edition.title}</span>
-													<StatusBadge status={edition.status} />
-												</div>
-												<div class="flex items-center gap-2">
-													{#if edition.status === EditionStatus.Draft}
-														<button
-															type="button"
-															class="btn text-error btn-ghost btn-sm"
-															disabled={deletingId === edition.id}
-															onclick={() => deleteDraft(edition)}
-															aria-label="Delete draft"
-														>
-															{deletingId === edition.id ? 'Deleting...' : 'Delete'}
-														</button>
-													{/if}
-													<a
-														href={resolve('/editions/[slug]/workflow', { slug: edition.id })}
-														class="btn btn-ghost btn-sm">View Workflow</a
-													>
-												</div>
-											</div>
-											{#if edition.collectionTitle}
-												<p class="mt-1 text-sm text-base-content/50">
-													in {edition.collectionTitle}
-												</p>
-											{/if}
-										</div>
-									</div>
-									<div class="mt-3">
-										<WorkflowTimeline
-											currentStatus={edition.status}
-											hrefForStatus={(status) => workflowStepHref(edition.id, status)}
-										/>
-									</div>
-								</div>
-							{/each}
-						</div>
-					{/if}
-				{:else}
-					{#if pendingAssignments.length > 0}
-						<h3 class="mb-3 text-lg font-semibold">Pending Reviews</h3>
-						<div class="mb-6 space-y-2">
-							{#each pendingAssignments as assignment (assignment.id)}
-								{@const edition = assignment.edition}
-								<div class="rounded-box border border-base-300 bg-base-100 p-4">
-									<div class="flex flex-wrap items-center justify-between gap-3">
-										<div class="flex flex-wrap items-center gap-3">
-											<span class="font-medium">{edition?.title || 'Unknown Edition'}</span>
-											{#if edition}<StatusBadge status={edition.status} />{/if}
-											<span class="badge badge-ghost badge-sm"
-												>{getStageLabel(assignment.reviewStage)}</span
-											>
-										</div>
-										<a
-											href={resolve('/editions/[slug]/workflow', { slug: assignment.editionId })}
-											class="btn btn-sm btn-primary">Start Review</a
-										>
-									</div>
-									{#if edition?.collectionTitle}
-										<p class="mt-1 text-sm text-base-content/50">in {edition.collectionTitle}</p>
-									{/if}
-									<p class="mt-1 text-xs text-base-content/40">
-										Assigned {formatDate(assignment.created)}
-									</p>
-								</div>
-							{/each}
-						</div>
-					{/if}
-
-					{#if completedAssignments.length > 0}
-						<h3 class="mb-3 text-lg font-semibold">Completed Reviews</h3>
-						<div class="space-y-2">
-							{#each completedAssignments as assignment (assignment.id)}
-								{@const edition = assignment.edition}
-								{@const review = myReviews.find(
-									(item) =>
-										item.editionId === assignment.editionId &&
-										item.reviewStage === assignment.reviewStage
-								)}
-								<div class="rounded-box border border-base-200 bg-base-200/30 p-4">
-									<div class="flex flex-wrap items-center gap-3">
-										<span class="font-medium">{edition?.title || 'Unknown Edition'}</span>
-										{#if edition}<StatusBadge status={edition.status} />{/if}
-										<span class="badge badge-ghost badge-sm"
-											>{getStageLabel(assignment.reviewStage)}</span
-										>
-										{#if review}
-											<span
-												class="badge badge-sm {review.decision === ReviewDecision.Approve
-													? 'badge-success'
-													: review.decision === ReviewDecision.Reject
-														? 'badge-error'
-														: 'badge-warning'}"
-											>
-												{review.decision === ReviewDecision.Approve
-													? 'Approved'
-													: review.decision === ReviewDecision.Reject
-														? 'Rejected'
-														: 'Revisions'}
-											</span>
-										{/if}
-									</div>
-									<p class="mt-1 text-xs text-base-content/40">
-										Reviewed {review ? formatDate(review.created) : ''}
-									</p>
-								</div>
-							{/each}
-						</div>
-					{/if}
-
-					{#if myAssignments.length === 0}
-						<p class="py-8 text-center text-base-content/60">No review assignments yet.</p>
-					{/if}
-				{/if}
-			</section>
+			<MyWork />
 
 			<section class="mt-10">
 				<div class="mb-4 flex items-center justify-between">

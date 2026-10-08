@@ -268,10 +268,10 @@
 	}
 </script>
 
-<div id="reviews-dashboard" class="mx-auto max-w-4xl p-4 lg:p-8">
+<section id="my-work" class="mt-10 rounded-box border border-base-300 bg-base-100 p-6 shadow-sm">
 	<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
 		<div>
-			<h1 class="text-2xl font-bold">My Work</h1>
+			<h2 class="text-2xl font-bold">My Work</h2>
 			<p class="mt-1 text-base-content/60">Your proposals, editions, and review assignments.</p>
 		</div>
 		<button type="button" class="btn btn-primary" onclick={startProposal} disabled={isCreating}>
@@ -528,4 +528,4 @@
 			{/if}
 		{/if}
 	{/if}
-</div>
+</section>
