@@ -367,9 +367,7 @@
 							href={linkHref(item.direct.href)}
 							>{@render destinationIcon(
 								item.direct.href
-							)}{item.label}{#if item.direct.href === '/documentation'}<span aria-hidden="true"
-									>↗</span
-								>{/if}</a
+							)}{item.label}</a
 						>{:else if item.landing && (item.groups.length || item.featured)}<div
 							class="nav-split"
 							class:publishing-cta={item.landing.href === '/documentation'}

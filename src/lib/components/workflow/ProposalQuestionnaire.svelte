@@ -5,7 +5,8 @@
 		argument = $bindable(''),
 		rationale = $bindable(''),
 		context = $bindable(''),
-		audience = $bindable<string[]>([])
+		audience = $bindable<string[]>([]),
+		readOnly = false
 	} = $props();
 	const questions = $derived([
 		{
@@ -49,38 +50,61 @@
 		<h2 class="text-base font-semibold">Submission Questionnaire</h2>
 	</div>
 	{#each questions as field (field.id)}
-		<label class="form-control" for={field.id}>
-			<span class="label-text font-semibold">{field.label}</span>
+		<div class="form-control">
+			{#if readOnly}
+				<h3 class="label-text font-semibold">{field.label}</h3>
+			{:else}
+				<label class="label-text font-semibold" for={field.id}>{field.label}</label>
+			{/if}
 			{#if field.hint}<span class="mt-1 text-sm text-base-content/75">{field.hint}</span>{/if}
-			<textarea
-				id={field.id}
-				class="textarea-bordered textarea mt-2 min-h-20 w-full"
-				rows="3"
-				value={field.value}
-				aria-invalid={wordCount(field.value) > 150}
-				oninput={(event) => {
-					field.change(event.currentTarget.value);
-					event.currentTarget.style.height = 'auto';
-					event.currentTarget.style.height = `${event.currentTarget.scrollHeight}px`;
-				}}
-				required
-			></textarea>
-			<span class="mt-1 text-right text-xs text-base-content/75"
-				>{wordCount(field.value)}/150 words</span
-			>
-		</label>
+			{#if readOnly}
+				<p class="mt-2 min-h-12 rounded-lg bg-base-200/50 p-3 text-sm whitespace-pre-wrap">
+					{field.value || 'Not provided'}
+				</p>
+			{:else}
+				<textarea
+					id={field.id}
+					class="textarea-bordered textarea mt-2 min-h-20 w-full"
+					rows="3"
+					value={field.value}
+					aria-invalid={wordCount(field.value) > 150}
+					oninput={(event) => {
+						field.change(event.currentTarget.value);
+						event.currentTarget.style.height = 'auto';
+						event.currentTarget.style.height = `${event.currentTarget.scrollHeight}px`;
+					}}
+					required
+				></textarea>
+				<span class="mt-1 text-right text-xs text-base-content/75"
+					>{wordCount(field.value)}/150 words</span
+				>
+			{/if}
+		</div>
 	{/each}
-	<fieldset class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-		<legend class="font-semibold">Intended audience</legend>
-		{#each PROPOSAL_AUDIENCES as [value, label] (value)}
-			<label class="flex items-center gap-2 text-sm"
-				><input
-					type="checkbox"
-					class="checkbox checkbox-sm"
-					bind:group={audience}
-					{value}
-				/>{label}</label
-			>
-		{/each}
-	</fieldset>
+	{#if readOnly}
+		<div>
+			<h3 class="font-semibold">Intended audience</h3>
+			<div class="mt-2 flex min-h-12 flex-wrap items-center gap-2 rounded-lg bg-base-200/50 p-3">
+				{#each PROPOSAL_AUDIENCES.filter(([value]) => audience.includes(value)) as [value, label] (value)}
+					<span class="badge badge-outline">{label}</span>
+				{:else}
+					<span class="text-sm">Not provided</span>
+				{/each}
+			</div>
+		</div>
+	{:else}
+		<fieldset class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+			<legend class="font-semibold">Intended audience</legend>
+			{#each PROPOSAL_AUDIENCES as [value, label] (value)}
+				<label class="flex items-center gap-2 text-sm"
+					><input
+						type="checkbox"
+						class="checkbox checkbox-sm"
+						bind:group={audience}
+						{value}
+					/>{label}</label
+				>
+			{/each}
+		</fieldset>
+	{/if}
 </section>

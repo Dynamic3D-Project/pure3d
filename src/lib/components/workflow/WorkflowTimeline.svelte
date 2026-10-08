@@ -5,11 +5,13 @@
 	let {
 		currentStatus,
 		hrefForStatus,
-		onselectStatus
+		onselectStatus,
+		showStatusDetails = true
 	}: {
 		currentStatus: EditionStatus;
 		hrefForStatus?: (status: EditionStatus) => string | null | undefined;
 		onselectStatus?: (status: EditionStatus, event: MouseEvent) => void;
+		showStatusDetails?: boolean;
 	} = $props();
 
 	const currentStageIndex = $derived.by(() => {
@@ -37,7 +39,7 @@
 	<div class="flex items-center gap-0">
 		{#each workflowStages as stage, i (stage.label)}
 			{@const state = getStageState(i)}
-			{@const href = getStageHref(stage.hrefStatus)}
+			{@const href = state === 'future' ? null : getStageHref(stage.hrefStatus)}
 			{#if i > 0}
 				<div
 					class="h-0.5 flex-1"
@@ -49,8 +51,11 @@
 				this={href ? 'a' : 'button'}
 				href={href || undefined}
 				type={href ? undefined : 'button'}
+				disabled={state === 'future' ? true : undefined}
 				role={href ? 'link' : 'button'}
-				onclick={(event: MouseEvent) => handleStageClick(stage.hrefStatus, event)}
+				onclick={(event: MouseEvent) => {
+					if (state !== 'future') handleStageClick(stage.hrefStatus, event);
+				}}
 				class="group flex flex-col items-center gap-1 rounded-md border-0 bg-transparent p-0 text-inherit focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
 				class:cursor-pointer={!!href}
 				title={href ? `Open ${stage.label}` : undefined}
@@ -92,7 +97,7 @@
 		{/each}
 	</div>
 
-	{#if STATUS_LABELS[currentStatus] !== workflowStages[currentStageIndex]?.label}
+	{#if showStatusDetails && STATUS_LABELS[currentStatus] !== workflowStages[currentStageIndex]?.label}
 		<div class="mt-3 flex items-center gap-2">
 			<span class="badge badge-sm badge-warning">{STATUS_LABELS[currentStatus]}</span>
 			<span class="text-xs text-base-content/60">

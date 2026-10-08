@@ -31,6 +31,7 @@
 	import EditionAssetsPanel from '$lib/components/uploads/EditionAssetsPanel.svelte';
 	import ProposalModelUploads from '$lib/components/uploads/ProposalModelUploads.svelte';
 	import ProposalSummary from '$lib/components/workflow/ProposalSummary.svelte';
+	import ReadOnlyProposal from '$lib/components/workflow/ReadOnlyProposal.svelte';
 	import AlphaRequestForm from '$lib/components/workflow/AlphaRequestForm.svelte';
 	import ReviewWorkspace from '$lib/components/workflow/ReviewWorkspace.svelte';
 	import AlphaReviewProgress from '$lib/components/workflow/AlphaReviewProgress.svelte';
@@ -899,7 +900,11 @@
 				<div class="min-w-64">
 					<div class="flex flex-wrap items-center gap-3">
 						<h1 class="text-2xl font-bold">
-							{viewMode === 'review-form' ? 'Review Edition' : 'Edition Workflow'}
+							{viewMode === 'review-form' && currentStage === ReviewStage.Concept
+								? 'Review Proposal'
+								: viewMode === 'review-form'
+									? 'Review Edition'
+									: 'Edition Workflow'}
 						</h1>
 						<StatusBadge status={edition.status} />
 					</div>
@@ -1049,7 +1054,7 @@
 										<p>Please check the technical requirements in the <a href={resolve('/documentation/[slug]', { slug: 'submission' })} class="link link-primary">submission guidelines</a>.</p>
 										<p>At this stage, the model is used to assess compatibility and suitability for a 3D edition. You can adjust the resolution before publication.</p>
 									</div>
-									<fieldset class="grid gap-x-4 gap-y-3 rounded-lg bg-base-200 p-3 sm:grid-cols-2 lg:grid-cols-3">
+									<fieldset class="grid gap-x-4 gap-y-3 rounded-lg bg-base-200/50 p-3 sm:grid-cols-2 lg:grid-cols-3">
 										<legend class="sr-only">Model source · Select all that apply</legend>
 										<div class="col-span-full text-sm font-semibold">Model source <span class="font-normal text-base-content/75">· Select all that apply</span></div>
 										{#each MODEL_SOURCES as [value, label] (value)}
@@ -1563,35 +1568,13 @@
 				/>
 			{:else}
 				<div class="space-y-6">
-					{#if editionRecord}<ProposalSummary record={editionRecord} />{/if}
-					<div id="concept" class="scroll-mt-24 rounded-box border border-base-300 bg-base-100 p-6">
-						<h2 class="mb-2 text-xl font-semibold">Edition Details</h2>
-						<p class="text-base-content/70">{edition.description || 'No description provided.'}</p>
-						<a
-							href={resolve('/editions/[slug]', { slug: edition.id })}
-							class="mt-2 inline-block link text-sm link-primary"
-						>
-							Open 3D Viewer
-						</a>
-					</div>
-
-					<!-- Previous round feedback if revision resubmission -->
-					{#if previousFeedback.length > 0}
-						<div class="alert alert-info">
-							<div>
-								<p class="font-semibold">Previous Round Feedback</p>
-								{#each previousFeedback as fb (fb.created)}
-									{#if fb.comment}
-										<p class="mt-1 text-sm">{fb.comment}</p>
-									{/if}
-								{/each}
-							</div>
-						</div>
-					{/if}
-
-					<div id="review" class="scroll-mt-24 rounded-box border border-base-300 bg-base-100 p-6">
-						<h2 class="mb-4 text-xl font-semibold">Submit Your Review</h2>
+					<section id="review" class="scroll-mt-24 rounded-box border border-base-300 bg-base-100 p-6">
+						<h2 class="mb-5 text-xl font-semibold">Your review</h2>
+						<div class="grid items-start gap-6 lg:grid-cols-2">
+						<div class="min-w-0">
+						<h3 class="mb-4 text-lg font-semibold">Decision & comments</h3>
 						<ReviewForm
+							stacked
 							editionId={edition.id}
 							reviewStage={myAssignment.reviewStage}
 							reviewerId={authStore.appUserId || ''}
@@ -1602,9 +1585,9 @@
 					<!-- Granular feedback (reviewer) -->
 					<div
 						id="feedback"
-						class="scroll-mt-24 rounded-box border border-base-300 bg-base-100 p-6"
+						class="min-w-0 scroll-mt-24 border-t border-base-300 pt-6 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6"
 					>
-						<h2 class="mb-4 text-lg font-semibold">Granular Feedback</h2>
+						<h3 class="mb-4 text-lg font-semibold">Granular Feedback</h3>
 						<ReviewFeedbackForm
 							editionId={edition.id}
 							reviewStage={myAssignment.reviewStage}
@@ -1620,6 +1603,24 @@
 							{userLookup}
 						/>
 					</div>
+						</div>
+					</section>
+
+					<!-- Previous round feedback if revision resubmission -->
+					{#if previousFeedback.length > 0}
+						<div class="alert alert-info">
+							<div>
+								<p class="font-semibold">Previous Round Feedback</p>
+								{#each previousFeedback as fb (fb.created)}
+									{#if fb.comment}
+										<p class="mt-1 text-sm">{fb.comment}</p>
+									{/if}
+								{/each}
+							</div>
+						</div>
+					{/if}
+
+					{#if editionRecord}<ReadOnlyProposal record={editionRecord} />{/if}
 				</div>
 			{/if}
 		{/if}

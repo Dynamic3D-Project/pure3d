@@ -37,7 +37,7 @@
 	{#each credits as credit, index (credit)}
 		<fieldset
 			{disabled}
-			class={authorsOnly ? 'space-y-3 rounded-box bg-base-200 p-3' : 'space-y-3 rounded-box border border-base-300 p-3'}
+			class={authorsOnly ? 'space-y-3 rounded-box bg-base-200/50 p-3' : 'space-y-3 rounded-box border border-base-300 p-3'}
 		>
 			<legend class={authorsOnly ? 'sr-only' : 'px-1 text-sm font-semibold'}
 				>{authorsOnly ? 'Author' : 'Credit'} {index + 1}</legend

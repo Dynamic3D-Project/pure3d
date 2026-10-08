@@ -3,8 +3,12 @@
 	import type { RecordModel } from 'pocketbase';
 	import { pb } from '$lib/database/client';
 	import { VALUE_RATINGS } from '$lib/workflow/alpha';
-	let { editionId, round, onchanged }: { editionId: string; round: number; onchanged: () => void } =
-		$props();
+	let {
+		editionId,
+		round,
+		onchanged,
+		embedded = false
+	}: { editionId: string; round: number; onchanged: () => void; embedded?: boolean } = $props();
 	let reviews = $state<RecordModel[]>([]);
 	let total = $state(0);
 	let busy = $state(false);
@@ -64,7 +68,10 @@
 	}
 </script>
 
-<section id="alpha-editorial-panel" class="space-y-4 border-t border-base-300 pt-4">
+<section
+	id="alpha-editorial-panel"
+	class="space-y-4 {embedded ? '' : 'border-t border-base-300 pt-4'}"
+>
 	<h3 class="font-semibold">Alpha Review · Round {round}</h3>
 	<button type="button" class="btn btn-outline btn-sm" disabled={busy} onclick={load}
 		>Refresh reviews</button

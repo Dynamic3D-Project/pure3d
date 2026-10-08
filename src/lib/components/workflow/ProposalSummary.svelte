@@ -9,13 +9,14 @@
 	} from '$lib/workflow/proposal';
 	import ProposalModelUploads from '$lib/components/uploads/ProposalModelUploads.svelte';
 	import toast from 'svelte-french-toast';
-	let { record }: { record: RecordModel } = $props();
+	let { record, embedded = false }: { record: RecordModel; embedded?: boolean } = $props();
 	const questions = [
 		['proposalPurpose', 'For what purpose was the model created?'],
 		['proposalArgument', 'Research argument or narrative and the role of the 3D model'],
 		['proposalThreeDRationale', 'Why is 3D visualisation appropriate?'],
 		['proposalContextualMaterial', 'Contextual material']
 	];
+	const compactLabels = ['Purpose', 'Research argument', 'Why 3D', 'Context'];
 	function labels(values: unknown, options: ReadonlyArray<readonly [string, string]>) {
 		return Array.isArray(values)
 			? values.map((value) => options.find(([id]) => id === value)?.[1] || value).join(', ')
@@ -36,20 +37,16 @@
 
 <section
 	id="proposal-summary"
-	class="space-y-6 rounded-box border border-base-300 bg-base-100 p-5 sm:p-6"
+	class="{embedded ? 'space-y-3' : 'space-y-6 rounded-box border border-base-300 bg-base-100 p-5 sm:p-6'}"
 >
-	<h2 class="text-xl font-semibold">Submitted proposal</h2>
-	<dl class="space-y-5 text-sm">
-		<div>
-			<dt class="font-semibold">Title</dt>
-			<dd>{record.proposalSnapshot?.title || record.title}</dd>
-		</div>
-		<div>
-			<dt class="font-semibold">Proposal type</dt>
+	{#if !embedded}<h2 class="text-xl font-semibold">Submitted proposal</h2>{/if}
+	<dl class="compact-summary text-sm">
+		<div class={embedded ? 'grid grid-cols-[5rem_1fr] gap-2' : ''}>
+			<dt class="font-semibold">Type</dt>
 			<dd>{PROPOSAL_TYPES.find(([id]) => id === record.proposalType)?.[1] || 'Not provided'}</dd>
 		</div>
-		<div>
-			<dt class="font-semibold">Authors and affiliations</dt>
+		<div class={embedded ? 'grid grid-cols-[5rem_1fr] gap-2' : ''}>
+			<dt class="font-semibold">Authors</dt>
 			<dd>
 				<ul>
 					{#each record.proposalAuthorAffiliations || [] as author, index (index)}<li>
@@ -58,16 +55,28 @@
 				</ul>
 			</dd>
 		</div>
-		{#each questions as [field, label] (field)}
+		{#if embedded}
+			<div class="grid grid-cols-[5rem_1fr] gap-2">
+				<dt class="font-semibold">Audience</dt>
+				<dd>{labels(record.proposalAudience, PROPOSAL_AUDIENCES)}</dd>
+			</div>
+		{/if}
+		{#each questions as [field], index (field)}
 			<div>
-				<dt class="font-semibold">{label}</dt>
+				<dt class="font-semibold">{compactLabels[index]}</dt>
 				<dd class="mt-1 break-words whitespace-pre-wrap">{record[field] || 'Not provided'}</dd>
 			</div>
 		{/each}
+		{#if !embedded}
 		<div>
-			<dt class="font-semibold">Intended audience</dt>
+			<dt class="font-semibold">Audience</dt>
 			<dd>{labels(record.proposalAudience, PROPOSAL_AUDIENCES)}</dd>
 		</div>
+		{/if}
+	</dl>
+	<details open={!embedded}>
+		<summary class="cursor-pointer text-sm font-semibold">Model & digitisation details</summary>
+		<dl class="compact-summary mt-3 text-sm">
 		<div>
 			<dt class="font-semibold">Existing digital model</dt>
 			<dd>{record.proposalHasExistingModel ? 'Yes' : 'No'}</dd>
@@ -102,7 +111,7 @@
 				</dd>
 			</div>
 		{/if}
-	</dl>
+		</dl>
 	{#if record.proposalModelFiles?.length}<ProposalModelUploads edition={record} readOnly />{/if}
 	{#if Array.isArray(record.proposalSupportingFiles) && record.proposalSupportingFiles.length}
 		<div>
@@ -118,4 +127,43 @@
 			</ul>
 		</div>
 	{/if}
+	</details>
 </section>
+
+<style>
+	.compact-summary {
+		overflow: hidden;
+		border: 1px solid var(--color-base-300);
+		border-radius: 0.5rem;
+	}
+	.compact-summary > div {
+		display: grid;
+		grid-template-columns: minmax(6rem, 28%) minmax(0, 1fr);
+		gap: 0;
+	}
+	.compact-summary > div + div {
+		border-top: 1px solid var(--color-base-300);
+	}
+	.compact-summary dt,
+	.compact-summary dd {
+		padding: 0.625rem 0.75rem;
+	}
+	.compact-summary dt {
+		background: color-mix(in srgb, var(--color-base-200) 50%, transparent);
+		border-right: 1px solid var(--color-base-300);
+		font-weight: 500;
+	}
+	.compact-summary dd {
+		margin: 0;
+		overflow-wrap: anywhere;
+	}
+	@media (max-width: 639px) {
+		.compact-summary > div {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.compact-summary dt {
+			border-right: 0;
+			border-bottom: 1px solid var(--color-base-300);
+		}
+	}
+</style>

@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { onMount, setContext } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { resolve } from '$app/paths';
 	import { authStore } from '$lib/database/stores/auth.svelte';
-	import { GlobalRole } from '$lib/types/roles';
+	import { EditionStatus, GlobalRole } from '$lib/types/roles';
+	import { pb } from '$lib/database/client';
 	import FileTextIcon from '~icons/lucide/file-text';
 	import ImagesIcon from '~icons/lucide/images';
 	import NewspaperIcon from '~icons/lucide/newspaper';
@@ -13,6 +14,36 @@
 	let { children } = $props();
 
 	let sidebarOpen = $state(false);
+	let submissionCount = $state(0);
+	async function refreshSubmissionCount() {
+		if (!authStore.isAuthenticated || authStore.globalRole !== GlobalRole.Admin) return;
+		try {
+			const result = await pb.collection('editions').getList(1, 1, {
+				filter: pb.filter('status = {:status}', { status: EditionStatus.ConceptSubmitted }),
+				fields: 'id',
+				requestKey: 'admin-submission-count'
+			});
+			submissionCount = result.totalItems;
+		} catch (error) {
+			if (!(error as { isAbort?: boolean }).isAbort) console.error('Could not load submission count', error);
+		}
+	}
+	afterNavigate(() => { void refreshSubmissionCount(); });
+	onMount(() => {
+		if (!authStore.isAuthenticated || authStore.globalRole !== GlobalRole.Admin) return;
+		let disposed = false;
+		let unsubscribe: (() => Promise<void>) | undefined;
+		void pb.collection('editions').subscribe('*', () => { void refreshSubmissionCount(); })
+			.then((cleanup) => {
+				if (disposed) void cleanup();
+				else unsubscribe = cleanup;
+			})
+			.catch((error) => console.error('Could not subscribe to workflow updates', error));
+		return () => {
+			disposed = true;
+			void unsubscribe?.();
+		};
+	});
 	let createContent: (() => void) | null = null;
 	setContext('admin-content-actions', {
 		register(action: (() => void) | null) {
@@ -98,10 +129,10 @@
 	});
 </script>
 
-<div id="admin-layout" class="flex min-h-[calc(100vh-4rem)]">
+<div id="admin-layout" class="flex min-h-[calc(100vh-4rem)] lg:pl-64">
 	<!-- Sidebar -->
 	<aside
-		class="fixed inset-y-0 left-0 z-40 w-64 shrink-0 transform border-r border-base-300 bg-base-200 pt-20 transition-transform duration-200 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:translate-x-0 lg:pt-0"
+		class="fixed inset-y-0 left-0 z-40 w-64 shrink-0 transform overflow-y-auto border-r border-base-300 bg-base-200 pt-20 transition-transform duration-200 lg:top-[76px] lg:translate-x-0 lg:pt-0"
 		class:translate-x-0={sidebarOpen}
 		class:-translate-x-full={!sidebarOpen}
 	>
@@ -133,6 +164,9 @@
 								<path stroke-linecap="round" stroke-linejoin="round" d={item.icon} />
 							</svg>
 							{item.label}
+							{#if item.href === '/admin/workflow' && submissionCount > 0}
+								<span class="ml-auto badge badge-sm badge-neutral" aria-label={`${submissionCount} pending submissions`}>{submissionCount}</span>
+							{/if}
 						</a>
 					</li>
 				{/each}

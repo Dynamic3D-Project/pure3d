@@ -272,7 +272,6 @@
 	<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
 		<div>
 			<h2 class="text-2xl font-bold">My Work</h2>
-			<p class="mt-1 text-base-content/60">Your proposals, editions, and review assignments.</p>
 		</div>
 		<button type="button" class="btn btn-primary" onclick={startProposal} disabled={isCreating}>
 			{#if isCreating}<span class="loading loading-xs loading-spinner"></span>{/if}
@@ -285,21 +284,23 @@
 		<button
 			class="tab"
 			class:tab-active={activeTab === 'editions'}
+			class:font-semibold={activeTab === 'editions'}
 			onclick={() => (activeTab = 'editions')}
 		>
 			My Proposals & Editions
 			{#if myEditions.length > 0}
-				<span class="ml-1 badge badge-sm">{myEditions.length}</span>
+				<span class="ml-1 badge badge-sm badge-neutral">{myEditions.length}</span>
 			{/if}
 		</button>
 		<button
 			class="tab"
 			class:tab-active={activeTab === 'reviews'}
+			class:font-semibold={activeTab === 'reviews'}
 			onclick={() => (activeTab = 'reviews')}
 		>
 			My Reviews
 			{#if pendingAssignments.length > 0}
-				<span class="ml-1 badge badge-sm badge-primary">{pendingAssignments.length}</span>
+				<span class="ml-1 badge badge-sm badge-neutral">{pendingAssignments.length}</span>
 			{/if}
 		</button>
 	</div>
@@ -465,7 +466,6 @@
 												href={resolve('/editions/[slug]/workflow', { slug: edition.id })}
 												>{edition.title || 'Untitled Proposal'}</a
 											>
-											<StatusBadge status={edition.status} />
 										</div>
 										<div class="flex items-center gap-2">
 											{#if edition.status === EditionStatus.Draft}

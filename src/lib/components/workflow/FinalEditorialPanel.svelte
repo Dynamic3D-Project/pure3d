@@ -7,8 +7,17 @@
 		editionId,
 		status,
 		round,
-		onchanged
-	}: { editionId: string; status: string; round: number; onchanged: () => void } = $props();
+		onchanged,
+		embedded = false,
+		showAssignments = true
+	}: {
+		editionId: string;
+		status: string;
+		round: number;
+		onchanged: () => void;
+		embedded?: boolean;
+		showAssignments?: boolean;
+	} = $props();
 	let reviews = $state<RecordModel[]>([]),
 		assignments = $state<RecordModel[]>([]);
 	let busy = $state(false),
@@ -92,7 +101,10 @@
 	}
 </script>
 
-<section id="final-editorial-panel" class="space-y-4 rounded-box border border-base-300 p-4">
+<section
+	id="final-editorial-panel"
+	class="space-y-4 {embedded ? '' : 'rounded-box border border-base-300 p-4'}"
+>
 	<h2 class="text-lg font-semibold">
 		{status === 'publication_requested'
 			? 'Publication decision'
@@ -115,11 +127,11 @@
 				>Invite Alpha reviewers</button
 			>
 		</div>
-		{#each assignments as assignment (assignment.id)}<p class="text-sm">
-				{assignment.expand?.reviewerId?.nickname || 'Reviewer'} · {assignment.status}{assignment.dueAt
-					? ` · Due ${new Date(assignment.dueAt).toLocaleDateString()}`
-					: ''}
-			</p>{/each}
+		{#if showAssignments}{#each assignments as assignment (assignment.id)}<p class="text-sm">
+					{assignment.expand?.reviewerId?.nickname || 'Reviewer'} · {assignment.status}{assignment.dueAt
+						? ` · Due ${new Date(assignment.dueAt).toLocaleDateString()}`
+						: ''}
+				</p>{/each}{/if}
 		{#each reviews as review (review.id)}<details class="rounded-box border border-base-300 p-3">
 				<summary class="cursor-pointer font-semibold"
 					>{review.expand?.reviewerId?.nickname || 'Reviewer'} — {RECOMMENDATIONS[

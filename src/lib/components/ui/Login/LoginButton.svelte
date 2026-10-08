@@ -47,16 +47,14 @@
 				class="p-2"
 				onclose={() => (accountMenuOpen = false)}
 			>
+				<div class="truncate px-4 py-2 text-xs font-semibold text-base-content/70">
+					{authStore.user?.nickname || 'ORCID account'}
+				</div>
 				<ul class="menu w-full p-0">
-					<li class="menu-title px-4 py-2">
-						<span class="truncate text-xs text-base-content/70"
-							>{authStore.user?.nickname || 'ORCID account'}</span
-						>
-					</li>
 					{#if authStore.globalRole === GlobalRole.Admin}
 						<li>
 							<a
-								href={resolve('/admin')}
+								href={resolve('/admin/workflow')}
 								class="flex w-full items-center gap-2"
 								onclick={() => (accountMenuOpen = false)}
 							>

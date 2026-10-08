@@ -9,13 +9,15 @@
 		reviewStage,
 		reviewerId,
 		onsubmit: onSubmitCallback,
-		existingReview
+		existingReview,
+		stacked = false
 	}: {
 		editionId: string;
 		reviewStage: number;
 		reviewerId: string;
 		onsubmit: () => void;
 		existingReview?: { decision: ReviewDecision; comment: string | null };
+		stacked?: boolean;
 	} = $props();
 
 	let decision = $state<ReviewDecision | null>(existingReview?.decision ?? null);
@@ -89,10 +91,10 @@
 >
 	<fieldset>
 		<legend class="mb-2 font-semibold">Verdict</legend>
-		<div class="grid gap-3 {availableDecisions.length === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}">
+		<div class="grid gap-3 {stacked ? '' : availableDecisions.length === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}">
 			{#each availableDecisions as d (d)}
 				<label
-					class="flex min-h-28 cursor-pointer flex-col justify-between gap-4 rounded-xl border-2 p-4 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-base-content/60 {decision ===
+					class="flex cursor-pointer flex-col justify-between {stacked ? 'gap-1 p-3' : 'min-h-28 gap-4 p-4'} rounded-xl border-2 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-base-content/60 {decision ===
 					d
 						? decisionStyles[d]
 						: 'border-base-300 hover:border-base-content/40 hover:bg-base-200/50'}"

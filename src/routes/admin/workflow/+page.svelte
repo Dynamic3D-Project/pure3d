@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { workflowAnchor } from '$lib/workflow/presentation';
+	import type { RecordModel } from 'pocketbase';
 	import { onMount } from 'svelte';
 	import { base, resolve } from '$app/paths';
 	import { pb } from '$lib/database/client';
@@ -18,14 +19,14 @@
 		aggregateVerdicts,
 		getTargetStatusFromVerdict
 	} from '$lib/utils/review-helpers';
-	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
 	import AlphaEditorialPanel from '$lib/components/workflow/AlphaEditorialPanel.svelte';
 	import FinalEditorialPanel from '$lib/components/workflow/FinalEditorialPanel.svelte';
 	import WorkflowTimeline from '$lib/components/workflow/WorkflowTimeline.svelte';
+	import ProposalSummary from '$lib/components/workflow/ProposalSummary.svelte';
 	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
 	import UserSearchSelect from '$lib/components/ui/UserSearchSelect.svelte';
 	import toast from 'svelte-french-toast';
-	import { readCredits, validateCredits } from '$lib/utils/credits';
+	import { creatorNames, readCredits, validateCredits } from '$lib/utils/credits';
 	import { canTransitionStatus } from '$lib/utils/permissions';
 	import {
 		conceptReviewCreditIssue,
@@ -33,12 +34,14 @@
 	} from '$lib/workflow/review-start';
 
 	interface WfEdition {
+		record: RecordModel;
 		id: string;
 		title: string;
+		authorNames: string;
 		status: EditionStatus;
 		collectionId: string;
 		collectionTitle: string;
-		created: string;
+		proposalSubmittedAt: string;
 		peerReviewRequested: boolean;
 		peerReviewStamp: boolean;
 		publishedAt: string | null;
@@ -202,14 +205,16 @@
 			]);
 
 			editions = editionRecords.map((r) => ({
+				record: r,
 				alphaReviewRound: r.alphaReviewRound || 0,
 				finalReviewRound: r.finalReviewRound || 0,
 				id: r.id,
 				title: r.dcTitle || r.title,
+				authorNames: creatorNames(readCredits(r.credits)),
 				status: (r.status as EditionStatus) || EditionStatus.Draft,
 				collectionId: r.collection || '',
 				collectionTitle: r.expand?.collection?.title || '',
-				created: r.created,
+				proposalSubmittedAt: r.proposalSubmittedAt || '',
 				peerReviewRequested: r.peerReviewRequested || false,
 				peerReviewStamp: r.peerReviewStamp || false,
 				publishedAt: r.publishedAt || null
@@ -224,6 +229,7 @@
 				reviewStage: r.reviewStage,
 				assignedBy: r.assignedBy,
 				status: r.status,
+				dueAt: r.dueAt || undefined,
 				created: r.created,
 				updated: r.updated
 			}));
@@ -308,6 +314,7 @@
 						reviewStage: ReviewStage.Concept,
 						assignedBy: assignment.assignedBy,
 						status: ReviewAssignmentStatus.Pending,
+						dueAt: assignment.dueAt || undefined,
 						reviewRound: 0,
 						created: assignment.created,
 						updated: assignment.updated
@@ -394,6 +401,7 @@
 					reviewStage: stage,
 					assignedBy: assignment.assignedBy,
 					status: assignment.status,
+					dueAt: assignment.dueAt || undefined,
 					reviewRound: assignment.reviewRound,
 					created: assignment.created,
 					updated: assignment.updated
@@ -534,6 +542,23 @@
 		const workflowPath = `${base}/editions/${editionId}/workflow`;
 		return workflowPath + workflowAnchor(status);
 	}
+
+	function cardCue(status: EditionStatus): string {
+		if (status === EditionStatus.ConceptSubmitted) return 'Assign for review';
+		if (status === EditionStatus.EditorialReview) return 'Review progress';
+		if ([EditionStatus.ConceptAccepted, EditionStatus.AlphaReview, EditionStatus.AlphaRevisions].includes(status))
+			return 'Manage Alpha';
+		if (
+			[
+				EditionStatus.AlphaAccepted,
+				EditionStatus.FinalReview,
+				EditionStatus.FinalRevisions,
+				EditionStatus.FinalAccepted
+			].includes(status)
+		)
+			return 'Manage Final';
+		return 'View details';
+	}
 </script>
 
 <div id="admin-workflow-page" class="mx-auto max-w-6xl">
@@ -544,136 +569,94 @@
 		</p>
 	</div>
 
-	<!-- Stats summary bar -->
-	{#if !isLoading}
-		<div id="workflow-stats" class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-			<div class="rounded-box border border-base-300 bg-base-100 p-3 text-center">
-				<div class="text-2xl font-bold">{tabCounts.submissions}</div>
-				<div class="text-xs text-base-content/60">Submissions</div>
-			</div>
-			<div class="rounded-box border border-base-300 bg-base-100 p-3 text-center">
-				<div class="text-2xl font-bold">{tabCounts.editorial}</div>
-				<div class="text-xs text-base-content/60">Editorial</div>
-			</div>
-			<div class="rounded-box border border-base-300 bg-base-100 p-3 text-center">
-				<div class="text-2xl font-bold">{tabCounts.alpha}</div>
-				<div class="text-xs text-base-content/60">Alpha</div>
-			</div>
-			<div class="rounded-box border border-base-300 bg-base-100 p-3 text-center">
-				<div class="text-2xl font-bold">{tabCounts.final}</div>
-				<div class="text-xs text-base-content/60">Final</div>
-			</div>
-			<div class="rounded-box border border-base-300 bg-base-100 p-3 text-center">
-				<div class="text-2xl font-bold">{tabCounts.publish}</div>
-				<div class="text-xs text-base-content/60">Publish</div>
-			</div>
-			<div class="rounded-box border border-base-300 bg-base-100 p-3 text-center">
-				<div class="text-2xl font-bold">{tabCounts.all}</div>
-				<div class="text-xs text-base-content/60">All Editions</div>
-			</div>
+	<div class="mb-4 flex flex-wrap items-end gap-2">
+		<label class="form-control min-w-56 flex-1">
+			<span class="sr-only">Search editions or collections</span>
+			<input
+				type="search"
+				placeholder="Search editions or collections"
+				class="input-bordered input input-sm w-full"
+				bind:value={searchQuery}
+			/>
+		</label>
+		<div class="form-control min-w-48">
+			<label class="sr-only" for="workflow-collection-filter">Collection</label>
+			<FloatingSelect
+				id="workflow-collection-filter"
+				bind:value={collectionFilter}
+				options={collectionFilterOptions}
+				class="input-sm w-full sm:w-56"
+			/>
 		</div>
-	{/if}
-
-	<div class="mb-6 rounded-box border border-base-300 bg-base-100 p-4 shadow-sm">
-		<div class="mb-3 flex items-center justify-between gap-3">
-			<div>
-				<h2 class="text-sm font-semibold tracking-wide text-base-content/70 uppercase">Filters</h2>
-				<p class="text-xs text-base-content/50">
-					Filter pipeline tabs by edition title or collection.
-				</p>
-			</div>
-			{#if hasActiveFilters}
-				<button
-					type="button"
-					class="btn btn-ghost btn-xs"
-					onclick={() => {
-						searchQuery = '';
-						collectionFilter = '';
-					}}
-				>
-					Clear
-				</button>
-			{/if}
-		</div>
-		<div class="grid gap-3 md:grid-cols-[minmax(16rem,1fr)_16rem]">
-			<label class="form-control">
-				<span class="label pt-0 pb-1"><span class="label-text text-xs">Search</span></span>
-				<input
-					type="text"
-					placeholder="Edition or collection..."
-					class="input-bordered input w-full bg-base-200/40"
-					bind:value={searchQuery}
-				/>
-			</label>
-			<label class="form-control">
-				<span class="label pt-0 pb-1"><span class="label-text text-xs">Collection</span></span>
-				<FloatingSelect
-					id="workflow-collection-filter"
-					bind:value={collectionFilter}
-					options={collectionFilterOptions}
-					class="w-full bg-base-200/40"
-				/>
-			</label>
-		</div>
+		{#if hasActiveFilters}
+			<button
+				type="button"
+				class="btn btn-ghost btn-sm"
+				onclick={() => {
+					searchQuery = '';
+					collectionFilter = '';
+				}}
+			>
+				Clear
+			</button>
+		{/if}
 	</div>
 
 	<!-- Tabs -->
-	<div class="tabs-bordered mb-6 tabs">
+	<div class="workflow-tabs mb-6 tabs border-b border-base-300">
 		<button
 			class="tab"
 			class:tab-active={activeTab === 'submissions'}
+			class:font-semibold={activeTab === 'submissions'}
 			onclick={() => (activeTab = 'submissions')}
 		>
 			Submissions
-			{#if tabCounts.submissions > 0}
-				<span class="ml-1 badge badge-sm">{tabCounts.submissions}</span>
-			{/if}
+			<span class="ml-1 badge badge-sm" class:badge-neutral={tabCounts.submissions > 0}>{tabCounts.submissions}</span>
 		</button>
 		<button
 			class="tab"
 			class:tab-active={activeTab === 'editorial'}
+			class:font-semibold={activeTab === 'editorial'}
 			onclick={() => (activeTab = 'editorial')}
 		>
 			Editorial
-			{#if tabCounts.editorial > 0}
-				<span class="ml-1 badge badge-sm">{tabCounts.editorial}</span>
-			{/if}
+			<span class="ml-1 badge badge-sm" class:badge-neutral={tabCounts.editorial > 0}>{tabCounts.editorial}</span>
 		</button>
 		<button
 			class="tab"
 			class:tab-active={activeTab === 'alpha'}
+			class:font-semibold={activeTab === 'alpha'}
 			onclick={() => (activeTab = 'alpha')}
 		>
 			Alpha
-			{#if tabCounts.alpha > 0}
-				<span class="ml-1 badge badge-sm">{tabCounts.alpha}</span>
-			{/if}
+			<span class="ml-1 badge badge-sm" class:badge-neutral={tabCounts.alpha > 0}>{tabCounts.alpha}</span>
 		</button>
 		<button
 			class="tab"
 			class:tab-active={activeTab === 'final'}
+			class:font-semibold={activeTab === 'final'}
 			onclick={() => (activeTab = 'final')}
 		>
 			Final
-			{#if tabCounts.final > 0}
-				<span class="ml-1 badge badge-sm">{tabCounts.final}</span>
-			{/if}
+			<span class="ml-1 badge badge-sm" class:badge-neutral={tabCounts.final > 0}>{tabCounts.final}</span>
 		</button>
 		<button
 			class="tab"
 			class:tab-active={activeTab === 'publish'}
+			class:font-semibold={activeTab === 'publish'}
 			onclick={() => (activeTab = 'publish')}
 		>
 			Publish
-			{#if tabCounts.publish > 0}
-				<span class="ml-1 badge badge-sm">{tabCounts.publish}</span>
-			{/if}
+			<span class="ml-1 badge badge-sm" class:badge-neutral={tabCounts.publish > 0}>{tabCounts.publish}</span>
 		</button>
-		<button class="tab" class:tab-active={activeTab === 'all'} onclick={() => (activeTab = 'all')}>
+		<button
+			class="tab"
+			class:tab-active={activeTab === 'all'}
+			class:font-semibold={activeTab === 'all'}
+			onclick={() => (activeTab = 'all')}
+		>
 			All
-			{#if tabCounts.all > 0}
-				<span class="ml-1 badge badge-sm">{tabCounts.all}</span>
-			{/if}
+			<span class="ml-1 badge badge-sm" class:badge-neutral={tabCounts.all > 0}>{tabCounts.all}</span>
 		</button>
 	</div>
 
@@ -741,44 +724,7 @@
 			{:else}
 				<div class="space-y-2">
 					{#each publishEditions as edition (edition.id)}
-						<div class="rounded-box border border-base-300 bg-base-100 p-4">
-							<div class="flex flex-wrap items-center justify-between gap-3">
-								<div class="flex flex-wrap items-center gap-3">
-									<span class="font-medium">{edition.title}</span>
-									<StatusBadge status={edition.status} />
-									{#if edition.collectionTitle}
-										<span class="text-sm text-base-content/50">
-											in {edition.collectionTitle}
-										</span>
-									{/if}
-								</div>
-								<div class="flex gap-2">
-									{#if edition.status === EditionStatus.Published}
-										<a
-											class="btn btn-outline btn-sm"
-											href={resolve('/editions/[slug]', { slug: edition.id })}
-											>View published edition</a
-										>
-									{:else}
-										<button
-											class="btn btn-sm btn-primary"
-											onclick={() => (publishModalEdition = edition)}
-											disabled={actionLoading}
-										>
-											Publish
-										</button>
-									{/if}
-								</div>
-							</div>
-							{#if edition.status === EditionStatus.Published && edition.publishedAt}
-								<div class="mt-2 text-sm text-base-content/60">
-									Published on {formatDate(edition.publishedAt)}
-									{#if edition.peerReviewStamp}
-										<span class="ml-2 badge badge-xs badge-success">Peer Reviewed</span>
-									{/if}
-								</div>
-							{/if}
-						</div>
+						{@render publishCard(edition)}
 					{/each}
 				</div>
 			{/if}
@@ -791,16 +737,19 @@
 			{:else}
 				<div class="space-y-2">
 					{#each allEditions as edition (edition.id)}
-						{@render editionCard(
-							edition,
-							edition.status.startsWith('final') ||
-								edition.status === EditionStatus.PublicationRequested
-								? ReviewStage.Final
-								: edition.status.startsWith('alpha')
-									? ReviewStage.Alpha
-									: ReviewStage.Concept,
-							false
-						)}
+						{#if [EditionStatus.PublicationRequested, EditionStatus.Published].includes(edition.status)}
+							{@render publishCard(edition)}
+						{:else}
+							{@render editionCard(
+								edition,
+								edition.status.startsWith('final')
+									? ReviewStage.Final
+									: edition.status.startsWith('alpha')
+										? ReviewStage.Alpha
+										: ReviewStage.Concept,
+								edition.status === EditionStatus.ConceptSubmitted
+							)}
+						{/if}
 					{/each}
 				</div>
 			{/if}
@@ -930,32 +879,289 @@
 	</div>
 {/if}
 
-<!-- Reusable edition card snippet -->
-{#snippet editionCard(edition: WfEdition, stage: ReviewStage, isSubmission: boolean)}
-	<div class="rounded-box border border-base-300 bg-base-100">
+{#snippet assignmentTable(assignments: ReviewAssignment[], reviews: EditionReview[])}
+	<div>
+		<h4 class="mb-2 text-sm font-semibold text-base-content/60 uppercase">Assigned Reviewers</h4>
+		<div class="overflow-x-auto">
+			<table class="table table-sm">
+				<thead>
+					<tr>
+						<th>Reviewer</th>
+						<th>Status</th>
+						<th>Deadline</th>
+						<th><span class="sr-only">Actions</span></th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each assignments as assignment (assignment.id)}
+						{@const hasReview = reviews.some(
+							(review) => review.reviewerId === assignment.reviewerId
+						)}
+						<tr>
+							<td>{userLookup.get(assignment.reviewerId) || 'Unknown'}</td>
+							<td>
+								{#if assignment.status === ReviewAssignmentStatus.Declined}<span
+										class="badge badge-ghost badge-sm">Declined</span
+									>{:else if hasReview}
+									<span class="badge badge-sm badge-success">Reviewed</span>
+								{:else}
+									<span class="badge badge-ghost badge-sm">Pending</span>
+								{/if}
+							</td>
+							<td class="text-base-content/60">
+								{assignment.dueAt ? formatDate(assignment.dueAt) : 'Not set'}
+							</td>
+							<td>
+								{#if !hasReview && [ReviewAssignmentStatus.Pending, ReviewAssignmentStatus.Accepted].includes(assignment.status)}
+									<button
+										class="btn btn-ghost btn-xs"
+										disabled={actionLoading}
+										onclick={() => removePendingAssignment(assignment)}
+									>
+										Remove
+									</button>
+								{/if}
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+	</div>
+{/snippet}
+
+<style>
+	.workflow-tabs .tab-active {
+		box-shadow: inset 0 -2px var(--color-accent);
+	}
+</style>
+
+{#snippet assignmentControls(
+	edition: WfEdition,
+	stage: ReviewStage,
+	isSubmission: boolean,
+	assignments: ReviewAssignment[]
+)}
+	<div class="flex flex-wrap items-end gap-2">
+		{#if !isSubmission || needsConceptReviewerAssignment(assignments)}<div class="form-control">
+				<UserSearchSelect
+					users={allUsers.filter((user) =>
+						assignments.every((assignment) => assignment.reviewerId !== user.id)
+					)}
+					bind:value={assignUserId}
+					placeholder="Search user..."
+				/>
+			</div>{/if}
+		{#if !isSubmission}<label class="text-sm" for="assignment-deadline"
+				>Deadline<input
+					id="assignment-deadline"
+					class="input-bordered input input-sm block"
+					type="date"
+					bind:value={assignDueAt}
+				/></label
+			>{/if}
+		{#if stage === ReviewStage.Final}<label class="text-sm" for="replacement-reason"
+				>Reason for reviewer replacement<input
+					id="replacement-reason"
+					class="input-bordered input input-sm block"
+					bind:value={replacementReason}
+				/></label
+			>{/if}
 		<button
-			class="flex w-full cursor-pointer items-center justify-between p-4 font-medium"
-			onclick={() => toggleExpand(edition.id)}
+			class="btn btn-sm btn-primary"
+			onclick={() =>
+				isSubmission ? assignAndStartReview(edition) : assignStageReviewer(edition, stage)}
+			disabled={(!assignUserId &&
+				(!isSubmission || needsConceptReviewerAssignment(assignments))) ||
+				actionLoading}
 		>
-			<div class="flex flex-wrap items-center gap-3">
-				<span>{edition.title}</span>
-				<StatusBadge status={edition.status} />
-				{#if edition.collectionTitle}
-					<span class="text-sm text-base-content/50">in {edition.collectionTitle}</span>
-				{/if}
-				<span class="text-sm text-base-content/40">{formatDate(edition.created)}</span>
+			{#if actionLoading}
+				<span class="loading loading-xs loading-spinner"></span>
+			{/if}
+			{isSubmission
+				? needsConceptReviewerAssignment(assignments)
+					? 'Assign & Start Review'
+					: 'Start Review'
+				: 'Assign'}
+		</button>
+	</div>
+{/snippet}
+
+{#snippet editionSummary(edition: WfEdition, linkLabel: string)}
+	<aside class="space-y-4 rounded-box border border-base-300 bg-base-200/30 p-4">
+		<h3 class="font-semibold">Edition summary</h3>
+		<dl class="grid grid-cols-[5rem_1fr] gap-x-3 gap-y-2 text-sm">
+			<dt class="font-semibold">Authors</dt>
+			<dd>{edition.authorNames || 'Not provided'}</dd>
+			{#if edition.collectionTitle}
+				<dt class="font-semibold">Collection</dt>
+				<dd>{edition.collectionTitle}</dd>
+			{/if}
+			<dt class="font-semibold">Purpose</dt>
+			<dd class="line-clamp-3 break-words">{edition.record.proposalPurpose || 'Not provided'}</dd>
+		</dl>
+		<a class="link text-sm font-medium" href={workflowStepHref(edition.id, edition.status)}>{linkLabel}</a>
+	</aside>
+{/snippet}
+
+{#snippet advancedActions(edition: WfEdition)}
+	{#if overrideTargets[edition.status]?.length}
+		<details class="rounded-box border border-base-300 bg-base-100">
+			<summary class="cursor-pointer px-4 py-3 font-medium">Advanced actions</summary>
+			<div class="border-t border-base-300 p-4">
+				<h4 class="text-sm font-semibold text-base-content/60 uppercase">
+					Administrative intervention
+				</h4>
+				<p class="mt-1 text-sm text-base-content/60">
+					Advance or reopen this workflow when documented prerequisites require an exception.
+				</p>
+				<button class="btn mt-2 btn-outline btn-sm" onclick={() => openOverride(edition)}>
+					Override workflow
+				</button>
 			</div>
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke-width="1.5"
-				stroke="currentColor"
-				class="size-4 shrink-0 transition-transform duration-200"
-				class:rotate-180={expandedId === edition.id}
-			>
-				<path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-			</svg>
+		</details>
+	{/if}
+{/snippet}
+
+{#snippet publishCard(edition: WfEdition)}
+	<div class="overflow-hidden rounded-box border border-base-300 bg-base-100">
+		<button
+			class="flex w-full cursor-pointer items-center justify-between bg-base-200/50 p-4 font-medium"
+			onclick={() => toggleExpand(edition.id)}
+			aria-expanded={expandedId === edition.id}
+		>
+			{@render expandIcon(edition.id)}
+			<div class="min-w-0 flex-1 text-left">
+				<div>{edition.title}</div>
+				<div class="mt-1 text-sm font-normal text-base-content/60">
+					{edition.authorNames || 'Authors unavailable'}
+					<span aria-hidden="true"> · </span>
+					{STATUS_LABELS[edition.status]}
+				</div>
+			</div>
+			<span class="ml-4 flex shrink-0 items-center gap-2 text-sm text-base-content/70">
+				{edition.status === EditionStatus.Published ? 'View publication' : 'Review readiness'}
+			</span>
+		</button>
+		{#if expandedId === edition.id}
+			{@const finalAssignments = editionAssignments(edition.id, ReviewStage.Final).filter(
+				(assignment) => assignment.status !== ReviewAssignmentStatus.Declined
+			)}
+			{@const finalReviews = editionReviews(edition.id, ReviewStage.Final)}
+			<div class="space-y-4 border-t border-base-300 px-4 pt-3 pb-4">
+				<div class="border-b border-base-300 pb-4">
+					<WorkflowTimeline
+						showStatusDetails={false}
+						currentStatus={edition.status}
+						hrefForStatus={(status) => workflowStepHref(edition.id, status)}
+					/>
+				</div>
+				<div class="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(17rem,2fr)]">
+					<section class="space-y-4">
+						{#if edition.status === EditionStatus.Published}
+							<h3 class="text-lg font-semibold">Published edition</h3>
+							<dl class="space-y-2 text-sm">
+								<div>
+									<dt class="font-semibold">Publication date</dt>
+									<dd>{edition.publishedAt ? formatDate(edition.publishedAt) : 'Unavailable'}</dd>
+								</div>
+								<div>
+									<dt class="font-semibold">Peer review stamp</dt>
+									<dd>{edition.peerReviewStamp ? 'Applied' : 'Not applied'}</dd>
+								</div>
+							</dl>
+							<a class="btn btn-outline btn-sm" href={resolve('/editions/[slug]', { slug: edition.id })}>
+								View published edition
+							</a>
+						{:else}
+							<h3 class="text-lg font-semibold">Publication readiness</h3>
+							<dl class="space-y-3 text-sm">
+								<div>
+									<dt class="font-semibold">Rights declaration</dt>
+									<dd>{edition.record.publicationRequest?.rightsConfirmed ? 'Confirmed by author' : 'Not confirmed'}</dd>
+								</div>
+								<div>
+									<dt class="font-semibold">Author statement</dt>
+									<dd class="whitespace-pre-wrap">{edition.record.publicationRequest?.comment || 'No additional comments.'}</dd>
+								</div>
+								<div>
+									<dt class="font-semibold">Final reviews</dt>
+									<dd>{finalReviews.length} submitted for {finalAssignments.length} active assignments</dd>
+								</div>
+								<div>
+									<dt class="font-semibold">Peer review publication</dt>
+									<dd>{edition.peerReviewRequested ? 'Requested; released Final Reviews will be public' : 'Not requested'}</dd>
+								</div>
+							</dl>
+							<button class="btn btn-sm btn-primary" onclick={() => (publishModalEdition = edition)} disabled={actionLoading}>
+								Publish
+							</button>
+						{/if}
+					</section>
+					{@render editionSummary(
+						edition,
+						edition.status === EditionStatus.Published
+							? 'Open publication workflow details'
+							: 'Open publication request details'
+					)}
+				</div>
+				{@render advancedActions(edition)}
+			</div>
+		{/if}
+	</div>
+{/snippet}
+
+<!-- Reusable edition card snippet -->
+{#snippet expandIcon(editionId: string)}
+	<svg
+		xmlns="http://www.w3.org/2000/svg"
+		fill="none"
+		viewBox="0 0 24 24"
+		stroke-width="1.5"
+		stroke="currentColor"
+		aria-hidden="true"
+		class="mr-3 size-4 shrink-0 transition-transform duration-200"
+		class:rotate-90={expandedId === editionId}
+	>
+		<path stroke-linecap="round" stroke-linejoin="round" d="m9 4.5 7.5 7.5L9 19.5" />
+	</svg>
+{/snippet}
+
+{#snippet editionCard(edition: WfEdition, stage: ReviewStage, isSubmission: boolean)}
+	<div class="overflow-hidden rounded-box border border-base-300 bg-base-100">
+		<button
+			class="flex w-full cursor-pointer items-center justify-between bg-base-200/50 p-4 font-medium"
+			onclick={() => toggleExpand(edition.id)}
+			aria-expanded={expandedId === edition.id}
+		>
+			{@render expandIcon(edition.id)}
+			{#if isSubmission}
+				<div class="min-w-0 flex-1 text-left">
+					<div>{edition.title}</div>
+					<div class="mt-1 text-sm font-normal text-base-content/60">
+						{edition.authorNames || 'Authors unavailable'}
+						<span aria-hidden="true"> · </span>
+						{edition.proposalSubmittedAt
+							? formatDate(edition.proposalSubmittedAt)
+							: 'Submission date unavailable'}
+					</div>
+				</div>
+				<span class="ml-4 flex shrink-0 items-center gap-2 text-sm text-base-content/70">
+					Assign for review
+				</span>
+			{:else}
+				<div class="min-w-0 flex-1 text-left">
+					<div>{edition.title}</div>
+					<div class="mt-1 text-sm font-normal text-base-content/60">
+						{edition.authorNames || 'Authors unavailable'}
+						<span aria-hidden="true"> · </span>
+						{STATUS_LABELS[edition.status]}
+					</div>
+				</div>
+				<span class="ml-4 flex shrink-0 items-center gap-2 text-sm text-base-content/70">
+					{cardCue(edition.status)}
+				</span>
+			{/if}
 		</button>
 
 		{#if expandedId === edition.id}
@@ -966,224 +1172,133 @@
 				verdict === 'pending' ? null : getTargetStatusFromVerdict(verdict, stage)}
 			{@const displayReviews = anonymizeReviews(reviews, assignments, userLookup, true)}
 			<div class="space-y-4 border-t border-base-300 px-4 pt-3 pb-4">
-				<!-- Timeline -->
-				<WorkflowTimeline
-					currentStatus={edition.status}
-					hrefForStatus={(status) => workflowStepHref(edition.id, status)}
-				/>
-				<a
-					class="btn btn-outline btn-sm"
-					href={resolve('/editions/[slug]/workflow', { slug: edition.id })}
-				>
-					Open edition workspace
-				</a>
-
-				<!-- Reviewer assignments -->
-				<div>
-					<h4 class="mb-2 text-sm font-semibold text-base-content/60 uppercase">
-						Assigned Reviewers
-					</h4>
-					{#if assignments.length > 0}
-						<div class="overflow-x-auto">
-							<table class="table table-sm">
-								<thead>
-									<tr>
-										<th>Reviewer</th>
-										<th>Status</th>
-										<th>Assigned</th>
-										<th><span class="sr-only">Actions</span></th>
-									</tr>
-								</thead>
-								<tbody>
-									{#each assignments as a (a.id)}
-										{@const hasReview = reviews.some((r) => r.reviewerId === a.reviewerId)}
-										<tr>
-											<td>{userLookup.get(a.reviewerId) || 'Unknown'}</td>
-											<td>
-												{#if a.status === ReviewAssignmentStatus.Declined}<span
-														class="badge badge-ghost badge-sm">Declined</span
-													>{:else if hasReview}
-													<span class="badge badge-sm badge-success">Reviewed</span>
-												{:else}
-													<span class="badge badge-ghost badge-sm">Pending</span>
-												{/if}
-											</td>
-											<td class="text-base-content/60">{formatDate(a.created)}</td>
-											<td>
-												{#if !hasReview && [ReviewAssignmentStatus.Pending, ReviewAssignmentStatus.Accepted].includes(a.status)}
-													<button
-														class="btn btn-ghost btn-xs"
-														disabled={actionLoading}
-														onclick={() => removePendingAssignment(a)}
-													>
-														Remove
-													</button>
-												{/if}
-											</td>
-										</tr>
-									{/each}
-								</tbody>
-							</table>
-						</div>
-					{:else}
-						<p class="text-sm text-base-content/60">No reviewers assigned yet.</p>
-					{/if}
+				<div class="space-y-3 border-b border-base-300 pb-4">
+					<WorkflowTimeline
+						showStatusDetails={false}
+						currentStatus={edition.status}
+						hrefForStatus={(status) => workflowStepHref(edition.id, status)}
+					/>
 				</div>
-
-				<!-- Reviews submitted -->
-				{#if displayReviews.length > 0 && stage === ReviewStage.Concept}
-					<div>
-						<h4 class="mb-2 text-sm font-semibold text-base-content/60 uppercase">Reviews</h4>
-						<div class="space-y-2">
-							{#each displayReviews as review (review.created)}
-								<div class="rounded-lg border border-base-300 p-3">
-									<div class="flex items-center justify-between">
-										<span class="font-medium">{review.displayName}</span>
-										<span
-											class="badge badge-sm {review.decision === 'approve'
-												? 'badge-success'
-												: review.decision === 'reject'
-													? 'badge-error'
-													: 'badge-warning'}"
-										>
-											{review.decision === 'approve'
-												? 'Approve'
-												: review.decision === 'reject'
-													? 'Reject'
-													: 'Revisions'}
-										</span>
+				{#if isSubmission}
+					<div class="grid items-start gap-6 lg:grid-cols-2">
+						<aside class="space-y-5 rounded-box border border-base-300 bg-base-200/50 p-4">
+							<div>
+								<h3 class="mb-1 text-lg font-semibold">Assign board member</h3>
+								<p class="mb-3 text-sm text-base-content/60">
+									Assign a board member and move this proposal into editorial review.
+								</p>
+								{@render assignmentControls(edition, stage, true, assignments)}
+							</div>
+							{#if assignments.length > 0}
+								{@render assignmentTable(assignments, reviews)}
+							{/if}
+						</aside>
+						<div class="space-y-4">
+							<dl class="grid grid-cols-[5rem_1fr] gap-x-3 gap-y-2 text-sm">
+								<dt class="font-semibold">Authors</dt>
+								<dd>{edition.authorNames || 'Not provided'}</dd>
+								<dt class="font-semibold">Purpose</dt>
+								<dd class="line-clamp-3 break-words">{edition.record.proposalPurpose || 'Not provided'}</dd>
+							</dl>
+							<details>
+								<summary class="cursor-pointer text-sm font-medium underline underline-offset-4">See submission details</summary>
+								<div class="mt-3"><ProposalSummary record={edition.record} embedded /></div>
+							</details>
+						</div>
+					</div>
+				{:else}
+					<div class="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(17rem,2fr)]">
+						<section class="space-y-5">
+							{#if edition.status === EditionStatus.EditorialReview}
+								<h3 class="text-lg font-semibold">Editorial review</h3>
+								{#if assignments.length > 0}
+									{@render assignmentTable(assignments, reviews)}
+								{:else}
+									<p class="text-sm text-base-content/60">Awaiting board member assignment.</p>
+								{/if}
+								{#if displayReviews.length > 0}
+									<div>
+										<h4 class="mb-2 text-sm font-semibold text-base-content/60 uppercase">Reviews</h4>
+										<div class="space-y-2">
+											{#each displayReviews as review (review.created)}
+												<div class="rounded-lg border border-base-300 p-3">
+													<div class="flex items-center justify-between gap-3">
+														<span class="font-medium">{review.displayName}</span>
+														<span class="badge badge-sm {review.decision === 'approve' ? 'badge-success' : review.decision === 'reject' ? 'badge-error' : 'badge-warning'}">
+															{review.decision === 'approve' ? 'Approve' : review.decision === 'reject' ? 'Reject' : 'Revisions'}
+														</span>
+													</div>
+													{#if review.comment}<p class="mt-2 text-sm text-base-content/70">{review.comment}</p>{/if}
+													<p class="mt-1 text-xs text-base-content/40">{formatDate(review.created)}</p>
+												</div>
+											{/each}
+										</div>
 									</div>
-									{#if review.comment}
-										<p class="mt-2 text-sm text-base-content/70">{review.comment}</p>
+								{/if}
+								{#if assignments.length > 0}
+									{#if verdict === 'pending'}
+										<p class="text-sm text-base-content/60">Awaiting review.</p>
+									{:else}
+										<div class="flex flex-wrap items-center gap-3">
+											<span class="text-sm font-semibold">Editorial recommendation</span>
+											<span class="badge {getVerdictBadge(verdict)}">{getVerdictLabel(verdict)}</span>
+											{#if verdictTarget && canTransitionStatus(edition.status, verdictTarget)}
+												<button class="btn btn-sm btn-primary" onclick={() => applyVerdict(edition, stage)} disabled={actionLoading}>
+													{#if actionLoading}<span class="loading loading-xs loading-spinner"></span>{/if}
+													Apply editorial decision
+												</button>
+											{/if}
+										</div>
 									{/if}
-									<p class="mt-1 text-xs text-base-content/40">{formatDate(review.created)}</p>
+								{/if}
+							{:else if edition.status === EditionStatus.AlphaReview}
+								<div>
+									<h3 class="mb-2 text-lg font-semibold">Alpha reviewer assignments</h3>
+									{@render assignmentControls(edition, ReviewStage.Alpha, false, assignments)}
 								</div>
-							{/each}
-						</div>
+								{#if assignments.length > 0}{@render assignmentTable(assignments, reviews)}{/if}
+								{#key assignments.length}<AlphaEditorialPanel editionId={edition.id} round={edition.alphaReviewRound} onchanged={() => void loadData()} embedded />{/key}
+							{:else if edition.status === EditionStatus.FinalReview}
+								<div>
+									<h3 class="mb-2 text-lg font-semibold">Final reviewer assignments</h3>
+									{@render assignmentControls(edition, ReviewStage.Final, false, assignments)}
+								</div>
+								{#if assignments.length > 0}{@render assignmentTable(assignments, reviews)}{/if}
+								<FinalEditorialPanel editionId={edition.id} status={edition.status} round={edition.finalReviewRound} onchanged={() => void loadData()} embedded showAssignments={false} />
+							{:else if edition.status === EditionStatus.ConceptAccepted}
+								<h3 class="text-lg font-semibold">Awaiting Alpha review request</h3>
+								<p class="text-sm text-base-content/60">The author is preparing the edition before requesting Alpha Review.</p>
+							{:else if edition.status === EditionStatus.AlphaRevisions}
+								<h3 class="text-lg font-semibold">Awaiting Alpha revisions</h3>
+								<p class="text-sm text-base-content/60">Released feedback is with the author for the next Alpha round.</p>
+							{:else if edition.status === EditionStatus.AlphaAccepted}
+								<h3 class="text-lg font-semibold">Awaiting Final review request</h3>
+								<p class="text-sm text-base-content/60">Alpha Review is complete. The author is preparing the Final submission.</p>
+							{:else if edition.status === EditionStatus.FinalRevisions}
+								<h3 class="text-lg font-semibold">Awaiting Final revisions</h3>
+								<p class="text-sm text-base-content/60">Released Final feedback is with the author for correction.</p>
+							{:else if edition.status === EditionStatus.FinalAccepted}
+								<h3 class="text-lg font-semibold">Awaiting publication request</h3>
+								<p class="text-sm text-base-content/60">Final Review is complete. Publication still requires the author's request and rights confirmation.</p>
+							{:else}
+								<p class="text-sm text-base-content/60">No stage-specific editorial action is available.</p>
+							{/if}
+						</section>
+						{@render editionSummary(
+							edition,
+							edition.status === EditionStatus.EditorialReview
+								? 'Open editorial review details'
+								: stage === ReviewStage.Alpha
+									? 'Open Alpha workflow details'
+									: stage === ReviewStage.Final
+										? 'Open Final workflow details'
+										: 'Open workflow details'
+						)}
 					</div>
 				{/if}
 
-				<!-- Verdict aggregate -->
-				{#if assignments.length > 0 && stage === ReviewStage.Concept}
-					<div class="flex items-center gap-3">
-						<span class="text-sm font-semibold">Aggregate Verdict:</span>
-						<span class="badge {getVerdictBadge(verdict)}">{getVerdictLabel(verdict)}</span>
-						{#if verdictTarget && canTransitionStatus(edition.status, verdictTarget)}
-							<button
-								class="btn btn-sm btn-primary"
-								onclick={() => applyVerdict(edition, stage)}
-								disabled={actionLoading}
-							>
-								{#if actionLoading}
-									<span class="loading loading-xs loading-spinner"></span>
-								{/if}
-								Apply Verdict
-							</button>
-						{/if}
-					</div>
-				{/if}
+				{@render advancedActions(edition)}
 
-				<!-- Assign reviewer form -->
-				{#if edition.status === EditionStatus.FinalReview}<FinalEditorialPanel
-						editionId={edition.id}
-						status={edition.status}
-						round={edition.finalReviewRound}
-						onchanged={() => void loadData()}
-					/>{/if}
-				{#if stage === ReviewStage.Alpha && edition.status === EditionStatus.AlphaReview}{#key assignments.length}<AlphaEditorialPanel
-							editionId={edition.id}
-							round={edition.alphaReviewRound}
-							onchanged={() => void loadData()}
-						/>{/key}{/if}
-				{#if isSubmission || edition.status === EditionStatus.AlphaReview || edition.status === EditionStatus.FinalReview}
-					<div class="border-t border-base-300 pt-3">
-						<h4 class="mb-2 text-sm font-semibold text-base-content/60 uppercase">
-							{isSubmission ? 'Assign Board Member & Start Review' : 'Assign Reviewer'}
-						</h4>
-						<div class="flex flex-wrap items-end gap-2">
-							{#if !isSubmission || needsConceptReviewerAssignment(assignments)}<div
-									class="form-control"
-								>
-									<UserSearchSelect
-										users={allUsers.filter((u) => !assignments.some((a) => a.reviewerId === u.id))}
-										bind:value={assignUserId}
-										placeholder="Search user..."
-									/>
-								</div>{/if}
-							{#if !isSubmission}<label class="text-sm" for="assignment-deadline"
-									>Deadline<input
-										id="assignment-deadline"
-										class="input-bordered input input-sm block"
-										type="date"
-										bind:value={assignDueAt}
-									/></label
-								>{/if}
-							{#if stage === ReviewStage.Final}<label class="text-sm" for="replacement-reason"
-									>Reason for reviewer replacement<input
-										id="replacement-reason"
-										class="input-bordered input input-sm block"
-										bind:value={replacementReason}
-									/></label
-								>{/if}
-							<button
-								class="btn btn-sm btn-primary"
-								onclick={() =>
-									isSubmission
-										? assignAndStartReview(edition)
-										: assignStageReviewer(edition, stage)}
-								disabled={(!assignUserId &&
-									(!isSubmission || needsConceptReviewerAssignment(assignments))) ||
-									actionLoading}
-							>
-								{#if actionLoading}
-									<span class="loading loading-xs loading-spinner"></span>
-								{/if}
-								{isSubmission
-									? needsConceptReviewerAssignment(assignments)
-										? 'Assign & Start Review'
-										: 'Start Review'
-									: 'Assign'}
-							</button>
-						</div>
-					</div>
-				{/if}
-
-				{#if overrideTargets[edition.status]?.length}
-					<div class="border-t border-base-300 pt-3">
-						<h4 class="text-sm font-semibold text-base-content/60 uppercase">
-							Administrative intervention
-						</h4>
-						<p class="mt-1 text-sm text-base-content/60">
-							Advance or reopen this workflow when documented prerequisites require an exception.
-						</p>
-						<button class="btn mt-2 btn-outline btn-sm" onclick={() => openOverride(edition)}>
-							Override workflow
-						</button>
-					</div>
-				{/if}
-
-				<!-- Advance status buttons for accepted states -->
-				{#if edition.status === EditionStatus.ConceptAccepted}
-					<div class="border-t border-base-300 pt-3">
-						<p class="mb-2 text-sm">
-							The author prepares the edition and requests Alpha Review from the Review tab.
-						</p>
-						<a
-							class="btn btn-outline btn-sm"
-							href={resolve('/editions/[slug]/workflow', { slug: edition.id })}
-							>Open edition workspace</a
-						>
-					</div>
-				{/if}
-				{#if [EditionStatus.AlphaAccepted, EditionStatus.FinalRevisions, EditionStatus.FinalAccepted].includes(edition.status)}
-					<div class="border-t border-base-300 pt-3">
-						<a
-							class="btn btn-outline btn-sm"
-							href={resolve('/editions/[slug]/workflow', { slug: edition.id })}
-							>Open author submission workspace</a
-						>
-					</div>
-				{/if}
 			</div>
 		{/if}
 	</div>
