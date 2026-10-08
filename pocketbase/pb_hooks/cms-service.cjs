@@ -250,7 +250,7 @@ function validateMenu(e) {
 			throw new BadRequestError('Menu items need unique IDs and labels.');
 		ids.add(item.id);
 	}
-	function link(item) {
+	function link(item, active = true) {
 		identity(item);
 		const t = item.target;
 		if (
@@ -286,7 +286,7 @@ function validateMenu(e) {
 						: t.type === 'edition'
 							? 'editions'
 							: '';
-		if (collection) {
+		if (collection && active) {
 			let record;
 			try {
 				record = e.app.findRecordById(collection, t.value);
@@ -324,13 +324,14 @@ function validateMenu(e) {
 			throw new BadRequestError('A direct menu cannot also have a landing link.');
 		if (item.direct) link(item.direct);
 		if (item.landing) link(item.landing);
+		// Retained submenu targets are only required to exist when the submenu is active.
 		for (const group of item.groups) {
 			identity(group);
 			if (!Array.isArray(group.links) || group.links.length > 200)
 				throw new BadRequestError('Invalid menu links.');
-			group.links.forEach(link);
+			group.links.forEach((entry) => link(entry, !item.direct));
 		}
-		if (item.featured) link(item.featured.link);
+		if (item.featured) link(item.featured.link, !item.direct);
 	}
 	if (config.primary) link(config.primary);
 	if (config.helpLink) link(config.helpLink);

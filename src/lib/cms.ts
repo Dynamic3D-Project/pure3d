@@ -125,9 +125,9 @@ export function validateMenu(config: MenuConfig, directory: MenuDirectory): stri
 		ids.add(id);
 		if (!label.trim()) errors.push('Every menu, group and link needs a label.');
 	}
-	function link(item: MenuLink) {
+	function link(item: MenuLink, active = true) {
 		identity(item.id, item.label);
-		if (!targetPath(item.target, directory))
+		if (active && !targetPath(item.target, directory))
 			errors.push(`“${item.label}” needs a valid destination.`);
 	}
 	for (const item of config.items) {
@@ -140,11 +140,12 @@ export function validateMenu(config: MenuConfig, directory: MenuDirectory): stri
 		if (item.direct && item.landing) errors.push('A direct menu cannot also have a landing link.');
 		if (item.direct) link(item.direct);
 		if (item.landing) link(item.landing);
+		// Direct menus retain their unused submenu for editing, but do not resolve its targets.
 		for (const group of item.groups) {
 			identity(group.id, group.label);
-			group.links.forEach(link);
+			group.links.forEach((entry) => link(entry, !item.direct));
 		}
-		if (item.featured) link(item.featured.link);
+		if (item.featured) link(item.featured.link, !item.direct);
 	}
 	if (config.primary) link(config.primary);
 	if (config.helpLink) link(config.helpLink);

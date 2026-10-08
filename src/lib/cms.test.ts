@@ -44,6 +44,37 @@ test('menu references survive page slug changes and never allow executable URLs'
 	config.primary = { ...newMenuLink(), target: { type: 'content', value: 'missing' } };
 	expect(validateMenu(config, directory).length).toBe(1);
 });
+test('direct menus preserve unused missing destinations without blocking publication', () => {
+	const directory = { content: [], categories: [], collections: [], editions: [] };
+	const config = emptyMenu();
+	const examples = {
+		...newMenuLink(),
+		label: 'Examples',
+		target: { type: 'content' as const, value: 'missing' }
+	};
+	config.items = [
+		{
+			id: 'publish',
+			label: 'Publish with us',
+			visible: true,
+			direct: { ...newMenuLink(), target: { type: 'route', value: '/editions' } },
+			groups: [{ id: 'docs', label: 'Documentation', prominent: false, links: [examples] }],
+			featured: {
+				kicker: '',
+				title: '',
+				description: '',
+				artwork: '',
+				link: { ...examples, id: 'featured' }
+			}
+		}
+	];
+	expect(validateMenu(config, directory)).toEqual([]);
+	expect(publishableMenu(config, directory).items[0].groups).toEqual([]);
+	expect(publishableMenu(config, directory).items[0].featured).toBeNull();
+	expect(config.items[0].groups[0].links[0]).toEqual(examples);
+	config.items[0].direct = null;
+	expect(validateMenu(config, directory)).toContain('“Examples” needs a valid destination.');
+});
 test('published menu comparison is independent of database JSON key ordering', () => {
 	expect(menuSignature(emptyMenu())).toBe(
 		menuSignature({ helpText: '', helpLink: null, primary: null, items: [] })

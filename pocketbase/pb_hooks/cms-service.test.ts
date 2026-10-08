@@ -110,6 +110,40 @@ test('model validation has no request dependency and live menus reject private t
 	expect(live.called).toBe(true);
 });
 
+test('direct menus retain missing submenu targets but still enforce safe links and active targets', () => {
+	const examples = {
+		id: 'examples',
+		label: 'Examples',
+		target: { type: 'content', value: 'missing' }
+	};
+	const config = {
+		items: [
+			{
+				id: 'publish',
+				label: 'Publish with us',
+				direct: {
+					id: 'direct',
+					label: 'Publish with us',
+					target: { type: 'route', value: '/editions' }
+				} as { id: string; label: string; target: { type: string; value: string } } | null,
+				groups: [{ id: 'docs', label: 'Documentation', links: [examples] }],
+				featured: { link: { ...examples, id: 'featured' } }
+			}
+		]
+	};
+	const event = validateEvent(config);
+	event.app.findRecordById = () => {
+		throw new Error('Missing destination');
+	};
+	validateMenu(event);
+	expect(event.called).toBe(true);
+	examples.target = { type: 'external', value: 'javascript:alert(1)' };
+	expect(() => validateMenu(event)).toThrow('Unsafe link URL.');
+	examples.target = { type: 'content', value: 'missing' };
+	config.items[0].direct = null;
+	expect(() => validateMenu(event)).toThrow('Select an existing link destination.');
+});
+
 test('menu validation accepts introductions and checks landing links', () => {
 	const config = {
 		items: [
