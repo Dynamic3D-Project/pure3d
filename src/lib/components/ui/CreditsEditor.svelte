@@ -1,6 +1,9 @@
 <script lang="ts">
 	import type { Credit } from '$lib/types/credits';
 	import { normalizeOrcid } from '$lib/utils/credits';
+	import IconArrowUp from '~icons/heroicons/arrow-up';
+	import IconArrowDown from '~icons/heroicons/arrow-down';
+	import IconTrash from '~icons/heroicons/trash';
 	let {
 		credits = $bindable<Credit[]>([]),
 		disabled = false,
@@ -32,11 +35,26 @@
 			Contributors are optional. Linking a user does not grant access.{/if}
 	</p>
 	{#each credits as credit, index (credit)}
-		<fieldset {disabled} class="space-y-3 rounded-box border border-base-300 p-3">
-			<legend class="px-1 text-sm font-semibold"
+		<fieldset
+			{disabled}
+			class={authorsOnly ? 'space-y-3 rounded-box bg-base-200 p-3' : 'space-y-3 rounded-box border border-base-300 p-3'}
+		>
+			<legend class={authorsOnly ? 'sr-only' : 'px-1 text-sm font-semibold'}
 				>{authorsOnly ? 'Author' : 'Credit'} {index + 1}</legend
 			>
-			<div class="grid gap-3 sm:grid-cols-2">
+			{#if authorsOnly}
+				<div class="flex items-center justify-between gap-3">
+					<span class="text-sm font-semibold">Author {index + 1}</span>
+					<div class="flex items-center gap-1">
+						{#if credits.length > 1}
+							<button type="button" class="btn btn-square btn-ghost btn-sm" disabled={index === 0} onclick={() => move(index, -1)} aria-label={`Move author ${index + 1} up`} title="Move up"><IconArrowUp class="size-4" aria-hidden="true" /></button>
+							<button type="button" class="btn btn-square btn-ghost btn-sm" disabled={index === credits.length - 1} onclick={() => move(index, 1)} aria-label={`Move author ${index + 1} down`} title="Move down"><IconArrowDown class="size-4" aria-hidden="true" /></button>
+						{/if}
+						<button type="button" class="btn btn-square btn-ghost btn-sm" onclick={() => (credits = credits.filter((_, i) => i !== index))} aria-label={`Remove author ${index + 1}`} title="Remove author"><IconTrash class="size-4" aria-hidden="true" /></button>
+					</div>
+				</div>
+			{/if}
+			<div class="grid gap-3 sm:grid-cols-2" class:author-fields={authorsOnly}>
 				<label class="form-control"
 					>Name<input
 						class="input-bordered input w-full"
@@ -103,6 +121,7 @@
 			{#if credit.orcid && !normalizeOrcid(credit.orcid)}<p class="text-sm text-error">
 					Enter a valid ORCID, including its checksum.
 				</p>{/if}
+			{#if !authorsOnly}
 			<div class="flex flex-wrap gap-2">
 				<button
 					type="button"
@@ -125,6 +144,7 @@
 					aria-label={`Remove credit ${index + 1}`}>Remove</button
 				>
 			</div>
+			{/if}
 		</fieldset>
 	{/each}
 	<button
@@ -138,3 +158,11 @@
 			])}>{authorsOnly ? 'Add co-author' : 'Add credit'}</button
 	>
 </div>
+
+<style>
+	.author-fields label {
+		font-size: 0.75rem;
+		line-height: 1.5;
+		gap: 0.25rem;
+	}
+</style>

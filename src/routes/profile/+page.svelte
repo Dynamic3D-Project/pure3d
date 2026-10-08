@@ -591,7 +591,7 @@
 						</p>
 					</div>
 
-					<div class="flex shrink-0 gap-2">
+					<div class="flex shrink-0 flex-wrap gap-2">
 						{#if isEditing}
 							<button class="btn btn-sm btn-primary" onclick={saveProfile} disabled={isSaving}>
 								{isSaving ? 'Saving...' : 'Save'}
@@ -607,6 +607,15 @@
 								disabled={isRefreshing || !profileData.orcidVerifiedAt}>Refresh from ORCID</button
 							>
 						{/if}
+						<button
+							type="button"
+							class="btn btn-ghost btn-sm"
+							disabled={isSaving || isRefreshing}
+							onclick={() => {
+								authStore.logout();
+								void goto(resolve('/'));
+							}}
+						>Logout</button>
 					</div>
 				</div>
 

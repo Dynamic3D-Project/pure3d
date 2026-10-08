@@ -12,6 +12,7 @@
 		editionPubNum?: number | null;
 		title?: string;
 		fileToken?: string;
+		height?: string;
 		/** Called when the user drops files on the viewer. Parent wires this to the uploader. */
 		onFiles?: (files: File[]) => void;
 	};
@@ -21,6 +22,7 @@
 		editionPubNum,
 		title = 'Edition preview',
 		fileToken,
+		height,
 		onFiles
 	}: Props = $props();
 
@@ -415,7 +417,7 @@
 			</div>
 		{/if}
 		<div
-			class="card relative overflow-hidden bg-base-200 shadow-xl transition-all {dragActive
+			class="card relative overflow-hidden bg-base-200 {height ? '' : 'shadow-xl'} transition-all {dragActive
 				? 'ring-2 ring-primary ring-offset-2 ring-offset-base-100'
 				: ''}"
 			ondragover={onDragOver}
@@ -434,6 +436,7 @@
 						fetchOverrides={previewOverrides}
 						companionAssets={previewCompanions}
 						{title}
+						{height}
 						direct={true}
 						voyagerVersion={DEFAULT_VOYAGER_VERSION}
 					/>

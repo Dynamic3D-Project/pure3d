@@ -43,25 +43,29 @@
 
 <section
 	id="proposal-questionnaire"
-	class="space-y-5 rounded-box border border-base-300 bg-base-100 p-5"
+	class="space-y-4 overflow-hidden rounded-box border border-base-300 bg-base-100 p-5"
 >
-	<div>
-		<h2 class="text-lg font-semibold">Submission questionnaire</h2>
-		<p class="text-sm text-base-content/65">Each written answer is limited to 150 words.</p>
+	<div class="-mx-5 -mt-5 border-b border-base-300 bg-base-200 px-5 py-3">
+		<h2 class="text-base font-semibold">Submission Questionnaire</h2>
 	</div>
 	{#each questions as field (field.id)}
 		<label class="form-control" for={field.id}>
 			<span class="label-text font-semibold">{field.label}</span>
-			{#if field.hint}<span class="label-text-alt">{field.hint}</span>{/if}
+			{#if field.hint}<span class="mt-1 text-sm text-base-content/75">{field.hint}</span>{/if}
 			<textarea
 				id={field.id}
-				class="textarea-bordered textarea mt-1 min-h-28 w-full"
+				class="textarea-bordered textarea mt-2 min-h-20 w-full"
+				rows="3"
 				value={field.value}
 				aria-invalid={wordCount(field.value) > 150}
-				oninput={(event) => field.change(event.currentTarget.value)}
+				oninput={(event) => {
+					field.change(event.currentTarget.value);
+					event.currentTarget.style.height = 'auto';
+					event.currentTarget.style.height = `${event.currentTarget.scrollHeight}px`;
+				}}
 				required
 			></textarea>
-			<span class="mt-1 text-right text-xs text-base-content/50"
+			<span class="mt-1 text-right text-xs text-base-content/75"
 				>{wordCount(field.value)}/150 words</span
 			>
 		</label>

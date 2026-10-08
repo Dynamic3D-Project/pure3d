@@ -574,7 +574,12 @@
 		// Voyager emits this after attaching each loaded quality level to the scene.
 		// Reveal the first usable model without marking the whole scene as ready.
 		contentScope.listen(voyagerElement, 'model-load', () => {
-			if (!disposed && !hasError) firstModelVisible = true;
+			if (disposed || hasError) return;
+			firstModelVisible = true;
+			// Standalone meshes do not set CVViewer.sceneLoaded (only SVX scenes do).
+			const busy = (voyagerElement as CategoryViewer | undefined)?.application?.system
+				?.components?.get?.('CVAssetManager')?.outs?.busy;
+			if (!documentPath && (model || geometry) && busy?.value === false) handleRuntimeSceneLoaded();
 		});
 
 		// Also listen for global errors that might come from Voyager
@@ -604,7 +609,8 @@
 		const update = () => {
 			if (
 				isRuntimeSceneReady({
-					sceneLoaded: sceneLoaded.value,
+					sceneLoaded:
+						sceneLoaded.value || (!documentPath && !!(model || geometry) && firstModelVisible),
 					documentLoaded: !!assetPath.value,
 					emptyDocument: emptySceneDocument,
 					assetsBusy: busy.value

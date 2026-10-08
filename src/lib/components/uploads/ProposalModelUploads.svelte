@@ -2,6 +2,7 @@
 	import { pb } from '$lib/database/client';
 	import type { RecordModel } from 'pocketbase';
 	import VoyagerPreview from './VoyagerPreview.svelte';
+	import TrashIcon from '~icons/lucide/trash-2';
 
 	type Model = { file: string; assets: string[]; scene?: string };
 	type Props = {
@@ -24,7 +25,21 @@
 	let error = $state('');
 	let input: HTMLInputElement | undefined = $state();
 	let models = $derived(readModels(edition.proposalModels));
-	let preview = $state<{ file: string; token: string } | null>(null);
+	let previewToken = $state('');
+	const hasModels = $derived(models.length > 0);
+	$effect(() => {
+		if (!hasModels) return;
+		let cancelled = false;
+		void pb.files.getToken().then(
+			(token) => {
+				if (!cancelled) previewToken = token;
+			},
+			() => {
+				if (!cancelled) error = 'Could not open the private previews. Please try again.';
+			}
+		);
+		return () => { cancelled = true; };
+	});
 
 	function readModels(value: unknown): Model[] {
 		return Array.isArray(value)
@@ -45,9 +60,10 @@
 			mainExtensions.some((extension) => file.name.toLowerCase().endsWith(extension))
 		);
 	}
-	async function showPreview(file: string) {
+	async function showPreview() {
 		try {
-			preview = { file, token: await pb.files.getToken() };
+			previewToken = await pb.files.getToken();
+			error = '';
 		} catch {
 			error = 'Could not open the private preview. Please try again.';
 		}
@@ -116,9 +132,10 @@
 </script>
 
 <div id="proposal-model-uploads" class="space-y-4">
+	<div class="grid gap-4 sm:grid-cols-2">
 	{#each models as model (model.file)}
-		<div class="rounded-box border border-base-300 p-3">
-			{#if preview?.file === model.file}
+		<div class="ds-card-frame flex min-w-0 flex-col overflow-hidden p-3">
+			{#if previewToken}
 				<VoyagerPreview
 					edition={{
 						...edition,
@@ -127,29 +144,36 @@
 						sceneDocument: model.scene
 					} as RecordModel}
 					title={basename(model.file)}
-					fileToken={preview.token}
+					fileToken={previewToken}
+					height="clamp(220px, 26vw, 300px)"
 				/>
+			{:else}
+				<p class="text-sm text-base-content/70" role="status">Loading model preview…</p>
+				{#if error}
+					<button type="button" class="btn btn-outline btn-sm" onclick={showPreview}>Retry preview</button>
+				{/if}
 			{/if}
-			<button type="button" class="btn btn-outline btn-sm" onclick={() => showPreview(model.file)}
-				>{preview?.file === model.file ? 'Reload preview' : 'Preview model'}</button
-			>
-			<div class="mt-2 flex items-center justify-between gap-2 text-sm">
+			<div class="mt-3 flex flex-1 items-start justify-between gap-2 rounded-md bg-base-200 p-3 text-sm">
 				<span
+					class="min-w-0 break-all font-semibold"
 					>{basename(model.file)}{model.assets.length
 						? ` + ${model.assets.length} companion${model.assets.length === 1 ? '' : 's'}`
 						: ''}</span
 				>{#if !readOnly}<button
 						type="button"
-						class="btn btn-ghost btn-xs"
+						class="btn btn-square btn-ghost btn-sm shrink-0"
 						onclick={() => remove(model)}
-						disabled={disabled || uploading}>Remove</button
+						aria-label={`Remove ${basename(model.file)}`}
+						title="Remove model"
+						disabled={disabled || uploading}><TrashIcon class="size-4" aria-hidden="true" /></button
 					>{/if}
 			</div>
 		</div>
 	{/each}
+	</div>
 	{#if !readOnly}
 		<div
-			class="rounded-box border-2 border-dashed border-base-300 bg-base-200/40 p-6 text-center"
+			class="rounded-lg border border-dashed border-base-300 bg-base-200/40 p-4 text-center"
 			role="presentation"
 			ondragover={(event) => event.preventDefault()}
 			ondrop={(event) => {
@@ -157,7 +181,7 @@
 				void uploadFiles(Array.from(event.dataTransfer?.files || []));
 			}}
 		>
-			<p class="mb-3 text-sm text-base-content/65">
+			<p class="mb-2 text-xs text-base-content/80">
 				Drop one 3D model with its companion files here, or choose files below.
 			</p>
 			<input

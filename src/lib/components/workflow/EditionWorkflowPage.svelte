@@ -972,7 +972,7 @@
 			{#if canSubmitConcept}
 				<form
 					id="proposal"
-					class="space-y-8"
+					class="space-y-5"
 					onsubmit={(event) => {
 						event.preventDefault();
 						requestSubmit();
@@ -980,20 +980,20 @@
 				>
 					<fieldset
 						disabled={isSubmitting || isUploadingSupporting || isUploadingModel}
-						class="space-y-8"
+						class="space-y-5"
 					>
-						<section class="space-y-4 rounded-box border border-base-300 bg-base-100 p-5">
-							<div>
-								<h1 class="text-2xl font-bold">Publish with us</h1>
-								<p class="mt-1 text-sm text-base-content/65">
+						<section id="proposal-basics" class="space-y-4 overflow-hidden rounded-box border border-base-300 bg-base-100 p-5">
+							<div class="-mx-5 -mt-5 border-b border-base-300 bg-base-200 px-5 py-3">
+								<h1 class="text-base font-semibold">Your proposal</h1>
+							</div>
+								<p class="text-sm text-base-content/65">
 									Your proposal stays private and editable until you submit it for editorial review.
 								</p>
-							</div>
-							<div class="space-y-4">
+							<div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
 								<label class="form-control">
 									<span class="label-text mb-1 font-semibold">Proposal type</span>
 									<select
-										class="select-bordered select w-full max-w-xs"
+										class="select-bordered select w-full"
 										bind:value={proposalType}
 										required
 									>
@@ -1029,38 +1029,31 @@
 							bind:audience={proposalAudience}
 						/>
 
-						<section class="space-y-5 rounded-box border border-base-300 bg-base-100 p-5">
-							<h2 class="text-lg font-semibold">3D model</h2>
+						<section id="proposal-models" class="space-y-5 overflow-hidden rounded-box border border-base-300 bg-base-100 p-5">
+							<div class="-mx-5 -mt-5 border-b border-base-300 bg-base-200 px-5 py-3">
+								<h2 class="text-base font-semibold">3D model(s)</h2>
+							</div>
 							<fieldset class="space-y-2">
-								<legend class="font-semibold">Do you already have a digital 3D model?</legend>
+								<legend class="text-sm font-semibold">Do you already have a digital 3D model to use for this edition?</legend>
 								<label class="mr-5 inline-flex items-center gap-2"
-									><input type="radio" value={true} bind:group={proposalHasExistingModel} /> Yes</label
+									><input type="radio" class="radio radio-sm radio-primary" value={true} bind:group={proposalHasExistingModel} /> Yes</label
 								>
 								<label class="inline-flex items-center gap-2"
-									><input type="radio" value={false} bind:group={proposalHasExistingModel} /> No</label
+										><input type="radio" class="radio radio-sm radio-primary" value={false} bind:group={proposalHasExistingModel} /> No</label
 								>
 							</fieldset>
 							{#if proposalHasExistingModel}
-								<div class="space-y-4">
-									<p class="text-sm text-base-content/65">
-										Add each GLB, GLTF, OBJ, or PLY model with its companions separately; each file
-										may be up to 200 MB. Every retained model has its own preview.
-									</p>
-									{#if editionRecord}
-										<ProposalModelUploads
-											bind:edition={editionRecord}
-											disabled={isSubmitting || isUploadingSupporting || isSaving}
-											onupdated={(record) => (editionRecord = record)}
-											onuploadstatechange={(uploading) => {
-												isUploadingModel = uploading;
-												if (!uploading) resumeAutosave();
-											}}
-										/>
-									{/if}
-									<fieldset class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-										<legend class="font-semibold">How was the model created?</legend>
+								<div class="space-y-5">
+									<div class="space-y-2 text-xs leading-relaxed text-base-content/80">
+										<h3 class="text-sm font-semibold text-base-content">Upload your 3D model(s)</h3>
+										<p>Please check the technical requirements in the <a href={resolve('/documentation/[slug]', { slug: 'submission' })} class="link link-primary">submission guidelines</a>.</p>
+										<p>At this stage, the model is used to assess compatibility and suitability for a 3D edition. You can adjust the resolution before publication.</p>
+									</div>
+									<fieldset class="grid gap-x-4 gap-y-3 rounded-lg bg-base-200 p-3 sm:grid-cols-2 lg:grid-cols-3">
+										<legend class="sr-only">Model source · Select all that apply</legend>
+										<div class="col-span-full text-sm font-semibold">Model source <span class="font-normal text-base-content/75">· Select all that apply</span></div>
 										{#each MODEL_SOURCES as [value, label] (value)}
-											<label class="mr-4 inline-flex items-center gap-2 text-sm">
+											<label class="inline-flex items-center gap-2 text-xs">
 												<input
 													type="checkbox"
 													class="checkbox checkbox-sm"
@@ -1076,14 +1069,27 @@
 											</label>
 										{/each}
 									</fieldset>
+									<div class="space-y-2">
+										<h3 class="text-sm font-semibold">Model files</h3>
+										<p class="text-xs text-base-content/80">Add one GLB, GLTF, OBJ, or PLY model with its companion files at a time. Maximum 200 MB per file. Each model is previewed automatically.</p>
+										{#if editionRecord}
+											<ProposalModelUploads
+												bind:edition={editionRecord}
+												disabled={isSubmitting || isUploadingSupporting || isSaving}
+												onupdated={(record) => (editionRecord = record)}
+												onuploadstatechange={(uploading) => {
+													isUploadingModel = uploading;
+													if (!uploading) resumeAutosave();
+												}}
+											/>
+										{/if}
+									</div>
 									<label class="form-control">
-										<span class="label-text font-semibold">Copyright ownership and permissions</span
-										>
-										<span class="label-text-alt"
-											>Confirm you own the model or have permission to use it.</span
+										<span class="text-sm font-semibold">Do you own the copyright of the model(s)? If not, please explain.</span
 										>
 										<textarea
-											class="textarea-bordered textarea mt-1 min-h-28 w-full"
+											class="textarea-bordered textarea mt-2 min-h-20 w-full"
+											rows="3"
 											bind:value={proposalCopyrightOwnership}
 											required
 										></textarea>
@@ -1091,12 +1097,15 @@
 											>{wordCount(proposalCopyrightOwnership)}/150 words</span
 										>
 									</label>
+									<p class="text-xs leading-relaxed text-base-content/80">PURE3D cannot be held responsible for copyright infringement by authors. Before submitting, confirm that you hold the copyright or have permission to use the material in your edition.</p>
 								</div>
 							{:else}
+								<p class="rounded-lg bg-base-200/50 p-3 text-sm leading-relaxed">PURE3D normally expects you to have a 3D model before building your edition. During development, support for digitising an object may be possible. Describe your situation and what you would like to digitise.</p>
 								<label class="form-control">
-									<span class="label-text font-semibold">Describe the digitisation situation</span>
+									<span class="text-sm font-semibold">Describe the digitisation situation</span>
 									<textarea
-										class="textarea-bordered textarea mt-1 min-h-28 w-full"
+										class="textarea-bordered textarea mt-2 min-h-20 w-full"
+										rows="3"
 										bind:value={proposalDigitisationSituation}
 										required
 									></textarea>
@@ -1104,8 +1113,9 @@
 										>{wordCount(proposalDigitisationSituation)}/150 words</span
 									>
 								</label>
+								<p class="text-xs leading-relaxed text-base-content/80">Add images, videos or website links to help us assess whether your subject is suitable for a 3D scholarly edition.</p>
 								<label class="form-control">
-									<span class="label-text font-semibold">Supporting links</span>
+									<span class="text-sm font-semibold">Supporting links</span>
 									<textarea
 										class="textarea-bordered textarea mt-1 min-h-20 w-full"
 										bind:value={proposalSupportingLinks}
@@ -1878,8 +1888,37 @@
 </div>
 
 <style>
+	#proposal-models :global(.text-xs) {
+		font-size: 0.875rem;
+		line-height: 1.5;
+	}
+	#proposal :global(section) {
+		scroll-margin-top: 10rem;
+		border-color: color-mix(in srgb, var(--color-base-content) 18%, transparent);
+	}
 	#proposal :global(.form-control) {
 		display: flex;
 		flex-direction: column;
+	}
+	#proposal :global(.input),
+	#proposal :global(.select),
+	#proposal :global(.textarea) {
+		background: var(--color-base-100);
+		background: color-mix(in srgb, var(--color-base-100), white 65%);
+		border-color: color-mix(in srgb, var(--color-base-content) 25%, transparent);
+		font-size: 0.875rem;
+	}
+	#proposal :global(.input),
+	#proposal :global(.select) {
+		height: 2.5rem;
+	}
+	#proposal :global(input[readonly]) {
+		background: var(--color-base-200);
+	}
+	#proposal :global(#credits-editor > fieldset > .grid) {
+		gap: 0.75rem;
+	}
+	#proposal :global(#credits-editor > fieldset > .grid > label:last-child) {
+		grid-column: 1 / -1;
 	}
 </style>
