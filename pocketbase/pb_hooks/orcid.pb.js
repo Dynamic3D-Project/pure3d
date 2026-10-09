@@ -263,6 +263,36 @@ onRecordUpdate(
 	(e) => require(__hooks + '/alpha-review-service.cjs').savedReview(e),
 	'editionReviews'
 );
+onRecordCreate(
+	(e) => require(__hooks + '/proposal-review-service.cjs').savedReview(e),
+	'editionReviews'
+);
+onRecordUpdate(
+	(e) => require(__hooks + '/proposal-review-service.cjs').savedReview(e),
+	'editionReviews'
+);
+onRecordCreate(
+	(e) => require(__hooks + '/proposal-review-service.cjs').changedAssignment(e),
+	'reviewAssignments'
+);
+onRecordUpdate(
+	(e) => require(__hooks + '/proposal-review-service.cjs').changedAssignment(e),
+	'reviewAssignments'
+);
+onRecordDelete(
+	(e) => require(__hooks + '/proposal-review-service.cjs').changedAssignment(e),
+	'reviewAssignments'
+);
+onRecordUpdate(
+	(e) => require(__hooks + '/proposal-review-service.cjs').changedEdition(e),
+	'editions'
+);
+routerAdd(
+	'POST',
+	'/api/pure3d/editions/{editionId}/initialize-draft-assets',
+	(e) => require(__hooks + '/proposal-review-service.cjs').initialize(e),
+	$apis.requireAuth()
+);
 
 routerAdd(
 	'GET',

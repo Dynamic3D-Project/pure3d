@@ -3,7 +3,7 @@
 	import { pb } from '$lib/database/client';
 	import type { RecordModel } from 'pocketbase';
 	import VoyagerViewer from '$lib/components/voyager/VoyagerViewer.svelte';
-	import { rewriteSceneJson, type FileMap } from '$lib/utils/svx-uri-rewriter';
+	import { rewriteSceneJson, withSceneTitle, type FileMap } from '$lib/utils/svx-uri-rewriter';
 	import { getEditionRoot, DEFAULT_VOYAGER_VERSION } from '$lib/utils/asset-urls';
 
 	type Props = {
@@ -77,6 +77,7 @@
 		void resolvedFileToken;
 		void collectionPubNum;
 		void editionPubNum;
+		void title;
 		const myRun = ++runId;
 		warnMissingModel = false;
 		sceneFallbackError = false;
@@ -130,7 +131,13 @@
 	// Strip the 10-char random suffix PocketBase appends before the extension so we can
 	// match a requested basename (e.g. "logo.png") back to the stored file ("logo_abc1234567.png").
 	function originalBasename(stored: string): string {
-		return stored.replace(/_[a-z0-9]{10}(\.[^.]+)$/i, '$1').toLowerCase();
+		let name = stored;
+		let previous: string;
+		do {
+			previous = name;
+			name = name.replace(/_[a-z0-9]{10}(\.[^.]+)$/i, '$1');
+		} while (name !== previous);
+		return name.toLowerCase();
 	}
 
 	function buildCompanions(): { baseDir: string; byBasename: Record<string, string> } | undefined {
@@ -176,7 +183,7 @@
 			if (!resp.ok) throw new Error(`Scene fetch failed (${resp.status})`);
 			const sceneJson = await resp.json();
 			if (myRun !== runId) return;
-			const rewritten = rewriteSceneJson(sceneJson, buildFileMap());
+			const rewritten = withSceneTitle(rewriteSceneJson(sceneJson, buildFileMap()), title);
 			warnMissingModel = sceneReferencesMissingModel(rewritten);
 			const lastSlash = sceneUrl.lastIndexOf('/');
 			previewRoot = lastSlash >= 0 ? sceneUrl.slice(0, lastSlash + 1) : '';
@@ -231,7 +238,7 @@
 		const sceneJson = {
 			asset: { type: 'application/si-dpo-3d.document+json', version: '1.0' },
 			scene: 0,
-			scenes: [{ name: 'Scene', units: 'cm', nodes: [0, 1, 6], setup: 0 }],
+			scenes: [{ name: 'Scene', units: 'cm', nodes: [0, 1, 6], setup: 0, meta: 0 }],
 			nodes: [
 				{ name: 'Camera', camera: 0 },
 				{ name: 'Lights', children: [2, 3, 4, 5] },
@@ -267,7 +274,7 @@
 				}
 			],
 			setups: [{}],
-			metas: []
+			metas: [{ collection: { titles: { EN: title } } }]
 		};
 
 		previewModel = '';
@@ -427,7 +434,7 @@
 			role="presentation"
 		>
 			<div class="card-body p-0">
-				{#key `${mode}:${previewDocument}:${previewModel}:${previewGeometry}`}
+				{#key `${mode}:${previewDocument}:${previewModel}:${previewGeometry}:${title}`}
 					<VoyagerViewer
 						url={previewRoot}
 						document={previewDocument}
@@ -438,6 +445,8 @@
 						{title}
 						{height}
 						direct={true}
+						uiMode="menu|title|language"
+						showVoyagerMenu={true}
 						voyagerVersion={DEFAULT_VOYAGER_VERSION}
 					/>
 				{/key}

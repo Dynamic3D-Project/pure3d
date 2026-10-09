@@ -481,9 +481,11 @@
 											{/if}
 											<a
 												href={resolve('/editions/[slug]/workflow', { slug: edition.id })}
-												class="btn btn-ghost btn-sm"
+												class="btn btn-sm {edition.status === EditionStatus.ConceptAccepted ? 'btn-accent' : 'btn-ghost'}"
 											>
-												{edition.status === EditionStatus.Draft
+												{edition.status === EditionStatus.ConceptAccepted
+													? 'Build your edition'
+													: edition.status === EditionStatus.Draft
 													? 'Continue proposal'
 													: [
 																EditionStatus.ConceptSubmitted,
@@ -504,8 +506,15 @@
 							<div class="mt-3">
 								<WorkflowTimeline
 									currentStatus={edition.status}
+									showStatusDetails={edition.status !== EditionStatus.ConceptAccepted}
 									hrefForStatus={(status) => workflowStepHref(edition.id, status)}
 								/>
+								{#if edition.status === EditionStatus.ConceptAccepted}
+									<div class="mt-3 flex flex-wrap items-center gap-2 text-sm">
+										<span class="badge badge-neutral">Draft</span>
+										<p class="text-base-content/70">Proposal approved. Your edition is ready to build.</p>
+									</div>
+								{/if}
 							</div>
 							{#if edition.status === EditionStatus.AlphaReview}<p
 									class="mt-4 text-sm text-base-content/70"

@@ -22,7 +22,6 @@
 	import AlphaEditorialPanel from '$lib/components/workflow/AlphaEditorialPanel.svelte';
 	import FinalEditorialPanel from '$lib/components/workflow/FinalEditorialPanel.svelte';
 	import WorkflowTimeline from '$lib/components/workflow/WorkflowTimeline.svelte';
-	import ProposalSummary from '$lib/components/workflow/ProposalSummary.svelte';
 	import FloatingSelect from '$lib/components/ui/FloatingSelect.svelte';
 	import UserSearchSelect from '$lib/components/ui/UserSearchSelect.svelte';
 	import toast from 'svelte-french-toast';
@@ -169,13 +168,24 @@
 		[EditionStatus.PublicationRequested]: [EditionStatus.FinalAccepted, EditionStatus.FinalReview]
 	};
 
+	function isCurrentProposalCycle(
+		record: { reviewStage: number; created: string },
+		edition?: WfEdition
+	): boolean {
+		if (record.reviewStage !== ReviewStage.Concept) return true;
+		const submittedAt = Date.parse((edition?.proposalSubmittedAt || '').replace(' ', 'T'));
+		const createdAt = Date.parse(record.created.replace(' ', 'T'));
+		return Number.isFinite(submittedAt) && Number.isFinite(createdAt) && createdAt >= submittedAt;
+	}
+
 	function editionAssignments(editionId: string, stage?: number): ReviewAssignment[] {
 		const edition = editions.find((edition) => edition.id === editionId);
 		return allAssignments.filter(
 			(a) =>
 				a.editionId === editionId &&
 				(stage === undefined || a.reviewStage === stage) &&
-				isCurrentReviewRound(a, edition || {})
+				isCurrentReviewRound(a, edition || {}) &&
+				isCurrentProposalCycle(a, edition)
 		);
 	}
 
@@ -186,8 +196,22 @@
 				r.editionId === editionId &&
 				r.reviewStatus !== 'draft' &&
 				(stage === undefined || r.reviewStage === stage) &&
-				isCurrentReviewRound(r, edition || {})
+				isCurrentReviewRound(r, edition || {}) &&
+				isCurrentProposalCycle(r, edition)
 		);
+	}
+
+	function distinctActiveAssignments(assignments: ReviewAssignment[]): ReviewAssignment[] {
+		const reviewers = new Set<string>();
+		return assignments.filter((assignment) => {
+			if (
+				assignment.status === ReviewAssignmentStatus.Declined ||
+				reviewers.has(assignment.reviewerId)
+			)
+				return false;
+			reviewers.add(assignment.reviewerId);
+			return true;
+		});
 	}
 
 	onMount(loadData);
@@ -332,8 +356,10 @@
 
 	// --- Apply verdict for any review stage ---
 	async function applyVerdict(edition: WfEdition, stage: ReviewStage) {
-		const reviews = editionReviews(edition.id, stage);
-		const assignments = editionAssignments(edition.id, stage);
+		const assignments = distinctActiveAssignments(editionAssignments(edition.id, stage));
+		const reviews = editionReviews(edition.id, stage).filter((review) =>
+			assignments.some((assignment) => assignment.reviewerId === review.reviewerId)
+		);
 		const verdict = aggregateVerdicts(reviews, assignments.length);
 
 		if (verdict === 'pending') {
@@ -1166,11 +1192,15 @@
 
 		{#if expandedId === edition.id}
 			{@const assignments = editionAssignments(edition.id, stage)}
+			{@const activeAssignments = distinctActiveAssignments(assignments)}
 			{@const reviews = editionReviews(edition.id, stage)}
-			{@const verdict = aggregateVerdicts(reviews, assignments.length)}
+			{@const activeReviews = reviews.filter((review) =>
+				activeAssignments.some((assignment) => assignment.reviewerId === review.reviewerId)
+			)}
+			{@const verdict = aggregateVerdicts(activeReviews, activeAssignments.length)}
 			{@const verdictTarget =
 				verdict === 'pending' ? null : getTargetStatusFromVerdict(verdict, stage)}
-			{@const displayReviews = anonymizeReviews(reviews, assignments, userLookup, true)}
+			{@const displayReviews = anonymizeReviews(activeReviews, activeAssignments, userLookup, true)}
 			<div class="space-y-4 border-t border-base-300 px-4 pt-3 pb-4">
 				<div class="space-y-3 border-b border-base-300 pb-4">
 					<WorkflowTimeline
@@ -1200,10 +1230,27 @@
 								<dt class="font-semibold">Purpose</dt>
 								<dd class="line-clamp-3 break-words">{edition.record.proposalPurpose || 'Not provided'}</dd>
 							</dl>
-							<details>
-								<summary class="cursor-pointer text-sm font-medium underline underline-offset-4">See submission details</summary>
-								<div class="mt-3"><ProposalSummary record={edition.record} embedded /></div>
-							</details>
+							<a
+								class="btn btn-primary btn-sm"
+								style="text-decoration: none;"
+								href={resolve('/editions/[slug]/workflow', { slug: edition.id })}
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								View proposal
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.5"
+									class="size-4"
+									aria-hidden="true"
+								>
+									<path stroke-linecap="round" stroke-linejoin="round" d="M7 17 17 7M7 7h10v10" />
+								</svg>
+								<span class="sr-only">(opens in a new tab)</span>
+							</a>
 						</div>
 					</div>
 				{:else}
@@ -1242,7 +1289,11 @@
 										<div class="flex flex-wrap items-center gap-3">
 											<span class="text-sm font-semibold">Editorial recommendation</span>
 											<span class="badge {getVerdictBadge(verdict)}">{getVerdictLabel(verdict)}</span>
-											{#if verdictTarget && canTransitionStatus(edition.status, verdictTarget)}
+											{#if verdict === 'accept'}
+												<p class="text-sm text-base-content/60">
+													Unanimous approval advances the proposal automatically.
+												</p>
+											{:else if verdictTarget && canTransitionStatus(edition.status, verdictTarget)}
 												<button class="btn btn-sm btn-primary" onclick={() => applyVerdict(edition, stage)} disabled={actionLoading}>
 													{#if actionLoading}<span class="loading loading-xs loading-spinner"></span>{/if}
 													Apply editorial decision

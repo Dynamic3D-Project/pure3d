@@ -26,6 +26,16 @@ function compareVersions(a: string, b: string): number {
 	return 0;
 }
 
+function originalFilename(filename: string): string {
+	let name = filename;
+	let previous: string;
+	do {
+		previous = name;
+		name = name.replace(/_[a-z0-9]{10}(\.[^.]+)$/i, '$1');
+	} while (name !== previous);
+	return name;
+}
+
 /**
  * Get effective Voyager version, upgrading old versions that don't support
  * the 'derivatives' schema feature to the minimum compatible version
@@ -73,7 +83,7 @@ export const load: PageLoad = async ({ params, fetch }) => {
 			].filter(Boolean) as string[]) {
 				const url = pb.files.getURL(record, filename, { token });
 				uploadedAssetMap[filename] = url;
-				uploadedAssetMap[filename.replace(/_[a-z0-9]{10}(\.[^.]+)$/i, '$1')] = url;
+				uploadedAssetMap[originalFilename(filename)] = url;
 			}
 		}
 		const voyagerResourceRoot = getVoyagerResourceRoot(voyagerVersion);

@@ -88,6 +88,10 @@
 	let conceptPeerReview = $state(false);
 	let conceptDcSubtitle = $state('');
 	let credits = $state<Credit[]>([]);
+	let editableCredits = $state<Credit[]>([]);
+	let creditsDialog: HTMLDialogElement;
+	let alphaRequestDialog: HTMLDialogElement;
+	let flushingForReview = false;
 	let conceptDcInstitution = $state('');
 	let conceptDcSubject = $state('');
 	let conceptDcKeyword = $state('');
@@ -165,14 +169,6 @@
 			return 'text-base-content/60';
 		return 'text-success';
 	});
-	let saveStatusBadgeClass = $derived.by(() => {
-		if (effectiveSaveStatus === 'error') return 'border-error/30 bg-error/10 text-error';
-		if (effectiveSaveStatus === 'unsaved') return 'border-warning/30 bg-warning/10 text-warning';
-		if (effectiveSaveStatus === 'saving' || editionAssetsBusy || coverBusy)
-			return 'border-base-300 bg-base-200 text-base-content/70';
-		return 'border-success/30 bg-success/10 text-success';
-	});
-
 	$effect(() => {
 		if (!formReady || !edition || viewMode !== 'concept-form') return;
 		draft?.set(activeFormData());
@@ -288,7 +284,7 @@
 		if (!edition) return '';
 		if (canSubmitConcept) return 'Submit proposal for review when it is ready.';
 		if (edition.status === EditionStatus.ConceptAccepted)
-			return 'Prepare the edition, then request Alpha Review from the Review tab.';
+			return 'Prepare the edition, then request Alpha Review when it is ready.';
 		if (edition.status === EditionStatus.AlphaRevisions)
 			return 'Read the released feedback, revise the edition, then request another Alpha round from the Review tab.';
 		if (edition.status === EditionStatus.AlphaReview)
@@ -391,7 +387,10 @@
 			};
 
 			// Initialize concept form
-			if ($page.url.hash === '#edition-review-tab') activeFormTab = 'peer-review';
+			if ($page.url.hash === '#edition-review-tab')
+				activeFormTab = [EditionStatus.ConceptAccepted, EditionStatus.AlphaRevisions].includes(edition.status)
+					? 'description'
+					: 'peer-review';
 			conceptTitle = edition.title;
 			conceptDescription = edition.description;
 			conceptPeerReview = edition.peerReviewRequested;
@@ -647,13 +646,13 @@
 				saveError = error || '';
 			},
 			1200,
-			() => !isSubmitting && !isUploadingModel && !isUploadingSupporting
+			() => (!isSubmitting || flushingForReview) && !isUploadingModel && !isUploadingSupporting
 		);
 		draft = controller;
 	}
 
 	async function persistDraft({ showToast }: { showToast: boolean }) {
-		if (!edition || isSubmitting || !draft) return false;
+		if (!edition || (isSubmitting && !flushingForReview) || !draft) return false;
 		const controller = draft;
 		controller.set(activeFormData());
 		try {
@@ -676,8 +675,13 @@
 			throw new Error('Finish uploads and close the scene editor before requesting review.');
 		const creditError = validateCredits(credits, true);
 		if (creditError) throw new Error(creditError);
-		if (!(await persistDraft({ showToast: false })))
-			throw new Error(saveError || 'Save the latest changes before requesting review.');
+		flushingForReview = true;
+		try {
+			if (!(await persistDraft({ showToast: false })))
+				throw new Error(saveError || 'Save the latest changes before requesting review.');
+		} finally {
+			flushingForReview = false;
+		}
 	}
 
 	async function uploadSupportingFiles(event: Event) {
@@ -880,16 +884,13 @@
 				</ul>
 			</nav>
 			{#if viewMode === 'concept-form'}
-				<div
-					class="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium {saveStatusBadgeClass}"
-					aria-live="polite"
-				>
-					{#if saveStatus === 'saving'}
-						<span class="loading loading-xs loading-spinner"></span>
-					{:else}
-						<span class="size-2 rounded-full bg-current"></span>
+				<div class="ml-auto flex flex-wrap items-center gap-2">
+					{#if canViewEdition}
+						<a href={resolve('/editions/[slug]', { slug: edition.id })} class="btn btn-ghost btn-sm">View Edition</a>
 					{/if}
-					<span>{saveStatusText}</span>
+					{#if canDelete}
+						<button type="button" class="btn btn-outline btn-sm btn-error" onclick={() => (showDeleteModal = true)}>Delete</button>
+					{/if}
 				</div>
 			{/if}
 		</div>
@@ -922,7 +923,17 @@
 							<span class="font-semibold">Workflow</span>
 							<span class="ml-2 text-base-content/60">{nextWorkflowAction}</span>
 						</div>
-						<StatusBadge status={edition.status} />
+						{#if editionRecord && [EditionStatus.ConceptAccepted, EditionStatus.AlphaRevisions].includes(edition.status) && (isAuthor || isAdmin || collectionRole === CollectionRole.Owner)}
+							<button type="button" class="btn btn-primary" disabled={isSaving || isSubmitting || editionAssetsBusy || coverBusy} onclick={() => alphaRequestDialog.showModal()}>
+								Request Alpha Review
+								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-4" aria-hidden="true">
+									<path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-6-6 6 6-6 6" />
+								</svg>
+							</button>
+						{/if}
+						{#if edition.status !== EditionStatus.ConceptAccepted}
+							<StatusBadge status={edition.status} />
+						{/if}
 					</div>
 					<ol class="flex items-center gap-2 overflow-x-auto pb-1">
 						{#each workflowStages as stage, index (stage.label)}
@@ -952,6 +963,7 @@
 				</div>
 			{/if}
 
+			{#if viewMode !== 'concept-form'}
 			<div class="ml-auto flex flex-col items-end gap-2">
 				<div class="flex flex-wrap items-center justify-end gap-2">
 					{#if canViewEdition}
@@ -970,6 +982,7 @@
 					{/if}
 				</div>
 			</div>
+			{/if}
 		</div>
 
 		<!-- Proposal Form — mirrors viewer layout -->
@@ -1249,7 +1262,16 @@
 										required
 										placeholder="Edition title"
 									/>
-									<CreditsEditor bind:credits disabled={isSubmitting} />
+									<div class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-base-200/50 px-3 py-2">
+										<div class="min-w-0 text-sm">
+											<p class="font-semibold">Authors</p>
+											<p class="break-words text-base-content/70">{credits.map((credit) => credit.name).filter(Boolean).join(', ') || 'No credits added'}</p>
+										</div>
+										<button type="button" class="btn btn-outline btn-sm" disabled={isSubmitting} onclick={() => {
+											editableCredits = readCredits(credits).map((credit) => ({ ...credit }));
+											creditsDialog.showModal();
+										}}>Edit authors</button>
+									</div>
 									{#if edition.collectionTitle}
 										<p class="mt-1 text-sm text-base-content/50">in {edition.collectionTitle}</p>
 									{/if}
@@ -1263,6 +1285,7 @@
 									{#if editionRecord}
 										<EditionAssetsPanel
 											bind:edition={editionRecord}
+											title={conceptTitle}
 											disabled={isSubmitting || coverBusy}
 											onbusychange={(busy) => (editionAssetsBusy = busy)}
 											{collectionPubNum}
@@ -1297,7 +1320,7 @@
 													>
 														Metadata
 													</button>
-													<button
+													{#if ![EditionStatus.ConceptAccepted, EditionStatus.AlphaRevisions].includes(edition.status)}<button
 														type="button"
 														role="tab"
 														class="tab flex-1"
@@ -1306,7 +1329,7 @@
 														onclick={() => (activeFormTab = 'peer-review')}
 													>
 														Review
-													</button>
+													</button>{/if}
 													<button
 														type="button"
 														role="tab"
@@ -1474,24 +1497,6 @@
 																isSubmitting}
 														/>
 													{/if}
-													{#if editionRecord && [EditionStatus.ConceptAccepted, EditionStatus.AlphaRevisions].includes(edition.status)}
-														<div hidden={activeFormTab !== 'peer-review'}>
-															<AlphaRequestForm
-																edition={editionRecord}
-																disabled={editionAssetsBusy || coverBusy}
-																canRequest={isAuthor ||
-																	isAdmin ||
-																	collectionRole === CollectionRole.Owner}
-																beforeSubmit={flushEditionForAlpha}
-																onstatuschange={(state) => (alphaContextSaveStatus = state)}
-																onbusychange={(busy) => (isSubmitting = busy)}
-																onsubmitted={() => {
-																	toast.success('Edition submitted for Alpha Review');
-																	void loadData();
-																}}
-															/>
-														</div>
-													{/if}
 													{#if editionRecord && [EditionStatus.AlphaAccepted, EditionStatus.FinalRevisions, EditionStatus.FinalAccepted].includes(edition.status)}
 														<div hidden={activeFormTab !== 'peer-review'}>
 															<FinalRequestForm
@@ -1568,11 +1573,13 @@
 				/>
 			{:else}
 				<div class="space-y-6">
-					<section id="review" class="scroll-mt-24 rounded-box border border-base-300 bg-base-100 p-6">
-						<h2 class="mb-5 text-xl font-semibold">Your review</h2>
-						<div class="grid items-start gap-6 lg:grid-cols-2">
-						<div class="min-w-0">
-						<h3 class="mb-4 text-lg font-semibold">Decision & comments</h3>
+					<section id="review" class="scroll-mt-24 overflow-hidden rounded-box border border-base-300 bg-base-100 p-5">
+						<div class="-mx-5 -mt-5 mb-5 border-b border-base-300 bg-base-200 px-5 py-3">
+							<h2 class="text-base font-semibold">Your review</h2>
+						</div>
+						<div class="grid items-start gap-5 lg:grid-cols-2">
+						<div class="min-w-0 overflow-hidden rounded-lg border border-base-300 p-4">
+						<h3 class="-mx-4 -mt-4 mb-4 border-b border-base-300 bg-base-200/50 px-4 py-3 text-base font-semibold">Decision & comments</h3>
 						<ReviewForm
 							stacked
 							editionId={edition.id}
@@ -1585,9 +1592,9 @@
 					<!-- Granular feedback (reviewer) -->
 					<div
 						id="feedback"
-						class="min-w-0 scroll-mt-24 border-t border-base-300 pt-6 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6"
+						class="min-w-0 scroll-mt-24 overflow-hidden rounded-lg border border-base-300 p-4"
 					>
-						<h3 class="mb-4 text-lg font-semibold">Granular Feedback</h3>
+						<h3 class="-mx-4 -mt-4 mb-4 border-b border-base-300 bg-base-200/50 px-4 py-3 text-base font-semibold">Granular Feedback</h3>
 						<ReviewFeedbackForm
 							editionId={edition.id}
 							reviewStage={myAssignment.reviewStage}
@@ -1687,7 +1694,13 @@
 						<summary class="cursor-pointer py-3 font-semibold">View submitted proposal</summary
 						><ProposalSummary record={editionRecord} />
 					</details>
-				{:else if editionRecord}<ProposalSummary record={editionRecord} />{/if}
+				{:else if editionRecord}
+					{#if [EditionStatus.ConceptSubmitted, EditionStatus.EditorialReview].includes(edition.status)}
+						<ReadOnlyProposal record={editionRecord} />
+					{:else}
+						<ProposalSummary record={editionRecord} />
+					{/if}
+				{/if}
 
 				{#if ![EditionStatus.ConceptSubmitted, EditionStatus.EditorialReview, EditionStatus.AlphaReview, EditionStatus.FinalReview, EditionStatus.PublicationRequested, EditionStatus.Published].includes(edition.status)}
 					<div id="alpha" class="scroll-mt-24 rounded-box border border-base-300 bg-base-100 p-6">
@@ -1830,6 +1843,44 @@
 			</div>
 		{/if}
 	{/if}
+
+	<dialog bind:this={alphaRequestDialog} class="modal" aria-label="Request Alpha Review">
+		<div class="modal-box w-11/12 max-w-2xl">
+			{#if editionRecord && edition && [EditionStatus.ConceptAccepted, EditionStatus.AlphaRevisions].includes(edition.status)}
+				<AlphaRequestForm
+					edition={editionRecord}
+					disabled={editionAssetsBusy || coverBusy}
+					canRequest={isAuthor || isAdmin || collectionRole === CollectionRole.Owner}
+					beforeSubmit={flushEditionForAlpha}
+					onclose={() => alphaRequestDialog.close()}
+					onstatuschange={(state) => (alphaContextSaveStatus = state)}
+					onbusychange={(busy) => (isSubmitting = busy)}
+					onsubmitted={() => {
+						alphaRequestDialog.close();
+						toast.success('Edition submitted for Alpha Review');
+						void loadData();
+					}}
+				/>
+			{/if}
+		</div>
+	</dialog>
+
+	<dialog bind:this={creditsDialog} class="modal" aria-labelledby="edit-credits-title">
+		<div class="modal-box w-11/12 max-w-3xl">
+			<h2 id="edit-credits-title" class="mb-4 text-xl font-semibold">Edit authors</h2>
+			<CreditsEditor bind:credits={editableCredits} disabled={isSubmitting} />
+			<div class="modal-action">
+				<button type="button" class="btn btn-outline" onclick={() => creditsDialog.close()}>Cancel</button>
+				<button type="button" class="btn btn-primary" disabled={isSubmitting} onclick={() => {
+					const error = validateCredits(editableCredits, false);
+					if (error) { toast.error(error); return; }
+					credits = readCredits(editableCredits);
+					creditsDialog.close();
+				}}>Apply changes</button>
+			</div>
+		</div>
+		<form method="dialog" class="modal-backdrop"><button aria-label="Close credit editor">close</button></form>
+	</dialog>
 
 	<dialog bind:this={submitDialog} class="modal" aria-labelledby="submit-proposal-title">
 		<div class="modal-box">

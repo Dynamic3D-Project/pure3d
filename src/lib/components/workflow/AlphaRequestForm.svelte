@@ -13,7 +13,8 @@
 		beforeSubmit,
 		onstatuschange,
 		onbusychange,
-		onsubmitted
+		onsubmitted,
+		onclose
 	}: {
 		edition: RecordModel;
 		disabled?: boolean;
@@ -22,6 +23,7 @@
 		onstatuschange?: (state: SaveState) => void;
 		onbusychange: (busy: boolean) => void;
 		onsubmitted: (record: RecordModel) => void;
+		onclose?: () => void;
 	} = $props();
 	let context = $state<AlphaContext>({ ready: '', focus: '', workInProgress: '' });
 	let saving = $state<SaveState>('saved');
@@ -139,12 +141,16 @@
 					type="button"
 					class="btn btn-outline btn-sm"
 					onclick={() => autosave.flush().catch(() => {})}>Retry save</button
-				>{/if}<button
+				>{/if}
+			<div class="ml-auto flex items-center gap-3">
+				{#if onclose}<button type="button" class="btn btn-outline" onclick={onclose}>Close</button>{/if}
+			<button
 				type="button"
 				class="btn btn-primary"
 				disabled={!ready || !canRequest}
 				onclick={requestSubmit}>{submitting ? 'Submitting…' : 'Submit for Alpha Review'}</button
 			>
+			</div>
 		</div>
 	</fieldset>
 	{#if !canRequest}<p class="text-sm text-base-content/70">

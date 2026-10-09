@@ -13,6 +13,7 @@
 		edition,
 		collectionPubNum,
 		editionPubNum,
+		title,
 		disabled = false,
 		onupdated,
 		onbusychange
@@ -20,6 +21,7 @@
 		edition: RecordModel;
 		collectionPubNum?: number | null;
 		editionPubNum?: number | null;
+		title: string;
 		disabled?: boolean;
 		onupdated: (record: RecordModel) => void;
 		onbusychange: (busy: boolean) => void;
@@ -35,6 +37,15 @@
 	let config: Record<string, unknown>;
 	let pending: { resolve: (document: object) => void; reject: (error: Error) => void } | undefined;
 	let timeout: ReturnType<typeof setTimeout> | undefined;
+	function originalFilename(filename: string) {
+		let name = filename;
+		let previous: string;
+		do {
+			previous = name;
+			name = name.replace(/_[a-z0-9]{10}(\.[^.]+)$/i, '$1');
+		} while (name !== previous);
+		return name;
+	}
 	beforeNavigate((navigation) => {
 		if ((dirty || saving) && !confirm('Leave with unsaved Voyager scene changes?'))
 			navigation.cancel();
@@ -91,7 +102,7 @@
 			for (const filename of files) {
 				const url = pb.files.getURL(edition, filename, { token });
 				assets[filename] = url;
-				assets[filename.replace(/_[a-z0-9]{10}(\.[^.]+)$/i, '$1')] = url;
+				assets[originalFilename(filename)] = url;
 			}
 			const root = files.length
 				? pb.files
@@ -111,6 +122,7 @@
 						? edition.settingsSceneFile || 'scene.svx.json'
 						: '',
 				model: edition.modelFile ? assets[edition.modelFile] : '',
+				title,
 				assets
 			};
 			session = crypto.randomUUID();
@@ -181,8 +193,11 @@
 </script>
 
 <div id="voyager-scene-editor" class="space-y-2">
-	<button type="button" class="btn btn-outline btn-sm" {disabled} onclick={open}
-		>{edition.sceneDocument || edition.settingsSceneFile
+	<button type="button" class="btn btn-accent" {disabled} onclick={open}>
+		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-5" aria-hidden="true">
+			<path stroke-linecap="round" stroke-linejoin="round" d="m12 3 9 5v8l-9 5-9-5V8l9-5Zm0 9 9-4M12 12 3 8m9 4v9" />
+		</svg>
+		{edition.sceneDocument || edition.settingsSceneFile
 			? 'Edit scene in Voyager Story'
 			: 'Create Voyager scene'}</button
 	>
@@ -199,7 +214,7 @@
 		<div class="modal-box flex h-[90dvh] w-[96vw] max-w-none flex-col p-3">
 			<div class="mb-3 flex flex-wrap items-center justify-between gap-3">
 				<h2 id="voyager-scene-editor-title" class="font-semibold">
-					Voyager Story · {edition.title}
+					Voyager Story · {title}
 				</h2>
 				<div class="flex gap-2">
 					<button type="button" class="btn btn-outline btn-sm" disabled={saving} onclick={close}

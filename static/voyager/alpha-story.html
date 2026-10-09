@@ -37,7 +37,7 @@
 				try {
 					if (event.data.type === 'init' && !started) {
 						started = true;
-						const { root, resourceRoot, document: scene, model, assets } = event.data;
+						const { root, resourceRoot, document: scene, model, title, assets } = event.data;
 						const resources = new URL(resourceRoot, location.href);
 						if (
 							resources.origin !== location.origin ||
@@ -45,7 +45,7 @@
 						)
 							throw new Error('Invalid Voyager runtime.');
 						const originalFetch = window.fetch.bind(window);
-						window.fetch = (input, init) => {
+						window.fetch = async (input, init) => {
 							const url =
 								typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
 							const name = decodeURIComponent(
@@ -56,7 +56,35 @@
 								.replace(/([A-Z])([A-Z][a-z])/g, '$1_$2')
 								.toLowerCase()
 								.replace(/[^a-z0-9.]+/g, '_');
-							return originalFetch(assets[name] || assets[normalized] || input, init);
+							const response = await originalFetch(assets[name] || assets[normalized] || input, init);
+							if (!title || !scene || new URL(url, location.href).href !== new URL(scene, location.href).href)
+								return response;
+							const document = await response.clone().json();
+							const scenes = Array.isArray(document.scenes) ? document.scenes : [];
+							const sceneIndex = typeof document.scene === 'number' ? document.scene : 0;
+							const activeScene = scenes[sceneIndex];
+							if (!activeScene || typeof activeScene !== 'object') return response;
+							const metas = Array.isArray(document.metas) ? document.metas : [];
+							let metaIndex = typeof activeScene.meta === 'number' ? activeScene.meta : -1;
+							if (!metas[metaIndex] || typeof metas[metaIndex] !== 'object') {
+								metaIndex = metas.length;
+								activeScene.meta = metaIndex;
+								metas.push({});
+							}
+							const setup = document.setups?.[activeScene.setup];
+							const language = setup?.language?.language;
+							{
+								const meta = metas[metaIndex];
+								meta.collection ||= {};
+								meta.collection.titles = { ...(meta.collection.titles || {}), EN: title };
+								if (typeof language === 'string' && language)
+									meta.collection.titles[language.toUpperCase()] = title;
+							}
+							document.metas = metas;
+							return new Response(JSON.stringify(document), {
+								status: response.status,
+								headers: { 'content-type': 'application/json' }
+							});
 						};
 						for (const path of ['fonts/fonts.css', 'css/voyager-story.min.css']) {
 							const link = document.createElement('link');
@@ -83,9 +111,23 @@
 						const view = new StoryView(app);
 						view.style.height = '100%';
 						document.body.append(view);
-						if (scene) await app.loadDocument(scene);
+						if (scene && title) {
+							const response = await window.fetch(scene);
+							if (!response.ok) throw new Error(`Could not load scene (${response.status}).`);
+							const runtimeScene = URL.createObjectURL(await response.blob());
+							try {
+								await app.loadDocument(runtimeScene);
+							} finally {
+								URL.revokeObjectURL(runtimeScene);
+							}
+						} else if (scene) await app.loadDocument(scene);
 						else if (/\.(obj|ply)(\?|$)/i.test(model)) await app.loadGeometry(model);
 						else if (model) await app.loadModel(model, 'High');
+						if (title) {
+							const activeDocument = app.documentProvider?.activeComponent;
+							activeDocument?.ins?.title?.setValue(title);
+							activeDocument?.update?.();
+						}
 						if (!app.documentProvider?.activeComponent?.deflateDocument)
 							throw new Error('This Voyager version cannot save scenes through the editor.');
 						send('ready');
