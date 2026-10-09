@@ -99,19 +99,22 @@ export const MIN_DERIVATIVES_VERSION = '0.59.0';
 
 export type VoyagerVersion = (typeof VOYAGER_VERSIONS)[number];
 
-export function getEditionCoverUrl(edition: {
-	id: string;
-	collectionId?: string;
-	collectionName?: string;
-	fileCollectionId?: string;
-	fileCollectionName?: string;
-	coverImage?: string;
-	thumbnail?: string;
-}): string | null {
+export function getEditionCoverUrl(
+	edition: {
+		id: string;
+		collectionId?: string;
+		collectionName?: string;
+		fileCollectionId?: string;
+		fileCollectionName?: string;
+		coverImage?: string;
+		thumbnail?: string;
+	},
+	fileToken = ''
+): string | null {
 	const coverImage = (edition.coverImage as string | undefined) ?? '';
 	if (coverImage) {
 		return getPocketBaseFileUrl(edition, coverImage, (record, filename) =>
-			pb.files.getURL(record, filename)
+			pb.files.getURL(record, filename, fileToken ? { token: fileToken } : {})
 		);
 	}
 	const thumbnail = (edition.thumbnail as string | undefined) ?? '';

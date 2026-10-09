@@ -14,7 +14,7 @@
 	import FinalReviewProgress from '$lib/components/workflow/FinalReviewProgress.svelte';
 	import StatusBadge from '$lib/components/workflow/StatusBadge.svelte';
 	import WorkflowTimeline from '$lib/components/workflow/WorkflowTimeline.svelte';
-	import { getEditionThumbnailUrl } from '$lib/utils/asset-urls';
+	import { getEditionCoverUrl, getEditionThumbnailUrl } from '$lib/utils/asset-urls';
 
 	interface DashEdition {
 		id: string;
@@ -174,14 +174,27 @@
 					filter: allEditionIds.map((id) => `id = "${id}"`).join(' || '),
 					expand: 'collection'
 				});
+				const needsFileToken = edResult.items.some((r) => r.coverImage && !r.isPublished);
+				const fileToken = needsFileToken ? await pb.files.getToken() : '';
 				for (const r of edResult.items) {
 					const col = r.expand?.collection;
 					const collectionPubNum = col?.pubNum || 0;
 					const editionPubNum = r.pubNum || 0;
-					const thumbnail =
+					const legacyThumbnail =
 						r.thumbnail && collectionPubNum > 0 && editionPubNum > 0
 							? getEditionThumbnailUrl(collectionPubNum, editionPubNum)
 							: '';
+					const thumbnail =
+						getEditionCoverUrl(
+							{
+								id: r.id,
+								collectionId: r.collectionId,
+								collectionName: r.collectionName,
+								coverImage: r.coverImage,
+								thumbnail: legacyThumbnail
+							},
+							r.isPublished ? '' : fileToken
+						) || '';
 					editionMap.set(r.id, {
 						id: r.id,
 						title: r.dcTitle || r.title,
@@ -265,6 +278,40 @@
 	function workflowStepHref(editionId: string, status: EditionStatus): string {
 		const workflowPath = resolve('/editions/[slug]/workflow', { slug: editionId });
 		return workflowPath + workflowAnchor(status);
+	}
+
+	function statusMessage(status: EditionStatus): string {
+		switch (status) {
+			case EditionStatus.Draft:
+				return 'Continue your proposal when you are ready.';
+			case EditionStatus.ConceptSubmitted:
+				return 'Proposal submitted. Awaiting editorial review.';
+			case EditionStatus.EditorialReview:
+				return 'Your proposal is under editorial review.';
+			case EditionStatus.ConceptAccepted:
+				return 'Proposal approved. Your edition is ready to build.';
+			case EditionStatus.ConceptRejected:
+				return 'Revise your proposal before resubmitting.';
+			case EditionStatus.AlphaReview:
+				return 'Editing is locked until the Alpha Review decision.';
+			case EditionStatus.AlphaRevisions:
+			case EditionStatus.FinalRevisions:
+				return 'Revisions requested. Update your edition and resubmit.';
+			case EditionStatus.AlphaRejected:
+				return 'Alpha Review rejected. Revise your draft before resubmitting.';
+			case EditionStatus.AlphaAccepted:
+				return 'Alpha Review approved. Ready for final review.';
+			case EditionStatus.FinalReview:
+				return 'Your edition is in final review.';
+			case EditionStatus.FinalAccepted:
+				return 'Final review approved. Ready to request publication.';
+			case EditionStatus.PublicationRequested:
+				return 'Publication requested. Awaiting the editorial decision.';
+			case EditionStatus.Published:
+				return 'Your edition is published.';
+			default:
+				return 'Open your workflow to see the next step.';
+		}
 	}
 </script>
 
@@ -428,110 +475,112 @@
 					>
 				</div>
 			{:else}
-				<div class="space-y-3">
+				<div class="grid grid-cols-1 items-start gap-6 sm:grid-cols-2 lg:grid-cols-3">
 					{#each myEditions as edition (edition.id)}
-						<div class="rounded-box border border-base-300 bg-base-100 p-4">
-							<div class="flex gap-4">
+						<article class="ds-card flex min-w-0 flex-col p-3">
+							<a
+								href={resolve('/editions/[slug]/workflow', { slug: edition.id })}
+								class="relative block aspect-square overflow-hidden rounded-lg bg-base-200"
+								aria-label={`Open workflow for ${edition.title || 'Untitled Proposal'}`}
+							>
 								{#if edition.thumbnail}
 									<img
 										src={edition.thumbnail}
 										alt={edition.title}
-										class="size-16 shrink-0 rounded-lg object-cover"
+										class="h-full w-full object-cover"
+										loading="lazy"
 									/>
 								{:else}
-									<div
-										class="flex size-16 shrink-0 items-center justify-center rounded-lg bg-base-200 text-base-content/30"
-									>
+									<div class="flex h-full items-center justify-center text-base-content/30">
 										<svg
 											xmlns="http://www.w3.org/2000/svg"
 											fill="none"
 											viewBox="0 0 24 24"
 											stroke-width="1.5"
 											stroke="currentColor"
-											class="size-6"
+											class="size-16"
+											aria-hidden="true"
 										>
 											<path
 												stroke-linecap="round"
 												stroke-linejoin="round"
-												d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"
+												d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
 											/>
 										</svg>
 									</div>
 								{/if}
-								<div class="min-w-0 flex-1">
-									<div class="flex flex-wrap items-center justify-between gap-3">
-										<div class="flex flex-wrap items-center gap-3">
-											<a
-												class="font-medium break-words link-hover"
-												href={resolve('/editions/[slug]/workflow', { slug: edition.id })}
-												>{edition.title || 'Untitled Proposal'}</a
-											>
-										</div>
-										<div class="flex items-center gap-2">
-											{#if edition.status === EditionStatus.Draft}
-												<button
-													type="button"
-													class="btn text-error btn-ghost btn-sm"
-													disabled={deletingId === edition.id}
-													onclick={() => deleteDraft(edition)}
-													aria-label="Delete draft"
-												>
-													{deletingId === edition.id ? 'Deleting…' : 'Delete'}
-												</button>
-											{/if}
-											<a
-												href={resolve('/editions/[slug]/workflow', { slug: edition.id })}
-												class="btn btn-sm {edition.status === EditionStatus.ConceptAccepted ? 'btn-accent' : 'btn-ghost'}"
-											>
-												{edition.status === EditionStatus.ConceptAccepted
-													? 'Build your edition'
-													: edition.status === EditionStatus.Draft
-													? 'Continue proposal'
-													: [
-																EditionStatus.ConceptSubmitted,
-																EditionStatus.EditorialReview
-														  ].includes(edition.status)
-														? 'View proposal'
-														: edition.status === EditionStatus.AlphaReview
-															? 'View edition'
-															: 'View workflow'}
-											</a>
-										</div>
-									</div>
+							</a>
+							<div class="mt-3 flex flex-col gap-3 rounded-md bg-base-200 p-3">
+								<div>
+									<a
+										class="font-semibold break-words link-hover"
+										href={resolve('/editions/[slug]/workflow', { slug: edition.id })}
+										>{edition.title || 'Untitled Proposal'}</a
+									>
 									{#if edition.collectionTitle}
-										<p class="mt-1 text-sm text-base-content/50">in {edition.collectionTitle}</p>
+										<p class="mt-1 text-sm text-base-content/60">in {edition.collectionTitle}</p>
 									{/if}
 								</div>
+								<StatusBadge status={edition.status} />
+								<p class="min-h-10 text-sm text-base-content/70">{statusMessage(edition.status)}</p>
+								<div class="flex flex-wrap items-center gap-2">
+									{#if edition.status === EditionStatus.Draft}
+										<button
+											type="button"
+											class="btn text-error btn-ghost btn-sm"
+											disabled={deletingId === edition.id}
+											onclick={() => deleteDraft(edition)}
+											aria-label={`Delete draft ${edition.title || 'Untitled Proposal'}`}
+										>
+											{deletingId === edition.id ? 'Deleting…' : 'Delete'}
+										</button>
+									{/if}
+									<a
+										href={resolve('/editions/[slug]/workflow', { slug: edition.id })}
+										class="btn flex-1 btn-sm btn-primary"
+									>
+										{edition.status === EditionStatus.ConceptAccepted
+											? 'Build your edition'
+											: edition.status === EditionStatus.Draft
+												? 'Continue proposal'
+												: [EditionStatus.ConceptSubmitted, EditionStatus.EditorialReview].includes(
+															edition.status
+													  )
+													? 'View proposal'
+													: edition.status === EditionStatus.AlphaReview
+														? 'View edition'
+														: 'View workflow'}
+									</a>
+								</div>
 							</div>
-							<div class="mt-3">
-								<WorkflowTimeline
-									currentStatus={edition.status}
-									showStatusDetails={edition.status !== EditionStatus.ConceptAccepted}
-									hrefForStatus={(status) => workflowStepHref(edition.id, status)}
-								/>
-								{#if edition.status === EditionStatus.ConceptAccepted}
-									<div class="mt-3 flex flex-wrap items-center gap-2 text-sm">
-										<span class="badge badge-neutral">Draft</span>
-										<p class="text-base-content/70">Proposal approved. Your edition is ready to build.</p>
+							<details class="mt-3 rounded-md border border-base-300">
+								<summary
+									class="cursor-pointer rounded-md px-3 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-primary"
+									>Progress</summary
+								>
+								<div class="px-3 pb-3">
+									<div class="overflow-x-auto pb-2">
+										<div class="min-w-[460px]">
+											<WorkflowTimeline
+												currentStatus={edition.status}
+												showStatusDetails={false}
+												hrefForStatus={(status) => workflowStepHref(edition.id, status)}
+											/>
+										</div>
 									</div>
-								{/if}
-							</div>
-							{#if edition.status === EditionStatus.AlphaReview}<p
-									class="mt-4 text-sm text-base-content/70"
-								>
-									Submitted for Alpha Review. Editing is locked until the editorial decision.
-								</p>{/if}
-							{#if [EditionStatus.FinalReview, EditionStatus.FinalRevisions, EditionStatus.FinalAccepted, EditionStatus.PublicationRequested].includes(edition.status)}<div
-									class="mt-3"
-								>
-									<FinalReviewProgress editionId={edition.id} />
-								</div>{/if}
-							{#if [EditionStatus.AlphaReview, EditionStatus.AlphaRevisions, EditionStatus.AlphaAccepted].includes(edition.status)}<div
-									class="mt-3"
-								>
-									<AlphaReviewProgress editionId={edition.id} />
-								</div>{/if}
-						</div>
+									{#if [EditionStatus.FinalReview, EditionStatus.FinalRevisions, EditionStatus.FinalAccepted, EditionStatus.PublicationRequested].includes(edition.status)}<div
+											class="mt-3"
+										>
+											<FinalReviewProgress editionId={edition.id} />
+										</div>{/if}
+									{#if [EditionStatus.AlphaReview, EditionStatus.AlphaRevisions, EditionStatus.AlphaAccepted].includes(edition.status)}<div
+											class="mt-3"
+										>
+											<AlphaReviewProgress editionId={edition.id} />
+										</div>{/if}
+								</div>
+							</details>
+						</article>
 					{/each}
 				</div>
 			{/if}

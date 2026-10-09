@@ -411,11 +411,14 @@
 		color: var(--color-paper);
 	}
 	#home3 .hero em {
+		font-family: inherit;
+		font-style: normal;
 		color: #f4b5a0;
 	}
 	h1 {
 		margin: 0;
-		font-weight: 500;
+		font-family: 'Times New Roman', Times, serif;
+		font-weight: 400;
 		font-size: clamp(42px, 5.3vw, 80px);
 		line-height: 0.98;
 		letter-spacing: -0.035em;
