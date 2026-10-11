@@ -259,7 +259,8 @@
 	// Format citation (Chicago style)
 	const citationText = $derived.by(() => {
 		const creatorStr = creatorNames(credits) || 'Unknown';
-		const year = edition.created ? new Date(edition.created).getFullYear() : '';
+		const citationDate = edition.dcDatePublished || edition.created;
+		const year = citationDate ? new Date(citationDate).getFullYear() : '';
 		const title = edition.title;
 		const pubNum = edition.pubNum;
 		const doi = primaryDoi;
@@ -1401,6 +1402,7 @@
 												{loadedModelSize}
 												{primaryDoi}
 												{citationCopied}
+												{citationText}
 												oncopydoi={copyDoi}
 											/>
 										{:else if detailsTab === 'peer-review'}

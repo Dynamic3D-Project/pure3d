@@ -31,6 +31,13 @@ function error(from, to, reason) {
 	return '';
 }
 
+function unpublishError(expectedStatus, reason) {
+	if (expectedStatus !== 'published') return 'The workflow changed. Reload before unpublishing.';
+	if (typeof reason !== 'string' || !reason.trim() || reason.length > 5000 || words(reason) > 500)
+		return 'Provide an unpublish reason of no more than 500 words or 5,000 characters.';
+	return '';
+}
+
 function reviewStage(status) {
 	if (
 		['concept_submitted', 'editorial_review', 'concept_accepted', 'concept_rejected'].includes(
@@ -99,4 +106,59 @@ function override(e) {
 	return e.json(200, result);
 }
 
-module.exports = { transitions, error, reviewStage, override, overrideContext };
+function unpublish(e) {
+	if (!require('./orcid-service.cjs').admin(e))
+		throw new ForbiddenError('Administrator access is required.');
+	const body = e.requestInfo().body || {};
+	const reason = typeof body.reason === 'string' ? body.reason.trim() : body.reason;
+	const message = unpublishError(body.expectedStatus, reason);
+	if (message) throw new BadRequestError(message);
+	const id = e.request.pathValue('editionId');
+	let result;
+	e.app.runInTransaction((tx) => {
+		const edition = tx.findRecordById('editions', id);
+		if (edition.getString('status') !== body.expectedStatus)
+			throw new BadRequestError('The workflow changed. Reload before unpublishing.');
+		const now = new Date().toISOString();
+		const actor = require('./activity-service.cjs').actor(e.auth);
+		const context = new Context(new Context(null, overrideContext, true), 'pure3d.actor', actor);
+
+		// Revisions preserve the review trail and require a fresh Final Review before republication.
+		edition.set('status', 'final_revisions');
+		edition.set('isPublished', false);
+		edition.set('reviewStage', 3);
+		edition.set('publishedAt', '');
+		edition.set('publishedBy', '');
+		edition.set('dcDateUnPublished', now);
+		edition.set('peerReviewStamp', false);
+		edition.set('peerReviewKind', '');
+		edition.set('publicationRequest', '');
+		edition.set('publicationSubmittedAt', '');
+		edition.set('workflowDecision', '');
+		tx.saveWithContext(context, edition);
+		require('./activity-service.cjs').audit(
+			tx,
+			actor,
+			'edition_unpublished',
+			'edition',
+			edition.id,
+			{
+				from: 'published',
+				to: 'final_revisions',
+				reason
+			}
+		);
+		result = { status: 'final_revisions', unpublishedAt: now };
+	});
+	return e.json(200, result);
+}
+
+module.exports = {
+	transitions,
+	error,
+	unpublishError,
+	reviewStage,
+	override,
+	unpublish,
+	overrideContext
+};

@@ -1,5 +1,8 @@
 import { expect, test } from 'bun:test';
 import service from './publication-service.cjs';
+
+class TestForbiddenError extends Error {}
+Object.assign(globalThis, { ForbiddenError: TestForbiddenError });
 const answers = {
 	valueRating: 4,
 	valueExplanation: 'Evidence is clear.',
@@ -49,4 +52,30 @@ test('author response and publication rights are required and bounded', () => {
 			true
 		)
 	).not.toBe('');
+});
+
+test('metadata fields remain locked while published and editable after an audited unpublish', () => {
+	const prepare = (status: string, originalStatus: string) => {
+		const values = { status, dcAudience: ['general public'] };
+		const original = { status: originalStatus, dcAudience: ['academics'] };
+		const record = {
+			getString: (field: keyof typeof values) =>
+				typeof values[field] === 'string' ? values[field] : JSON.stringify(values[field]),
+			get: (field: keyof typeof values) => values[field],
+			set: () => undefined,
+			original: () => ({
+				getString: (field: keyof typeof original) =>
+					typeof original[field] === 'string' ? original[field] : JSON.stringify(original[field]),
+				get: (field: keyof typeof original) => original[field],
+				getInt: () => 0
+			})
+		};
+		return service.prepareEdition({
+			record,
+			collection: { fields: [{ name: 'status' }, { name: 'dcAudience' }] }
+		});
+	};
+
+	expect(() => prepare('published', 'published')).toThrow(TestForbiddenError);
+	expect(() => prepare('final_revisions', 'final_revisions')).not.toThrow();
 });

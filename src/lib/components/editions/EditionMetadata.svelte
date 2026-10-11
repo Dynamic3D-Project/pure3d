@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { base, resolve } from '$app/paths';
 	import type { Credit } from '$lib/types/credits';
 	import type { EditionStatus } from '$lib/types/roles';
 	import { creditHref } from '$lib/utils/credits';
@@ -15,6 +15,19 @@
 		status: EditionStatus | null;
 		credits: Credit[];
 		dcInstitution: string[];
+		dcDatePublished?: string | null;
+		dcContact?: string | null;
+		dcRightsHolder?: string | null;
+		dcRightsLicense?: string | null;
+		dcKeyword?: string[];
+		dcAudience?: string[];
+		dcCoverageCountry?: string[];
+		dcCoveragePeriod?: string | string[] | null;
+		dcCoverageTemporal?: string | null;
+		dcSubject?: string[];
+		dcLanguage?: string[];
+		dcSource?: string[];
+		dcProvenance?: string | null;
 		usageConditions: string;
 		alternativeVersion: string | null;
 		modelSize: string | null;
@@ -29,13 +42,15 @@
 		loadedModelSize,
 		primaryDoi,
 		citationCopied,
-		oncopydoi
+		oncopydoi,
+		citationText
 	}: {
 		edition: Metadata;
 		loadedModelSize: number | null;
 		primaryDoi: string;
 		citationCopied: boolean;
 		oncopydoi: () => void;
+		citationText?: string;
 	} = $props();
 
 	function formatBytes(bytes: number): string {
@@ -48,6 +63,11 @@
 		if (!value) return '—';
 		const date = new Date(value);
 		return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString();
+	}
+
+	function values(items: string | string[] | null | undefined): string {
+		const list = Array.isArray(items) ? items : typeof items === 'string' ? [items] : [];
+		return list.filter(Boolean).join(', ') || 'Not specified';
 	}
 </script>
 
@@ -87,6 +107,25 @@
 	</section>
 
 	<section class="metadata-section">
+		<div class="metadata-heading"><h2>Publication metadata</h2></div>
+		<dl class="metadata-list">
+			<div class="metadata-row">
+				<dt>Date published</dt>
+				<dd>{edition.dcDatePublished || 'Not specified'}</dd>
+			</div>
+			<div class="metadata-row">
+				<dt>Citation</dt>
+				<dd class="font-mono text-xs break-words">
+					<p>{citationText || 'Not specified'}</p>
+					<a class="link link-hover" href={resolve('/editions/[slug]', { slug: edition.id })}
+						>{resolve('/editions/[slug]', { slug: edition.id })}</a
+					>
+				</dd>
+			</div>
+		</dl>
+	</section>
+
+	<section class="metadata-section">
 		<div class="metadata-heading"><h2>Contributors &amp; institution</h2></div>
 		<dl class="metadata-list">
 			{#each ['creator', 'contributor'] as role (role)}
@@ -122,8 +161,16 @@
 		<div class="metadata-heading"><h2>Rights &amp; access</h2></div>
 		<dl class="metadata-list">
 			<div class="metadata-row">
-				<dt class="text-base-content/50">Usage license</dt>
-				<dd>{edition.usageConditions || 'Not specified'}</dd>
+				<dt>License</dt>
+				<dd>{edition.dcRightsLicense || edition.usageConditions || 'Not specified'}</dd>
+			</div>
+			<div class="metadata-row">
+				<dt>Rights holder</dt>
+				<dd>{edition.dcRightsHolder || 'Not specified'}</dd>
+			</div>
+			<div class="metadata-row">
+				<dt>Contact</dt>
+				<dd>{edition.dcContact || 'Not specified'}</dd>
 			</div>
 			{#if edition.alternativeVersion}
 				<div class="metadata-row">
@@ -135,6 +182,48 @@
 					</dd>
 				</div>
 			{/if}
+		</dl>
+	</section>
+
+	<section class="metadata-section">
+		<div class="metadata-heading"><h2>Discovery &amp; coverage</h2></div>
+		<dl class="metadata-list">
+			<div class="metadata-row">
+				<dt>Keywords</dt>
+				<dd>{values(edition.dcKeyword)}</dd>
+			</div>
+			<div class="metadata-row">
+				<dt>Audience</dt>
+				<dd>{values(edition.dcAudience)}</dd>
+			</div>
+			<div class="metadata-row">
+				<dt>Countries</dt>
+				<dd>{values(edition.dcCoverageCountry)}</dd>
+			</div>
+			<div class="metadata-row">
+				<dt>Period</dt>
+				<dd>{values(edition.dcCoveragePeriod)}</dd>
+			</div>
+			<div class="metadata-row">
+				<dt>Temporal</dt>
+				<dd>{edition.dcCoverageTemporal || 'Not specified'}</dd>
+			</div>
+			<div class="metadata-row">
+				<dt>Subjects</dt>
+				<dd>{values(edition.dcSubject)}</dd>
+			</div>
+			<div class="metadata-row">
+				<dt>Languages</dt>
+				<dd>{values(edition.dcLanguage)}</dd>
+			</div>
+			<div class="metadata-row">
+				<dt>Sources</dt>
+				<dd>{values(edition.dcSource)}</dd>
+			</div>
+			<div class="metadata-row">
+				<dt>Provenance</dt>
+				<dd>{edition.dcProvenance || 'Not specified'}</dd>
+			</div>
 		</dl>
 	</section>
 

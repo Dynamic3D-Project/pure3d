@@ -95,7 +95,9 @@ export const load: PageLoad = async ({ params, fetch }) => {
 				: '';
 
 		const toArray = (v: unknown): string[] =>
-			Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && !!x) : [];
+			(Array.isArray(v) ? v : typeof v === 'string' ? [v] : []).filter(
+				(x): x is string => typeof x === 'string' && !!x
+			);
 
 		const edition: EditionViewData['edition'] = {
 			id: record.id,
@@ -127,9 +129,20 @@ export const load: PageLoad = async ({ params, fetch }) => {
 			pubNum: editionPubNum,
 			dcDoi: toArray(record.dcDoi),
 			dcInstitution: toArray(record.dcInstitution),
+			dcDatePublished: record.dcDatePublished || null,
+			dcContact: record.dcContact || null,
+			dcRightsHolder: record.dcRightsHolder || null,
+			dcRightsLicense: record.dcRightsLicense || null,
+			dcKeyword: toArray(record.dcKeyword),
+			dcAudience: toArray(record.dcAudience),
+			dcCoverageCountry: toArray(record.dcCoverageCountry),
 			credits: readCredits(record.credits),
 			dcCoveragePeriod: record.dcCoveragePeriod || null,
 			dcCoveragePlace: record.dcCoveragePlace || null,
+			dcCoverageTemporal: record.dcCoverageTemporal || null,
+			dcSubject: toArray(record.dcSubject),
+			dcLanguage: toArray(record.dcLanguage),
+			dcSource: toArray(record.dcSource),
 			settingsAuthorToolVersion: record.settingsAuthorToolVersion || null,
 			settingsAuthorToolName: record.settingsAuthorToolName || null,
 			dcProvenance: record.dcProvenance || null,

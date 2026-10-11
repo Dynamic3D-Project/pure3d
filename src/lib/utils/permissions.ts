@@ -31,8 +31,8 @@ export function canTransitionStatus(current: EditionStatus, target: EditionStatu
  */
 export function hasPermission(context: UserRoleContext, permission: Permission): boolean {
 	const { globalRole, collectionRole, editionRole } = context;
-	// Published records have no ordinary unpublish transition, including for admins.
-	if (permission === Permission.WorkflowUnpublish) return false;
+	// Unpublishing is an audited administrative intervention, not an ordinary transition.
+	if (permission === Permission.WorkflowUnpublish) return globalRole === GlobalRole.Admin;
 
 	// Admin has all permissions
 	if (globalRole === GlobalRole.Admin) return true;

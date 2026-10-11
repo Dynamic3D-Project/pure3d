@@ -44,6 +44,11 @@
 	import VoyagerPreview from '$lib/components/uploads/VoyagerPreview.svelte';
 	import CoverImageUpload from '$lib/components/uploads/CoverImageUpload.svelte';
 	import { MODEL_SOURCES, PROPOSAL_TYPES, proposalErrors, wordCount } from '$lib/workflow/proposal';
+	import {
+		metadataOptions,
+		metadataValues,
+		vocabularyValues
+	} from '$lib/components/editions/metadata';
 	import toast from 'svelte-french-toast';
 	import type { RecordModel } from 'pocketbase';
 
@@ -81,6 +86,8 @@
 	let canDelete = $derived(!!edition && canDeleteEdition(roleContext));
 	let showDeleteModal = $state(false);
 	let isDeleting = $state(false);
+	let unpublishDialog: HTMLDialogElement;
+	let unpublishReason = $state('');
 
 	// Concept form state
 	let conceptTitle = $state('');
@@ -93,12 +100,21 @@
 	let alphaRequestDialog: HTMLDialogElement;
 	let flushingForReview = false;
 	let conceptDcInstitution = $state('');
-	let conceptDcSubject = $state('');
+	let conceptDcSubject = $state<string[]>([]);
 	let conceptDcKeyword = $state('');
 	let conceptDcCoveragePlace = $state('');
-	let conceptDcLanguage = $state('');
+	let conceptDcAudience = $state<string[]>([]);
+	let conceptDcCoverageCountry = $state<string[]>([]);
+	let conceptDcCoveragePeriod = $state<string[]>([]);
+	let conceptDcCoverageTemporal = $state('');
+	let conceptDcLanguage = $state<string[]>([]);
+	let conceptDcSource = $state<string[]>([]);
 	let conceptDcRightsHolder = $state('');
 	let conceptDcRightsLicense = $state('');
+	let conceptDcContact = $state('');
+	let conceptDcDatePublished = $state('');
+	let conceptDcProvenance = $state('');
+	let metadataVocabulary = $state<Array<{ category?: string; name?: string; value?: string }>>([]);
 	let proposalType = $state('');
 	let proposalPurpose = $state('');
 	let proposalArgument = $state('');
@@ -140,8 +156,7 @@
 	let collectionPubNum = $state(0);
 
 	function jsonArrayToString(val: unknown): string {
-		if (Array.isArray(val)) return val.join(', ');
-		return '';
+		return metadataValues(val).join(', ');
 	}
 
 	function stringToJsonArray(val: string): string[] {
@@ -153,6 +168,18 @@
 
 	function toggleSelection(values: string[], value: string, checked: boolean): string[] {
 		return checked ? [...new Set([...values, value])] : values.filter((item) => item !== value);
+	}
+
+	function optionsFor(category: string, values: string[]): string[] {
+		return metadataOptions(values, vocabularyFor(category));
+	}
+
+	function vocabularyFor(category: string): string[] {
+		return vocabularyValues(metadataVocabulary, category);
+	}
+
+	function arrayInput(event: Event): string[] {
+		return stringToJsonArray((event.currentTarget as HTMLInputElement).value);
 	}
 
 	let saveStatusText = $derived.by(() => {
@@ -388,7 +415,9 @@
 
 			// Initialize concept form
 			if ($page.url.hash === '#edition-review-tab')
-				activeFormTab = [EditionStatus.ConceptAccepted, EditionStatus.AlphaRevisions].includes(edition.status)
+				activeFormTab = [EditionStatus.ConceptAccepted, EditionStatus.AlphaRevisions].includes(
+					edition.status
+				)
 					? 'description'
 					: 'peer-review';
 			conceptTitle = edition.title;
@@ -397,12 +426,20 @@
 			conceptDcSubtitle = edRecord.dcSubtitle || '';
 			credits = readCredits(edRecord.credits);
 			conceptDcInstitution = jsonArrayToString(edRecord.dcInstitution);
-			conceptDcSubject = jsonArrayToString(edRecord.dcSubject);
+			conceptDcSubject = metadataValues(edRecord.dcSubject);
 			conceptDcKeyword = jsonArrayToString(edRecord.dcKeyword);
 			conceptDcCoveragePlace = edRecord.dcCoveragePlace || '';
-			conceptDcLanguage = jsonArrayToString(edRecord.dcLanguage);
+			conceptDcAudience = metadataValues(edRecord.dcAudience);
+			conceptDcCoverageCountry = metadataValues(edRecord.dcCoverageCountry);
+			conceptDcCoveragePeriod = metadataValues(edRecord.dcCoveragePeriod);
+			conceptDcCoverageTemporal = edRecord.dcCoverageTemporal || '';
+			conceptDcLanguage = metadataValues(edRecord.dcLanguage);
+			conceptDcSource = metadataValues(edRecord.dcSource);
 			conceptDcRightsHolder = edRecord.dcRightsHolder || '';
 			conceptDcRightsLicense = edRecord.dcRightsLicense || '';
+			conceptDcContact = edRecord.dcContact || '';
+			conceptDcDatePublished = edRecord.dcDatePublished || '';
+			conceptDcProvenance = edRecord.dcProvenance || '';
 			proposalType = edRecord.proposalType || '';
 			proposalPurpose = edRecord.proposalPurpose || '';
 			proposalArgument = edRecord.proposalArgument || '';
@@ -442,6 +479,12 @@
 					...authorAffiliations,
 					...Object.fromEntries(users.items.map((user) => [user.id, user.affiliation || '']))
 				};
+			}
+			try {
+				metadataVocabulary = await pb.collection('keywords').getFullList({ sort: 'value' });
+			} catch {
+				// The editor remains usable when an optional controlled vocabulary has not been imported.
+				metadataVocabulary = [];
 			}
 
 			// Initialize viewer/scene data
@@ -608,12 +651,20 @@
 			dcDescription: conceptDescription,
 			credits: readCredits(credits),
 			dcInstitution: stringToJsonArray(conceptDcInstitution),
-			dcSubject: stringToJsonArray(conceptDcSubject),
+			dcSubject: conceptDcSubject,
 			dcKeyword: stringToJsonArray(conceptDcKeyword),
 			dcCoveragePlace: conceptDcCoveragePlace.trim(),
-			dcLanguage: stringToJsonArray(conceptDcLanguage),
+			dcAudience: conceptDcAudience,
+			dcCoverageCountry: conceptDcCoverageCountry,
+			dcCoveragePeriod: conceptDcCoveragePeriod,
+			dcCoverageTemporal: conceptDcCoverageTemporal.trim(),
+			dcLanguage: conceptDcLanguage,
+			dcSource: conceptDcSource,
 			dcRightsHolder: conceptDcRightsHolder.trim(),
 			dcRightsLicense: conceptDcRightsLicense.trim(),
+			dcContact: conceptDcContact.trim(),
+			dcDatePublished: conceptDcDatePublished.trim(),
+			dcProvenance: conceptDcProvenance,
 			peerReviewRequested: conceptPeerReview
 		};
 	}
@@ -841,6 +892,26 @@
 		}
 	}
 
+	async function unpublishEdition() {
+		if (!edition || !isAdmin || isSubmitting || !unpublishReason.trim()) return;
+		isSubmitting = true;
+		try {
+			await pb.send(`/api/pure3d/editions/${edition.id}/unpublish`, {
+				method: 'POST',
+				body: { expectedStatus: edition.status, reason: unpublishReason.trim() }
+			});
+			unpublishDialog.close();
+			unpublishReason = '';
+			toast.success('Edition unpublished and returned for final revisions');
+			await loadData();
+		} catch (error) {
+			console.error('Error unpublishing edition:', error);
+			toast.error(error instanceof Error ? error.message : 'Could not unpublish the edition');
+		} finally {
+			isSubmitting = false;
+		}
+	}
+
 	// --- Resubmit after revisions ---
 	function handleReviewSubmitted() {
 		loadData();
@@ -886,10 +957,16 @@
 			{#if viewMode === 'concept-form'}
 				<div class="ml-auto flex flex-wrap items-center gap-2">
 					{#if canViewEdition}
-						<a href={resolve('/editions/[slug]', { slug: edition.id })} class="btn btn-ghost btn-sm">View Edition</a>
+						<a href={resolve('/editions/[slug]', { slug: edition.id })} class="btn btn-ghost btn-sm"
+							>View Edition</a
+						>
 					{/if}
 					{#if canDelete}
-						<button type="button" class="btn btn-outline btn-sm btn-error" onclick={() => (showDeleteModal = true)}>Delete</button>
+						<button
+							type="button"
+							class="btn btn-outline btn-sm btn-error"
+							onclick={() => (showDeleteModal = true)}>Delete</button
+						>
 					{/if}
 				</div>
 			{/if}
@@ -924,9 +1001,22 @@
 							<span class="ml-2 text-base-content/60">{nextWorkflowAction}</span>
 						</div>
 						{#if editionRecord && [EditionStatus.ConceptAccepted, EditionStatus.AlphaRevisions].includes(edition.status) && (isAuthor || isAdmin || collectionRole === CollectionRole.Owner)}
-							<button type="button" class="btn btn-primary" disabled={isSaving || isSubmitting || editionAssetsBusy || coverBusy} onclick={() => alphaRequestDialog.showModal()}>
+							<button
+								type="button"
+								class="btn btn-primary"
+								disabled={isSaving || isSubmitting || editionAssetsBusy || coverBusy}
+								onclick={() => alphaRequestDialog.showModal()}
+							>
 								Request Alpha Review
-								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-4" aria-hidden="true">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.5"
+									class="size-4"
+									aria-hidden="true"
+								>
 									<path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-6-6 6 6-6 6" />
 								</svg>
 							</button>
@@ -964,24 +1054,25 @@
 			{/if}
 
 			{#if viewMode !== 'concept-form'}
-			<div class="ml-auto flex flex-col items-end gap-2">
-				<div class="flex flex-wrap items-center justify-end gap-2">
-					{#if canViewEdition}
-						<a href={resolve('/editions/[slug]', { slug: edition.id })} class="btn btn-ghost btn-sm"
-							>View Edition</a
-						>
-					{/if}
-					{#if canDelete}
-						<button
-							type="button"
-							class="btn btn-outline btn-sm btn-error"
-							onclick={() => (showDeleteModal = true)}
-						>
-							Delete
-						</button>
-					{/if}
+				<div class="ml-auto flex flex-col items-end gap-2">
+					<div class="flex flex-wrap items-center justify-end gap-2">
+						{#if canViewEdition}
+							<a
+								href={resolve('/editions/[slug]', { slug: edition.id })}
+								class="btn btn-ghost btn-sm">View Edition</a
+							>
+						{/if}
+						{#if canDelete}
+							<button
+								type="button"
+								class="btn btn-outline btn-sm btn-error"
+								onclick={() => (showDeleteModal = true)}
+							>
+								Delete
+							</button>
+						{/if}
+					</div>
 				</div>
-			</div>
 			{/if}
 		</div>
 
@@ -1000,21 +1091,20 @@
 						disabled={isSubmitting || isUploadingSupporting || isUploadingModel}
 						class="space-y-5"
 					>
-						<section id="proposal-basics" class="space-y-4 overflow-hidden rounded-box border border-base-300 bg-base-100 p-5">
+						<section
+							id="proposal-basics"
+							class="space-y-4 overflow-hidden rounded-box border border-base-300 bg-base-100 p-5"
+						>
 							<div class="-mx-5 -mt-5 border-b border-base-300 bg-base-200 px-5 py-3">
 								<h1 class="text-base font-semibold">Your proposal</h1>
 							</div>
-								<p class="text-sm text-base-content/65">
-									Your proposal stays private and editable until you submit it for editorial review.
-								</p>
+							<p class="text-sm text-base-content/65">
+								Your proposal stays private and editable until you submit it for editorial review.
+							</p>
 							<div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
 								<label class="form-control">
 									<span class="label-text mb-1 font-semibold">Proposal type</span>
-									<select
-										class="select-bordered select w-full"
-										bind:value={proposalType}
-										required
-									>
+									<select class="select-bordered select w-full" bind:value={proposalType} required>
 										<option value="" disabled>Select a type</option>
 										{#each PROPOSAL_TYPES as [value, label] (value)}
 											<option {value}>{label}</option>
@@ -1047,29 +1137,58 @@
 							bind:audience={proposalAudience}
 						/>
 
-						<section id="proposal-models" class="space-y-5 overflow-hidden rounded-box border border-base-300 bg-base-100 p-5">
+						<section
+							id="proposal-models"
+							class="space-y-5 overflow-hidden rounded-box border border-base-300 bg-base-100 p-5"
+						>
 							<div class="-mx-5 -mt-5 border-b border-base-300 bg-base-200 px-5 py-3">
 								<h2 class="text-base font-semibold">3D model(s)</h2>
 							</div>
 							<fieldset class="space-y-2">
-								<legend class="text-sm font-semibold">Do you already have a digital 3D model to use for this edition?</legend>
+								<legend class="text-sm font-semibold"
+									>Do you already have a digital 3D model to use for this edition?</legend
+								>
 								<label class="mr-5 inline-flex items-center gap-2"
-									><input type="radio" class="radio radio-sm radio-primary" value={true} bind:group={proposalHasExistingModel} /> Yes</label
+									><input
+										type="radio"
+										class="radio radio-sm radio-primary"
+										value={true}
+										bind:group={proposalHasExistingModel}
+									/> Yes</label
 								>
 								<label class="inline-flex items-center gap-2"
-										><input type="radio" class="radio radio-sm radio-primary" value={false} bind:group={proposalHasExistingModel} /> No</label
+									><input
+										type="radio"
+										class="radio radio-sm radio-primary"
+										value={false}
+										bind:group={proposalHasExistingModel}
+									/> No</label
 								>
 							</fieldset>
 							{#if proposalHasExistingModel}
 								<div class="space-y-5">
 									<div class="space-y-2 text-xs leading-relaxed text-base-content/80">
 										<h3 class="text-sm font-semibold text-base-content">Upload your 3D model(s)</h3>
-										<p>Please check the technical requirements in the <a href={resolve('/documentation/[slug]', { slug: 'submission' })} class="link link-primary">submission guidelines</a>.</p>
-										<p>At this stage, the model is used to assess compatibility and suitability for a 3D edition. You can adjust the resolution before publication.</p>
+										<p>
+											Please check the technical requirements in the <a
+												href={resolve('/documentation/[slug]', { slug: 'submission' })}
+												class="link link-primary">submission guidelines</a
+											>.
+										</p>
+										<p>
+											At this stage, the model is used to assess compatibility and suitability for a
+											3D edition. You can adjust the resolution before publication.
+										</p>
 									</div>
-									<fieldset class="grid gap-x-4 gap-y-3 rounded-lg bg-base-200/50 p-3 sm:grid-cols-2 lg:grid-cols-3">
+									<fieldset
+										class="grid gap-x-4 gap-y-3 rounded-lg bg-base-200/50 p-3 sm:grid-cols-2 lg:grid-cols-3"
+									>
 										<legend class="sr-only">Model source · Select all that apply</legend>
-										<div class="col-span-full text-sm font-semibold">Model source <span class="font-normal text-base-content/75">· Select all that apply</span></div>
+										<div class="col-span-full text-sm font-semibold">
+											Model source <span class="font-normal text-base-content/75"
+												>· Select all that apply</span
+											>
+										</div>
 										{#each MODEL_SOURCES as [value, label] (value)}
 											<label class="inline-flex items-center gap-2 text-xs">
 												<input
@@ -1089,7 +1208,10 @@
 									</fieldset>
 									<div class="space-y-2">
 										<h3 class="text-sm font-semibold">Model files</h3>
-										<p class="text-xs text-base-content/80">Add one GLB, GLTF, OBJ, or PLY model with its companion files at a time. Maximum 200 MB per file. Each model is previewed automatically.</p>
+										<p class="text-xs text-base-content/80">
+											Add one GLB, GLTF, OBJ, or PLY model with its companion files at a time.
+											Maximum 200 MB per file. Each model is previewed automatically.
+										</p>
 										{#if editionRecord}
 											<ProposalModelUploads
 												bind:edition={editionRecord}
@@ -1103,7 +1225,8 @@
 										{/if}
 									</div>
 									<label class="form-control">
-										<span class="text-sm font-semibold">Do you own the copyright of the model(s)? If not, please explain.</span
+										<span class="text-sm font-semibold"
+											>Do you own the copyright of the model(s)? If not, please explain.</span
 										>
 										<textarea
 											class="textarea-bordered textarea mt-2 min-h-20 w-full"
@@ -1115,10 +1238,18 @@
 											>{wordCount(proposalCopyrightOwnership)}/150 words</span
 										>
 									</label>
-									<p class="text-xs leading-relaxed text-base-content/80">PURE3D cannot be held responsible for copyright infringement by authors. Before submitting, confirm that you hold the copyright or have permission to use the material in your edition.</p>
+									<p class="text-xs leading-relaxed text-base-content/80">
+										PURE3D cannot be held responsible for copyright infringement by authors. Before
+										submitting, confirm that you hold the copyright or have permission to use the
+										material in your edition.
+									</p>
 								</div>
 							{:else}
-								<p class="rounded-lg bg-base-200/50 p-3 text-sm leading-relaxed">PURE3D normally expects you to have a 3D model before building your edition. During development, support for digitising an object may be possible. Describe your situation and what you would like to digitise.</p>
+								<p class="rounded-lg bg-base-200/50 p-3 text-sm leading-relaxed">
+									PURE3D normally expects you to have a 3D model before building your edition.
+									During development, support for digitising an object may be possible. Describe
+									your situation and what you would like to digitise.
+								</p>
 								<label class="form-control">
 									<span class="text-sm font-semibold">Describe the digitisation situation</span>
 									<textarea
@@ -1131,7 +1262,10 @@
 										>{wordCount(proposalDigitisationSituation)}/150 words</span
 									>
 								</label>
-								<p class="text-xs leading-relaxed text-base-content/80">Add images, videos or website links to help us assess whether your subject is suitable for a 3D scholarly edition.</p>
+								<p class="text-xs leading-relaxed text-base-content/80">
+									Add images, videos or website links to help us assess whether your subject is
+									suitable for a 3D scholarly edition.
+								</p>
 								<label class="form-control">
 									<span class="text-sm font-semibold">Supporting links</span>
 									<textarea
@@ -1262,15 +1396,27 @@
 										required
 										placeholder="Edition title"
 									/>
-									<div class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-base-200/50 px-3 py-2">
+									<div
+										class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-base-200/50 px-3 py-2"
+									>
 										<div class="min-w-0 text-sm">
 											<p class="font-semibold">Authors</p>
-											<p class="break-words text-base-content/70">{credits.map((credit) => credit.name).filter(Boolean).join(', ') || 'No credits added'}</p>
+											<p class="break-words text-base-content/70">
+												{credits
+													.map((credit) => credit.name)
+													.filter(Boolean)
+													.join(', ') || 'No credits added'}
+											</p>
 										</div>
-										<button type="button" class="btn btn-outline btn-sm" disabled={isSubmitting} onclick={() => {
-											editableCredits = readCredits(credits).map((credit) => ({ ...credit }));
-											creditsDialog.showModal();
-										}}>Edit authors</button>
+										<button
+											type="button"
+											class="btn btn-outline btn-sm"
+											disabled={isSubmitting}
+											onclick={() => {
+												editableCredits = readCredits(credits).map((credit) => ({ ...credit }));
+												creditsDialog.showModal();
+											}}>Edit authors</button
+										>
 									</div>
 									{#if edition.collectionTitle}
 										<p class="mt-1 text-sm text-base-content/50">in {edition.collectionTitle}</p>
@@ -1321,15 +1467,15 @@
 														Metadata
 													</button>
 													{#if ![EditionStatus.ConceptAccepted, EditionStatus.AlphaRevisions].includes(edition.status)}<button
-														type="button"
-														role="tab"
-														class="tab flex-1"
-														class:tab-active={activeFormTab === 'peer-review'}
-														id="edition-review-tab"
-														onclick={() => (activeFormTab = 'peer-review')}
-													>
-														Review
-													</button>{/if}
+															type="button"
+															role="tab"
+															class="tab flex-1"
+															class:tab-active={activeFormTab === 'peer-review'}
+															id="edition-review-tab"
+															onclick={() => (activeFormTab = 'peer-review')}
+														>
+															Review
+														</button>{/if}
 													<button
 														type="button"
 														role="tab"
@@ -1351,21 +1497,6 @@
 																	content={conceptDescription}
 																	onchange={(html) => (conceptDescription = html)}
 																	minHeight="200px"
-																/>
-															</div>
-															<div class="form-control">
-																<label class="label py-0.5" for="concept-keyword">
-																	<span class="label-text text-sm font-semibold"
-																		>Tags / Keywords</span
-																	>
-																	<span class="label-text-alt text-xs">comma-separated</span>
-																</label>
-																<input
-																	id="concept-keyword"
-																	type="text"
-																	class="input-bordered input input-sm"
-																	bind:value={conceptDcKeyword}
-																	placeholder="ceramic, sculpture, museum"
 																/>
 															</div>
 														</div>
@@ -1398,13 +1529,27 @@
 																<label class="label py-0.5" for="concept-subject">
 																	<span class="label-text text-sm">Subjects</span>
 																</label>
-																<input
-																	id="concept-subject"
-																	type="text"
-																	class="input-bordered input input-sm"
-																	bind:value={conceptDcSubject}
-																	placeholder="comma-separated"
-																/>
+																{#if vocabularyFor('subject').length}
+																	<select
+																		id="concept-subject"
+																		class="select-bordered select min-h-24 w-full select-sm"
+																		multiple
+																		size="4"
+																		bind:value={conceptDcSubject}
+																		>{#each optionsFor('subject', conceptDcSubject) as value (value)}<option
+																				{value}>{value}</option
+																			>{/each}</select
+																	>
+																{:else}
+																	<input
+																		id="concept-subject"
+																		type="text"
+																		class="input-bordered input input-sm"
+																		value={conceptDcSubject.join(', ')}
+																		onchange={(event) => (conceptDcSubject = arrayInput(event))}
+																		placeholder="comma-separated"
+																	/>
+																{/if}
 															</div>
 															<div class="grid grid-cols-2 gap-3">
 																<div class="form-control">
@@ -1423,14 +1568,160 @@
 																	<label class="label py-0.5" for="concept-language">
 																		<span class="label-text text-sm">Languages</span>
 																	</label>
+																	{#if vocabularyFor('language').length}
+																		<select
+																			id="concept-language"
+																			class="select-bordered select min-h-24 w-full select-sm"
+																			multiple
+																			size="4"
+																			bind:value={conceptDcLanguage}
+																			>{#each optionsFor('language', conceptDcLanguage) as value (value)}<option
+																					{value}>{value}</option
+																				>{/each}</select
+																		>
+																	{:else}
+																		<input
+																			id="concept-language"
+																			type="text"
+																			class="input-bordered input input-sm"
+																			value={conceptDcLanguage.join(', ')}
+																			onchange={(event) => (conceptDcLanguage = arrayInput(event))}
+																			placeholder="comma-separated"
+																		/>
+																	{/if}
+																</div>
+															</div>
+															<div class="form-control">
+																<label class="label py-0.5" for="concept-keyword">
+																	<span class="label-text text-sm">Keywords</span>
+																	<span class="label-text-alt text-xs">comma-separated</span>
+																</label>
+																<input
+																	id="concept-keyword"
+																	type="text"
+																	class="input-bordered input input-sm"
+																	bind:value={conceptDcKeyword}
+																/>
+															</div>
+															<div class="form-control">
+																<label class="label py-0.5" for="concept-audience"
+																	><span class="label-text text-sm">Audience</span></label
+																>
+																{#if vocabularyFor('audience').length}
+																	<select
+																		id="concept-audience"
+																		class="select-bordered select min-h-24 w-full select-sm"
+																		multiple
+																		size="4"
+																		bind:value={conceptDcAudience}
+																	>
+																		{#each optionsFor('audience', conceptDcAudience) as value (value)}<option
+																				{value}>{value}</option
+																			>{/each}
+																	</select>
+																{:else}
 																	<input
-																		id="concept-language"
+																		id="concept-audience"
 																		type="text"
 																		class="input-bordered input input-sm"
-																		bind:value={conceptDcLanguage}
-																		placeholder="en, nl"
+																		value={conceptDcAudience.join(', ')}
+																		onchange={(event) => (conceptDcAudience = arrayInput(event))}
+																		placeholder="comma-separated"
 																	/>
+																{/if}
+															</div>
+															<div class="grid grid-cols-2 gap-3">
+																<div class="form-control">
+																	<label class="label py-0.5" for="concept-country"
+																		><span class="label-text text-sm">Countries</span></label
+																	>
+																	{#if vocabularyFor('country').length}
+																		<select
+																			id="concept-country"
+																			class="select-bordered select min-h-24 w-full select-sm"
+																			multiple
+																			size="4"
+																			bind:value={conceptDcCoverageCountry}
+																			>{#each optionsFor('country', conceptDcCoverageCountry) as value (value)}<option
+																					{value}>{value}</option
+																				>{/each}</select
+																		>
+																	{:else}
+																		<input
+																			id="concept-country"
+																			type="text"
+																			class="input-bordered input input-sm"
+																			value={conceptDcCoverageCountry.join(', ')}
+																			onchange={(event) =>
+																				(conceptDcCoverageCountry = arrayInput(event))}
+																			placeholder="comma-separated"
+																		/>
+																	{/if}
 																</div>
+																<div class="form-control">
+																	<label class="label py-0.5" for="concept-period"
+																		><span class="label-text text-sm">Period</span></label
+																	>
+																	{#if vocabularyFor('period').length}
+																		<select
+																			id="concept-period"
+																			class="select-bordered select min-h-24 w-full select-sm"
+																			multiple
+																			size="4"
+																			bind:value={conceptDcCoveragePeriod}
+																			>{#each optionsFor('period', conceptDcCoveragePeriod) as value (value)}<option
+																					{value}>{value}</option
+																				>{/each}</select
+																		>
+																	{:else}
+																		<input
+																			id="concept-period"
+																			type="text"
+																			class="input-bordered input input-sm"
+																			value={conceptDcCoveragePeriod.join(', ')}
+																			onchange={(event) =>
+																				(conceptDcCoveragePeriod = arrayInput(event))}
+																			placeholder="comma-separated"
+																		/>
+																	{/if}
+																</div>
+															</div>
+															<div class="form-control">
+																<label class="label py-0.5" for="concept-temporal"
+																	><span class="label-text text-sm">Temporal</span></label
+																>
+																<input
+																	id="concept-temporal"
+																	type="text"
+																	class="input-bordered input input-sm"
+																	bind:value={conceptDcCoverageTemporal}
+																/>
+															</div>
+															<div class="form-control">
+																<label class="label py-0.5" for="concept-source"
+																	><span class="label-text text-sm">Sources</span></label
+																>
+																{#if vocabularyFor('source').length}
+																	<select
+																		id="concept-source"
+																		class="select-bordered select min-h-24 w-full select-sm"
+																		multiple
+																		size="4"
+																		bind:value={conceptDcSource}
+																		>{#each optionsFor('source', conceptDcSource) as value (value)}<option
+																				{value}>{value}</option
+																			>{/each}</select
+																	>
+																{:else}
+																	<input
+																		id="concept-source"
+																		type="text"
+																		class="input-bordered input input-sm"
+																		value={conceptDcSource.join(', ')}
+																		onchange={(event) => (conceptDcSource = arrayInput(event))}
+																		placeholder="comma-separated"
+																	/>
+																{/if}
 															</div>
 															<div class="grid grid-cols-2 gap-3">
 																<div class="form-control">
@@ -1448,14 +1739,59 @@
 																	<label class="label py-0.5" for="concept-license">
 																		<span class="label-text text-sm">License</span>
 																	</label>
+																	{#if vocabularyFor('license').length}
+																		<select
+																			id="concept-license"
+																			class="select-bordered select select-sm"
+																			bind:value={conceptDcRightsLicense}
+																			><option value="">Not specified</option
+																			>{#each optionsFor( 'license', [conceptDcRightsLicense] ) as value (value)}<option
+																					{value}>{value}</option
+																				>{/each}</select
+																		>
+																	{:else}
+																		<input
+																			id="concept-license"
+																			type="text"
+																			class="input-bordered input input-sm"
+																			bind:value={conceptDcRightsLicense}
+																		/>
+																	{/if}
+																</div>
+															</div>
+															<div class="grid grid-cols-2 gap-3">
+																<div class="form-control">
+																	<label class="label py-0.5" for="concept-contact"
+																		><span class="label-text text-sm">Contact</span></label
+																	>
 																	<input
-																		id="concept-license"
+																		id="concept-contact"
 																		type="text"
 																		class="input-bordered input input-sm"
-																		bind:value={conceptDcRightsLicense}
-																		placeholder="CC BY 4.0"
+																		bind:value={conceptDcContact}
 																	/>
 																</div>
+																<div class="form-control">
+																	<label class="label py-0.5" for="concept-date-published"
+																		><span class="label-text text-sm">Date published</span></label
+																	>
+																	<input
+																		id="concept-date-published"
+																		type="text"
+																		class="input-bordered input input-sm"
+																		bind:value={conceptDcDatePublished}
+																	/>
+																</div>
+															</div>
+															<div class="form-control">
+																<label class="label py-0.5" for="concept-provenance"
+																	><span class="label-text text-sm">Provenance</span></label
+																>
+																<textarea
+																	id="concept-provenance"
+																	class="textarea-bordered textarea min-h-24"
+																	bind:value={conceptDcProvenance}
+																></textarea>
 															</div>
 														</div>
 													{:else if activeFormTab === 'peer-review' && ![EditionStatus.ConceptAccepted, EditionStatus.AlphaRevisions, EditionStatus.AlphaAccepted, EditionStatus.FinalRevisions, EditionStatus.FinalAccepted].includes(edition.status)}
@@ -1573,43 +1909,54 @@
 				/>
 			{:else}
 				<div class="space-y-6">
-					<section id="review" class="scroll-mt-24 overflow-hidden rounded-box border border-base-300 bg-base-100 p-5">
+					<section
+						id="review"
+						class="scroll-mt-24 overflow-hidden rounded-box border border-base-300 bg-base-100 p-5"
+					>
 						<div class="-mx-5 -mt-5 mb-5 border-b border-base-300 bg-base-200 px-5 py-3">
 							<h2 class="text-base font-semibold">Your review</h2>
 						</div>
 						<div class="grid items-start gap-5 lg:grid-cols-2">
-						<div class="min-w-0 overflow-hidden rounded-lg border border-base-300 p-4">
-						<h3 class="-mx-4 -mt-4 mb-4 border-b border-base-300 bg-base-200/50 px-4 py-3 text-base font-semibold">Decision & comments</h3>
-						<ReviewForm
-							stacked
-							editionId={edition.id}
-							reviewStage={myAssignment.reviewStage}
-							reviewerId={authStore.appUserId || ''}
-							onsubmit={handleReviewSubmitted}
-						/>
-					</div>
+							<div class="min-w-0 overflow-hidden rounded-lg border border-base-300 p-4">
+								<h3
+									class="-mx-4 -mt-4 mb-4 border-b border-base-300 bg-base-200/50 px-4 py-3 text-base font-semibold"
+								>
+									Decision & comments
+								</h3>
+								<ReviewForm
+									stacked
+									editionId={edition.id}
+									reviewStage={myAssignment.reviewStage}
+									reviewerId={authStore.appUserId || ''}
+									onsubmit={handleReviewSubmitted}
+								/>
+							</div>
 
-					<!-- Granular feedback (reviewer) -->
-					<div
-						id="feedback"
-						class="min-w-0 scroll-mt-24 overflow-hidden rounded-lg border border-base-300 p-4"
-					>
-						<h3 class="-mx-4 -mt-4 mb-4 border-b border-base-300 bg-base-200/50 px-4 py-3 text-base font-semibold">Granular Feedback</h3>
-						<ReviewFeedbackForm
-							editionId={edition.id}
-							reviewStage={myAssignment.reviewStage}
-							reviewerId={authStore.appUserId || ''}
-							onsubmit={handleFeedbackSubmitted}
-						/>
-						<div class="divider"></div>
-						<ReviewFeedbackList
-							bind:this={feedbackListRef}
-							editionId={edition.id}
-							reviewStage={myAssignment.reviewStage}
-							isAnonymized={myAssignment.reviewStage === 2}
-							{userLookup}
-						/>
-					</div>
+							<!-- Granular feedback (reviewer) -->
+							<div
+								id="feedback"
+								class="min-w-0 scroll-mt-24 overflow-hidden rounded-lg border border-base-300 p-4"
+							>
+								<h3
+									class="-mx-4 -mt-4 mb-4 border-b border-base-300 bg-base-200/50 px-4 py-3 text-base font-semibold"
+								>
+									Granular Feedback
+								</h3>
+								<ReviewFeedbackForm
+									editionId={edition.id}
+									reviewStage={myAssignment.reviewStage}
+									reviewerId={authStore.appUserId || ''}
+									onsubmit={handleFeedbackSubmitted}
+								/>
+								<div class="divider"></div>
+								<ReviewFeedbackList
+									bind:this={feedbackListRef}
+									editionId={edition.id}
+									reviewStage={myAssignment.reviewStage}
+									isAnonymized={myAssignment.reviewStage === 2}
+									{userLookup}
+								/>
+							</div>
 						</div>
 					</section>
 
@@ -1656,8 +2003,21 @@
 				{/if}
 				{#if [EditionStatus.FinalReview, EditionStatus.PublicationRequested, EditionStatus.Published].includes(edition.status) && editionRecord}
 					<p class="rounded-box border border-info/30 bg-info/10 p-4 text-base-content">
-						{STATUS_LABELS[edition.status]}. Edition editing is locked.
+						{#if edition.status === EditionStatus.Published}
+							{STATUS_LABELS[edition.status]}. {isAdmin
+								? 'Administrators can return it to Final Revisions to edit it.'
+								: 'Edition editing is locked.'}
+						{:else}{STATUS_LABELS[edition.status]}. Edition editing is locked.{/if}
 					</p>
+					{#if edition.status === EditionStatus.Published && isAdmin}
+						<button
+							type="button"
+							class="btn btn-outline btn-sm"
+							onclick={() => unpublishDialog.showModal()}
+						>
+							Unpublish for revisions
+						</button>
+					{/if}
 					<VoyagerPreview
 						edition={editionRecord}
 						{collectionPubNum}
@@ -1870,16 +2230,68 @@
 			<h2 id="edit-credits-title" class="mb-4 text-xl font-semibold">Edit authors</h2>
 			<CreditsEditor bind:credits={editableCredits} disabled={isSubmitting} />
 			<div class="modal-action">
-				<button type="button" class="btn btn-outline" onclick={() => creditsDialog.close()}>Cancel</button>
-				<button type="button" class="btn btn-primary" disabled={isSubmitting} onclick={() => {
-					const error = validateCredits(editableCredits, false);
-					if (error) { toast.error(error); return; }
-					credits = readCredits(editableCredits);
-					creditsDialog.close();
-				}}>Apply changes</button>
+				<button type="button" class="btn btn-outline" onclick={() => creditsDialog.close()}
+					>Cancel</button
+				>
+				<button
+					type="button"
+					class="btn btn-primary"
+					disabled={isSubmitting}
+					onclick={() => {
+						const error = validateCredits(editableCredits, false);
+						if (error) {
+							toast.error(error);
+							return;
+						}
+						credits = readCredits(editableCredits);
+						creditsDialog.close();
+					}}>Apply changes</button
+				>
 			</div>
 		</div>
-		<form method="dialog" class="modal-backdrop"><button aria-label="Close credit editor">close</button></form>
+		<form method="dialog" class="modal-backdrop">
+			<button aria-label="Close credit editor">close</button>
+		</form>
+	</dialog>
+
+	<dialog bind:this={unpublishDialog} class="modal" aria-labelledby="unpublish-edition-title">
+		<div class="modal-box">
+			<h2 id="unpublish-edition-title" class="text-lg font-semibold">
+				Unpublish for final revisions
+			</h2>
+			<p class="mt-2 text-sm text-base-content/70">
+				This removes the edition from public view, clears its publication claim, and returns it to
+				Final Revisions. A new Final Review and publication request are required before
+				republication.
+			</p>
+			<label class="mt-4 block" for="unpublish-reason">
+				<span class="mb-1 block text-sm font-medium">Reason for this audit entry</span>
+				<textarea
+					id="unpublish-reason"
+					class="textarea-bordered textarea w-full"
+					bind:value={unpublishReason}
+					maxlength="5000"
+					required
+				></textarea>
+			</label>
+			<div class="modal-action">
+				<button
+					type="button"
+					class="btn btn-outline"
+					disabled={isSubmitting}
+					onclick={() => unpublishDialog.close()}>Cancel</button
+				>
+				<button
+					type="button"
+					class="btn btn-primary"
+					disabled={isSubmitting || !unpublishReason.trim()}
+					onclick={unpublishEdition}>Unpublish</button
+				>
+			</div>
+		</div>
+		<form method="dialog" class="modal-backdrop">
+			<button aria-label="Close unpublish dialog">close</button>
+		</form>
 	</dialog>
 
 	<dialog bind:this={submitDialog} class="modal" aria-labelledby="submit-proposal-title">

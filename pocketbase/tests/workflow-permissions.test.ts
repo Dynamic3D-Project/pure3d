@@ -42,5 +42,7 @@ test('publication and reviewer assignment are editorial actions, not collection-
 	expect(hasPermission(board, Permission.ReviewerAssign)).toBe(true);
 	expect(hasPermission(owner, Permission.WorkflowPublish)).toBe(false);
 	for (const globalRole of Object.values(GlobalRole))
-		expect(hasPermission({ globalRole }, Permission.WorkflowUnpublish)).toBe(false);
+		expect(hasPermission({ globalRole }, Permission.WorkflowUnpublish)).toBe(
+			globalRole === GlobalRole.Admin
+		);
 });
