@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.17.1 - 2026-10-17
+
+### Fixes
+
+- resolve release verification blockers (d6cd933c)
+- enable admin unpublishing and complete metadata (08e5dc3a)
+- improve My Work cards and edition covers (aaac0d93)
+- streamline proposal approval and edition setup (68aa4252)
+- streamline admin review and proposal details (cd74f943)
+- move My Work to profile and redirect reviews (323af7eb)
+- improve proposal form and model preview (12a6bf14)
+- clarify proposal approval and restrict edition access (43b2391c)
+- guide concept submissions to proposal form (25bde5a4)
+- ignore unused submenu destinations in direct menus (f7ff1f33)
+- allow sampling particles without a scene document (5634eb72)
+- refine homepage hierarchy and mobile hero controls (b13a78ff)
+
 ## v0.17.0 - 2026-10-01
 
 ### Features
