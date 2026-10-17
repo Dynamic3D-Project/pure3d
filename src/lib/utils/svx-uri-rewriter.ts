@@ -57,7 +57,10 @@ export function withSceneTitle<T extends object>(scene: T, title: string): T {
 		if (index !== metaIndex || !value || typeof value !== 'object') return value;
 		const meta = { ...(value as Record<string, unknown>) };
 		const collection = { ...((meta.collection as Record<string, unknown>) || {}) };
-		const titles = { ...((collection.titles as Record<string, unknown>) || {}), EN: title };
+		const titles: Record<string, unknown> = {
+			...((collection.titles as Record<string, unknown>) || {}),
+			EN: title
+		};
 		if (typeof language === 'string' && language) titles[language.toUpperCase()] = title;
 		collection.titles = titles;
 		meta.collection = collection;

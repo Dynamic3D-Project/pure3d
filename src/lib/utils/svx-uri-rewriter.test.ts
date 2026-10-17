@@ -1,5 +1,22 @@
 import { describe, expect, test } from 'bun:test';
-import { rewriteSceneJson } from './svx-uri-rewriter';
+import { rewriteSceneJson, withSceneTitle } from './svx-uri-rewriter';
+
+test('scene titles update the active language while preserving other titles and the source', () => {
+	const scene = {
+		scene: 0,
+		scenes: [{ meta: 0, setup: 0 }],
+		setups: [{ language: { language: 'nl' } }],
+		metas: [{ collection: { titles: { EN: 'Old title', NL: 'Oude titel', FR: 'Titre' } } }]
+	};
+	const original = structuredClone(scene);
+	const result = withSceneTitle(scene, 'Updated title');
+	expect(result.metas[0].collection.titles).toEqual({
+		EN: 'Updated title',
+		NL: 'Updated title',
+		FR: 'Titre'
+	});
+	expect(scene).toEqual(original);
+});
 
 describe('rewriteSceneJson', () => {
 	test('returns input unchanged when scene has no uri entries', () => {

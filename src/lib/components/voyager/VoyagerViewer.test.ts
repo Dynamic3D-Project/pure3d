@@ -41,7 +41,9 @@ test('reveals the edition cover independently from full scene readiness', () => 
 	expect(source).toContain('const coverRevealed = $derived(firstModelVisible || viewerReady)');
 	expect(source).toContain('class:is-ready={coverRevealed}');
 	expect(source).toContain("contentScope.listen(voyagerElement, 'model-load', () => {");
-	expect(source).toContain('if (!disposed && !hasError) firstModelVisible = true');
+	expect(source).toMatch(
+		/contentScope\.listen\(voyagerElement, 'model-load', \(\) => \{\s*if \(disposed \|\| hasError\) return;\s*firstModelVisible = true;/
+	);
 	expect(source).toContain('sceneLoaded === true && assetsBusy === false');
 	expect(source).toContain('onload={handleIframeLoad}');
 	expect(editionView).toContain('coverUrl={editionCoverUrl}');
