@@ -58,7 +58,7 @@ Local ORCID sign-in reuses the **existing real ORCID application and account**, 
 make dev-prod
 ```
 
-Open `http://localhost:60020` in this mode. Only the frontend container starts (`--no-deps`); no certificate prerequisite, local setup, or production service management runs. HTTPS development routing is explicitly disabled. Its endpoints are fixed to the OVH URLs below, regardless of `PUBLIC_*` values in `.env`. Existing local services are not stopped.
+Open `http://localhost:60020` in this mode. The frontend runs directly with Bun; Docker is not required. No certificate prerequisite, local setup, or production service management runs. HTTPS development routing is explicitly disabled. Its endpoints are fixed to the OVH URLs below, regardless of `PUBLIC_*` values in `.env`. Existing local services are not stopped.
 
 ## Data and Assets
 

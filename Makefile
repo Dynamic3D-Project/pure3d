@@ -1,7 +1,6 @@
 .PHONY: release release-dry-run help install db db-logs db-stop dev-cert dev dev-prod dev-web bun-dev seed-assets stack stack-stop
 
 LOCAL_COMPOSE = docker compose -f docker-compose.yml -f docker-compose.local.yml
-PROD_COMPOSE = docker compose -f docker-compose.yml -f docker-compose.prod.yml
 
 help:
 	@echo "Pure3D commands"
@@ -13,7 +12,7 @@ help:
 	@echo "  make db-stop     Stop local database/storage services"
 	@echo "  make dev         Run full local dev app in Docker/OrbStack"
 	@echo "  make dev-cert    Trust mkcert CA and create missing local HTTPS certificate"
-	@echo "  make dev-prod    Run frontend against production data/assets"
+	@echo "  make dev-prod    Run native Bun frontend against production (no Docker)"
 	@echo "  make dev-web     Run DB/MinIO in Docker, then native Bun frontend"
 	@echo "  make bun-dev     Alias for dev-web"
 	@echo "  make seed-assets Mirror static/project into local MinIO bucket"
@@ -55,8 +54,12 @@ dev: dev-cert
 
 dev-prod:
 	@echo "Connected to production: changes affect live data."
-	@$(PROD_COMPOSE) stop minio minio-setup pocketbase pocketbase-setup voyager-setup
-	$(PROD_COMPOSE) up --no-deps frontend
+	@set -a; [ ! -f .env ] || . ./.env; set +a; \
+		export DEV_HTTPS=0 DEV_PUBLIC_URL="http://localhost:$${FRONTEND_PORT:-60020}/"; \
+		export PUBLIC_DEMO_LOGIN=0; \
+		export PUBLIC_POCKETBASE_URL="https://main.57-129-98-223.sslip.io"; \
+		export PUBLIC_ASSET_BASE_URL="https://main.57-129-98-223.sslip.io/assets"; \
+		bun install && bun run dev --host 0.0.0.0 --port "$${FRONTEND_PORT:-60020}"
 
 dev-web: dev-cert
 	@$(LOCAL_COMPOSE) up -d minio minio-setup pocketbase pocketbase-setup voyager-setup

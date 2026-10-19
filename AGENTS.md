@@ -23,7 +23,7 @@
 bun install       # install dependencies
 make install      # provision local services, Voyager, and assets
 make dev          # run the full local Docker stack
-make dev-prod     # run the Docker frontend against production services
+make dev-prod     # run the native Bun frontend against production services (no Docker)
 make db           # run PocketBase and MinIO only
 make dev-web      # run services in Docker and the frontend with Bun
 bun run check     # Svelte and TypeScript checks

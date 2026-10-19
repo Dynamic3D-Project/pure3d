@@ -17,7 +17,7 @@ production `.env` to be replaced or edited.
 | `make stack`                    | Start all local Compose services                             |
 | `make db-logs` / `make db-stop` | Follow logs / stop local backend services                    |
 | `make stack-stop`               | Stop the local Compose stack                                 |
-| `make dev-prod`                 | Local Docker frontend connected to live OVH, no dependencies |
+| `make dev-prod`                 | Native Bun frontend connected to live OVH, no Docker         |
 
 Obtain private seed data from a maintainer for `data/json-output/` and assets for
 `static/project/`. Run `make seed-assets` after adding assets. Legacy
@@ -79,8 +79,8 @@ make dev-prod
 
 **Connected to production: changes affect live data.**
 
-This selects `docker-compose.yml` plus `docker-compose.prod.yml` and runs
-`up --no-deps frontend`. It forces PocketBase to
+This installs dependencies and runs Vite directly with Bun, without Docker.
+It forces PocketBase to
 `https://main.57-129-98-223.sslip.io` and assets to
 `https://main.57-129-98-223.sslip.io/assets`, regardless of `.env` public settings.
 It does not start backend/setup dependencies, stop existing local services, or
