@@ -22,11 +22,16 @@ such as `[{"path":"pbc/record/file.avif","url":"https://api.example/api/files/â€
 scanning model texture trees.
 
 Sharp writes separate AVIF files named for their measured width. Images smaller than a target are
-not enlarged, and the manifest records the actual width rather than an invalid nominal descriptor.
+not enlarged, and the manifest records the actual width and height rather than nominal dimensions.
 The script never overwrites originals and does not inspect or modify GLB, GLTF, model textures or
 other preservation assets.
 
-The checked manifest is intentionally empty. A card falls back to its original URL unless an exact
+Edition cards reserve the measured cover aspect ratio before loading. Existing published edition
+measurements are in `src/lib/utils/edition-cover-dimensions.json`; newly generated manifests include
+dimensions directly. Unknown covers use a stable 4:3 frame, including on load failure, rather than
+resizing the layout after loading.
+
+A card falls back to its original URL unless an exact
 full URL or pathname is present in that manifest, so nonexistent derivative URLs are never guessed.
 After an explicitly authorized asset release uploads the files under stable/versioned URLs, copy
 the validated public manifest into the checked path. This repository task does not write production

@@ -29,6 +29,8 @@
 
 	let coverUrl = $derived(getEditionCoverUrl(edition));
 	let imageSources = $derived(coverUrl ? getCardImageSources(coverUrl) : null);
+	let imageWidth = $derived(imageSources?.width ?? 4);
+	let imageHeight = $derived(imageSources?.height ?? 3);
 
 	$effect(() => {
 		const nextCoverUrl = coverUrl;
@@ -60,7 +62,7 @@
 >
 	<figure
 		class="relative overflow-clip rounded-lg bg-base-200"
-		class:aspect-square={!discovery || !coverUrl || imageError}
+		style:aspect-ratio={discovery && coverUrl ? `${imageWidth} / ${imageHeight}` : '1 / 1'}
 	>
 		{#if edition.isPublished === false}
 			<div
@@ -128,7 +130,7 @@
 		</div>
 		<!-- Actual image -->
 		{#if imageSources && !imageError}
-			<div class:h-full={!discovery} class="w-full">
+			<div class="absolute inset-0 h-full w-full">
 				<img
 					src={imageSources.src}
 					srcset={imageSources.srcset}
@@ -136,10 +138,10 @@
 						? '(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw'
 						: '(min-width: 1024px) 256px, 50vw'}
 					alt={edition.title}
-					class="card-cover-image w-full object-cover"
+					width={imageWidth}
+					height={imageHeight}
+					class="card-cover-image h-full w-full object-cover"
 					class:card-parallax-image={!discovery}
-					class:card-masonry-image={discovery}
-					class:h-full={!discovery}
 					loading={imageLoading}
 					fetchpriority={imageFetchPriority}
 					decoding="async"

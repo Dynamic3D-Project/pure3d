@@ -2,6 +2,10 @@ import PocketBase, { ClientResponseError } from 'pocketbase';
 import { emptyMenu } from '../src/lib/cms';
 
 const admin = '@request.auth.id != "" && @request.auth.role = "admin"';
+export const learningMaterialFields = [
+	{ name: 'learningMaterial', type: 'bool' },
+	{ name: 'learningMaterialOrder', type: 'number' }
+];
 export const guideIntroduction =
 	'<h2>Turn your 3D research into a scholarly edition.</h2><p>Bring your model, interpretation and supporting material together in a citable, interactive publication. Pure3D guides your edition from proposal through review to publication.</p><h2>Before you begin</h2><ul><li>Every individual author needs an ORCID iD before submission or publication, including co-authors. Contributor ORCIDs are optional. Organizations do not receive ORCID iDs. Preserve the credited name and author order; an account or a matching name is not identity proof.</li><li>A 3D object or dataset that is central to your scholarly argument.</li><li>Context, metadata and interpretive material for the edition.</li><li>Rights or permission to publish the assets you submit.</li></ul><h2>Resolve author identities before review</h2><p>Use a canonical ORCID link such as https://orcid.org/0000-0002-1825-0097 for each individual author. Ask co-authors to confirm their own identifier; do not infer it from a name search. Add organizations as organization credits and distinguish creators from contributors.</p><p>If a legacy author cannot yet be identified, keep their original credit and contact the Pure3D team for review. An unresolved individual author’s ORCID is a submission and publication blocker, not a permanent exemption. ORCID sign-in proves account ownership; a manually confirmed credit does not create a verified account or grant editing access.</p><p><a href="/documentation/submission">Read submission guidelines</a> or <a href="/reviews">go to my work</a>.</p>';
 export async function setupCms(pb: PocketBase) {
@@ -67,6 +71,7 @@ export async function setupCms(pb: PocketBase) {
 			{ name: 'author', type: 'text' },
 			{ name: 'publishedAt', type: 'date' },
 			{ name: 'isPublished', type: 'bool' },
+			...learningMaterialFields,
 			{ name: 'documentationSeeded', type: 'bool' },
 			{ name: 'categoryIds', type: 'relation', collectionId: categories.id, maxSelect: 100 },
 			{ name: 'order', type: 'number' },

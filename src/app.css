@@ -232,10 +232,6 @@ a[target='_blank'] {
 	opacity: 0.9;
 }
 
-.card-masonry-image {
-	aspect-ratio: auto 4 / 3;
-}
-
 @media (prefers-reduced-motion: reduce) {
 	.ds-card {
 		transition: none;

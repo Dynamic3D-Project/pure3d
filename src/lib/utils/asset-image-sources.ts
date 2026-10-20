@@ -1,13 +1,16 @@
 import publishedManifest from './card-image-derivatives.json';
+import editionCoverDimensions from './edition-cover-dimensions.json';
 
 export interface CardImageSources {
 	src: string;
 	srcset?: string;
+	width?: number;
+	height?: number;
 }
 
 export interface CardImageDerivativeManifest {
 	version: 1;
-	images: Record<string, Array<{ url: string; width: number }>>;
+	images: Record<string, Array<{ url: string; width: number; height?: number }>>;
 }
 
 function manifestKeys(url: string): string[] {
@@ -31,10 +34,23 @@ function originalImageUrl(url: string): string {
 	}
 }
 
+function getEditionCoverDimensions(url: string) {
+	try {
+		const pathname = new URL(url, 'https://local.invalid').pathname;
+		const key = pathname.includes('/project/')
+			? pathname.slice(pathname.indexOf('/project/'))
+			: pathname;
+		return (editionCoverDimensions as Record<string, { width: number; height: number }>)[key];
+	} catch {
+		return undefined;
+	}
+}
+
 export function getCardImageSources(
 	url: string,
 	manifest: CardImageDerivativeManifest = publishedManifest as CardImageDerivativeManifest
 ): CardImageSources {
+	const dimensions = getEditionCoverDimensions(url);
 	const candidates = manifestKeys(url)
 		.map((key) => manifest.images[key])
 		.find(Array.isArray)
@@ -48,11 +64,16 @@ export function getCardImageSources(
 		.sort((left, right) => left.width - right.width);
 
 	if (candidates?.length) {
+		const largest = candidates.at(-1)!;
 		return {
-			src: candidates.at(-1)!.url,
+			...dimensions,
+			...(Number.isInteger(largest.height) && largest.height! > 0
+				? { width: largest.width, height: largest.height }
+				: {}),
+			src: largest.url,
 			srcset: candidates.map((candidate) => `${candidate.url} ${candidate.width}w`).join(', ')
 		};
 	}
 
-	return { src: originalImageUrl(url), srcset: undefined };
+	return { ...dimensions, src: originalImageUrl(url), srcset: undefined };
 }

@@ -3,7 +3,7 @@
 	import { getContext, onMount } from 'svelte';
 	import { beforeNavigate } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { base } from '$app/paths';
+	import { base, resolve } from '$app/paths';
 	import { pb } from '$lib/database/client';
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import RichTextEditor from '$lib/components/ui/RichTextEditor.svelte';
@@ -59,7 +59,10 @@
 		coverUrl = $state(''),
 		section = $state('resources'),
 		formKind = $state('page'),
-		isPublished = $state(false);
+		isPublished = $state(false),
+		learningMaterial = $state(false),
+		learningMaterialOrder = $state(0);
+	let learningMaterialsOnly = $derived($page.url.searchParams.get('filter') === 'learning-materials');
 	let saving = $state(false),
 		loading = $state(true),
 		dirty = $state(false),
@@ -68,6 +71,7 @@
 		items.filter(
 			(i) =>
 				(!kindFilter || i.kind === kindFilter) &&
+				(!learningMaterialsOnly || i.learningMaterial) &&
 				(!kind || i.kind === kind) &&
 				(!status || (status === 'published') === i.isPublished) &&
 				`${i.title} ${i.slug}`.toLowerCase().includes(query.toLowerCase())
@@ -120,6 +124,8 @@
 		section = item.section;
 		formKind = item.kind;
 		isPublished = item.isPublished;
+		learningMaterial = Boolean(item.learningMaterial);
+		learningMaterialOrder = item.learningMaterialOrder || 0;
 		layout = item.layout;
 		parent = item.parent || '';
 		order = item.order || 0;
@@ -146,6 +152,14 @@
 				kind: newKind,
 				layout: newKind === 'post' ? 'article' : 'standard',
 				section: 'resources',
+				learningMaterial: learningMaterialsOnly,
+				learningMaterialOrder:
+					Math.max(
+						-1,
+						...items
+							.filter((item) => item.learningMaterial)
+							.map((item) => item.learningMaterialOrder || 0)
+					) + 1,
 				isPublished: false
 			});
 			items = [row, ...items];
@@ -190,7 +204,9 @@
 				parent: formKind === 'post' ? '' : parent,
 				order,
 				categoryIds: formKind === 'post' ? categoryIds : [],
-				isPublished
+				isPublished,
+				learningMaterial: formKind === 'page' && learningMaterial,
+				learningMaterialOrder
 			};
 			const row = selected
 				? await pb.collection('content').update(selected.id, payload)
@@ -268,7 +284,10 @@
 		})();
 		return () => contentActions.register(null);
 	});
+	let reordering = $state(false);
+	let pendingOrder: { entries: RecordModel[]; field: string } | null = null;
 	async function reorder(id: string, targetId: string) {
+		if (!allowed || saving || filteredOrder || id === targetId) return;
 		const source = items.find((i) => i.id === id),
 			target = items.find((i) => i.id === targetId);
 		if (
@@ -276,46 +295,74 @@
 			!target ||
 			source.kind !== 'page' ||
 			target.kind !== 'page' ||
-			source.parent !== target.parent ||
-			source.layout !== target.layout
+			(learningMaterialsOnly
+				? !source.learningMaterial || !target.learningMaterial
+				: source.parent !== target.parent || source.layout !== target.layout)
 		) {
 			toast.error('Reorder pages within the same parent and layout.');
 			return;
 		}
-		const siblings = items
-			.filter((i) => i.kind === 'page' && i.parent === source.parent && i.layout === source.layout)
-			.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
+		const siblings = reorderSiblings(source);
 		const next = move(
 			siblings,
 			siblings.findIndex((i) => i.id === id),
 			siblings.findIndex((i) => i.id === targetId)
 		);
-		saving = true;
+		const orderField = learningMaterialsOnly ? 'learningMaterialOrder' : 'order';
+		const positions = new Map(next.map((item, index) => [item.id, index]));
+		items = items.map((item) => positions.has(item.id)
+			? { ...item, [orderField]: positions.get(item.id) }
+			: item);
+		pendingOrder = { entries: next, field: orderField };
+		if (reordering) return;
+		reordering = true;
 		try {
-			await Promise.all(
-				next.map((item, index) => pb.collection('content').update(item.id, { order: index }))
-			);
-			await load();
-			toast.success('Page order saved');
+			while (pendingOrder) {
+				const batch = pendingOrder;
+				pendingOrder = null;
+				const updates = await Promise.allSettled(
+					batch.entries.map((item, index) =>
+						pb.collection('content').update(item.id, { [batch.field]: index })
+					)
+				);
+				if (updates.some((result) => result.status === 'rejected')) {
+					throw new Error('Order save failed');
+				}
+			}
 		} catch {
-			toast.error('Could not save the full order. Reloading current order.');
+			pendingOrder = null;
+			toast.error('Could not save the order. Reloading the saved positions.');
 			await load();
 		} finally {
-			saving = false;
+			reordering = false;
 		}
 	}
 	let displayed = $derived<(RecordModel & { depth: number })[]>(
-		kindFilter === 'page' && !query && !kind && !status
+		learningMaterialsOnly
+			? [...filtered]
+					.sort(
+						(a, b) =>
+							(a.learningMaterialOrder || 0) - (b.learningMaterialOrder || 0) ||
+							a.title.localeCompare(b.title)
+					)
+					.map((item) => ({ ...item, depth: 0 }))
+			: kindFilter === 'page' && !query && !kind && !status
 			? orderedPages(items.filter((i) => i.kind === 'page')).map((r) => ({
 					...r.item,
 					depth: r.depth
 				}))
 			: filtered.map((item) => ({ ...item, depth: 0 }))
 	);
+	function reorderSiblings(item: RecordModel) {
+		const orderField = learningMaterialsOnly ? 'learningMaterialOrder' : 'order';
+		return items
+			.filter((i) => i.kind === 'page' && (learningMaterialsOnly
+				? i.learningMaterial
+				: i.parent === item.parent && i.layout === item.layout))
+			.sort((a, b) => (a[orderField] || 0) - (b[orderField] || 0) || a.title.localeCompare(b.title));
+	}
 	function neighbor(item: RecordModel, delta: number) {
-		const siblings = items
-			.filter((i) => i.kind === 'page' && i.parent === item.parent && i.layout === item.layout)
-			.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
+		const siblings = reorderSiblings(item);
 		return siblings[siblings.findIndex((i) => i.id === item.id) + delta]?.id || '';
 	}
 	function useMedia(asset: RecordModel, cover = false) {
@@ -501,6 +548,26 @@
 						/></label
 					>
 					<p class="text-xs opacity-60">Drafts are visible only to admins.</p>
+					{#if formKind === 'page'}
+						<label class="flex items-center justify-between text-sm"
+							>Learning material<input
+								type="checkbox"
+								class="toggle"
+								bind:checked={learningMaterial}
+								onchange={() => (dirty = true)}
+							/></label
+						>
+						{#if learningMaterial}
+							<label class="block text-sm"
+								>Learning materials order<input
+									class="input mt-2 w-full"
+									type="number"
+									bind:value={learningMaterialOrder}
+									oninput={() => (dirty = true)}
+								/></label
+							>
+						{/if}
+					{/if}
 					<label class="block text-sm"
 						>URL slug<input
 							class="input mt-2 w-full"
@@ -628,6 +695,15 @@
 				</aside>
 			</div>
 		{:else}
+			{#if learningMaterialsOnly}
+				<div class="mb-6 space-y-2">
+					<p>
+						Create a page to add a card, or open an existing page and enable Learning material.
+						Publish the page to show its card. Lower order values appear first.
+					</p>
+					<a class="btn btn-outline btn-sm" href={resolve('/admin/pages')}>Browse all pages</a>
+				</div>
+			{/if}
 			<div class="mb-6 grid gap-3 md:grid-cols-[1fr_200px_170px]">
 				<input
 					aria-label="Search content"
@@ -646,10 +722,12 @@
 				>
 			</div>
 			<p class="mb-4 text-xs opacity-50">
+				{#if learningMaterialsOnly}Learning materials · {/if}
 				{filtered.length} entries · {filtered.filter((i) => !i.isPublished).length} drafts
 				{#if kindFilter === 'page' && filteredOrder}
 					· Clear filters to reorder pages.{/if}
 			</p>
+			{#if reordering}<p role="status" class="mb-3 text-sm">Saving order…</p>{/if}
 			{#if loading}<p>Loading content…</p>{:else}<div
 					class="overflow-x-auto rounded-xl border border-base-300"
 				>

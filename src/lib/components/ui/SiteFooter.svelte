@@ -6,7 +6,6 @@
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import {
 		emptyMenu,
-		menuSignature,
 		publishableMenu,
 		validateMenu,
 		type MenuConfig,
@@ -40,6 +39,7 @@
 	let dirty = $state(false);
 	let saving = $state(false);
 	let editorError = $state('');
+	let editorNotice = $state('');
 	let ContextualMenuEditor = $state<
 		Awaited<typeof import('$lib/components/ui/ContextualMenuEditor.svelte')>['default'] | null
 	>(null);
@@ -72,12 +72,16 @@
 		);
 	}
 	async function startEditing() {
+		editorNotice = '';
 		if (saving || authStore.globalRole !== 'admin') return;
 		const editorId = pb.authStore.record?.id;
 		if (!editorId) return;
 		saving = true;
 		editorError = '';
 		try {
+			const user = await authStore.refreshSession();
+			if (user.id !== editorId || user.role !== 'admin')
+				throw new Error('An administrator account is required to edit menus.');
 			const [editor, [draft, live, directory]] = await Promise.all([
 				import('$lib/components/ui/ContextualMenuEditor.svelte'),
 				Promise.all([
@@ -107,6 +111,7 @@
 		}
 	}
 	function editorChanged() {
+		editorNotice = '';
 		if (!saving) dirty = true;
 	}
 	async function togglePreview() {
@@ -127,6 +132,7 @@
 	}
 	async function saveEditor(publish = false) {
 		if (saving || !activeEditor(editorOwnerId)) return;
+		editorNotice = '';
 		const ownerId = editorOwnerId;
 		const config = $state.snapshot(editorConfig);
 		const currentDraftId = draftId;
@@ -162,10 +168,7 @@
 				await refreshMenus(true);
 				if (!activeEditor(ownerId, currentDraftId)) return;
 				if (previewing) setMenuPreview('footer', config, publishDirectory);
-				editorError =
-					menuSignature(published) === menuSignature(config)
-						? ''
-						: 'Published available links. Broken, unpublished or hidden links were left out and remain editable in the draft.';
+				editorNotice = 'Menu published.';
 			}
 		} catch (error) {
 			if (activeEditor(ownerId, currentDraftId))
@@ -183,6 +186,7 @@
 		await refreshMenus(true);
 	}
 	function discardEditor() {
+		editorNotice = '';
 		restoreLiveMenu('footer', $state.snapshot(editorLiveConfig));
 		editing = false;
 		previewing = false;
@@ -223,6 +227,7 @@
 			</div>
 		</div>{/if}
 	{#if editorError}<div class="editor-error" role="alert">{editorError}</div>{/if}
+	{#if editorNotice}<div class="editor-notice" role="status">{editorNotice}</div>{/if}
 	{#if editing && !previewing && ContextualMenuEditor}<ContextualMenuEditor
 			bind:config={editorConfig}
 			bind:selectedId
@@ -331,6 +336,12 @@
 	}
 	.editorbar button {
 		white-space: nowrap;
+	}
+	.editor-notice {
+		padding: 10px 24px;
+		background: color-mix(in srgb, var(--color-success) 12%, var(--color-base-100));
+		color: var(--color-base-content);
+		font-size: 12px;
 	}
 	.editor-error {
 		margin: 0 -24px;

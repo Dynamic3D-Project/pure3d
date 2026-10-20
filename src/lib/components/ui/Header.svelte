@@ -25,7 +25,6 @@
 	import {
 		emptyMenu,
 		menuItemStyle,
-		menuSignature,
 		publishableMenu,
 		validateMenu,
 		type MenuConfig,
@@ -55,6 +54,7 @@
 	let dirty = $state(false);
 	let saving = $state(false);
 	let editorError = $state('');
+	let editorNotice = $state('');
 	let ContextualMenuEditor = $state<
 		Awaited<typeof import('$lib/components/ui/ContextualMenuEditor.svelte')>['default'] | null
 	>(null);
@@ -145,6 +145,7 @@
 	}
 	function editorChanged() {
 		if (saving) return;
+		editorNotice = '';
 		dirty = true;
 		if (previewing)
 			setMenuPreview('main', $state.snapshot(editorConfig), $state.snapshot(editorDirectory));
@@ -162,12 +163,16 @@
 		);
 	}
 	async function startEditing() {
+		editorNotice = '';
 		if (saving || authStore.globalRole !== 'admin') return;
 		const editorId = pb.authStore.record?.id;
 		if (!editorId) return;
 		saving = true;
 		editorError = '';
 		try {
+			const user = await authStore.refreshSession();
+			if (user.id !== editorId || user.role !== 'admin')
+				throw new Error('An administrator account is required to edit menus.');
 			const [editor, [draft, live, directory]] = await Promise.all([
 				import('$lib/components/ui/ContextualMenuEditor.svelte'),
 				Promise.all([
@@ -215,6 +220,7 @@
 	}
 	async function saveEditor(publish = false) {
 		if (saving || !activeEditor(editorOwnerId)) return;
+		editorNotice = '';
 		const ownerId = editorOwnerId;
 		const config = $state.snapshot(editorConfig);
 		const currentDraftId = draftId;
@@ -253,10 +259,7 @@
 				await refreshMenus(true);
 				if (!activeEditor(ownerId, currentDraftId)) return;
 				if (previewing) setMenuPreview('main', config, publishDirectory);
-				editorError =
-					menuSignature(published) === menuSignature(config)
-						? ''
-						: 'Published available links. Broken, unpublished or hidden links were left out and remain editable in the draft.';
+				editorNotice = 'Menu published.';
 			}
 		} catch (error) {
 			if (!activeEditor(ownerId, currentDraftId)) return;
@@ -274,6 +277,7 @@
 		await refreshMenus(true);
 	}
 	function discardEditor() {
+		editorNotice = '';
 		restoreLiveMenu('main', $state.snapshot(editorLiveConfig));
 		editing = false;
 		previewing = false;
@@ -422,7 +426,7 @@
 				>Menu unavailable · Retry</button
 			>{/if}
 		<div class="tools">
-			{#if dev || authStore.user?.role === 'admin'}
+			{#if authStore.globalRole === 'admin'}
 				<ThemeChange />
 			{/if}
 			<Login />
@@ -438,6 +442,7 @@
 		</div>
 	</div>
 	{#if editorError}<div class="editor-error" role="alert">{editorError}</div>{/if}
+	{#if editorNotice}<div class="editor-notice" role="status">{editorNotice}</div>{/if}
 	{#if mobile || selected || editingView}<div class="expansion">
 			{#if mobile}<div class="mobile-links">
 					{#if editingView}
@@ -566,11 +571,13 @@
 		transition: transform 160ms ease-out;
 	}
 	[data-nav-style='primary'] {
+		--nav-icon-fill: var(--color-primary);
 		--nav-background: var(--color-primary);
 		--nav-foreground: var(--color-primary-content);
 		--nav-border: var(--color-primary);
 	}
 	[data-nav-style='secondary'] {
+		--nav-icon-fill: var(--color-secondary);
 		--nav-background: var(--color-secondary);
 		--nav-foreground: var(--color-secondary-content);
 		--nav-border: var(--color-secondary);
@@ -682,6 +689,14 @@
 	.editorbar .editor-cancel:hover:not(:disabled) {
 		background: color-mix(in srgb, var(--color-base-content) 85%, var(--color-base-100));
 		border-color: var(--color-base-content);
+	}
+	.editor-notice {
+		position: relative;
+		z-index: 3;
+		padding: 10px 24px;
+		background: color-mix(in srgb, var(--color-success) 12%, var(--color-base-100));
+		color: var(--color-base-content);
+		font-size: 12px;
 	}
 	.editor-error {
 		position: relative;

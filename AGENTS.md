@@ -55,6 +55,40 @@ make release      # explicitly authorized local release only
 - Do not edit generated files such as `src/lib/paraglide/` unless intentionally regenerating them.
 - Do not change service credentials, ports, or production data defaults unless required.
 
+## Production Backend Deployment
+
+- Require explicit authorization for each production deployment or schema migration. A commit,
+  push, frontend release, or working admin login does not deploy PocketBase hooks.
+- Load production API credentials privately from `.env` using `bun --env-file=.env`:
+  `POCKETBASE_PRODUCTION_ADMIN_EMAIL` and `POCKETBASE_PRODUCTION_ADMIN_PASSWORD`. Do not fall
+  back to local/development credentials, print values/tokens, or commit `.env`.
+- Use `PROD_POCKETBASE_URL` for production API access and verify its origin is the approved
+  `https://main.57-129-98-223.sslip.io` before authenticating or writing. Authenticate through
+  PocketBase's `_superusers` collection. API credentials allow schema/data operations, not hook
+  installation. Schema migrations require a fresh verified database backup, a scoped migration,
+  and schema read-back; do not migrate schema for a hook-only change.
+- Hooks deploy over SSH, independently of the API credentials in `.env`. Verified access:
+  `ssh -i ~/.ssh/id_ed25519 ubuntu@57.129.98.223`. Use batch mode, a connection timeout, and
+  strict host-key checking; never bypass a host-key mismatch. `vps.ctwhome.com` is a different
+  server and must not be used for this deployment.
+- Re-discover the running service and mounts before deployment. The verified setup is Docker
+  container `pure3d-archive-pocketbase-1`, with host hooks at
+  `/opt/pure3d-archive/platform/pocketbase/pb_hooks`, mounted read-only at `/pb/pb_hooks`, and
+  health at `http://127.0.0.1:8090/api/health` on the VPS. Use `sudo -n` where required.
+- Compare the installed hooks with the intended local files and investigate unexpected differences.
+  Run focused verification and syntax checks before uploading. Back up the complete installed
+  hooks directory to a private, root-owned directory under `/var/backups/`; preserve unrelated
+  hooks, database files, uploads, environment settings, and credentials.
+- Stage only the authorized changed hook files, verify SHA-256 checksums and that the installed
+  files have not changed since comparison, then replace atomically with appropriate ownership
+  and permissions. Restart only the identified PocketBase container. On startup/health failure,
+  restore the backed-up hooks and restart that container; retain the backup for rollback.
+- After deployment, verify the installed checksums, local and public `/api/health`, production
+  admin authentication, and affected read-only API access. Do not create or alter production
+  content merely to test deployment without separate approval. Report deployment separately
+  from any unverified save/publish journey; never claim a schema migration occurred for a
+  hook-only deployment.
+
 ## Conventions
 
 - Formatting is Prettier-controlled: tabs, single quotes, no trailing commas, 100-character width.

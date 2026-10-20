@@ -194,8 +194,11 @@ function validateContent(e) {
 	const r = e.record,
 		kind = r.getString('kind'),
 		layout = r.getString('layout');
-	const componentError = validateComponentHtml(r.getString('body'));
-	if (componentError) throw new BadRequestError(componentError);
+	// Reordering does not change HTML. Avoid rescanning it in the JSVM for metadata-only saves.
+	if (r.getString('body') !== r.original().getString('body')) {
+		const componentError = validateComponentHtml(r.getString('body'));
+		if (componentError) throw new BadRequestError(componentError);
+	}
 	if (
 		r.original().getString('slug') === 'documentation' &&
 		r.original().getString('layout') === 'guide' &&

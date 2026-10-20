@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ContentRenderer from './ContentRenderer.svelte';
 	import { authStore } from '$lib/database/stores/auth.svelte';
+	import { pb } from '$lib/database/client';
 
 	interface Props {
 		content?: string;
@@ -15,11 +16,29 @@
 	let email = $state('');
 	let subject = $state('');
 	let message = $state('');
+	let website = $state('');
+	let isSending = $state(false);
+	let sent = $state(false);
+	let error = $state('');
 
-	function continueInEmail(event: SubmitEvent) {
+	async function sendMessage(event: SubmitEvent) {
 		event.preventDefault();
-		const body = [`Name: ${name}`, `Email: ${email}`, '', message].join('\n');
-		window.location.href = `mailto:${contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+		if (isSending) return;
+		isSending = true;
+		error = '';
+		sent = false;
+		try {
+			await pb.send('/api/pure3d/contact', {
+				method: 'POST',
+				body: { name, email, subject, message, website }
+			});
+			sent = true;
+			name = email = subject = message = '';
+		} catch {
+			error = 'Your message could not be sent. Please try again later or email us directly.';
+		} finally {
+			isSending = false;
+		}
 	}
 </script>
 
@@ -45,22 +64,21 @@
 	</header>
 
 	<div class="grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
-		<section class="rounded-box bg-ink p-7 text-paper sm:p-9" aria-label="Contact information">
+		<section
+			class="contact-information rounded-box p-7 sm:p-9"
+			aria-label="Contact information"
+		>
 			{#if content.trim()}
-				<ContentRenderer
-					content={content}
-					{imported}
-					className="prose prose-invert max-w-none text-paper/75"
-				/>
+				<ContentRenderer {content} {imported} className="prose max-w-none" />
 			{:else}
-				<h2 class="text-2xl font-semibold text-paper">Get in touch</h2>
-				<p class="mt-4 leading-relaxed text-paper/70">
+				<h2 class="text-2xl font-semibold">Get in touch</h2>
+				<p class="mt-4 leading-relaxed">
 					The PURE3D team welcomes questions from researchers, educators and cultural heritage
 					professionals.
 				</p>
-				<p class="mt-8 text-sm text-paper/60">Email</p>
+				<p class="mt-8 text-sm">Email</p>
 				<a
-					class="mt-1 inline-block font-semibold text-paper underline"
+					class="mt-1 inline-block font-semibold break-all underline"
 					href={`mailto:${contactEmail}`}
 				>
 					{contactEmail}
@@ -71,39 +89,89 @@
 		<section class="rounded-box bg-base-200 p-7 sm:p-9" aria-labelledby="contact-form-heading">
 			<h2 id="contact-form-heading" class="text-2xl font-semibold">Write your message</h2>
 			<p class="mt-3 text-sm leading-relaxed text-base-content/65">
-				This website does not send or store form submissions. Continuing opens your email app so you
-				can review and send the message yourself.
+				Send your message directly to the PURE3D team. We’ll reply to the email address you provide.
 			</p>
-			<form class="mt-7 space-y-5" onsubmit={continueInEmail}>
-				<div class="grid gap-5 sm:grid-cols-2">
+			<form class="mt-7 space-y-5" onsubmit={sendMessage} aria-busy={isSending}>
+				<div class="hidden" aria-hidden="true">
+					<label>Website <input tabindex="-1" autocomplete="off" bind:value={website} /></label>
+				</div>
+				<fieldset class="space-y-5" disabled={isSending}>
+					<div class="grid gap-5 sm:grid-cols-2">
+						<label class="form-control gap-2">
+							<span class="font-semibold">Name</span>
+							<input
+								class="input-bordered input w-full"
+								autocomplete="name"
+								maxlength="120"
+								required
+								bind:value={name}
+							/>
+						</label>
+						<label class="form-control gap-2">
+							<span class="font-semibold">Email</span>
+							<input
+								class="input-bordered input w-full"
+								type="email"
+								autocomplete="email"
+								maxlength="254"
+								required
+								bind:value={email}
+							/>
+						</label>
+					</div>
 					<label class="form-control gap-2">
-						<span class="font-semibold">Name</span>
-						<input class="input input-bordered w-full" autocomplete="name" required bind:value={name} />
-					</label>
-					<label class="form-control gap-2">
-						<span class="font-semibold">Email</span>
+						<span class="font-semibold">Subject</span>
 						<input
-							class="input input-bordered w-full"
-							type="email"
-							autocomplete="email"
+							class="input-bordered input w-full"
+							maxlength="200"
 							required
-							bind:value={email}
+							bind:value={subject}
 						/>
 					</label>
-				</div>
-				<label class="form-control gap-2">
-					<span class="font-semibold">Subject</span>
-					<input class="input input-bordered w-full" required bind:value={subject} />
-				</label>
-				<label class="form-control gap-2">
-					<span class="font-semibold">Message</span>
-					<textarea class="textarea textarea-bordered min-h-40 w-full" required bind:value={message}
-					></textarea>
-				</label>
-				<button class="btn btn-primary" type="submit">
-					Continue in email app <span aria-hidden="true">→</span>
-				</button>
+					<label class="form-control gap-2">
+						<span class="font-semibold">Message</span>
+						<textarea
+							class="textarea-bordered textarea min-h-40 w-full"
+							maxlength="10000"
+							required
+							bind:value={message}
+						></textarea>
+					</label>
+					<button class="btn btn-primary" type="submit" disabled={isSending}>
+						{isSending ? 'Sending…' : 'Send message'} <span aria-hidden="true">→</span>
+					</button>
+				</fieldset>
+				{#if sent}<p role="status">
+						Your message has been sent. Thank you for getting in touch.
+					</p>{/if}
+				{#if error}<p role="alert">{error}</p>{/if}
 			</form>
 		</section>
 	</div>
 </main>
+
+<style>
+	.contact-information {
+		--color-base-content: var(--color-panel-content);
+		background: var(--color-panel-bg);
+		color: var(--color-panel-content);
+	}
+
+	.contact-information :global(#content-renderer.prose) {
+		color: var(--color-base-content);
+		--tw-prose-body: var(--color-base-content);
+		--tw-prose-headings: var(--color-base-content);
+		--tw-prose-links: var(--color-base-content);
+		--tw-prose-bold: var(--color-base-content);
+	}
+
+	.contact-information :global(a) {
+		color: var(--color-base-content);
+		overflow-wrap: anywhere;
+	}
+
+	.form-control {
+		display: flex;
+		flex-direction: column;
+	}
+</style>

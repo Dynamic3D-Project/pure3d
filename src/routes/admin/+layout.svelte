@@ -103,10 +103,19 @@
 	] as const;
 	const contentTabs = [
 		{ label: 'Pages', href: '/admin/pages', icon: FileTextIcon },
+		{ label: 'Materials', href: '/admin/pages', icon: FileTextIcon, filter: 'learning-materials' },
 		{ label: 'Posts', href: '/admin/posts', icon: NewspaperIcon },
 		{ label: 'Categories', href: '/admin/categories', icon: TagsIcon },
 		{ label: 'Media', href: '/admin/media', icon: ImagesIcon }
 	] as const;
+
+	function isContentTabActive(tab: (typeof contentTabs)[number]): boolean {
+		return (
+			$page.url.pathname.startsWith(resolve(tab.href)) &&
+			(tab.href !== '/admin/pages' ||
+				($page.url.searchParams.get('filter') || '') === ('filter' in tab ? tab.filter : ''))
+		);
+	}
 
 	function isContentRoute(): boolean {
 		return contentTabs.some((tab) => $page.url.pathname.startsWith(resolve(tab.href)));
@@ -132,7 +141,7 @@
 <div id="admin-layout" class="flex min-h-[calc(100vh-4rem)] lg:pl-64">
 	<!-- Sidebar -->
 	<aside
-		class="fixed inset-y-0 left-0 z-40 w-64 shrink-0 transform overflow-y-auto border-r border-base-300 bg-base-200 pt-20 transition-transform duration-200 lg:top-[76px] lg:translate-x-0 lg:pt-0"
+		class="fixed inset-y-0 left-0 z-40 w-64 shrink-0 transform overflow-y-auto bg-primary pt-20 text-primary-content transition-transform duration-200 lg:top-[76px] lg:translate-x-0 lg:pt-0"
 		class:translate-x-0={sidebarOpen}
 		class:-translate-x-full={!sidebarOpen}
 	>
@@ -141,15 +150,14 @@
 			<ul class="menu w-full gap-1">
 				{#each navItems as item (item.href)}
 					<li
+						class="border-primary-content/20"
 						class:mt-1={item.separatorBefore}
 						class:border-t={item.separatorBefore}
-						class:border-base-300={item.separatorBefore}
 						class:pt-2={item.separatorBefore}
 					>
 						<a
 							href={resolve(item.href)}
-							class="flex items-center gap-3"
-							class:bg-base-300={isNavActive(item.href)}
+							class={`flex items-center gap-3 text-primary-content hover:bg-primary-content/10 focus-visible:outline-primary-content ${isNavActive(item.href) ? 'bg-primary-content/15' : ''}`}
 							class:font-semibold={isNavActive(item.href)}
 							onclick={() => (sidebarOpen = false)}
 						>
@@ -212,17 +220,17 @@
 					class="flex max-w-full gap-1 overflow-x-auto rounded-lg bg-neutral p-1"
 					aria-label="Content sections"
 				>
-					{#each contentTabs as tab (tab.href)}
+					{#each contentTabs as tab (tab.label)}
 						{@const Icon = tab.icon}
 						<a
 							class="flex shrink-0 items-center gap-2 rounded-md px-5 py-2.5 text-sm font-semibold transition-colors"
-							class:bg-base-100={$page.url.pathname.startsWith(resolve(tab.href))}
-							class:shadow-sm={$page.url.pathname.startsWith(resolve(tab.href))}
-							style:color={$page.url.pathname.startsWith(resolve(tab.href))
+							class:bg-base-100={isContentTabActive(tab)}
+							class:shadow-sm={isContentTabActive(tab)}
+							style:color={isContentTabActive(tab)
 								? 'var(--color-base-content)'
 								: 'var(--color-neutral-content)'}
-							href={resolve(tab.href)}
-							aria-current={$page.url.pathname.startsWith(resolve(tab.href)) ? 'page' : undefined}
+							href={`${resolve(tab.href)}${'filter' in tab ? `?filter=${tab.filter}` : ''}`}
+							aria-current={isContentTabActive(tab) ? 'page' : undefined}
 						>
 							<Icon class="size-4" aria-hidden="true" />
 							{tab.label}

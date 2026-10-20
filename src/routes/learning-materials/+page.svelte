@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { authStore } from '$lib/database/stores/auth.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -29,19 +30,24 @@
 			Explore practical guides, tutorials and answers to help you plan, create and publish a 3D
 			scholarly edition.
 		</p>
+		{#if authStore.globalRole === 'admin'}
+			<a
+				href={`${resolve('/admin/pages')}?filter=learning-materials`}
+				class="btn mt-6 btn-outline btn-sm"
+				>Edit materials</a
+			>
+		{/if}
 	</header>
 
 	<div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-		{#each data.materials as material, index (material.id)}
+		{#each data.materials as material (material.id)}
 			<a
 				href={materialHref(material)}
 				class="group flex min-h-64 flex-col justify-between rounded-box bg-base-200 p-7 transition hover:-translate-y-1 hover:bg-base-300 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-vermillion"
 			>
 				<div>
 					<p class="mb-8 text-xs font-bold tracking-[0.18em] text-vermillion uppercase">
-						{String(index + 1).padStart(2, '0')} · {material.layout === 'guide'
-							? 'Guide'
-							: 'Resource'}
+						{material.layout === 'guide' ? 'Guide' : 'Resource'}
 					</p>
 					<h2 class="text-2xl leading-tight font-semibold tracking-tight">{material.title}</h2>
 					{#if material.summary}

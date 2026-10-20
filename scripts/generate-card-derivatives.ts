@@ -9,7 +9,7 @@ const SOURCE_EXTENSIONS = new Set(['.avif', '.jpg', '.jpeg', '.png', '.webp']);
 
 export interface CardDerivativeManifest {
 	version: 1;
-	images: Record<string, Array<{ url: string; width: number }>>;
+	images: Record<string, Array<{ url: string; width: number; height: number }>>;
 }
 
 interface ExplicitSource {
@@ -128,11 +128,14 @@ export async function generateCardDerivativeManifest(
 				.resize({ width, withoutEnlargement: true })
 				.avif({ quality: 65, effort: 5 })
 				.toFile(outputPath);
-			const measuredWidth = (await sharp(outputPath).metadata()).width;
-			if (!measuredWidth) throw new Error(`Unable to verify derivative width: ${outputPath}`);
+			const { width: measuredWidth, height } = await sharp(outputPath).metadata();
+			if (!measuredWidth || !height) {
+				throw new Error(`Unable to verify derivative dimensions: ${outputPath}`);
+			}
 			derivatives.push({
 				url: joinUrl(options.outputUrlPrefix, join(dirname(relativeSource), filename)),
-				width: measuredWidth
+				width: measuredWidth,
+				height
 			});
 		}
 
