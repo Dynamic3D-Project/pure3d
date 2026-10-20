@@ -18,7 +18,7 @@
 </script>
 
 <svelte:head
-	><title>{data.categoryName || 'Resources'} | Pure3D</title><meta
+	><title>{data.categoryName || 'Resources'} | PURE3D</title><meta
 		name="description"
 		content="Explore research, publications, tutorials and stories from the PURE3D community."
 	/></svelte:head
@@ -26,15 +26,12 @@
 <main id="resources-page" class="mx-auto max-w-7xl px-5 py-14 md:px-10">
 	<div class="mb-14 flex flex-wrap items-end justify-between gap-6">
 		<div>
-			<p class="mb-4 text-xs tracking-[.2em] uppercase opacity-60">
-				Ideas, practice & perspectives
-			</p>
 			<h1 class="text-4xl font-semibold tracking-tight md:text-6xl">
-				{data.categoryName || 'A library for 3D scholarship'}
+				{data.categoryName || 'Activities & Outputs'}
 			</h1>
 			<p class="mt-5 max-w-2xl text-lg opacity-65">
 				{data.description ||
-					'Learn from the research, explore new perspectives, and find your next step.'}
+					'Learn from the research, explore new perspectives and get inspired by the community.'}
 			</p>
 		</div>
 		{#if authStore.globalRole === 'admin'}<a

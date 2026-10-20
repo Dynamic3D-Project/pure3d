@@ -8,6 +8,7 @@
 	import collectionsIcon from '$lib/assets/icons/collections.svg?raw';
 	import editionsIcon from '$lib/assets/icons/editions.svg?raw';
 	import Login from '$lib/components/ui/Login/LoginButton.svelte';
+	import ThemeChange from '$lib/components/ui/ThemeChange/ThemeChange.svelte';
 	import Search from '$lib/components/Search.svelte';
 	import { onMount } from 'svelte';
 	import {
@@ -23,6 +24,7 @@
 	import { authStore } from '$lib/database/stores/auth.svelte';
 	import {
 		emptyMenu,
+		menuItemStyle,
 		menuSignature,
 		publishableMenu,
 		validateMenu,
@@ -80,14 +82,30 @@
 	function itemIsActive(item: {
 		direct?: { href: string } | null;
 		landing?: { href: string } | null;
-		groups: { links: { href: string }[] }[];
+		groups: { landing?: { href: string } | null; links: { href: string }[] }[];
 		featured?: { link: { href: string } } | null;
 	}) {
 		return !!(
 			(item.direct && isActive(item.direct.href)) ||
 			(item.landing && isActive(item.landing.href)) ||
-			item.groups.some((group) => group.links.some((link) => isActive(link.href))) ||
+			item.groups.some(
+				(group) =>
+					(group.landing && isActive(group.landing.href)) ||
+					group.links.some((link) => isActive(link.href))
+			) ||
 			(item.featured && isActive(item.featured.link.href))
+		);
+	}
+	function groupHeadingLink(group: {
+		label: string;
+		landing?: { id: string; label: string; href: string } | null;
+		links: { id: string; label: string; href: string }[];
+	}) {
+		const expected = `all ${group.label}`.trim().toLowerCase();
+		return (
+			group.landing ||
+			group.links.find((link) => link.label.trim().toLowerCase() === expected) ||
+			null
 		);
 	}
 	onMount(() => {
@@ -186,7 +204,7 @@
 			await refreshMenus(true);
 			return;
 		}
-		const errors = validateMenu(editorConfig, editorDirectory);
+		const errors = validateMenu(editorConfig, editorDirectory, { allowMissingDestinations: true });
 		if (errors.length) {
 			editorError = errors.join(' ');
 			return;
@@ -199,19 +217,22 @@
 		if (saving || !activeEditor(editorOwnerId)) return;
 		const ownerId = editorOwnerId;
 		const config = $state.snapshot(editorConfig);
-		const directory = $state.snapshot(editorDirectory);
 		const currentDraftId = draftId;
 		const currentDraftVersion = draftVersion;
 		const currentLiveId = liveId;
 		const currentLiveVersion = liveVersion;
-		const errors = validateMenu(config, directory);
-		if (errors.length) {
-			editorError = errors.join(' ');
-			return;
-		}
 		saving = true;
 		editorError = '';
 		try {
+			const directory = await menuDirectory(true);
+			if (!activeEditor(ownerId, currentDraftId)) return;
+			editorDirectory = directory;
+			const errors = validateMenu(config, directory, { allowMissingDestinations: true });
+			if (errors.length) {
+				editorError = errors.join(' ');
+				previewing = false;
+				return;
+			}
 			const saved = await pb
 				.collection('cms_menu_drafts')
 				.update(currentDraftId, { config }, menuWriteOptions(currentDraftVersion));
@@ -235,7 +256,7 @@
 				editorError =
 					menuSignature(published) === menuSignature(config)
 						? ''
-						: 'Published eligible destinations. Unpublished or hidden targets remain in this draft.';
+						: 'Published available links. Broken, unpublished or hidden links were left out and remain editable in the draft.';
 			}
 		} catch (error) {
 			if (!activeEditor(ownerId, currentDraftId)) return;
@@ -256,6 +277,7 @@
 		restoreLiveMenu('main', $state.snapshot(editorLiveConfig));
 		editing = false;
 		previewing = false;
+		mobile = false;
 		editorError = '';
 		dirty = false;
 		open = '';
@@ -321,6 +343,9 @@
 				<strong>● Editing menu</strong><span>Navigation changes only. Pages stay intact.</span>
 			</div>
 			<div>
+				<button class="editor-cancel btn btn-sm" disabled={saving} onclick={() => exitEditor()}
+					>× Cancel</button
+				>
 				<span>{dirty ? 'Unsaved changes' : 'Draft saved'}{previewing ? ' · Previewing' : ''}</span>
 				<button
 					class="btn btn-sm btn-primary"
@@ -330,9 +355,6 @@
 				<button class="btn btn-outline btn-sm" disabled={saving} onclick={togglePreview}
 					>{previewing ? 'Back to editing' : 'Preview'}</button
 				>
-				<button class="btn btn-outline btn-sm" disabled={saving} onclick={() => exitEditor()}
-					>Exit editing</button
-				>
 				<button class="btn btn-sm btn-primary" disabled={saving} onclick={() => saveEditor(true)}
 					>Publish</button
 				>
@@ -340,7 +362,7 @@
 		</div>
 	{/if}
 	<div class="bar">
-		<a href={resolve('/')} aria-label="Pure3D home" class="logo"
+		<a href={resolve('/')} aria-label="PURE3D home" class="logo"
 			><Logo />{#if dev}<small class:production={productionDb}
 					>{productionDb ? 'production db' : 'local preview'}</small
 				>{/if}</a
@@ -350,27 +372,27 @@
 			{#if editingView}
 				{#each editorConfig.items as item (item.id)}
 					<button
+						data-nav-style={menuItemStyle(item)}
 						class:active={open === item.id}
-						aria-expanded={open === item.id}
+						aria-expanded={item.direct ? undefined : open === item.id}
 						aria-controls="contextual-menu-editor"
 						onclick={(event) => toggle(item.id, event)}
 						>{@render destinationIcon(item.direct?.target.value)}{item.label}{!item.visible
 							? ' (hidden)'
-							: ''}<span aria-hidden="true">{open === item.id ? '⌃' : '⌄'}</span></button
+							: ''}{#if !item.direct}<span aria-hidden="true">{open === item.id ? '⌃' : '⌄'}</span
+							>{/if}</button
 					>
 				{/each}
 			{:else}
 				{#each navigation as item (item.id)}
 					{#if item.direct}<a
-							class:publishing-cta={item.direct.href === '/documentation'}
+							data-nav-style={menuItemStyle(item)}
 							class:active={isActive(item.direct.href)}
 							href={linkHref(item.direct.href)}
-							>{@render destinationIcon(
-								item.direct.href
-							)}{item.label}</a
+							>{@render destinationIcon(item.direct.href)}{item.label}</a
 						>{:else if item.landing && (item.groups.length || item.featured)}<div
 							class="nav-split"
-							class:publishing-cta={item.landing.href === '/documentation'}
+							data-nav-style={menuItemStyle(item)}
 						>
 							<a class:active={isActive(item.landing.href)} href={linkHref(item.landing.href)}
 								>{item.landing.label}</a
@@ -383,9 +405,11 @@
 								><span aria-hidden="true">{open === item.id ? '⌃' : '⌄'}</span></button
 							>
 						</div>{:else if item.landing}<a
+							data-nav-style={menuItemStyle(item)}
 							class:active={isActive(item.landing.href)}
 							href={linkHref(item.landing.href)}>{item.landing.label}</a
 						>{:else}<button
+							data-nav-style={menuItemStyle(item)}
 							class:active={open === item.id || itemIsActive(item)}
 							aria-expanded={open === item.id}
 							aria-controls="navigation-panel"
@@ -398,6 +422,9 @@
 				>Menu unavailable · Retry</button
 			>{/if}
 		<div class="tools">
+			{#if dev || authStore.user?.role === 'admin'}
+				<ThemeChange />
+			{/if}
 			<Login />
 			<button
 				class="mobile-toggle"
@@ -415,19 +442,23 @@
 			{#if mobile}<div class="mobile-links">
 					{#if editingView}
 						{#each editorConfig.items as item (item.id)}<button
-								aria-expanded={open === item.id}
+								data-nav-style={menuItemStyle(item)}
+								aria-expanded={item.direct ? undefined : open === item.id}
 								onclick={(event) => toggle(item.id, event)}
-								>{@render destinationIcon(item.direct?.target.value)}{item.label}<span
-									aria-hidden="true">{open === item.id ? '−' : '+'}</span
-								></button
+								>{@render destinationIcon(
+									item.direct?.target.value
+								)}{item.label}{#if !item.direct}<span aria-hidden="true"
+										>{open === item.id ? '−' : '+'}</span
+									>{/if}</button
 							>{/each}
 					{:else}{#each navigation as item (item.id)}{#if item.direct}<a
-									class:publishing-cta={item.direct.href === '/documentation'}
+									data-nav-style={menuItemStyle(item)}
 									class:active={isActive(item.direct.href)}
 									href={linkHref(item.direct.href)}
 									>{@render destinationIcon(item.direct.href)}{item.label}</a
 								>{:else if item.landing && (item.groups.length || item.featured)}<div
 									class="mobile-split"
+									data-nav-style={menuItemStyle(item)}
 								>
 									<a class:active={isActive(item.landing.href)} href={linkHref(item.landing.href)}
 										>{item.landing.label}</a
@@ -438,9 +469,13 @@
 										><span aria-hidden="true">{open === item.id ? '−' : '+'}</span></button
 									>
 								</div>{:else if item.landing}<a
+									data-nav-style={menuItemStyle(item)}
 									class:active={isActive(item.landing.href)}
 									href={linkHref(item.landing.href)}>{item.landing.label}</a
-								>{:else}<button aria-expanded={open === item.id} onclick={(e) => toggle(item.id, e)}
+								>{:else}<button
+									aria-expanded={open === item.id}
+									onclick={(e) => toggle(item.id, e)}
+									data-nav-style={menuItemStyle(item)}
 									>{item.label}<span aria-hidden="true">{open === item.id ? '−' : '+'}</span
 									></button
 								>{/if}{/each}{/if}
@@ -452,7 +487,7 @@
 					directory={editorDirectory}
 					busy={saving}
 					onchange={editorChanged}
-					onclose={() => (open = '')}
+					onclose={() => exitEditor()}
 				/>
 			{:else if selected}
 				<div id="navigation-panel" class="panel">
@@ -462,17 +497,23 @@
 								<h2>{selected.introduction.heading}</h2>
 								<p>{selected.introduction.description}</p>
 							</section>{/if}
-						{#each selected.groups as group (group.id)}<section
-								class:prominent={'prominent' in group && group.prominent}
-							>
-								<h2>{group.label}</h2>
-								<ul>
-									{#each group.links as link (link.id)}<li>
-											<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- Navigation data includes query strings and is prefixed with the app base. -->
-											<a href={linkHref(link.href)}>{link.label}</a>
-										</li>{/each}
-								</ul>
-							</section>{/each}
+						{#each selected.groups as group (group.id)}
+							{@const headingLink = groupHeadingLink(group)}
+							{@const listedLinks = group.links.filter((link) => link.id !== headingLink?.id)}
+							<section class:prominent={'prominent' in group && group.prominent}>
+								<h2>
+									{#if headingLink}<a href={linkHref(headingLink.href)}
+											>{group.label} <span aria-hidden="true">↗</span></a
+										>{:else}{group.label}{/if}
+								</h2>
+								{#if listedLinks.length}<ul>
+										{#each listedLinks as link (link.id)}<li>
+												<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- Navigation data includes query strings and is prefixed with the app base. -->
+												<a href={linkHref(link.href)}>{link.label}</a>
+											</li>{/each}
+									</ul>{/if}
+							</section>
+						{/each}
 						{#if selected.featured}<aside class="feature">
 								<p>{selected.featured.kicker}</p>
 								<div class="fair">
@@ -486,7 +527,7 @@
 							</aside>{/if}
 					</div>
 					<div class="panel-footer">
-						<span
+						<span class:publication-callout={!!helpLink}
 							>{$menus.main.helpText}
 							{#if helpLink}<a href={linkHref(helpLink.href)}>{helpLink.label}</a>{/if}</span
 						>
@@ -524,39 +565,46 @@
 		display: inline-flex;
 		transition: transform 160ms ease-out;
 	}
-	.desktop-links .publishing-cta {
+	[data-nav-style='primary'] {
+		--nav-background: var(--color-primary);
+		--nav-foreground: var(--color-primary-content);
+		--nav-border: var(--color-primary);
+	}
+	[data-nav-style='secondary'] {
+		--nav-background: var(--color-secondary);
+		--nav-foreground: var(--color-secondary-content);
+		--nav-border: var(--color-secondary);
+	}
+	[data-nav-style='outline'] {
+		--nav-background: transparent;
+		--nav-foreground: var(--color-base-content);
+		--nav-border: var(--color-base-content);
+	}
+	:is(.desktop-links, .mobile-links) > [data-nav-style]:not([data-nav-style='default']) {
 		align-self: center;
-		align-items: stretch;
-		min-height: 44px;
-		border-radius: var(--radius-field);
-		background: var(--color-primary);
-		gap: 0;
-	}
-	.desktop-links .publishing-cta > a,
-	.desktop-links .publishing-cta > button {
-		color: #fff;
-		border-bottom: 0;
-		padding: 12px 16px;
+		min-height: 40px;
+		padding: 10px 14px;
+		border: 1px solid var(--nav-border);
+		border-radius: var(--radius-control);
+		background: var(--nav-background);
+		color: var(--nav-foreground);
 		font-size: 13px;
+		gap: 8px;
 	}
-	.desktop-links .publishing-cta > a {
-		padding-right: 8px;
+	:is(.desktop-links, .mobile-links) > [data-nav-style]:not([data-nav-style='default']):hover {
+		filter: brightness(0.95);
 	}
-	.desktop-links .publishing-cta > button {
-		padding-left: 8px;
-	}
-	.desktop-links .publishing-cta > button span {
+	:is(.desktop-links, .mobile-links)
+		> [data-nav-style]:not([data-nav-style='default'])
+		> :is(a, button) {
+		padding: 0;
+		border: 0;
+		background: transparent;
 		color: inherit;
+		font-size: inherit;
 	}
-	.desktop-links .publishing-cta:hover {
-		background: var(--color-forest-hover);
-	}
-	.desktop-links > a.publishing-cta {
-		padding: 12px 20px;
-		gap: 10px;
-		border-bottom: 0;
-		color: #fff;
-		font-size: 13px;
+	:is(.desktop-links, .mobile-links) > [data-nav-style]:not([data-nav-style='default']) span {
+		color: inherit;
 	}
 	.destination-icon :global(svg) {
 		overflow: visible;
@@ -605,8 +653,9 @@
 		gap: 16px;
 		min-height: 52px;
 		padding: 8px max(24px, calc((100vw - 1360px) / 2));
-		background: var(--color-ink-2);
-		color: #fff;
+		background: var(--color-base-200);
+		color: var(--color-base-content);
+		border-bottom: 1px solid var(--color-base-300);
 		font-size: 12px;
 	}
 	.editorbar > div {
@@ -618,11 +667,21 @@
 		white-space: nowrap;
 	}
 	.editorbar span {
-		color: #d3ddc7;
+		color: color-mix(in srgb, var(--color-base-content) 75%, var(--color-base-200));
 	}
 	.editorbar button {
-		color: #fff;
 		white-space: nowrap;
+	}
+	.editorbar .editor-cancel {
+		background: var(--color-base-content);
+		color: var(--color-base-100);
+		border-color: var(--color-base-content);
+		font-weight: 700;
+		margin-right: 8px;
+	}
+	.editorbar .editor-cancel:hover:not(:disabled) {
+		background: color-mix(in srgb, var(--color-base-content) 85%, var(--color-base-100));
+		border-color: var(--color-base-content);
 	}
 	.editor-error {
 		position: relative;
@@ -689,6 +748,7 @@
 	.desktop-links a {
 		white-space: nowrap;
 		font-size: 14px;
+		font-weight: 600;
 		display: flex;
 		align-items: center;
 		gap: 8px;
@@ -697,11 +757,9 @@
 	}
 	.desktop-links button.active {
 		border-color: #43523c;
-		font-weight: 600;
 	}
 	.desktop-links a.active {
 		border-color: #43523c;
-		font-weight: 600;
 	}
 	.nav-split {
 		display: flex;
@@ -767,6 +825,17 @@
 		color: var(--color-base-content);
 		opacity: 0.6;
 		margin: 0 0 22px;
+	}
+	.columns h2 a {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		color: #476044;
+		font-weight: 700;
+		opacity: 1;
+	}
+	.columns h2 a span {
+		font-size: 11px;
 	}
 	.columns ul {
 		list-style: none;
@@ -868,6 +937,26 @@
 	}
 	.panel-footer a {
 		color: #476044;
+	}
+	.publication-callout {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		border-radius: var(--radius-surface);
+		background: color-mix(in srgb, var(--color-primary) 11%, var(--color-base-100));
+		padding: 12px 16px;
+		font-weight: 600;
+	}
+	.publication-callout a {
+		border-radius: var(--radius-control);
+		background: var(--color-primary);
+		padding: 8px 11px;
+		color: var(--color-primary-content);
+		text-decoration: none;
+	}
+	.publication-callout a:hover {
+		background: var(--color-forest-hover);
+		text-decoration: none;
 	}
 	.panel-actions {
 		display: flex;
@@ -985,16 +1074,6 @@
 			font-size: 14px;
 			color: #476044;
 		}
-		.mobile-links > a.publishing-cta {
-			margin-top: 8px;
-			padding: 12px 16px;
-			border-radius: var(--radius-field);
-			background: var(--color-primary);
-			color: var(--color-primary-content);
-		}
-		.mobile-links > a.publishing-cta:hover {
-			background: var(--color-forest-hover);
-		}
 		.mobile-split {
 			display: flex;
 			align-items: center;
@@ -1030,6 +1109,10 @@
 		}
 		.panel-footer {
 			padding: 20px 0;
+			flex-direction: column;
+		}
+		.publication-callout {
+			align-items: flex-start;
 			flex-direction: column;
 		}
 		.panel-footer button {

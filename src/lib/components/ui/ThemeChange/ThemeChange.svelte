@@ -1,106 +1,262 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import FloatingDropdown from '$lib/components/ui/FloatingDropdown.svelte';
-	import themes from './themes.json';
-	import type { Theme, ThemeChangeProps } from './types';
+	import {
+		applyPalette,
+		isPalette,
+		paletteFields,
+		palettes,
+		type Palette,
+		type PaletteKey
+	} from './palettes';
 
-	let className: ThemeChangeProps['class'] = $state(undefined);
-	export { className as class };
-
-	const themes_data: Theme[] = themes;
+	let { class: className = '' }: { class?: string } = $props();
 	let open = $state(false);
 	let buttonElement: HTMLButtonElement | undefined = $state();
+	let panel: HTMLDivElement | undefined = $state();
+	let colors = $state<Palette>({ ...palettes[0].colors });
+	let selected = $state('pure3d');
+	let darkHero = $state(true);
+	let storageError = $state('');
+	const storageKey = 'pure3d-palette';
 
-	function setTheme(themeId: string) {
-		document.documentElement.setAttribute('data-theme', themeId);
-		localStorage.setItem('theme', themeId);
+	function save() {
+		applyPalette(colors, darkHero);
+		try {
+			localStorage.setItem(storageKey, JSON.stringify({ selected, colors, darkHero }));
+			storageError = '';
+		} catch {
+			storageError = 'Colors applied, but this browser could not save them.';
+		}
+	}
+
+	function choose(id: string) {
+		const preset = palettes.find((item) => item.id === id);
+		if (!preset) return;
+		selected = id;
+		colors = { ...preset.colors };
+		save();
+	}
+
+	function edit(key: PaletteKey, value: string) {
+		if (!/^#[0-9a-f]{6}$/i.test(value)) return;
+		colors = { ...colors, [key]: value };
+		selected = 'custom';
+		save();
+	}
+
+	function close() {
 		open = false;
+		buttonElement?.focus();
+	}
+
+	async function toggle() {
+		open = !open;
+		if (open) {
+			await tick();
+			panel?.querySelector<HTMLButtonElement>('button')?.focus();
+		}
 	}
 
 	onMount(() => {
-		const savedTheme = localStorage.getItem('theme');
-		if (savedTheme) {
-			setTheme(savedTheme);
+		try {
+			const stored = localStorage.getItem(storageKey);
+			if (!stored) return;
+			const saved = JSON.parse(stored);
+			if (!isPalette(saved?.colors)) return;
+			colors = saved.colors;
+			darkHero = saved.darkHero !== false;
+			selected = palettes.some((item) => item.id === saved.selected) ? saved.selected : 'custom';
+			applyPalette(colors, darkHero);
+		} catch {
+			// Invalid or unavailable browser storage must not prevent the site from loading.
 		}
 	});
 </script>
 
-<div title="Change Theme" class={'flex-none' + className}>
+<div id="theme-change" class={className}>
 	<button
 		bind:this={buttonElement}
 		type="button"
-		class="gap-1 normal-case opacity-80"
-		aria-haspopup="true"
+		class="btn btn-ghost btn-sm"
+		aria-label="Edit theme palette"
 		aria-expanded={open}
-		onclick={() => (open = !open)}
+		aria-controls="palette-editor"
+		onclick={toggle}
+		title="Theme palette"
 	>
 		<svg
 			width="20"
 			height="20"
-			xmlns="http://www.w3.org/2000/svg"
-			fill="none"
 			viewBox="0 0 24 24"
-			class="inline-block h-5 w-5 stroke-current md:h-6 md:w-6"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="1.6"
+			aria-hidden="true"
+			><path
+				d="M12 3a9 9 0 1 0 0 18h1.5a2 2 0 0 0 1.4-3.4 1.5 1.5 0 0 1 1.1-2.6h2a3 3 0 0 0 3-3 9 9 0 0 0-9-9Z"
+			/><circle cx="7.5" cy="10" r=".8" /><circle cx="11" cy="6.8" r=".8" /><circle
+				cx="16"
+				cy="8"
+				r=".8"
+			/><circle cx="6.8" cy="14.5" r=".8" /></svg
 		>
-			<path
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				stroke-width="2"
-				d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
-			/>
-		</svg>
-		<span class="hidden">Change theme</span>
-		<svg
-			width="12px"
-			height="12px"
-			class="ml-1 hidden h-3 w-3 fill-current opacity-60 sm:inline-block"
-			xmlns="http://www.w3.org/2000/svg"
-			viewBox="0 0 2048 2048"
-		>
-			<path d="M1799 349l242 241-1017 1017L7 590l242-241 775 775 775-775z" />
-		</svg>
 	</button>
 	<FloatingDropdown
 		{open}
 		referenceElement={buttonElement}
+		bind:element={panel}
 		placement="bottom-end"
-		minWidth={208}
-		maxWidth={208}
-		maxHeight={384}
-		class="bg-base-200"
-		onclose={() => (open = false)}
+		minWidth={760}
+		maxWidth={760}
+		maxHeight={680}
+		onclose={close}
 	>
-		<div class="grid grid-cols-1 gap-3 p-3">
-			{#each themes_data as theme (theme)}
-				<div
-					class="overflow-hidden rounded-lg outline outline-2 outline-offset-2 outline-base-content"
-					data-set-theme={theme.id}
-					data-act-class="outline"
+		<section id="palette-editor" class="p-4" aria-label="Theme palette">
+			<div class="mb-1 flex items-center justify-between gap-3">
+				<h2 class="font-serif text-xl">Theme palette</h2>
+				<button
+					type="button"
+					class="btn btn-ghost btn-xs"
+					onclick={close}
+					aria-label="Close palette editor">✕</button
 				>
+			</div>
+			<p class="mb-4 text-xs opacity-70">Live across the site · saved in this browser only</p>
+			<div class="palette-columns">
+				<div>
+					<div class="mb-3 flex items-center justify-between text-xs opacity-70">
+						<span>{palettes.length} palettes</span><span>Scroll to explore</span>
+					</div>
 					<div
-						data-theme={theme.id}
-						class="w-full cursor-pointer bg-base-100 font-sans text-base-content"
-						onclick={() => setTheme(theme.id)}
-						onkeydown={(e) => e.key === 'Enter' && setTheme(theme.id)}
-						role="button"
+						class="preset-scroll grid grid-cols-2 content-start gap-2"
+						role="region"
 						tabindex="0"
+						aria-label="Palette presets"
 					>
-						<div class="grid grid-cols-5 grid-rows-3">
-							<div class="col-span-5 row-span-3 row-start-1 flex gap-1 px-4 py-3">
-								<div class="flex-grow text-sm font-bold">
-									{theme.id}
-								</div>
-								<div class="flex flex-shrink-0 flex-wrap gap-1">
-									<div class="w-2 rounded bg-primary"></div>
-									<div class="w-2 rounded bg-secondary"></div>
-									<div class="w-2 rounded bg-accent"></div>
-									<div class="w-2 rounded bg-neutral"></div>
-								</div>
-							</div>
-						</div>
+						{#each palettes as preset (preset.id)}
+							<button
+								type="button"
+								class="preset"
+								style:background={preset.colors.background}
+								style:color={preset.colors.text}
+								aria-pressed={selected === preset.id}
+								onclick={() => choose(preset.id)}
+							>
+								<span class="flex items-center justify-between gap-1"
+									><span>{preset.name}</span><span aria-hidden="true"
+										>{selected === preset.id ? '✓' : ''}</span
+									></span
+								>
+								<span class="mt-2 flex gap-1" aria-hidden="true"
+									>{#each ['primary', 'secondary', 'accent', 'surfaceAlt'] as key}<span
+											class="h-2 flex-1 rounded-sm"
+											style:background={preset.colors[key as PaletteKey]}
+										></span>{/each}</span
+								>
+							</button>
+						{/each}
 					</div>
 				</div>
-			{/each}
-		</div>
+				<div>
+					<div class="mb-2 flex items-center justify-between">
+						<h3 class="text-sm font-semibold">
+							{selected === 'custom' ? 'Custom palette' : 'Edit palette'}
+						</h3>
+						<button type="button" class="btn btn-ghost btn-xs" onclick={() => choose('pure3d')}
+							>Reset original</button
+						>
+					</div>
+					<div class="mt-2 grid gap-1">
+						{#each paletteFields as [key, label] (key)}
+							<div class="flex items-center gap-2">
+								<label for={`palette-${key}`} class="flex-1 text-sm">{label}</label>
+								<input
+									id={`palette-${key}`}
+									type="color"
+									value={colors[key]}
+									oninput={(event) => edit(key, event.currentTarget.value)}
+									class="h-8 w-9 cursor-pointer rounded border-0 bg-transparent p-0"
+								/>
+								<input
+									aria-label={`${label} hex color`}
+									class="input input-sm w-24 font-mono text-xs"
+									value={colors[key]}
+									maxlength="7"
+									pattern="#[0-9a-fA-F]{6}"
+									onchange={(event) => {
+										edit(key, event.currentTarget.value);
+										event.currentTarget.value = colors[key];
+									}}
+								/>
+							</div>
+						{/each}
+					</div>
+					<label class="mt-4 flex cursor-pointer items-center justify-between gap-3 text-sm">
+						<span
+							>Keep hero dark<span class="mt-1 block text-xs opacity-70"
+								>Light text and particles, regardless of palette.</span
+							></span
+						>
+						<input
+							type="checkbox"
+							class="toggle toggle-primary toggle-sm"
+							checked={darkHero}
+							onchange={(event) => {
+								darkHero = event.currentTarget.checked;
+								save();
+							}}
+						/>
+					</label>
+					<p class="mt-3 text-xs opacity-70">
+						Text and button colors adjust automatically when needed for readable contrast.
+					</p>
+					{#if storageError}<p role="status" class="mt-2 text-xs">{storageError}</p>{/if}
+					<button type="button" class="btn mt-4 w-full btn-sm btn-primary" onclick={close}
+						>Done</button
+					>
+				</div>
+			</div>
+		</section>
 	</FloatingDropdown>
 </div>
+
+<style>
+	.preset-scroll {
+		max-height: min(500px, calc(100dvh - 200px));
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		scrollbar-gutter: stable;
+		padding: 4px;
+		margin: -4px;
+	}
+	.palette-columns {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		gap: 24px;
+	}
+	@media (max-width: 799px) {
+		.preset-scroll {
+			max-height: 280px;
+		}
+		.palette-columns {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+	.preset {
+		padding: 10px 12px;
+		border-radius: var(--radius-control);
+		text-align: left;
+		font-size: 12px;
+		font-weight: 600;
+		box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 15%, transparent);
+	}
+	.preset[aria-pressed='true'] {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 1px;
+	}
+	.preset:focus-visible {
+		outline: 2px solid var(--color-base-content);
+		outline-offset: 2px;
+	}
+</style>

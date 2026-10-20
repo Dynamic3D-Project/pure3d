@@ -55,7 +55,7 @@ dev: dev-cert
 dev-prod:
 	@echo "Connected to production: changes affect live data."
 	@set -a; [ ! -f .env ] || . ./.env; set +a; \
-		export DEV_HTTPS=0 DEV_PUBLIC_URL="http://localhost:$${FRONTEND_PORT:-60020}/"; \
+		export DEV_HTTPS=0; unset DEV_PUBLIC_URL; \
 		export PUBLIC_DEMO_LOGIN=0; \
 		export PUBLIC_POCKETBASE_URL="https://main.57-129-98-223.sslip.io"; \
 		export PUBLIC_ASSET_BASE_URL="https://main.57-129-98-223.sslip.io/assets"; \

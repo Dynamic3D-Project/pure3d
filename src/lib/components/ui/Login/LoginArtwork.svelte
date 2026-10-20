@@ -16,6 +16,8 @@
 		let lastTime = 0;
 		let width = 0;
 		let height = 0;
+		let accentColor = '';
+		let inkColor = '';
 
 		// ponytail: project a small 3D point field onto canvas; no WebGL dependency needed.
 		function draw() {
@@ -45,11 +47,13 @@
 			}
 			points.sort((a, b) => a.z - b.z);
 			for (const point of points) {
-				context.fillStyle = `hsla(${18 + point.light * 12}, ${point.edge ? 65 : 58}%, ${30 + point.light * 43 + (point.edge ? 12 : 0)}%, ${0.25 + point.light * 0.75})`;
+				context.fillStyle = point.edge ? inkColor : accentColor;
+				context.globalAlpha = 0.25 + point.light * 0.75;
 				context.beginPath();
 				context.arc(point.x, point.y, point.size, 0, Math.PI * 2);
 				context.fill();
 			}
+			context.globalAlpha = 1;
 		}
 
 		function animate(time: number) {
@@ -63,6 +67,8 @@
 
 		synchronize = () => {
 			cancelAnimationFrame(frame);
+			accentColor = getComputedStyle(canvas).color;
+			inkColor = getComputedStyle(canvas.parentElement!).color;
 			const rect = canvas.getBoundingClientRect();
 			width = rect.width;
 			height = rect.height;
@@ -79,12 +85,18 @@
 		};
 		const resize = new ResizeObserver(synchronize);
 		resize.observe(canvas);
+		const themeObserver = new MutationObserver(synchronize);
+		themeObserver.observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ['style', 'data-theme']
+		});
 		reducedMotion.addEventListener('change', synchronize);
 		desktop.addEventListener('change', synchronize);
 		document.addEventListener('visibilitychange', synchronize);
 		return () => {
 			cancelAnimationFrame(frame);
 			resize.disconnect();
+			themeObserver.disconnect();
 			reducedMotion.removeEventListener('change', synchronize);
 			desktop.removeEventListener('change', synchronize);
 			document.removeEventListener('visibilitychange', synchronize);
@@ -115,10 +127,15 @@
 		position: absolute;
 		inset: 0;
 		overflow: hidden;
-		color: #f4f1e9;
-		background: radial-gradient(ellipse at 55% 45%, #3a231c 0%, #1e1c19 48%, #141412 100%);
+		color: var(--color-hero-content);
+		background: radial-gradient(
+			ellipse at 55% 45%,
+			var(--color-hero-glow) 0%,
+			var(--color-hero-bg) 100%
+		);
 	}
 	canvas {
+		color: var(--color-hero-accent);
 		position: absolute;
 		top: 65px;
 		width: 100%;
@@ -129,7 +146,7 @@
 		position: absolute;
 		top: 28px;
 		left: 28px;
-		--color-ink: #f4f1e9;
+		--color-ink: var(--color-hero-content);
 	}
 	.caption {
 		position: absolute;
@@ -137,13 +154,13 @@
 		left: 28px;
 	}
 	.caption p {
-		color: #f4f1e9;
+		color: var(--color-hero-content);
 		font-family: 'Crimson Pro', Georgia, serif;
 		font-size: 29px;
 		line-height: 1.05;
 	}
 	.caption em {
-		color: #dba483;
+		color: var(--color-hero-accent);
 	}
 	.motion-control {
 		position: absolute;
@@ -151,17 +168,17 @@
 		bottom: 16px;
 		width: 36px;
 		height: 36px;
-		border: 1px solid #f4f1e926;
+		border: 1px solid color-mix(in srgb, var(--color-hero-content) 30%, transparent);
 		border-radius: 50%;
-		color: #dba483;
+		color: var(--color-hero-accent);
 		font-size: 11px;
 		cursor: pointer;
 	}
 	.motion-control:hover {
-		background: #f4f1e910;
+		background: color-mix(in srgb, var(--color-hero-content) 8%, transparent);
 	}
 	.motion-control:focus-visible {
-		outline: 2px solid #dba483;
+		outline: 2px solid var(--color-hero-accent);
 		outline-offset: 3px;
 	}
 	@media (prefers-reduced-motion: reduce) {

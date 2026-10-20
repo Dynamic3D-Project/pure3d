@@ -4,10 +4,10 @@
 </script>
 
 <svelte:head>
-	<title>Publish with us | Pure 3D</title>
+	<title>Publish with us | PURE3D</title>
 	<meta
 		name="description"
-		content="Create and publish a peer-reviewed 3D scholarly edition with Pure 3D."
+		content="Create and publish a peer-reviewed 3D scholarly edition with PURE3D."
 	/>
 </svelte:head>
 
@@ -32,7 +32,7 @@
 			</h1>
 			<p class="mt-6 max-w-2xl text-lg leading-relaxed text-paper/75">
 				Bring your model, interpretation and supporting material together in a citable, interactive
-				publication. Pure 3D guides your edition from proposal through review to publication.
+				publication. PURE3D guides your edition from proposal through review to publication.
 			</p>
 			<div class="mt-8 flex flex-wrap gap-3">
 				{#if authStore.isAuthenticated}
@@ -51,10 +51,10 @@
 					</a>
 				{/if}
 				<a
-					href={resolve('/documentation/[slug]', { slug: 'submission' })}
+					href={resolve('/learning-materials')}
 					class="btn border-paper/30 bg-transparent text-paper hover:border-paper hover:bg-paper/10"
 				>
-					Read submission guidelines
+					Access Learning Resources
 				</a>
 			</div>
 		</div>
@@ -66,46 +66,36 @@
 				Before you begin
 			</p>
 			<h2 class="text-3xl font-bold tracking-tight">
-				Bring the research. We’ll show you the workflow.
+				Getting started with a 3D scholarly edition means submitting a concept proposal
 			</h2>
 		</div>
 		<ul class="space-y-4 text-base-content/75">
 			<li class="flex gap-3 border-b border-base-300 pb-4">
 				<span class="font-bold text-vermillion" aria-hidden="true">✓</span>
 				<span>
-					Keep every author's work connected to their identity: every individual author needs an
-					<a href="https://orcid.org/register" class="underline">ORCID iD</a> before submission or publication,
-					including co-authors (person creators). Contributor ORCIDs are optional. Organizations do not
-					receive ORCID iDs. Preserve the credited name and author order; an account or a matching name
-					is not identity proof.
+					Every user needs an <a href="https://orcid.org/register" class="underline">ORCID iD</a>. You
+					can create one when you log in to PURE3D for the first time.
 				</span>
 			</li>
 			<li class="flex gap-3 border-b border-base-300 pb-4">
 				<span class="font-bold text-vermillion" aria-hidden="true">✓</span>
-				<span>A 3D object or dataset that is central to your scholarly argument</span>
+				<span>
+					One or more 3D object(s) that are central to your narrative goals and intended audience.
+				</span>
 			</li>
 			<li class="flex gap-3 border-b border-base-300 pb-4">
 				<span class="font-bold text-vermillion" aria-hidden="true">✓</span>
-				<span>Context, metadata and interpretive material for the edition</span>
+				<span>
+					References, multimedia and any other information that can be repurposed to provide
+					context, sources and interpretive materials.
+				</span>
 			</li>
 			<li class="flex gap-3">
 				<span class="font-bold text-vermillion" aria-hidden="true">✓</span>
-				<span>Rights or permission to publish the assets you submit</span>
+				<span>
+					Rights or permission to publish the materials used in your 3D scholarly edition.
+				</span>
 			</li>
 		</ul>
-	</section>
-	<section class="max-w-3xl space-y-4">
-		<h2 class="text-2xl font-bold tracking-tight">Resolve author identities before review</h2>
-		<p class="leading-relaxed text-base-content/75">
-			Use a canonical ORCID link such as https://orcid.org/0000-0002-1825-0097 for each individual
-			author. Ask co-authors to confirm their own identifier; do not infer it from a name search.
-			Add organizations as organization credits and distinguish creators from contributors.
-		</p>
-		<p class="leading-relaxed text-base-content/75">
-			If a legacy author cannot yet be identified, keep their original credit and contact the Pure
-			3D team for review. An unresolved individual author's ORCID is a submission and publication
-			blocker, not a permanent exemption. ORCID sign-in proves account ownership; a manually
-			confirmed credit does not create a verified account or grant editing access.
-		</p>
 	</section>
 </div>

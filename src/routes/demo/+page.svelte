@@ -11,10 +11,10 @@
 </script>
 
 <svelte:head>
-	<title>Demo | Pure 3D</title>
+	<title>Demo | PURE3D</title>
 	<meta
 		name="description"
-		content="Public Pure 3D demo combining scholarly edition tabs, peer review, printables, and Voyager API controls."
+		content="Public PURE3D demo combining scholarly edition tabs, peer review, printables, and Voyager API controls."
 	/>
 </svelte:head>
 

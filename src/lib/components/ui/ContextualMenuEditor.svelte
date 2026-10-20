@@ -1,8 +1,10 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
 	import { onMount, tick } from 'svelte';
 	import {
 		move,
+		menuItemStyle,
+		menuStyles,
+		type MenuStyle,
 		newMenuLink,
 		type MenuConfig,
 		type MenuDirectory,
@@ -49,6 +51,9 @@
 	let menuLabel = $state('');
 	let menuVisible = $state(true);
 	let menuDirect = $state(false);
+	let menuStyle = $state<MenuStyle>('default');
+	let menuDirectLink = $state<MenuLink>(newMenuLink());
+	let menuLanding = $state<MenuLink | null>(null);
 	let menuIntroduction = $state(false);
 	let menuIntroductionHeading = $state('');
 	let menuIntroductionDescription = $state('');
@@ -102,6 +107,9 @@
 		menuLabel = entry?.label || 'New menu';
 		menuVisible = entry?.visible ?? true;
 		menuDirect = !!entry?.direct;
+		menuStyle = entry ? menuItemStyle(entry) : 'default';
+		menuDirectLink = structuredClone($state.snapshot(entry?.direct || newMenuLink()));
+		menuLanding = entry?.landing ? structuredClone($state.snapshot(entry.landing)) : null;
 		menuIntroduction = !!entry?.introduction;
 		menuIntroductionHeading = entry?.introduction?.heading || '';
 		menuIntroductionDescription = entry?.introduction?.description || '';
@@ -120,8 +128,9 @@
 			if (!entry) return;
 			entry.label = menuLabel;
 			entry.visible = menuVisible;
-			entry.direct = menuDirect ? entry.direct || newMenuLink() : null;
-			entry.landing = menuDirect ? null : entry.landing;
+			if (!footerMode) entry.style = menuStyle;
+			entry.direct = menuDirect ? menuDirectLink : null;
+			entry.landing = menuDirect ? null : menuLanding;
 			entry.introduction = menuIntroduction
 				? { heading: menuIntroductionHeading, description: menuIntroductionDescription }
 				: null;
@@ -131,8 +140,10 @@
 				id,
 				label: menuLabel,
 				visible: menuVisible,
+				...(!footerMode ? { style: menuStyle } : {}),
 				groups: [],
-				direct: menuDirect ? newMenuLink() : null,
+				direct: menuDirect ? menuDirectLink : null,
+				landing: menuDirect ? null : menuLanding,
 				introduction: menuIntroduction
 					? { heading: menuIntroductionHeading, description: menuIntroductionDescription }
 					: null
@@ -183,6 +194,9 @@
 				target.links.splice(Math.max(0, Math.min(linkPosition - 1, target.links.length)), 0, next);
 		};
 		void showDialog(linkDialog);
+	}
+	function openGroupLanding(group: MenuGroup) {
+		openLink(group.landing || newMenuLink(), (next) => (group.landing = next));
 	}
 	function openLink(link: MenuLink, commit: (next: MenuLink) => void) {
 		if (busy) return;
@@ -244,56 +258,81 @@
 >
 	<fieldset disabled={busy}>
 		<div class="editor-toolbar">
-			<span>{menuName} menu</span>
-			{#if showItemPicker && item && !footerMode}
-				<label class="item-picker">
-					Section
-					<select bind:value={selectedId}>
-						{#each config.items as entry (entry.id)}
-							<option value={entry.id}>{entry.label}</option>
-						{/each}
-					</select>
-				</label>
-			{/if}
+			<div class="toolbar-context">
+				<span class="toolbar-label">{footerMode ? 'Site footer' : 'Header navigation'}</span>
+				{#if showItemPicker && item && !footerMode}
+					<label class="item-picker">
+						Section
+						<select bind:value={selectedId}>
+							{#each config.items as entry (entry.id)}
+								<option value={entry.id}>{entry.label}</option>
+							{/each}
+						</select>
+					</label>
+				{/if}
+				{#if item && !footerMode}
+					<strong>{item.label}</strong>
+				{/if}
+			</div>
 			{#if item && !footerMode}
-				<strong>{item.label}</strong><button
-					aria-label={`Edit ${item.label} menu`}
-					onclick={() => openMenu(item)}>✎</button
-				>
-				<button
-					aria-label={`Move ${item.label} menu left`}
-					disabled={index === 0}
-					onclick={() => {
-						if (!busy) {
-							config.items = move(config.items, index, index - 1);
-							changed();
-						}
-					}}>←</button
-				>
-				<button
-					aria-label={`Move ${item.label} menu right`}
-					disabled={index === config.items.length - 1}
-					onclick={() => {
-						if (!busy) {
-							config.items = move(config.items, index, index + 1);
-							changed();
-						}
-					}}>→</button
-				>
-				<button
-					aria-label={`Remove ${item.label} menu`}
-					onclick={() => {
-						if (!busy && confirm(`Remove menu “${item?.label}”?`)) {
-							config.items = config.items.filter((entry) => entry.id !== selectedId);
-							selectedId = config.items[0]?.id || '';
-							changed();
-						}
-					}}>Remove</button
-				>
+				<div class="selected-menu-actions">
+					<button
+						aria-label={`Edit ${item.label} menu`}
+						title="Edit menu"
+						onclick={() => openMenu(item)}>✎</button
+					>
+					<button
+						aria-label={`Move ${item.label} menu left`}
+						title="Move menu left"
+						disabled={index === 0}
+						onclick={() => {
+							if (!busy) {
+								config.items = move(config.items, index, index - 1);
+								changed();
+							}
+						}}>←</button
+					>
+					<button
+						aria-label={`Move ${item.label} menu right`}
+						title="Move menu right"
+						disabled={index === config.items.length - 1}
+						onclick={() => {
+							if (!busy) {
+								config.items = move(config.items, index, index + 1);
+								changed();
+							}
+						}}>→</button
+					>
+					<button
+						aria-label={`Remove ${item.label} menu`}
+						title="Remove menu"
+						onclick={() => {
+							if (!busy && confirm(`Remove menu “${item?.label}”?`)) {
+								config.items = config.items.filter((entry) => entry.id !== selectedId);
+								selectedId = config.items[0]?.id || '';
+								changed();
+							}
+						}}
+						><svg
+							aria-hidden="true"
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							><path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6" /></svg
+						></button
+					>
+				</div>
 			{/if}
-			<a href={resolve('/admin/pages')}>All pages ↗</a><button onclick={() => openMenu(undefined)}
-				>+ Add {footerMode ? 'footer column' : 'menu'}</button
-			>
+			<div class="navigation-actions">
+				<button onclick={() => openMenu(undefined)}
+					>+ Add {footerMode ? 'footer column' : 'menu'}</button
+				>
+			</div>
 		</div>
 		{#if footerMode}
 			<div class="footer-columns">
@@ -371,6 +410,16 @@
 											}}>Remove</button
 										>
 									</div>
+									<div class="editor-secondary group-landing">
+										<button onclick={() => openGroupLanding(group)}
+											>{group.landing ? 'Edit heading link' : 'Add heading link'}</button
+										>{#if group.landing}<button
+												onclick={() => {
+													group.landing = null;
+													changed();
+												}}>Remove heading link</button
+											>{/if}
+									</div>
 									{#each group.links as link, linkIndex (link.id)}
 										<div class="link-row">
 											<span>{link.label}{!link.visible ? ' (hidden)' : ''}</span><button
@@ -404,17 +453,7 @@
 				{/each}
 			</div>
 		{:else if item}
-			{#if item.direct}
-				<div class="direct-row">
-					<span>{item.direct.label}</span><button
-						aria-label={`Edit ${item.direct.label} link`}
-						onclick={() =>
-							openLink(item!.direct!, (next) => {
-								if (item) item.direct = next;
-							})}>⋯</button
-					>
-				</div>
-			{:else}
+			{#if !item.direct}
 				<div class="editor-columns">
 					{#if !footerMode && item.introduction}
 						<section class="edit-column introduction-card">
@@ -462,6 +501,16 @@
 									}}>Remove</button
 								>
 							</div>
+							<div class="editor-secondary group-landing">
+								<button onclick={() => openGroupLanding(group)}
+									>{group.landing ? 'Edit heading link' : 'Add heading link'}</button
+								>{#if group.landing}<button
+										onclick={() => {
+											group.landing = null;
+											changed();
+										}}>Remove heading link</button
+									>{/if}
+							</div>
 							{#each group.links as link, linkIndex (link.id)}<div
 									class:prominent={group.prominent}
 									class="link-row"
@@ -476,54 +525,75 @@
 							>
 						</section>
 					{/each}
+					{#if item.featured}
+						<aside class="edit-column feature-card">
+							<div class="column-heading">
+								<h2>{item.featured.kicker}</h2>
+								<button
+									aria-label={`Edit featured card: ${item.featured.title}`}
+									onclick={() => openFeature()}>✎</button
+								>
+								<button
+									onclick={() => {
+										if (!busy && item) {
+											item.featured = null;
+											changed();
+										}
+									}}>Remove</button
+								>
+							</div>
+							<div class="feature-artwork">
+								{item.featured.artwork} <span aria-hidden="true">↗</span>
+							</div>
+							<h3>{item.featured.title}</h3>
+							<p>{item.featured.description}</p>
+							<button class="feature-link" onclick={() => openFeature()}
+								>{item.featured.link.label} ✎</button
+							>
+						</aside>
+					{:else}
+						<button class="add-column" onclick={() => openFeature()}>+ Add featured card</button>
+					{/if}
 					<button class="add-column" onclick={() => openGroup()}
 						>+ Add {footerMode ? 'link group' : 'column'}</button
 					>
 				</div>
-				<div class="editor-secondary">
-					{#if !footerMode}<button
-							onclick={() =>
-								openLink(item!.landing || newMenuLink(), (next) => {
-									if (item) item.landing = next;
-								})}>{item.landing ? 'Edit landing link' : 'Add landing link'}</button
-						>{#if item.landing}<button
-								onclick={() => {
-									if (!busy && item) {
-										item.landing = null;
-										changed();
-									}
-								}}>Remove landing link</button
-							>{/if}{/if}
-					<button onclick={() => openFeature()}
-						>{item.featured ? 'Edit featured item' : 'Add featured item'}</button
-					>{#if item.featured}<button
-							onclick={() => {
-								if (!busy && item) {
-									item.featured = null;
-									changed();
-								}
-							}}>Remove featured item</button
-						>{/if}
-				</div>
 			{/if}
 		{/if}
-		<div class="editor-secondary">
-			<button
-				onclick={() => openLink(config.primary || newMenuLink(), (next) => (config.primary = next))}
-				>{config.primary
-					? `Edit ${menuName.toLowerCase()} action`
-					: `Add ${menuName.toLowerCase()} action`}</button
-			>{#if config.primary}<button
-					onclick={() => {
-						if (!busy) {
-							config.primary = null;
-							changed();
-						}
-					}}>Remove {menuName.toLowerCase()} action</button
-				>{/if}<button onclick={openFooter}
-				>Edit {footerMode ? 'footer callout' : 'menu footer'}</button
-			>
-		</div>
+		{#if footerMode || (item && !item.direct)}
+			<div class="contextual-bottom-bar">
+				<div class="editable-message">
+					<span
+						>{config.helpText}{#if config.helpLink}
+							<strong>{config.helpLink.label}</strong>{/if}</span
+					>
+					<button
+						class="add"
+						aria-label="Edit this message and supporting link"
+						onclick={openFooter}
+						>{config.helpText || config.helpLink ? '✎' : '+ Add message'}</button
+					>
+				</div>
+				{#if footerMode}
+					<div class="editor-secondary">
+						<button
+							onclick={() =>
+								openLink(config.primary || newMenuLink(), (next) => (config.primary = next))}
+							>{config.primary ? `${config.primary.label} ✎` : '+ Add footer button'}</button
+						>
+						{#if config.primary}<button
+								aria-label={`Remove ${config.primary.label} button`}
+								onclick={() => {
+									if (!busy) {
+										config.primary = null;
+										changed();
+									}
+								}}>Remove</button
+							>{/if}
+					</div>
+				{/if}
+			</div>
+		{/if}
 	</fieldset>
 	<div class="panel-footer">
 		<span>{footerMode ? 'Footer links only.' : 'Navigation changes only.'} Pages stay intact.</span
@@ -573,18 +643,109 @@
 				</h2>
 				<label
 					>{footerMode ? 'Column' : 'Menu'} label <input required bind:value={menuLabel} /></label
-				><label><input type="checkbox" bind:checked={menuVisible} /> Visible</label><label
-					><input type="checkbox" bind:checked={menuDirect} /> Direct link</label
-				><label class:hidden-control={footerMode}
-					><input type="checkbox" bind:checked={menuIntroduction} /> Show menu introduction</label
-				>{#if !footerMode && menuIntroduction}<label
-						>Introduction heading <input required bind:value={menuIntroductionHeading} /></label
-					><label
-						>Introduction sentence <input
-							required
-							bind:value={menuIntroductionDescription}
-						/></label
-					>{/if}
+				><label><input type="checkbox" bind:checked={menuVisible} /> Visible</label>
+				{#if !footerMode}
+					<fieldset class="type-picker">
+						<legend>Type</legend>
+						<div class="style-choices">
+							<label class="type-choice" class:selected={menuDirect}>
+								<span class="style-name"
+									><input
+										type="radio"
+										name="menu-type"
+										value={true}
+										bind:group={menuDirect}
+									/>Single link</span
+								>
+								<svg
+									aria-hidden="true"
+									viewBox="0 0 120 54"
+									class="type-illustration"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.5"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									><rect x="8" y="8" width="104" height="38" rx="6" /><path
+										d="M20 22h32M20 30h22M77 27h20m-6-6 6 6-6 6"
+									/></svg
+								>
+								<span class="type-description">Goes straight to a page.</span>
+							</label>
+							<label class="type-choice" class:selected={!menuDirect}>
+								<span class="style-name"
+									><input type="radio" name="menu-type" value={false} bind:group={menuDirect} />Mega
+									menu</span
+								>
+								<svg
+									aria-hidden="true"
+									viewBox="0 0 120 54"
+									class="type-illustration"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.5"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									><rect x="8" y="4" width="104" height="46" rx="6" /><path
+										d="M8 17h104M20 11h28m46-2 3 3 3-3M20 27h18m-18 8h14m17-8h18m-18 8h14m17-8h18m-18 8h14"
+									/></svg
+								>
+								<span class="type-description">Opens columns of links.</span>
+							</label>
+						</div>
+					</fieldset>
+					<fieldset class="style-picker">
+						<legend>Style</legend>
+						<div class="style-choices">
+							{#each menuStyles as style}
+								<label class="style-choice" class:selected={menuStyle === style}>
+									<span class="style-name"
+										><input
+											type="radio"
+											name="menu-style"
+											value={style}
+											bind:group={menuStyle}
+										/>{style[0].toUpperCase() + style.slice(1)}</span
+									>
+									<span class="style-sample" data-style={style}
+										>{menuLabel || 'Menu'}{#if !menuDirect}<span aria-hidden="true">⌄</span
+											>{/if}</span
+									>
+								</label>
+							{/each}
+						</div>
+					</fieldset>
+				{:else}
+					<label><input type="checkbox" bind:checked={menuDirect} /> Direct link</label>
+				{/if}
+				{#if !footerMode && !menuDirect}<label
+						><input type="checkbox" bind:checked={menuIntroduction} /> Show menu introduction</label
+					>{#if menuIntroduction}<label
+							>Introduction heading <input required bind:value={menuIntroductionHeading} /></label
+						><label
+							>Introduction sentence <input
+								required
+								bind:value={menuIntroductionDescription}
+							/></label
+						>{/if}{/if}
+				{#if !footerMode && !menuDirect}
+					<label
+						><input
+							type="checkbox"
+							checked={!!menuLanding}
+							onchange={(event) =>
+								(menuLanding = event.currentTarget.checked ? menuLanding || newMenuLink() : null)}
+						/> Make the menu name a link too</label
+					>
+					{#if menuLanding}<MenuLinkEditor
+							bind:link={menuLanding}
+							{directory}
+							onchange={() => {}}
+						/>{/if}
+				{/if}
+				{#if !footerMode && menuDirect}
+					<MenuLinkEditor bind:link={menuDirectLink} {directory} onchange={() => {}} />
+				{/if}
 				<div class="dialog-actions">
 					<button type="button" onclick={() => menuDialog.close()}>Cancel</button><button
 						type="submit">Apply</button
@@ -719,7 +880,6 @@
 	.editor-toolbar,
 	.column-heading,
 	.editor-secondary,
-	.direct-row,
 	.link-row,
 	.dialog-actions {
 		display: flex;
@@ -731,11 +891,40 @@
 		margin-bottom: 18px;
 		font-size: 12px;
 	}
-	.editor-toolbar > span {
+	.toolbar-label {
 		color: var(--color-base-content);
 		opacity: 0.6;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
+		font-size: 11px;
+	}
+	.toolbar-context {
+		display: grid;
+		gap: 3px;
+		margin-right: 12px;
+	}
+	.toolbar-context strong {
+		font-size: 18px;
+		line-height: 1.2;
+	}
+	.selected-menu-actions,
+	.navigation-actions {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 8px;
+	}
+	.navigation-actions {
+		margin-left: auto;
+	}
+	.selected-menu-actions button:disabled {
+		opacity: 0.4;
+	}
+	.editor-toolbar .selected-menu-actions button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 36px;
+		padding: 6px;
+		font-size: 16px;
 	}
 	.item-picker {
 		display: flex;
@@ -749,7 +938,6 @@
 	.editor-toolbar a,
 	.column-heading button,
 	.editor-secondary button,
-	.direct-row button,
 	.link-row button,
 	.add,
 	.dialog-actions button {
@@ -846,8 +1034,7 @@
 		font-size: 12px;
 		font-weight: 400;
 	}
-	.link-row,
-	.direct-row {
+	.link-row {
 		justify-content: space-between;
 		gap: 12px;
 		margin: 0 0 12px;
@@ -865,6 +1052,54 @@
 	.editor-secondary {
 		flex-wrap: wrap;
 		margin-top: 16px;
+	}
+	.group-landing {
+		margin: 0 0 12px;
+	}
+	.contextual-bottom-bar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 16px;
+		margin-top: 24px;
+		border-top: 1px solid var(--color-base-300);
+		padding-top: 18px;
+		font-size: 12px;
+	}
+	.editable-message {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+	}
+	.editable-message strong {
+		margin-left: 8px;
+		color: var(--color-primary);
+	}
+	.feature-card h3 {
+		margin: 16px 0 8px;
+		font-size: 24px;
+		line-height: 1.2;
+	}
+	.feature-card > p {
+		font-size: 14px;
+		line-height: 1.6;
+		opacity: 0.7;
+	}
+	.feature-artwork {
+		display: flex;
+		justify-content: space-between;
+		padding: 24px 16px;
+		border-radius: var(--radius-control);
+		background: color-mix(in srgb, var(--color-primary) 11%, var(--color-base-100));
+		font-family: var(--font-serif);
+		font-size: 28px;
+	}
+	.feature-link {
+		margin-top: 16px;
+		font-size: 14px;
+		color: var(--color-primary);
+		text-decoration: underline;
 	}
 	dialog {
 		position: fixed;
@@ -905,7 +1140,7 @@
 	dialog input[type='checkbox'] {
 		flex-shrink: 0;
 	}
-	dialog input:not([type='checkbox']),
+	dialog input:not([type='checkbox']):not([type='radio']),
 	dialog textarea,
 	dialog select {
 		border: 1px solid var(--color-base-300);
@@ -916,6 +1151,77 @@
 	.dialog-actions {
 		justify-content: flex-end;
 		margin-top: 10px;
+	}
+	.style-picker,
+	.type-picker {
+		margin-top: 12px;
+	}
+	.style-picker legend,
+	.type-picker legend {
+		font-size: 12px;
+		margin-bottom: 8px;
+	}
+	.style-choices {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 10px;
+	}
+	dialog .style-choice,
+	dialog .type-choice {
+		cursor: pointer;
+		gap: 12px;
+		padding: 12px;
+		border-radius: var(--radius-control);
+		background: color-mix(in srgb, var(--color-base-content) 4%, var(--color-base-100));
+	}
+	.style-choice.selected,
+	.type-choice.selected {
+		outline: 2px solid var(--color-primary);
+		outline-offset: -2px;
+	}
+	.style-choice:focus-within,
+	.type-choice:focus-within {
+		outline: 2px solid var(--color-base-content);
+		outline-offset: 2px;
+	}
+	.style-name {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+	}
+	.type-illustration {
+		width: 100%;
+		height: 54px;
+		opacity: 0.7;
+	}
+	.type-description {
+		font-size: 12px;
+		line-height: 1.4;
+		opacity: 0.7;
+	}
+	.style-sample {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+		min-height: 38px;
+		padding: 8px;
+		border: 1px solid transparent;
+		border-radius: var(--radius-control);
+		font-size: 13px;
+		font-weight: 600;
+		overflow-wrap: anywhere;
+	}
+	.style-sample[data-style='primary'] {
+		background: var(--color-primary);
+		color: var(--color-primary-content);
+	}
+	.style-sample[data-style='secondary'] {
+		background: var(--color-secondary);
+		color: var(--color-secondary-content);
+	}
+	.style-sample[data-style='outline'] {
+		border-color: var(--color-base-content);
 	}
 	@media (max-width: 700px) {
 		.editor-panel {

@@ -77,7 +77,7 @@
 		<dl class="metadata-list">
 			{#if primaryDoi}
 				<div class="metadata-row">
-					<dt class="text-base-content/50">DOI</dt>
+					<dt>DOI</dt>
 					<dd class="min-w-0">
 						<p class="font-mono text-xs break-all">{primaryDoi}</p>
 						<button type="button" class="metadata-action" onclick={oncopydoi} title="Copy DOI">
@@ -88,18 +88,18 @@
 				</div>
 			{/if}
 			<div class="metadata-row">
-				<dt class="text-base-content/50">Record created</dt>
+				<dt>Record created</dt>
 				<dd>{formatDate(edition.created)}</dd>
 			</div>
 			{#if edition.pubNum}
 				<div class="metadata-row">
-					<dt class="text-base-content/50">Edition number</dt>
+					<dt>Edition number</dt>
 					<dd>Ed. {String(edition.pubNum).padStart(2, '0')}</dd>
 				</div>
 			{/if}
 			{#if edition.status}
 				<div class="metadata-row items-center">
-					<dt class="text-base-content/50">Publication status</dt>
+					<dt>Publication status</dt>
 					<dd><StatusBadge status={edition.status} /></dd>
 				</div>
 			{/if}
@@ -130,7 +130,7 @@
 		<dl class="metadata-list">
 			{#each ['creator', 'contributor'] as role (role)}
 				<div class="metadata-row">
-					<dt class="text-base-content/50">{role === 'creator' ? 'Creators' : 'Contributors'}</dt>
+					<dt>{role === 'creator' ? 'Creators' : 'Contributors'}</dt>
 					<dd>
 						{#each edition.credits.filter((credit) => credit.role === role) as credit (credit)}
 							{@const href = creditHref(credit, base)}
@@ -150,7 +150,7 @@
 			{/each}
 			{#if edition.dcInstitution?.length}
 				<div class="metadata-row">
-					<dt class="text-base-content/50">Institution</dt>
+					<dt>Institution</dt>
 					<dd>{edition.dcInstitution.join(', ')}</dd>
 				</div>
 			{/if}
@@ -174,7 +174,7 @@
 			</div>
 			{#if edition.alternativeVersion}
 				<div class="metadata-row">
-					<dt class="text-base-content/50">Other version</dt>
+					<dt>Other version</dt>
 					<dd>
 						<SafeLink href={edition.alternativeVersion} class="link link-hover"
 							>View version</SafeLink
@@ -232,19 +232,19 @@
 		<dl class="metadata-list">
 			{#if loadedModelSize || edition.modelSize}
 				<div class="metadata-row">
-					<dt class="text-base-content/50">Model size</dt>
+					<dt>Model size</dt>
 					<dd>{loadedModelSize ? formatBytes(loadedModelSize) : String(edition.modelSize)}</dd>
 				</div>
 			{/if}
 			{#if edition.voyagerVersion}
 				<div class="metadata-row">
-					<dt class="text-base-content/50">Viewer runtime</dt>
+					<dt>Viewer runtime</dt>
 					<dd>Voyager v{edition.voyagerVersion}</dd>
 				</div>
 			{/if}
 			{#if edition.settingsAuthorToolVersion}
 				<div class="metadata-row">
-					<dt class="text-base-content/50">Authoring tool</dt>
+					<dt>Authoring tool</dt>
 					<dd>
 						{edition.settingsAuthorToolName || 'Voyager'} v{edition.settingsAuthorToolVersion}
 					</dd>
@@ -252,12 +252,12 @@
 			{/if}
 			{#if edition.sceneFile}
 				<div class="metadata-row">
-					<dt class="text-base-content/50">Scene document</dt>
+					<dt>Scene document</dt>
 					<dd class="font-mono text-xs break-all">{sceneDocumentLabel(edition.sceneFile)}</dd>
 				</div>
 			{/if}
 			<div class="metadata-row">
-				<dt class="text-base-content/50">Record ID</dt>
+				<dt>Record ID</dt>
 				<dd class="font-mono text-xs break-all">{edition.id}</dd>
 			</div>
 		</dl>
@@ -277,11 +277,11 @@
 	}
 	.metadata-heading h2 {
 		font-family: var(--font-mono);
-		font-size: 0.625rem;
-		font-weight: 500;
+		font-size: 0.6875rem;
+		font-weight: 700;
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
-		color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
+		color: color-mix(in oklch, var(--color-base-content) 72%, transparent);
 	}
 	.metadata-row {
 		display: grid;
@@ -294,11 +294,12 @@
 	}
 	.metadata-row dt {
 		font-family: var(--font-mono);
-		font-size: 0.5625rem;
+		font-size: 0.625rem;
+		font-weight: 600;
 		line-height: 1.4;
-		letter-spacing: 0.08em;
+		letter-spacing: 0.06em;
 		text-transform: uppercase;
-		color: color-mix(in oklch, var(--color-base-content) 48%, transparent);
+		color: color-mix(in oklch, var(--color-base-content) 68%, transparent);
 	}
 	.metadata-row dd {
 		min-width: 0;

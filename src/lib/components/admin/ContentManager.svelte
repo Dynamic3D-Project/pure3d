@@ -342,7 +342,7 @@
 />
 <svelte:head
 	><title
-		>{kindFilter === 'page' ? 'Pages' : kindFilter === 'post' ? 'Posts' : 'Pages & posts'} | Pure3D Admin</title
+		>{kindFilter === 'page' ? 'Pages' : kindFilter === 'post' ? 'Posts' : 'Pages & posts'} | PURE3D Admin</title
 	></svelte:head
 >
 <div id="content-manager">

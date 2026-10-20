@@ -24,6 +24,8 @@
 	--radius-round: 9999px;
 
 	--color-paper: #f4f1eb;
+	--color-surface: #f4f1eb;
+	--color-surface-content: #141413;
 	--color-paper-2: #ece7dd;
 	--color-paper-3: #e2dccf;
 	--color-ink: #141413;
@@ -35,6 +37,12 @@
 	--color-vermillion: oklch(62% 0.19 35);
 	--color-vermillion-ink: oklch(40% 0.15 35);
 	--color-vermillion-wash: oklch(95% 0.035 35);
+	--color-hero-bg: #121211;
+	--color-hero-content: #f4f1eb;
+	--color-hero-glow: #2c3631;
+	--color-hero-accent: #f4b5a0;
+	--color-panel-bg: #141413;
+	--color-panel-content: #f4f1eb;
 }
 
 @plugin "daisyui/theme" {
@@ -167,9 +175,11 @@ a[target='_blank'] {
 
 .ds-card,
 .ds-card-frame {
+	--color-base-content: var(--color-surface-content);
 	border: 1px solid var(--color-base-300);
 	border-radius: var(--radius-box);
-	background: var(--color-base-100);
+	background: var(--color-surface);
+	color: var(--color-base-content);
 	box-shadow:
 		0 1px 2px oklch(0% 0 0 / 0.06),
 		0 5px 14px oklch(0% 0 0 / 0.035);

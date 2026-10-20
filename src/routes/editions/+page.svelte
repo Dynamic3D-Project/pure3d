@@ -46,6 +46,20 @@
 
 	let searchQuery = $state('');
 	let drawerOpen = $state(false);
+	let headerHeight = $state(72);
+
+	onMount(() => {
+		const header = document.getElementById('header');
+		if (!header) return;
+
+		const updateHeaderHeight = () => {
+			headerHeight = header.getBoundingClientRect().height;
+		};
+		updateHeaderHeight();
+		const observer = new ResizeObserver(updateHeaderHeight);
+		observer.observe(header);
+		return () => observer.disconnect();
+	});
 
 	// Autocomplete state
 	let showSuggestions = $state(false);
@@ -226,7 +240,7 @@
 </svelte:head>
 
 <!-- Drawer wrapper for mobile -->
-<div class="drawer lg:drawer-open">
+<div id="editions" class="drawer lg:drawer-open">
 	<input id="filter-drawer" type="checkbox" class="drawer-toggle" bind:checked={drawerOpen} />
 
 	<!-- Main content -->
@@ -496,9 +510,13 @@
 	</div>
 
 	<!-- Sidebar drawer -->
-	<div class="drawer-side z-40">
+	<div
+		class="drawer-side z-40 self-start"
+		style:top={`${headerHeight}px`}
+		style:height={`calc(100dvh - ${headerHeight}px)`}
+	>
 		<label for="filter-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
-		<div class="min-h-full w-72 border-r border-base-300 bg-base-100 p-4 pt-20 lg:pt-4">
+		<div class="min-h-full w-72 border-r border-base-300 bg-base-100 p-4">
 			<!-- Close button for mobile -->
 			<div class="mb-4 flex items-center justify-between lg:hidden">
 				<span class="font-semibold">Filters</span>

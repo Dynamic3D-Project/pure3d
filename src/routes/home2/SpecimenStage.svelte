@@ -307,7 +307,7 @@
 	<p id="specimen-stage-hint" class="hint">
 		{phase === 'ready'
 			? 'Drag to rotate; pinch, or click and scroll, to zoom. Arrow keys rotate the focused model; Home resets.'
-			: 'A published edition from the Pure3D catalogue, shown with its own Voyager scene.'}
+			: 'A published edition from the PURE3D catalogue, shown with its own Voyager scene.'}
 	</p>
 
 	<figcaption class="label">

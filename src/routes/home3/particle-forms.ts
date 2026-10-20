@@ -9,37 +9,25 @@ export interface ParticleForm {
 	title: string;
 	note: string;
 	sourceSlug?: string;
-	credit?: string;
-	license?: string;
+	sourceTitle?: string;
 }
 
 export const EDITION_PARTICLE_FORMS: ParticleForm[] = [
 	{
-		id: 'baby-yoda',
-		label: 'Baby Yoda',
-		title: 'Baby Yoda: Cutifying a Franchise',
-		note: 'Surface points sampled from the published edition mesh. Orange highlights are conceptual and do not represent its annotations.',
-		sourceSlug: 'qww56hmx3c1u4va',
-		credit: 'Remco Poeliejoe and Anaelle Démare · Maastricht University',
-		license: 'CC BY: Attribution required.'
-	},
-	{
 		id: 'rembrandts-birthplace',
-		label: "Rembrandt's Birthplace",
+		label: "Rembrandt's home",
 		title: "Rembrandt's Birthplace",
 		note: 'Surface points sampled from the published edition building mesh. Orange highlights are conceptual and do not represent its annotations.',
 		sourceSlug: '2boeb1g2jhgrzfx',
-		credit: 'PJ De Vos · Erfgoed Leiden en Omstreken; Mr. The Rich',
-		license: 'All rights reserved.'
+		sourceTitle: "Rembrandt's Birthplace"
 	},
 	{
 		id: 'petrol-lamp',
-		label: 'Petrol Lamp',
+		label: 'Mining lamp',
 		title: 'Petrol Lamp: Safety and Hazards in the Mines',
 		note: 'Surface points sampled from the published edition mesh. Orange highlights are conceptual and do not represent its annotations.',
 		sourceSlug: '8mlt1kcw2pimn3c',
-		credit: 'Miriam Paloni, Kevin Raetsen and Kirstin Römer · Nederlands Mijnmuseum',
-		license: 'CC - BY - NC - ND'
+		sourceTitle: 'Petrol Lamp'
 	}
 ];
 
@@ -612,10 +600,7 @@ export function buildParticleCloud(
 	for (let i = markers; i < ringEnd; i++) write(fixed, i, ...sampleRing(random));
 	for (let i = formCount; i < count; i++) write(fixed, i, ...sampleDust(random));
 
-	const formDefinitions = [
-		...EDITION_PARTICLE_FORMS.filter(({ id }) => editionPoints[id]?.length),
-		...CONCEPTUAL_PARTICLE_FORMS
-	];
+	const formDefinitions = EDITION_PARTICLE_FORMS.filter(({ id }) => editionPoints[id]?.length);
 	const forms = formDefinitions.map(({ id }) => {
 		const edition = editionPoints[id];
 		const sample = edition

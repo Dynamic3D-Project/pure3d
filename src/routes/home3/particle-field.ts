@@ -275,6 +275,8 @@ export class ParticleField {
 	private distance = REFERENCE_DISTANCE;
 	private pointSize = 1;
 	private maxPointSize = MAX_POINT_SIZE;
+	private readonly paletteObserver: MutationObserver;
+	private readonly glyphs: boolean;
 
 	private constructor(
 		canvas: HTMLCanvasElement,
@@ -284,6 +286,7 @@ export class ParticleField {
 	) {
 		this.canvas = canvas;
 		this.gl = gl;
+		this.glyphs = !!glyphs;
 		this.pointScale = pointScale;
 		this.maxPointScale = maxPointSize;
 		this.count = cloud.count;
@@ -344,6 +347,30 @@ export class ParticleField {
 		// Dots add up into light; letters are laid over one another so their outlines stay visible.
 		gl.blendFunc(gl.ONE, glyphs ? gl.ONE_MINUS_SRC_ALPHA : gl.ONE);
 		gl.clearColor(0, 0, 0, 0);
+		this.updatePalette();
+		this.paletteObserver = new MutationObserver(() => this.updatePalette());
+		this.paletteObserver.observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ['style', 'data-theme']
+		});
+	}
+
+	private updatePalette() {
+		const style = getComputedStyle(this.canvas);
+		const rgb = (token: string, fallback: number[]) => {
+			const hex = style.getPropertyValue(token).trim();
+			if (!/^#[0-9a-f]{6}$/i.test(hex)) return fallback;
+			return [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16) / 255);
+		};
+		const ink = rgb('--color-hero-content', PAPER);
+		const accent = rgb('--color-hero-accent', VERMILLION);
+		const { gl } = this;
+		gl.useProgram(this.program);
+		gl.uniform3fv(this.uniforms.uInk, ink);
+		gl.uniform3fv(this.uniforms.uAccent, accent);
+		// Dark particles need alpha compositing on light palettes, not additive light.
+		const darkParticles = ink[0] * 0.2126 + ink[1] * 0.7152 + ink[2] * 0.0722 < 0.5;
+		gl.blendFunc(gl.ONE, this.glyphs || darkParticles ? gl.ONE_MINUS_SRC_ALPHA : gl.ONE);
 	}
 
 	/** Returns null when WebGL is unavailable or the shaders fail, so callers can fall back. */
@@ -449,6 +476,7 @@ export class ParticleField {
 
 	/** Frees GPU memory, including the letter atlas, and hands the context back to the browser. */
 	dispose() {
+		this.paletteObserver.disconnect();
 		const { gl } = this;
 		for (const buffer of this.buffers) gl.deleteBuffer(buffer);
 		for (const shader of this.shaders) gl.deleteShader(shader);

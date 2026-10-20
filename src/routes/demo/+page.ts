@@ -101,7 +101,7 @@ export const load: PageLoad = async () => {
 				size: '1 page',
 				url: makeTextResource(
 					'Citation Sheet',
-					'Susan Schreibman, Kelly Gillikin Schoueri, John Kaulakis, Luca Moine, Sandra Martinez Bohme. [DEMO] The Battle at 25 Northumberland Road. Pure 3D, ed. 01 (2025). doi:10.60131/p3d.demo.01. License: CC BY-NC 4.0.'
+					'Susan Schreibman, Kelly Gillikin Schoueri, John Kaulakis, Luca Moine, Sandra Martinez Bohme. [DEMO] The Battle at 25 Northumberland Road. PURE3D, ed. 01 (2025). doi:10.60131/p3d.demo.01. Licence: CC BY-NC 4.0.'
 				),
 				filename: 'pure3d-demo-citation-sheet.txt'
 			},
@@ -123,7 +123,7 @@ export const load: PageLoad = async () => {
 				size: 'Checklist',
 				url: makeTextResource(
 					'3D Print Preparation Notes',
-					'Use a simplified mesh, check wall thickness, orient the facade upward for inspection, and include citation and license metadata with the printed object.'
+					'Use a simplified mesh, check wall thickness, orient the facade upward for inspection, and include citation and licence metadata with the printed object.'
 				),
 				filename: 'pure3d-demo-3d-print-notes.txt'
 			}

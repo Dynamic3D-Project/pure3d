@@ -22,7 +22,7 @@
 </script>
 
 <svelte:head>
-	<title>{doc.title} | Documentation | Pure 3D</title>
+	<title>{doc.title} | Documentation | PURE3D</title>
 	<meta name="description" content={doc.summary} />
 </svelte:head>
 

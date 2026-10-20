@@ -185,7 +185,7 @@
 </script>
 
 <svelte:head>
-	<title>Pure 3D — Design System v0.1</title>
+	<title>PURE3D — Design System v0.1</title>
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 	<link
@@ -323,7 +323,7 @@
 			<div class="shell">
 				<div class="eyebrow">
 					<span class="dot"></span>
-					<span>Pure 3D / Design System</span>
+					<span>PURE3D / Design System</span>
 					<span style="opacity:.35;">———</span>
 					<span>April 2026 · working draft</span>
 				</div>
@@ -338,7 +338,7 @@
 
 				<div class="hero-grid">
 					<p class="hero-lede">
-						Pure 3D publishes cultural-heritage and scientific objects as interactive, citable,
+						PURE3D publishes cultural-heritage and scientific objects as interactive, citable,
 						long-lived records. The interface should recede — paper, ink, and precise chrome framing
 						the model itself. This document declares the system: the marks, the measures, and the
 						manner.
@@ -346,7 +346,7 @@
 					<dl class="hero-meta">
 						<div>
 							<dt>Project</dt>
-							<dd>Pure 3D — publishing platform</dd>
+							<dd>PURE3D — publishing platform</dd>
 						</div>
 						<div>
 							<dt>Audience</dt>
@@ -564,7 +564,7 @@
 											fill="var(--ds-paper-3)"
 										/>
 									</svg>
-									<span>Pure3D</span>
+									<span>PURE3D</span>
 								</div>
 								<div class="misuse-lbl">✗ No italic wordmark</div>
 							</div>
@@ -981,7 +981,7 @@
 							<span>Share</span>
 							<span>Cite</span>
 							<span>Download .glb</span>
-							<span>⟶ Catalog</span>
+							<span>⟶ Catalogue</span>
 						</div>
 					</div>
 
@@ -999,7 +999,7 @@
 							<dd>38.2 × 18.4 cm</dd>
 							<dt>Capture</dt>
 							<dd>Photogrammetry · 240k △</dd>
-							<dt>License</dt>
+							<dt>Licence</dt>
 							<dd>CC-BY-NC-SA 4.0</dd>
 						</dl>
 					</div>
@@ -1203,9 +1203,9 @@
 
 					<div class="plate">
 						<div class="plate-label">
-							<span>Input · Search</span><span class="pl-r">Catalog</span>
+							<span>Input · Search</span><span class="pl-r">Catalogue</span>
 						</div>
-						<label class="input-label" for="ds-search">Search the catalog</label>
+						<label class="input-label" for="ds-search">Search the catalogue</label>
 						<div class="search-wrap">
 							<input
 								id="ds-search"
@@ -1224,7 +1224,7 @@
 
 					<div class="plate">
 						<div class="plate-label">
-							<span>Catalog card</span><span class="pl-r">Default surface</span>
+							<span>Catalogue card</span><span class="pl-r">Default surface</span>
 						</div>
 						<div class="catalog-card">
 							<div class="cat-thumb">
@@ -1549,7 +1549,7 @@
 				<div class="ed-showcase">
 					<div class="ed-hero-card">
 						<div class="plate-label plate-label-head">
-							<span>Edition card · catalog hero</span><span class="pl-r"
+							<span>Edition card · catalogue hero</span><span class="pl-r"
 								>Featured current edition</span
 							>
 						</div>
@@ -1577,7 +1577,7 @@
 									<div><span>Creator</span>Dr. Leila Haddad</div>
 									<div><span>Institution</span>Rijksmuseum</div>
 									<div><span>Coverage</span>Khorasan · 12th c.</div>
-									<div><span>License</span>CC-BY-NC-SA 4.0</div>
+									<div><span>Licence</span>CC-BY-NC-SA 4.0</div>
 								</div>
 								<div class="ed-primary-actions">
 									<button class="btn btn-primary">Open viewer <span class="k">↵</span></button>
@@ -1677,7 +1677,7 @@
 									>
 								</div>
 								<div class="cite-body">
-									Haddad, L. <em>Bronze Ewer, Khorasan, c. 1180.</em> Pure 3D, ed. 03 (2026). doi:10.60131/p3d.0142.03.
+									Haddad, L. <em>Bronze Ewer, Khorasan, c. 1180.</em> PURE3D, ed. 03 (2026). doi:10.60131/p3d.0142.03.
 								</div>
 								<div class="cite-actions">
 									<button class="sm btn btn-outline">Copy citation</button>
@@ -1740,7 +1740,7 @@
 					<dl class="meta">
 						<div>
 							<dt>System</dt>
-							<dd>Pure 3D · v0.1</dd>
+							<dd>PURE3D · v0.1</dd>
 							<dt>Released</dt>
 							<dd>April 2026</dd>
 							<dt>Type</dt>
@@ -1764,7 +1764,7 @@
 	<aside class="tweaks" class:open={tweaksOpen} aria-hidden={!tweaksOpen}>
 		<div class="tw-head">
 			<b>Tweaks</b>
-			<span>Pure 3D · v0.1</span>
+			<span>PURE3D · v0.1</span>
 		</div>
 		<div class="tw-body">
 			<div class="tw-field">

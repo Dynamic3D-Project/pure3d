@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { kindLabels } from '$lib/content';
 	import ContentRenderer from '$lib/components/content/ContentRenderer.svelte';
+	import ContactPage from '$lib/components/content/ContactPage.svelte';
 	import { contentPath } from '$lib/cms';
 	import { base } from '$app/paths';
 	import { authStore } from '$lib/database/stores/auth.svelte';
@@ -14,12 +15,20 @@
 </script>
 
 <svelte:head
-	><title>{item.title} | Pure3D</title><meta
+	><title>{item.title} | PURE3D</title><meta
 		name="description"
 		content={item.summary}
 	/>{#if !item.isPublished}<meta name="robots" content="noindex,nofollow" />{/if}</svelte:head
 >
-<main id="resource-page" class="pb-20">
+{#if item.slug === 'contact'}
+	<ContactPage
+		content={item.body || ''}
+		imported={isImported}
+		isPublished={item.isPublished}
+		editHref={`${resolve('/admin/pages')}?edit=${item.id}`}
+	/>
+{:else}
+	<main id="resource-page" class="pb-20">
 	<div
 		class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-8 text-sm md:px-10"
 	>
@@ -98,7 +107,8 @@
 				</nav>{/if}
 		</div>
 	</div>
-</main>
+	</main>
+{/if}
 
 <style>
 	#resource-page

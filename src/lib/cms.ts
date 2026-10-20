@@ -15,12 +15,16 @@ export interface MenuGroup {
 	id: string;
 	label: string;
 	prominent: boolean;
+	landing?: MenuLink | null;
 	links: MenuLink[];
 }
+export const menuStyles = ['default', 'primary', 'secondary', 'outline'] as const;
+export type MenuStyle = (typeof menuStyles)[number];
 export interface MenuItem {
 	id: string;
 	label: string;
 	visible: boolean;
+	style?: MenuStyle;
 	groups: MenuGroup[];
 	direct?: MenuLink | null;
 	landing?: MenuLink | null;
@@ -42,6 +46,12 @@ export interface MenuConfig {
 	helpText: string;
 	helpLink: MenuLink | null;
 }
+export function menuItemStyle(item: Pick<MenuItem, 'style' | 'direct' | 'landing'>): MenuStyle {
+	return (
+		item.style ??
+		((item.direct || item.landing)?.target.value === '/documentation' ? 'primary' : 'default')
+	);
+}
 export interface MenuDirectory {
 	content: RecordModel[];
 	categories: RecordModel[];
@@ -53,6 +63,8 @@ export const applicationRoutes = [
 	{ value: '/collections', label: 'Collections' },
 	{ value: '/editions', label: 'Editions' },
 	{ value: '/resources', label: 'All posts' },
+	{ value: '/learning-materials', label: 'Learning materials' },
+	{ value: '/resources/contact', label: 'Contact' },
 	{ value: '/demo', label: 'Demo' },
 	{ value: '/profile', label: 'My profile' },
 	{ value: '/reviews', label: 'My work' }
@@ -117,7 +129,11 @@ export function targetPath(target: MenuTarget, directory: MenuDirectory): string
 				? `/collections/${record.id}`
 				: `/editions/${record.id}`;
 }
-export function validateMenu(config: MenuConfig, directory: MenuDirectory): string[] {
+export function validateMenu(
+	config: MenuConfig,
+	directory: MenuDirectory,
+	{ allowMissingDestinations = false } = {}
+): string[] {
 	const errors: string[] = [];
 	const ids = new Set<string>();
 	function identity(id: string, label: string) {
@@ -127,11 +143,17 @@ export function validateMenu(config: MenuConfig, directory: MenuDirectory): stri
 	}
 	function link(item: MenuLink, active = true) {
 		identity(item.id, item.label);
-		if (active && !targetPath(item.target, directory))
+		const retainedDestination =
+			allowMissingDestinations &&
+			['content', 'category', 'collection', 'edition'].includes(item.target.type) &&
+			!!item.target.value.trim();
+		if (active && !targetPath(item.target, directory) && !retainedDestination)
 			errors.push(`“${item.label}” needs a valid destination.`);
 	}
 	for (const item of config.items) {
 		identity(item.id, item.label);
+		if (item.style !== undefined && !menuStyles.includes(item.style))
+			errors.push('Choose a supported menu style.');
 		if (
 			item.introduction &&
 			(!item.introduction.heading.trim() || !item.introduction.description.trim())
@@ -143,6 +165,7 @@ export function validateMenu(config: MenuConfig, directory: MenuDirectory): stri
 		// Direct menus retain their unused submenu for editing, but do not resolve its targets.
 		for (const group of item.groups) {
 			identity(group.id, group.label);
+			if (group.landing) link(group.landing, !item.direct);
 			group.links.forEach((entry) => link(entry, !item.direct));
 		}
 		if (item.featured) link(item.featured.link, !item.direct);
@@ -171,8 +194,12 @@ export function publishableMenu(config: MenuConfig, directory: MenuDirectory): M
 			}
 			const landing = visible(item.landing);
 			const groups = item.groups
-				.map((group) => ({ ...group, links: group.links.filter((link) => !!visible(link)) }))
-				.filter((group) => group.links.length);
+				.map((group) => ({
+					...group,
+					landing: visible(group.landing),
+					links: group.links.filter((link) => !!visible(link))
+				}))
+				.filter((group) => group.landing || group.links.length);
 			const featured = item.featured && visible(item.featured.link) ? item.featured : null;
 			return groups.length || featured || landing ? [{ ...item, landing, groups, featured }] : [];
 		});

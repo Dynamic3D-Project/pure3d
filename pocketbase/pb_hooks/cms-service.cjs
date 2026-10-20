@@ -252,6 +252,8 @@ function validateMenu(e) {
 	}
 	function link(item, active = true) {
 		identity(item);
+		// Direct menus retain inactive submenu drafts, including incomplete links.
+		if (!active) return;
 		const t = item.target;
 		if (
 			!t ||
@@ -271,9 +273,17 @@ function validateMenu(e) {
 			throw new BadRequestError('Unsafe link URL.');
 		if (
 			t.type === 'route' &&
-			!['/', '/collections', '/editions', '/resources', '/demo', '/profile', '/reviews'].includes(
-				t.value
-			)
+			![
+				'/',
+				'/collections',
+				'/editions',
+				'/resources',
+				'/learning-materials',
+				'/resources/contact',
+				'/demo',
+				'/profile',
+				'/reviews'
+			].includes(t.value)
 		)
 			throw new BadRequestError('Unknown application route.');
 		const collection =
@@ -291,7 +301,11 @@ function validateMenu(e) {
 			try {
 				record = e.app.findRecordById(collection, t.value);
 			} catch {
-				throw new BadRequestError('Select an existing link destination.');
+				// Keep deleted destinations repairable in drafts; live menus must resolve every link.
+				if (!live) return;
+				throw new BadRequestError(
+					`“${item.label}” points to a destination that no longer exists. Choose another destination.`
+				);
 			}
 			if (
 				live &&
@@ -317,6 +331,11 @@ function validateMenu(e) {
 		throw new BadRequestError('Invalid menu configuration.');
 	for (const item of config.items) {
 		identity(item);
+		if (
+			item.style !== undefined &&
+			!['default', 'primary', 'secondary', 'outline'].includes(item.style)
+		)
+			throw new BadRequestError('Invalid menu style.');
 		if (!Array.isArray(item.groups) || item.groups.length > 20)
 			throw new BadRequestError('Invalid menu groups.');
 		introduction(item.introduction);
@@ -329,6 +348,7 @@ function validateMenu(e) {
 			identity(group);
 			if (!Array.isArray(group.links) || group.links.length > 200)
 				throw new BadRequestError('Invalid menu links.');
+			if (group.landing) link(group.landing, !item.direct);
 			group.links.forEach((entry) => link(entry, !item.direct));
 		}
 		if (item.featured) link(item.featured.link, !item.direct);

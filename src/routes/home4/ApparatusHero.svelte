@@ -520,7 +520,7 @@
 					Point at the vessel, or tap it, to look through the interpretation lens. Drag or use the
 					arrow keys to turn it; keys 1–5 switch layers, L toggles the lens and Home resets.
 				{:else}
-					A procedural vessel standing for the objects Pure3D editions document, with the layers an
+					A procedural vessel standing for the objects PURE3D editions document, with the layers an
 					edition adds: evidence, annotation, interpretation, paradata and a frame of reference.
 				{/if}
 			</p>

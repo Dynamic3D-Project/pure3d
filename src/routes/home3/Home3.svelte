@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { base, resolve } from '$app/paths';
 	import CollectionCard from '$lib/components/cards/CollectionCard.svelte';
+	import { pb } from '$lib/database/client';
 	import { homeStore, fetchHomeData, isStale } from '$lib/stores/data.store';
 	import ParticleHero from './ParticleHero.svelte';
 	import type { GlyphSource } from './particle-field';
@@ -10,6 +11,10 @@
 	let { glyphs }: { glyphs?: GlyphSource } = $props();
 
 	let homeLoading = $state(true);
+	let newsLoading = $state(true);
+	let news = $state<
+		Array<{ id: string; title: string; slug: string; summary: string; publishedAt: string }>
+	>([]);
 	const collections = $derived($homeStore.collections.slice(0, 4));
 	const hasCachedHome = $derived(
 		$homeStore.editions.length > 0 || $homeStore.collections.length > 0
@@ -26,8 +31,31 @@
 		}
 	}
 
+	async function loadNews() {
+		try {
+			const result = await pb.collection('content').getList(1, 2, {
+				filter: 'kind = "post" && isPublished = true',
+				sort: '-publishedAt,-created',
+				fields: 'id,title,slug,summary,publishedAt',
+				$autoCancel: false
+			});
+			news = result.items.map((item) => ({
+				id: item.id,
+				title: String(item.title || ''),
+				slug: String(item.slug || ''),
+				summary: String(item.summary || ''),
+				publishedAt: String(item.publishedAt || '')
+			}));
+		} catch {
+			news = [];
+		} finally {
+			newsLoading = false;
+		}
+	}
+
 	onMount(() => {
 		void loadHome();
+		void loadNews();
 	});
 
 	function reveal(node: HTMLElement, delay = 0) {
@@ -48,47 +76,37 @@
 
 	const storySteps = [
 		{
-			kicker: '01 · Capture',
-			title: 'Record the object.',
-			text: 'The edition starts from a scan, mesh, point cloud, or reconstruction that can be inspected directly.',
+			kicker: '01 · Conceptualise',
+			title: 'Build the narrative.',
 			image: '/images/landing/capture.webp',
-			alt: 'Abstract capture diagram showing a 3D object being recorded'
+			alt: 'Wireframe study for conceptualising a 3D scholarly edition'
 		},
 		{
-			kicker: '02 · Annotate',
-			title: 'Document the evidence.',
-			text: 'Annotations connect parts of the model to provenance, uncertainty, bibliography, and interpretation.',
+			kicker: '02 · Implement',
+			title: 'Author using interface.',
 			image: '/images/landing/annotate.webp',
-			alt: 'Abstract annotation diagram with evidence connected to a 3D object'
+			alt: 'Wireframe study for authoring a 3D scholarly edition'
 		},
 		{
-			kicker: '03 · Review',
-			title: 'Publish a stable record.',
-			text: 'Editors and reviewers evaluate the model, metadata, annotations, and interpretation before publication.',
+			kicker: '03 · Publish',
+			title: 'Revise from feedback.',
 			image: '/images/landing/review.webp',
-			alt: 'Abstract review diagram showing a stable publication record'
+			alt: 'Wireframe study for revising a 3D scholarly edition after review'
 		}
 	];
-	const workflow = [
-		'Concept review',
-		'Draft edition',
-		'Alpha peer review',
-		'Revision',
-		'Final review',
-		'Open publication'
-	];
+	const workflow = ['Proposal', 'Proposal review', 'Alpha review', 'Final review', 'Publication'];
 	const promiseCards = [
 		{
-			title: 'Publish and explore 3D work',
-			text: 'PURE3D provides an infrastructure for publishing, depositing, and exploring interactive 3D worlds and objects online.'
+			title: '3D Scholars',
+			text: 'Researchers and professionals from different fields who are currently unable to publish their 3D models in a contextualised environment.'
 		},
 		{
-			title: 'Make scholarship inspectable',
-			text: '3D Scholarly Editions connect models with text, images, video, annotations, provenance, uncertainty, and paradata.'
+			title: 'GLAM Institutions',
+			text: 'Galleries, libraries, archives and museums who want to enrich their digital collections with guided storytelling and public engagement.'
 		},
 		{
-			title: 'Preserve access over time',
-			text: 'The platform supports long-term access by keeping 3D research findable, accessible, interoperable, and reusable.'
+			title: 'Educators',
+			text: 'Secondary and higher education instructors who want to use 3D in their teaching practice.'
 		}
 	];
 	const partnerLogos = [
@@ -103,20 +121,30 @@
 			image: '/images/logos/PDI_SSH_LOGO_B.webp'
 		},
 		{
-			name: 'KNAW Humanities Cluster',
-			href: 'https://huc.knaw.nl',
-			image: '/images/logo-knaw-humanities-cluster.png'
+			name: 'NWO',
+			href: 'https://www.nwo.nl',
+			image: '/images/landing/supporters/nwo.png'
 		},
 		{
-			name: 'KNAW Digital Infrastructure',
-			href: 'https://di.huc.knaw.nl',
-			image: '/images/logos/logo-knaw-digital-infrastructure.webp'
+			name: 'Open Science NL',
+			href: 'https://www.openscience.nl',
+			image: '/images/landing/supporters/open-science-nl.png'
+		},
+		{
+			name: 'Netherlands eScience Center',
+			href: 'https://www.esciencecenter.nl',
+			image: '/images/landing/supporters/netherlands-escience-center.svg'
+		},
+		{
+			name: 'Lorentz Center',
+			href: 'https://www.lorentzcenter.nl',
+			image: '/images/landing/supporters/lorentz-center.jpg'
 		}
 	];
 </script>
 
 <svelte:head>
-	<title>Pure 3D | Explore 3D Scholarly Editions</title>
+	<title>PURE3D | Explore 3D Scholarly Editions</title>
 	<meta
 		name="description"
 		content="PURE3D is an infrastructure for publishing, preserving, and exploring interactive 3D Scholarly Editions."
@@ -126,20 +154,19 @@
 <div id="home3">
 	{#snippet heroCopy()}
 		<h1 id="home3-title" class="rise" style="--i: 1">
-			Publishing and preserving <em>3D scholarly editions.</em>
+			An infrastructure for the publication and preservation of <em>3D scholarship.</em>
 		</h1>
 		<p class="lede rise" style="--i: 2">
-			PURE3D for the publication, peer review and preservation of interactive 3D scholarly
-			editions. Annotated, citable records bringing models into dialogue with evidence,
-			interpretation and paradata.
+			PURE3D is an infrastructure for publishing, preserving, and exploring interactive 3D Scholarly
+			Editions. These editions bring together 3D models and the evidence, interpretation, and
+			paradata that make them meaningful, creating annotated, reviewable, and citable records that
+			remain accessible for the long term.
 		</p>
 		<div class="actions rise" style="--i: 3">
 			<a href={resolve('/editions')} class="button button-primary">
 				Browse editions <span aria-hidden="true">→</span>
 			</a>
-			<a href={resolve('/documentation/submission')} class="button button-on-ink">
-				Publish with us
-			</a>
+			<a href={resolve('/documentation')} class="button button-on-ink"> Publish with us </a>
 		</div>
 	{/snippet}
 
@@ -176,10 +203,10 @@
 		<div class="shell">
 			<header class="section-head evidence-head">
 				<div>
-					<h2 id="home3-evidence" use:reveal>A model as source</h2>
+					<h2 id="home3-evidence" use:reveal>Narrative-driven 3D models</h2>
 					<p class="section-sub" use:reveal={80}>
-						A 3D edition makes the object, its documentation and its interpretation available in the
-						same place, so they can be inspected, cited, reviewed, and preserved.
+						A 3D Scholarly Edition combines a 3D model with annotation and interaction to
+						contextualise its historical, cultural and social significance.
 					</p>
 				</div>
 				{@render catalogueStats()}
@@ -191,7 +218,6 @@
 						<div>
 							<span class="kicker">{step.kicker}</span>
 							<h3>{step.title}</h3>
-							<p>{step.text}</p>
 						</div>
 					</li>
 				{/each}
@@ -202,10 +228,10 @@
 	<section class="workflow" aria-labelledby="home3-workflow">
 		<div class="shell">
 			<header class="section-head" use:reveal>
-				<h2 id="home3-workflow">From proposal to published edition</h2>
+				<h2 id="home3-workflow">From proposal to 3D Scholarly Editions</h2>
 				<p class="section-sub">
-					Pure3D provides a supportive environment for authors/editors to publish 3D scholarship,
-					including training and mentorship, throughout the publishing process.
+					PURE3D provides a supportive environment for authors to publish their 3D research,
+					including training and mentorship throughout the publishing process.
 				</p>
 			</header>
 			<ol class="track">
@@ -225,8 +251,8 @@
 				<div>
 					<h2 id="home3-collections">Collections as <em>scholarly contexts</em></h2>
 					<p class="section-sub">
-						Collections organise 3D editions by theme, period, provenance, institution, or material
-						context.
+						Collections organise 3D scholarly editions by theme, period, provenance, institution, or
+						material context.
 					</p>
 				</div>
 				<a class="more" href={resolve('/collections')}>
@@ -256,10 +282,10 @@
 	<section class="promises" aria-labelledby="home3-promises">
 		<div class="shell">
 			<header class="section-head" use:reveal>
-				<h2 id="home3-promises">What <em>PURE3D</em> brings together.</h2>
+				<h2 id="home3-promises"><em>PURE3D</em> centres on community</h2>
 				<p class="section-sub">
-					The platform serves both creators and readers of 3D research: researchers, educators,
-					cultural heritage managers, students, public audiences, and academic reviewers.
+					The infrastructure serves diverse 3D communities, including scholars, educators, cultural
+					heritage professionals, students and the broader public.
 				</p>
 			</header>
 			<div class="promise-grid">
@@ -274,23 +300,62 @@
 		</div>
 	</section>
 
+	<section class="news" aria-labelledby="home3-news">
+		<div class="shell">
+			<header class="section-head split" use:reveal>
+				<div>
+					<h2 id="home3-news">Latest news</h2>
+					<p class="section-sub">Calls, workshops and announcements from the PURE3D community.</p>
+				</div>
+				<a class="more" href={resolve('/resources')}>All news <span aria-hidden="true">↗</span></a>
+			</header>
+			{#if news.length > 0}
+				<div class="news-grid">
+					{#each news as item, i (item.id)}
+						<article class="news-card" use:reveal={i * 80}>
+							{#if item.publishedAt}
+								<time datetime={item.publishedAt}>
+									{new Date(item.publishedAt).toLocaleDateString('en-GB', {
+										day: 'numeric',
+										month: 'long',
+										year: 'numeric'
+									})}
+								</time>
+							{/if}
+							<h3><a href={resolve('/resources/[slug]', { slug: item.slug })}>{item.title}</a></h3>
+							{#if item.summary}<p>{item.summary}</p>{/if}
+							<a class="more" href={resolve('/resources/[slug]', { slug: item.slug })}>
+								Read more <span aria-hidden="true">→</span>
+							</a>
+						</article>
+					{/each}
+				</div>
+			{:else if newsLoading}
+				<div class="news-grid" aria-hidden="true">
+					<div class="news-placeholder"></div>
+					<div class="news-placeholder"></div>
+				</div>
+			{/if}
+		</div>
+	</section>
+
 	<section class="call" aria-labelledby="home3-call">
 		<div class="shell">
 			<div class="call-plate" use:reveal>
 				<div>
-					<h2 id="home3-call">Propose your own <em>edition.</em></h2>
+					<h2 id="home3-call">Propose your own <em>3D Scholarly Edition.</em></h2>
 				</div>
 				<div>
 					<p>
-						Pure 3D provides the infrastructure and tools to publish interactive 3D research. Join
+						PURE3D provides the infrastructure and tools to publish interactive 3D research. Join
 						our growing community edition editors/authors.
 					</p>
 					<div class="actions">
-						<a href={resolve('/documentation/submission')} class="button button-primary">
-							Submission guidelines <span aria-hidden="true">→</span>
+						<a href={resolve('/documentation')} class="button button-primary">
+							Get started <span aria-hidden="true">→</span>
 						</a>
-						<a href={resolve('/documentation')} class="button button-on-ink">
-							Read the documentation
+						<a href={resolve('/resources/[slug]', { slug: 'calls' })} class="button button-on-ink">
+							Open calls
 						</a>
 					</div>
 				</div>
@@ -363,19 +428,19 @@
 		translate: 0 -1px;
 	}
 	.button-primary {
-		background: var(--color-forest);
-		color: var(--color-paper);
+		background: var(--color-primary);
+		color: var(--color-primary-content);
 	}
 	.button-primary:hover {
 		background: var(--color-forest-hover);
 	}
 	.button-on-ink {
-		border-color: rgba(244, 241, 235, 0.35);
-		color: var(--color-paper);
+		border-color: color-mix(in srgb, var(--color-panel-content) 35%, transparent);
+		color: var(--color-panel-content);
 	}
 	.button-on-ink:hover {
-		border-color: var(--color-paper);
-		background: rgba(244, 241, 235, 0.08);
+		border-color: var(--color-panel-content);
+		background: color-mix(in srgb, var(--color-panel-content) 8%, transparent);
 	}
 	.actions {
 		display: flex;
@@ -400,20 +465,20 @@
 	/* ---------- hero ---------- */
 	/* The hero is a full-bleed ink field; the artwork or the edition viewer sits inside it. */
 	.hero {
-		--on-ink: rgba(244, 241, 235, 0.8);
-		--on-ink-muted: rgba(244, 241, 235, 0.64);
-		--on-ink-rule: rgba(244, 241, 235, 0.16);
+		--on-ink: color-mix(in srgb, var(--color-hero-content) 80%, transparent);
+		--on-ink-muted: color-mix(in srgb, var(--color-hero-content) 64%, transparent);
+		--on-ink-rule: color-mix(in srgb, var(--color-hero-content) 16%, transparent);
 		position: relative;
 		isolation: isolate;
 		overflow: hidden;
 		border-bottom: 1px solid var(--rule);
-		background: var(--color-ink);
-		color: var(--color-paper);
+		background: var(--color-hero-bg);
+		color: var(--color-hero-content);
 	}
 	#home3 .hero em {
 		font-family: inherit;
 		font-style: normal;
-		color: #f4b5a0;
+		color: var(--color-hero-accent);
 	}
 	h1 {
 		margin: 0;
@@ -423,7 +488,7 @@
 		line-height: 0.98;
 		letter-spacing: -0.035em;
 		text-wrap: balance;
-		color: var(--color-paper);
+		color: var(--color-hero-content);
 	}
 	.lede {
 		margin: 0;
@@ -435,7 +500,14 @@
 		text-wrap: pretty;
 	}
 	.hero .button-primary {
-		box-shadow: inset 0 0 0 1px rgba(244, 241, 235, 0.18);
+		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-hero-content) 18%, transparent);
+	}
+	.hero .button-on-ink {
+		color: var(--color-hero-content);
+		border-color: color-mix(in srgb, var(--color-hero-content) 35%, transparent);
+	}
+	.hero .button-on-ink:hover {
+		background: color-mix(in srgb, var(--color-hero-content) 8%, transparent);
 	}
 	.section-head.evidence-head {
 		max-width: none;
@@ -465,12 +537,25 @@
 		border: 0;
 		white-space: normal;
 	}
+	.stat:has(a) {
+		position: relative;
+		width: fit-content;
+		justify-self: start;
+	}
 	.stat a {
 		color: inherit;
 		text-decoration: none;
 	}
-	.stat a:hover {
-		color: var(--color-vermillion-ink);
+	.stat a::after {
+		position: absolute;
+		inset: -8px;
+		border-radius: 8px;
+		content: '';
+		transition: background-color 0.18s ease;
+	}
+	.stat a:hover::after,
+	.stat a:focus-visible::after {
+		background-color: color-mix(in srgb, currentColor 6%, transparent);
 	}
 	.stat dt {
 		order: 2;
@@ -563,7 +648,7 @@
 		width: 100%;
 		aspect-ratio: 4 / 3;
 		object-fit: contain;
-		background: #fff;
+		background: var(--color-paper-2);
 		border-bottom: 1px solid var(--rule);
 	}
 	.plate > div {
@@ -588,19 +673,19 @@
 	.workflow {
 		position: relative;
 		overflow: hidden;
-		background: var(--color-ink);
-		color: var(--color-paper);
+		background: var(--color-panel-bg);
+		color: var(--color-panel-content);
 	}
 	.workflow h2 {
-		color: var(--color-paper);
+		color: var(--color-panel-content);
 	}
 	.workflow .section-sub {
-		color: rgba(244, 241, 235, 0.76);
+		color: color-mix(in srgb, var(--color-panel-content) 76%, transparent);
 	}
 	.track {
 		position: relative;
 		display: grid;
-		grid-template-columns: repeat(6, minmax(0, 1fr));
+		grid-template-columns: repeat(5, minmax(0, 1fr));
 		gap: 12px;
 		margin: 0;
 		padding: 0;
@@ -615,7 +700,7 @@
 		height: 1px;
 		background: linear-gradient(
 			90deg,
-			rgba(244, 241, 235, 0.2),
+			color-mix(in srgb, var(--color-panel-content) 20%, transparent),
 			var(--color-vermillion) 85%,
 			var(--color-vermillion)
 		);
@@ -632,9 +717,9 @@
 		place-items: center;
 		width: 44px;
 		height: 44px;
-		border: 1px solid rgba(244, 241, 235, 0.3);
+		border: 1px solid color-mix(in srgb, var(--color-panel-content) 30%, transparent);
 		border-radius: 50%;
-		background: var(--color-ink);
+		background: var(--color-panel-bg);
 		font-family: var(--font-mono);
 		font-size: 11px;
 		letter-spacing: 0.06em;
@@ -642,7 +727,7 @@
 	.track li:last-child .node {
 		border-color: var(--color-vermillion);
 		background: var(--color-vermillion);
-		color: #fff;
+		color: var(--color-accent-content);
 	}
 	.step {
 		font-size: 15px;
@@ -698,6 +783,63 @@
 		color: var(--color-ink-2);
 	}
 
+	/* ---------- latest news ---------- */
+	.news {
+		background: var(--color-base-200);
+	}
+	.news-grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 16px;
+	}
+	.news-card {
+		display: grid;
+		align-content: start;
+		gap: 16px;
+		min-height: 280px;
+		padding: clamp(24px, 3vw, 40px);
+		border-radius: var(--radius-surface);
+		background: var(--color-paper);
+	}
+	.news-card time {
+		font: 11px/1.4 var(--font-mono);
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--color-ink-4);
+	}
+	.news-card h3 {
+		font-size: clamp(22px, 2.5vw, 32px);
+		line-height: 1.12;
+	}
+	.news-card h3 a {
+		color: inherit;
+		text-decoration: none;
+	}
+	.news-card h3 a:hover {
+		text-decoration: underline;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 5px;
+	}
+	.news-card p {
+		display: -webkit-box;
+		overflow: hidden;
+		margin: 0;
+		font: 17px/1.5 var(--font-serif);
+		color: var(--color-ink-2);
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 3;
+	}
+	.news-card > .more {
+		align-self: end;
+		justify-self: start;
+		margin-top: auto;
+	}
+	.news-placeholder {
+		height: 280px;
+		border-radius: var(--radius-surface);
+		background: var(--color-base-300);
+	}
+
 	/* ---------- call for editions ---------- */
 	.call-plate {
 		position: relative;
@@ -708,18 +850,18 @@
 		align-items: end;
 		padding: clamp(40px, 6vw, 80px) clamp(28px, 5vw, 64px);
 		border-radius: var(--radius-surface);
-		background: var(--color-ink);
-		color: var(--color-paper);
+		background: var(--color-panel-bg);
+		color: var(--color-panel-content);
 	}
 	.call-plate > div {
 		display: grid;
 		gap: 24px;
 	}
 	.call-plate h2 {
-		color: var(--color-paper);
+		color: var(--color-panel-content);
 	}
 	.call-plate h2 :global(em) {
-		color: #f4b5a0;
+		color: var(--color-hero-accent);
 	}
 	.call-plate p {
 		margin: 0;
@@ -727,7 +869,7 @@
 		font-family: var(--font-serif);
 		font-size: 18px;
 		line-height: 1.5;
-		color: rgba(244, 241, 235, 0.8);
+		color: color-mix(in srgb, var(--color-panel-content) 80%, transparent);
 	}
 
 	/* ---------- partners ---------- */
@@ -773,7 +915,6 @@
 		max-height: 48px;
 		object-fit: contain;
 	}
-
 	/* ---------- motion ---------- */
 	@media (prefers-reduced-motion: no-preference) {
 		.rise {
@@ -857,6 +998,9 @@
 			grid-template-columns: 1fr;
 		}
 		.collection-grid {
+			grid-template-columns: 1fr;
+		}
+		.news-grid {
 			grid-template-columns: 1fr;
 		}
 		.plate {

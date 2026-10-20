@@ -22,7 +22,7 @@
 	const chapterCount = STORIES.reduce((sum, story) => sum + story.chapters.length, 0);
 	const categoryLabel = (id: string) => CATEGORIES.find((item) => item.id === id)?.label ?? id;
 	const citation = $derived(
-		`Pure3D (n.d.). ${EDITION.title}: ${EDITION.subtitle.replace(/^A /, 'a ')} [design prototype; not a publication]. ${pageUrl}`
+		`PURE3D (n.d.). ${EDITION.title}: ${EDITION.subtitle.replace(/^A /, 'a ')} [design prototype; not a publication]. ${pageUrl}`
 	);
 
 	const SECTIONS = [
@@ -63,10 +63,10 @@
 </script>
 
 <svelte:head>
-	<title>{EDITION.title} · Demonstration edition | Pure 3D</title>
+	<title>{EDITION.title} · Demonstration edition | PURE3D</title>
 	<meta
 		name="description"
-		content="A demonstration of a 3D scholarly edition on Pure3D: a procedural carved tablet with annotations, guided stories and an edition record."
+		content="A demonstration of a 3D scholarly edition on PURE3D: a procedural carved tablet with annotations, guided stories and an edition record."
 	/>
 	<meta name="robots" content="noindex" />
 </svelte:head>
@@ -270,7 +270,7 @@
 						</div>
 						<div>
 							<dt>Platform</dt>
-							<dd>Pure3D</dd>
+							<dd>PURE3D</dd>
 						</div>
 					</dl>
 				</section>

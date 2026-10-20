@@ -295,7 +295,7 @@ const SEED_PAGES = [
 <li><strong>Rich annotations</strong> — Meaningful annotations that connect the 3D model to the scholarly narrative</li>
 <li><strong>Contextual articles</strong> — Well-written articles that provide depth and context</li>
 <li><strong>Guided tours</strong> — Tours that help viewers understand the key arguments</li>
-<li><strong>Complete paradata</strong> — Transparent documentation of modeling decisions</li>
+<li><strong>Complete paradata</strong> — Transparent documentation of modelling decisions</li>
 </ul>
 <p>We encourage prospective authors to review existing editions before starting their own submissions. For submission guidelines, see the <a href="/documentation/submission">Submission Guidelines</a>.</p>`
 	}

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 847 180" role="img" aria-labelledby="title desc">
+	<title id="title">PURE3D — Strata wordmark</title>
+	<desc id="desc">A compact uppercase PURE3D wordmark built from chamfered forms crossed by a fine horizontal stratum.</desc>
+	<style>
+		:root { color: #141413; }
+		@media (prefers-color-scheme: dark) { :root { color: #f4f1eb; } }
+	</style>
+	<defs>
+		<mask id="stratum">
+			<rect width="847" height="180" fill="white" />
+			<rect x="16" y="87" width="815" height="7" fill="black" />
+		</mask>
+	</defs>
+	<g fill="currentColor" fill-rule="evenodd" mask="url(#stratum)">
+		<path d="M18 24h93l24 24v48l-24 24H55v40H18zm37 31v34h40l7-7V62l-7-7z" />
+		<path d="M151 24h37v91l12 12h28l12-12V24h37v105l-31 31h-64l-31-31z" />
+		<path d="M295 24h94l24 24v45l-19 19 27 48h-43l-22-42h-24v42h-37zm37 31v33h41l7-7V62l-7-7z" />
+		<path d="M436 24h119v31h-82v21h72v31h-72v22h84v31H436z" />
+		<path d="M574 24h92l24 24v35l-15 15 17 17v21l-24 24h-96v-31h77l7-7v-9l-7-7h-54V76h52l7-7v-7l-7-7h-73z" />
+		<path d="M707 24h67l53 31v74l-53 31h-67zm37 31v74h18l29-19V74l-29-19z" />
+	</g>
+</svg>

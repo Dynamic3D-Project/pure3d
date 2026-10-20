@@ -2,7 +2,6 @@ const HEADER_BYTES = 12;
 const MAX_POINTS = 18_000;
 
 const EDITION_CLOUDS = [
-	['baby-yoda', 'baby-yoda.bin'],
 	['rembrandts-birthplace', 'rembrandts-birthplace.bin'],
 	['petrol-lamp', 'petrol-lamp.bin']
 ] as const;

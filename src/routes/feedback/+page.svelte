@@ -113,7 +113,7 @@
 </script>
 
 <svelte:head>
-	<title>Feedback | Pure3D</title>
+	<title>Feedback | PURE3D</title>
 </svelte:head>
 
 <div class="container mx-auto max-w-5xl px-4 py-10">
@@ -127,7 +127,7 @@
 			we want to know.
 		</p>
 		<a class="btn mt-5 btn-primary" href={resolve('/')} target="_blank" rel="noreferrer">
-			Open Pure3D
+			Open PURE3D
 		</a>
 	</div>
 

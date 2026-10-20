@@ -8,11 +8,7 @@
 		type GlyphSource,
 		type ParticleGlyphs
 	} from './particle-field';
-	import {
-		CONCEPTUAL_PARTICLE_FORMS,
-		buildParticleCloud,
-		type ParticleForm
-	} from './particle-forms';
+	import { EDITION_PARTICLE_FORMS, buildParticleCloud, type ParticleForm } from './particle-forms';
 	import { loadEditionParticles } from './edition-particles';
 	import {
 		POINTER_TRAIL_SAMPLES,
@@ -87,7 +83,7 @@
 	let paused = $state(false);
 	let reducedMotion = $state(false);
 	let particleCount = $state(0);
-	let activeForms = $state<ParticleForm[]>(CONCEPTUAL_PARTICLE_FORMS);
+	let activeForms = $state<ParticleForm[]>(EDITION_PARTICLE_FORMS);
 
 	const form = $derived(activeForms[formIndex]);
 	const unit = $derived(glyphs ? 'letters' : 'points');
@@ -130,9 +126,11 @@
 
 	const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-	/** Scatter quickly, then fall back into the form. */
+	/** A barely perceptible pulse, then fall back into the form. */
 	function burstEnvelope(age: number) {
-		return age < 0.22 ? Math.sin((age / 0.22) * Math.PI * 0.5) : Math.exp(-(age - 0.22) * 2.4);
+		const envelope =
+			age < 0.22 ? Math.sin((age / 0.22) * Math.PI * 0.5) : Math.exp(-(age - 0.22) * 2.4);
+		return envelope * 0.03;
 	}
 
 	function settled() {
@@ -352,6 +350,10 @@
 			editionPoints: Readonly<Record<string, Float32Array>> = {}
 		) => {
 			if (signal.aborted) return;
+			if (!Object.values(editionPoints).some((points) => points.length > 0)) {
+				status = 'fallback';
+				return;
+			}
 			const cloud = buildParticleCloud(particleCount, density.dust[tier], {
 				...density.clusters,
 				editionPoints
@@ -432,8 +434,8 @@
 			visibility.observe(host);
 		};
 
-		// Edition points and, when needed, the headline glyph atlas load together. A missing edition
-		// cloud only removes that form; it never delays or disables the conceptual artwork.
+		// Edition points and, when needed, the headline glyph atlas load together. Missing edition
+		// clouds are omitted; the production hero never substitutes unrelated conceptual forms.
 		const points = loadEditionParticles(signal, fetch, base).catch(() => ({}));
 		const letters =
 			glyphs && copyBox
@@ -484,7 +486,9 @@
 			bind:this={art}
 			class="art"
 			role="group"
-			aria-label={`${form.sourceSlug ? 'Published edition' : 'Conceptual'} ${glyphs ? 'letterform' : 'particle'} artwork: ${form.title}`}
+			aria-label={status === 'live'
+				? `Published edition ${glyphs ? 'letterform' : 'particle'} artwork: ${form.title}`
+				: '3D edition particle artwork'}
 			aria-describedby={minimal ? 'particle-hero-hint' : 'particle-hero-hint particle-hero-note'}
 			tabindex={status === 'live' ? 0 : -1}
 			{onkeydown}
@@ -507,38 +511,34 @@
 
 			{#if status === 'fallback'}
 				<div class="fallback">
-					<img src={`${base}/images/landing/capture.webp`} alt="" />
-					<p>This browser cannot draw the interactive artwork, so a still diagram is shown.</p>
+					<p>The interactive edition artwork is unavailable.</p>
 				</div>
 			{/if}
 
-			<div class="model-navigation" class:minimal-navigation={minimal} data-hero-ui>
-				{#if status === 'live'}
+			{#if status === 'live'}
+				<div class="model-navigation" class:minimal-navigation={minimal} data-hero-ui>
 					<button
 						type="button"
 						aria-label="Previous model"
 						onclick={() => showForm((formIndex - 1 + activeForms.length) % activeForms.length)}
 						><span aria-hidden="true">‹</span></button
 					>
-				{/if}
-				<p class="source-credit">
-					{#if form.sourceSlug}
-						<a href={resolve('/editions/[slug]', { slug: form.sourceSlug })}>Source edition</a>
-						<span aria-hidden="true"> · </span>{form.credit}
-						<span aria-hidden="true"> · </span>{form.license}
-					{:else}
-						{form.title}
-					{/if}
-				</p>
-				{#if status === 'live'}
+					<p class="source-credit">
+						{#if form.sourceSlug}
+							<a href={resolve('/editions/[slug]', { slug: form.sourceSlug })}>
+								Source Edition - {form.sourceTitle ?? form.title}
+								<span aria-hidden="true">↗</span>
+							</a>
+						{/if}
+					</p>
 					<button
 						type="button"
 						aria-label="Next model"
 						onclick={() => showForm((formIndex + 1) % activeForms.length)}
 						><span aria-hidden="true">›</span></button
 					>
-				{/if}
-			</div>
+				</div>
+			{/if}
 			{#if minimal && status === 'live'}
 				{#if !reducedMotion}
 					<button
@@ -563,8 +563,14 @@
 
 	{#if minimal}
 		<p id="particle-hero-hint" class="sr-only">
-			{form.sourceSlug ? 'Published edition mesh sample.' : 'Conceptual artwork, not a scan.'} Drag or
-			use the arrow keys to turn the form; press Space to scatter it and Home to reset the view.
+			{#if status === 'live'}
+				Published edition mesh sample. Drag or use the arrow keys to turn the form; press Space to
+				scatter it and Home to reset the view.
+			{:else if status === 'fallback'}
+				The interactive edition artwork is unavailable.
+			{:else}
+				The interactive edition artwork is loading.
+			{/if}
 		</p>
 	{:else}
 		<div class="rail" data-hero-ui>
@@ -624,22 +630,22 @@
 		top: 0;
 		width: 44px;
 		height: 44px;
-		border: 1px solid rgba(244, 241, 235, 0.28);
+		border: 1px solid color-mix(in srgb, var(--color-hero-content) 28%, transparent);
 		border-radius: var(--radius-control);
-		background: var(--color-ink);
-		color: var(--color-paper);
+		background: var(--color-hero-bg);
+		color: var(--color-hero-content);
 		cursor: pointer;
 	}
 	.minimal-pause:focus-visible {
-		outline: 2px solid var(--color-paper);
+		outline: 2px solid var(--color-hero-content);
 		outline-offset: 3px;
 	}
 	.minimal-navigation button {
 		opacity: 0.7;
 	}
 	#particle-hero {
-		--hero-ink: 18, 18, 17;
-		--hero-paper: 244, 241, 235;
+		--hero-ink: var(--color-hero-bg);
+		--hero-paper: var(--color-hero-content);
 		width: 100%;
 		position: relative;
 		isolation: isolate;
@@ -649,9 +655,9 @@
 		min-height: clamp(640px, calc(100vh - 77px), 1040px);
 		min-height: clamp(640px, calc(100svh - 77px), 1040px);
 		background:
-			radial-gradient(ellipse 58% 72% at 72% 44%, #2c3631 0%, #191a18 55%, #121211 100%),
-			var(--color-ink);
-		color: var(--color-paper);
+			radial-gradient(ellipse 58% 72% at 72% 44%, var(--color-hero-glow) 0%, var(--hero-ink) 100%),
+			var(--hero-ink);
+		color: var(--hero-paper);
 		touch-action: pan-y;
 		cursor: grab;
 	}
@@ -665,8 +671,12 @@
 		z-index: 1;
 		pointer-events: none;
 		background-image:
-			linear-gradient(rgba(var(--hero-paper), 0.045) 1px, transparent 1px),
-			linear-gradient(90deg, rgba(var(--hero-paper), 0.045) 1px, transparent 1px);
+			linear-gradient(color-mix(in srgb, var(--hero-paper) 4.5%, transparent) 1px, transparent 1px),
+			linear-gradient(
+				90deg,
+				color-mix(in srgb, var(--hero-paper) 4.5%, transparent) 1px,
+				transparent 1px
+			);
 		background-size: 72px 72px;
 		mask-image: radial-gradient(ellipse 70% 80% at 72% 46%, black 10%, transparent 72%);
 	}
@@ -697,12 +707,16 @@
 		background:
 			linear-gradient(
 				90deg,
-				rgba(var(--hero-ink), 0.94) 0%,
-				rgba(var(--hero-ink), 0.82) calc(50% - 160px),
-				rgba(var(--hero-ink), 0.4) calc(50% - 20px),
-				rgba(var(--hero-ink), 0) calc(50% + 120px)
+				color-mix(in srgb, var(--hero-ink) 94%, transparent) 0%,
+				color-mix(in srgb, var(--hero-ink) 82%, transparent) calc(50% - 160px),
+				color-mix(in srgb, var(--hero-ink) 40%, transparent) calc(50% - 20px),
+				transparent calc(50% + 120px)
 			),
-			linear-gradient(0deg, rgba(var(--hero-ink), 0.92) 0%, rgba(var(--hero-ink), 0) 24%);
+			linear-gradient(
+				0deg,
+				color-mix(in srgb, var(--hero-ink) 92%, transparent) 0%,
+				transparent 24%
+			);
 	}
 
 	.stage,
@@ -793,7 +807,7 @@
 		font-size: 10.5px;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
-		color: rgba(var(--hero-paper), 0.72);
+		color: color-mix(in srgb, var(--hero-paper) 72%, transparent);
 		pointer-events: none;
 	}
 
@@ -807,12 +821,9 @@
 		padding: 32px;
 		border-radius: var(--radius-surface);
 		background: var(--color-paper);
+		color: var(--color-base-content);
 		text-align: center;
 		cursor: auto;
-	}
-	.fallback img {
-		width: min(100%, 420px);
-		opacity: 0.85;
 	}
 	.fallback p {
 		margin: 0;
@@ -837,7 +848,7 @@
 		width: 44px;
 		height: 44px;
 		border-radius: var(--radius-control);
-		color: rgba(var(--hero-paper), 0.75);
+		color: color-mix(in srgb, var(--hero-paper) 75%, transparent);
 		font-size: 34px;
 		line-height: 1;
 		cursor: pointer;
@@ -851,11 +862,11 @@
 		opacity: 0.85;
 	}
 	.model-navigation button:hover {
-		color: var(--color-paper);
-		background: rgba(var(--hero-paper), 0.08);
+		color: var(--hero-paper);
+		background: color-mix(in srgb, var(--hero-paper) 8%, transparent);
 	}
 	.model-navigation button:focus-visible {
-		outline: 2px solid var(--color-paper);
+		outline: 2px solid var(--hero-paper);
 		outline-offset: 2px;
 	}
 	@media (hover: none) {
@@ -868,13 +879,29 @@
 		margin: 0;
 		font: 10px/1.45 var(--font-mono);
 		letter-spacing: 0.015em;
-		color: rgba(var(--hero-paper), 0.58);
+		color: color-mix(in srgb, var(--hero-paper) 58%, transparent);
 		cursor: auto;
 		text-align: center;
 	}
 	.source-credit a {
-		color: rgba(var(--hero-paper), 0.82);
-		text-underline-offset: 3px;
+		display: inline-flex;
+		align-items: center;
+		gap: 7px;
+		min-height: 44px;
+		padding: 0 12px;
+		border: 1px solid color-mix(in srgb, var(--hero-paper) 28%, transparent);
+		border-radius: var(--radius-control);
+		color: var(--hero-paper);
+		font-size: 11px;
+		font-weight: 600;
+		text-decoration: none;
+		transition:
+			border-color 0.18s ease,
+			background 0.18s ease;
+	}
+	.source-credit a:hover {
+		border-color: var(--hero-paper);
+		background: color-mix(in srgb, var(--hero-paper) 8%, transparent);
 	}
 	.model-navigation.minimal-navigation {
 		right: 54px;
@@ -913,7 +940,7 @@
 		right: clamp(20px, 4vw, 48px);
 		left: clamp(20px, 4vw, 48px);
 		height: 1px;
-		background: rgba(var(--hero-paper), 0.16);
+		background: color-mix(in srgb, var(--hero-paper) 16%, transparent);
 	}
 	.caption {
 		display: grid;
@@ -925,19 +952,19 @@
 		font-size: 10.5px;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
-		color: #f4b5a0;
+		color: var(--color-hero-accent);
 	}
 	.title {
 		margin: 0;
 		font: 500 22px/1.15 var(--font-sans);
 		letter-spacing: -0.015em;
-		color: var(--color-paper);
+		color: var(--hero-paper);
 	}
 	.note {
 		margin: 0;
 		max-width: 56ch;
 		font: italic 400 15px/1.45 var(--font-serif);
-		color: rgba(var(--hero-paper), 0.74);
+		color: color-mix(in srgb, var(--hero-paper) 74%, transparent);
 	}
 
 	.tools {
@@ -976,10 +1003,10 @@
 		gap: 8px;
 		min-height: 44px;
 		padding: 0 14px;
-		border: 1px solid rgba(var(--hero-paper), 0.28);
+		border: 1px solid color-mix(in srgb, var(--hero-paper) 28%, transparent);
 		border-radius: var(--radius-control);
-		background: rgba(var(--hero-ink), 0.55);
-		color: var(--color-paper);
+		background: color-mix(in srgb, var(--hero-ink) 55%, transparent);
+		color: var(--hero-paper);
 		font: 500 14px/1 var(--font-sans);
 		cursor: pointer;
 		transition:
@@ -987,12 +1014,12 @@
 			background 0.18s ease;
 	}
 	.controls button:hover {
-		border-color: var(--color-paper);
+		border-color: var(--hero-paper);
 	}
 	.controls button[aria-pressed='true'] {
-		border-color: var(--color-paper);
-		background: var(--color-paper);
-		color: var(--color-ink);
+		border-color: var(--hero-paper);
+		background: var(--hero-paper);
+		color: var(--hero-ink);
 	}
 	.controls button:focus-visible {
 		outline: 2px solid var(--color-vermillion);
@@ -1002,7 +1029,7 @@
 		font-family: var(--font-mono);
 		font-size: 10.5px;
 		letter-spacing: 0.06em;
-		color: #f4b5a0;
+		color: var(--color-hero-accent);
 	}
 	[aria-pressed='true'] .index {
 		color: var(--color-vermillion-ink);
@@ -1020,7 +1047,7 @@
 		font-size: 11px;
 		line-height: 1.5;
 		letter-spacing: 0.02em;
-		color: rgba(var(--hero-paper), 0.66);
+		color: color-mix(in srgb, var(--hero-paper) 66%, transparent);
 	}
 
 	@media (max-width: 960px) {
@@ -1037,8 +1064,12 @@
 		#particle-hero {
 			min-height: 0;
 			background:
-				radial-gradient(ellipse 90% 34% at 50% 20%, #2c3631 0%, #191a18 60%, #121211 100%),
-				var(--color-ink);
+				radial-gradient(
+					ellipse 90% 34% at 50% 20%,
+					var(--color-hero-glow) 0%,
+					var(--hero-ink) 100%
+				),
+				var(--hero-ink);
 		}
 		#particle-hero::before {
 			mask-image: radial-gradient(ellipse 90% 30% at 50% 20%, black 10%, transparent 80%);
@@ -1046,19 +1077,19 @@
 		.veil {
 			background: linear-gradient(
 				180deg,
-				rgba(var(--hero-ink), 0) 0,
-				rgba(var(--hero-ink), 0) min(76vw, 440px),
-				rgba(var(--hero-ink), 0.7) calc(min(76vw, 440px) + 160px),
-				rgba(var(--hero-ink), 0.78) 100%
+				transparent 0,
+				transparent min(76vw, 440px),
+				color-mix(in srgb, var(--hero-ink) 70%, transparent) calc(min(76vw, 440px) + 160px),
+				color-mix(in srgb, var(--hero-ink) 78%, transparent) 100%
 			);
 		}
 		.is-minimal .veil {
 			background: linear-gradient(
 				180deg,
-				rgba(var(--hero-ink), 0.94) 0,
-				rgba(var(--hero-ink), 0.85) 38%,
-				rgba(var(--hero-ink), 0) 65%,
-				rgba(var(--hero-ink), 0.6) 100%
+				color-mix(in srgb, var(--hero-ink) 94%, transparent) 0,
+				color-mix(in srgb, var(--hero-ink) 85%, transparent) 38%,
+				transparent 65%,
+				color-mix(in srgb, var(--hero-ink) 60%, transparent) 100%
 			);
 		}
 		.stage {

@@ -47,6 +47,18 @@
 	let primary = $derived(resolvedLink($menus.footer.primary, $menus.directory));
 	let help = $derived(resolvedLink($menus.footer.helpLink, $menus.directory));
 	const href = (value: string) => (value.startsWith('/') ? `${base}${value}` : value);
+	function groupHeadingLink(group: {
+		label: string;
+		landing?: { id: string; label: string; href: string } | null;
+		links: { id: string; label: string; href: string }[];
+	}) {
+		const expected = `all ${group.label}`.trim().toLowerCase();
+		return (
+			group.landing ||
+			group.links.find((link) => link.label.trim().toLowerCase() === expected) ||
+			null
+		);
+	}
 	const menuWriteOptions = (version: string) => ({
 		headers: { 'X-Pure3D-Menu-Version': version }
 	});
@@ -104,7 +116,7 @@
 			await refreshMenus(true);
 			return;
 		}
-		const errors = validateMenu(editorConfig, editorDirectory);
+		const errors = validateMenu(editorConfig, editorDirectory, { allowMissingDestinations: true });
 		if (errors.length) {
 			editorError = errors.join(' ');
 			return;
@@ -117,16 +129,19 @@
 		if (saving || !activeEditor(editorOwnerId)) return;
 		const ownerId = editorOwnerId;
 		const config = $state.snapshot(editorConfig);
-		const directory = $state.snapshot(editorDirectory);
 		const currentDraftId = draftId;
-		const errors = validateMenu(config, directory);
-		if (errors.length) {
-			editorError = errors.join(' ');
-			return;
-		}
 		saving = true;
 		editorError = '';
 		try {
+			const directory = await menuDirectory(true);
+			if (!activeEditor(ownerId, currentDraftId)) return;
+			editorDirectory = directory;
+			const errors = validateMenu(config, directory, { allowMissingDestinations: true });
+			if (errors.length) {
+				editorError = errors.join(' ');
+				previewing = false;
+				return;
+			}
 			const saved = await pb
 				.collection('cms_menu_drafts')
 				.update(currentDraftId, { config }, menuWriteOptions(draftVersion));
@@ -150,7 +165,7 @@
 				editorError =
 					menuSignature(published) === menuSignature(config)
 						? ''
-						: 'Published eligible destinations. Unpublished or hidden targets remain in this draft.';
+						: 'Published available links. Broken, unpublished or hidden links were left out and remain editable in the draft.';
 			}
 		} catch (error) {
 			if (activeEditor(ownerId, currentDraftId))
@@ -201,7 +216,7 @@
 				><button class="btn btn-outline btn-sm" disabled={saving} onclick={togglePreview}
 					>{previewing ? 'Back to editing' : 'Preview'}</button
 				><button class="btn btn-outline btn-sm" disabled={saving} onclick={exitEditor}
-					>Exit editing</button
+					>Cancel</button
 				><button class="btn btn-sm btn-primary" disabled={saving} onclick={() => saveEditor(true)}
 					>Publish</button
 				>
@@ -221,17 +236,29 @@
 	<div class="mx-auto max-w-7xl">
 		<div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
 			{#each items as item (item.id)}<section>
-					<h2 class="mb-4 text-sm font-semibold">{item.label}</h2>
+					<h2 class="mb-4 text-sm font-semibold">
+						{#if item.landing}<a class="section-link" href={href(item.landing.href)}
+								>{item.label} <span aria-hidden="true">↗</span></a
+							>{:else}{item.label}{/if}
+					</h2>
 					{#if item.direct}<a class="text-sm underline" href={href(item.direct.href)}
 							>{item.direct.label}</a
-						>{:else}{#each item.groups as group (group.id)}<div class="mb-5">
-								<h3 class="mb-2 text-xs opacity-50">{group.label}</h3>
-								<ul class="space-y-2 text-sm">
-									{#each group.links as link (link.id)}<li>
-											<a class="hover:underline" href={href(link.href)}>{link.label}</a>
-										</li>{/each}
-								</ul>
-							</div>{/each}{/if}
+						>{:else}{#each item.groups as group (group.id)}
+							{@const headingLink = groupHeadingLink(group)}
+							{@const listedLinks = group.links.filter((link) => link.id !== headingLink?.id)}
+							<div class="mb-5">
+								<h3 class="mb-2 text-xs opacity-60">
+									{#if headingLink}<a class="group-link" href={href(headingLink.href)}
+											>{group.label} <span aria-hidden="true">↗</span></a
+										>{:else}{group.label}{/if}
+								</h3>
+								{#if listedLinks.length}<ul class="space-y-2 text-sm">
+										{#each listedLinks as link (link.id)}<li>
+												<a class="hover:underline" href={href(link.href)}>{link.label}</a>
+											</li>{/each}
+									</ul>{/if}
+							</div>
+						{/each}{/if}
 					{#if item.featured}<aside class="mt-4 rounded-lg border border-base-300 p-4">
 							<p class="text-xs opacity-60">{item.featured.kicker}</p>
 							<p class="my-3 text-2xl tracking-widest">{item.featured.artwork}</p>
@@ -265,6 +292,16 @@
 	a {
 		overflow-wrap: anywhere;
 	}
+	.section-link,
+	.group-link {
+		color: inherit;
+		text-decoration: none;
+	}
+	.section-link:hover,
+	.group-link:hover {
+		text-decoration: underline;
+		text-underline-offset: 4px;
+	}
 	.editorbar {
 		display: flex;
 		align-items: center;
@@ -273,8 +310,9 @@
 		margin: -40px -24px 0;
 		min-height: 52px;
 		padding: 8px max(24px, calc((100vw - 1360px) / 2));
-		background: var(--color-ink-2);
-		color: #fff;
+		background: var(--color-base-200);
+		color: var(--color-base-content);
+		border-bottom: 1px solid var(--color-base-300);
 		font-size: 12px;
 	}
 	.editorbar > div {
@@ -283,7 +321,7 @@
 		gap: 12px;
 	}
 	.editorbar span {
-		color: #d3ddc7;
+		color: color-mix(in srgb, var(--color-base-content) 75%, var(--color-base-200));
 	}
 	.edit-entry {
 		border: 1px solid currentColor;
@@ -292,7 +330,6 @@
 		white-space: nowrap;
 	}
 	.editorbar button {
-		color: #fff;
 		white-space: nowrap;
 	}
 	.editor-error {

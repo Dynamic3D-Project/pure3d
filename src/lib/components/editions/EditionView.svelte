@@ -521,9 +521,7 @@
 	const originalTabs: { id: OriginalTab; label: string }[] = [
 		{ id: 'description', label: 'Description' },
 		{ id: 'metadata', label: 'Metadata' },
-		{ id: 'peer-review', label: 'Peer Review' },
-		{ id: 'versions', label: 'Versions' },
-		{ id: 'printables', label: 'Printables' }
+		{ id: 'peer-review', label: 'Peer Review' }
 	];
 
 	function selectOriginalTab(tab: OriginalTab) {
@@ -1390,9 +1388,6 @@
 												<select bind:value={detailsTab}>
 													<option value="metadata">Metadata</option>
 													<option value="peer-review">Peer Review</option>
-													{#if siblingEditions.length}<option value="versions">Versions</option
-														>{/if}
-													<option value="printables">Printables</option>
 												</select>
 											</label>
 										{/if}

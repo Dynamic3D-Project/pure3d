@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>PURE3D wordmark options · Milestone 9</title>
+		<style>
+			:root {
+				--paper: #f4f1eb;
+				--paper-2: #ece7dd;
+				--ink: #141413;
+				--ink-2: #2b2a27;
+				--ink-3: #555249;
+				--forest: #293e30;
+				--signal: #c64f32;
+				font-family: 'Inter Tight', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+				color: var(--ink);
+				background: var(--paper);
+			}
+			* { box-sizing: border-box; }
+			body { margin: 0; }
+			main { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0 72px; }
+			header { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.6fr); gap: 32px; align-items: end; padding-bottom: 28px; border-bottom: 1px solid var(--ink); }
+			.kicker, .label, dt { margin: 0; font: 500 11px/1.2 ui-monospace, 'SFMono-Regular', Menlo, monospace; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); }
+			.kicker::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 10px; border-radius: 50%; background: var(--signal); vertical-align: 1px; }
+			h1 { max-width: 11ch; margin: 12px 0 0; font-family: Georgia, 'Times New Roman', serif; font-size: clamp(40px, 7vw, 76px); font-weight: 400; line-height: .96; letter-spacing: -.035em; }
+			header p, .note { margin: 0; color: var(--ink-2); font-size: 15px; line-height: 1.55; }
+			.baseline { display: grid; grid-template-columns: 160px 1fr; gap: 24px; align-items: center; padding: 24px 0; border-bottom: 1px solid color-mix(in srgb, var(--ink) 15%, transparent); }
+			.baseline img { display: block; width: 150px; height: auto; }
+			.baseline strong { display: block; margin: 4px 0 5px; font-size: 15px; }
+			.options { display: grid; gap: 18px; padding-top: 32px; }
+			.option { overflow: hidden; border-radius: 12px; background: #fbfaf6; box-shadow: 0 1px 2px rgb(20 20 19 / 7%), 0 8px 24px rgb(20 20 19 / 5%); }
+			.option-head { display: grid; grid-template-columns: 76px 1fr minmax(240px, .75fr); gap: 20px; align-items: start; padding: 22px 24px 18px; border-bottom: 1px solid rgb(20 20 19 / 10%); }
+			.number { font-family: Georgia, 'Times New Roman', serif; font-size: 34px; line-height: 1; }
+			h2 { margin: 0 0 6px; font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
+			.option-head p { margin: 0; color: var(--ink-3); font-size: 13px; line-height: 1.5; }
+			.primary { padding: 32px 24px 28px; }
+			.primary img { display: block; width: min(100%, 800px); height: auto; margin: auto; }
+			.contexts { display: grid; grid-template-columns: 1.3fr 1fr; }
+			.context { min-height: 86px; display: flex; align-items: center; padding: 20px 24px; border-top: 1px solid rgb(20 20 19 / 10%); }
+			.context + .context { border-left: 1px solid rgb(20 20 19 / 10%); }
+			.context img { display: block; width: 158px; height: auto; }
+			.context small { margin-left: auto; font: 500 10px/1 ui-monospace, 'SFMono-Regular', Menlo, monospace; color: var(--ink-3); text-transform: uppercase; letter-spacing: .08em; }
+			.context.dark { background: var(--ink); }
+			.context.dark img { filter: invert(1) sepia(.08); }
+			.context.dark small { color: #b9b4a9; }
+			.criteria { margin-top: 28px; padding: 24px; border-radius: 12px; background: var(--forest); color: var(--paper); }
+			.criteria h2 { margin-bottom: 18px; }
+			dl { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin: 0; }
+			dt { color: #b8c0b9; }
+			dd { margin: 6px 0 0; font-size: 13px; line-height: 1.45; }
+			footer { padding-top: 22px; color: var(--ink-3); font-size: 12px; line-height: 1.5; }
+			@media (max-width: 720px) {
+				main { width: min(100% - 20px, 1120px); padding-top: 28px; }
+				header, .option-head { grid-template-columns: 1fr; gap: 14px; }
+				.baseline { grid-template-columns: 100px 1fr; }
+				.baseline img { width: 96px; }
+				.number { font-size: 24px; }
+				.primary { padding: 26px 16px 22px; }
+				.contexts { grid-template-columns: 1fr; }
+				.context + .context { border-left: 0; }
+				dl { grid-template-columns: 1fr 1fr; }
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<header>
+				<div>
+					<p class="kicker">Milestone 9 · identity study</p>
+					<h1>One name, three dimensions.</h1>
+				</div>
+				<p>Three original, horizontal <strong>PURE3D</strong> wordmarks. Each is monochrome first, remains one word, and is supplied as resolution-independent vector artwork.</p>
+			</header>
+
+			<section class="baseline" aria-label="Current logo reference">
+				<img src="../../images/logo_pure3d.png" alt="Current PURE3D logo" />
+				<div>
+					<p class="label">Current asset · reference only</p>
+					<strong>Geometric sans + faceted colour D</strong>
+					<p class="note">The options retain the existing asset’s sturdy geometry and dimensional idea without carrying over its blue–green palette.</p>
+				</div>
+			</section>
+
+			<div class="options">
+				<article class="option">
+					<div class="option-head">
+						<span class="number">01</span>
+						<div><h2>Continuity</h2><p>The closest evolution: solid, compact and familiar, with the old mesh reduced to three quiet construction lines inside the D.</p></div>
+						<p>Best fit when continuity and an immediate all-black horizontal replacement matter most.</p>
+					</div>
+					<div class="primary"><img src="option-01-continuity.svg" alt="PURE3D Continuity wordmark" /></div>
+					<div class="contexts"><div class="context"><img src="option-01-continuity.svg" alt="" /><small>32 px header</small></div><div class="context dark"><img src="option-01-continuity.svg" alt="" /><small>Dark field</small></div></div>
+				</article>
+
+				<article class="option">
+					<div class="option-head">
+						<span class="number">02</span>
+						<div><h2>Strata</h2><p>Chamfered forms and one fine horizontal cut suggest layers, sections and the inspection of a three-dimensional record.</p></div>
+						<p>Most distinctive at display sizes; the silhouette remains direct and institutional.</p>
+					</div>
+					<div class="primary"><img src="option-02-strata.svg" alt="PURE3D Strata wordmark" /></div>
+					<div class="contexts"><div class="context"><img src="option-02-strata.svg" alt="" /><small>32 px header</small></div><div class="context dark"><img src="option-02-strata.svg" alt="" /><small>Dark field</small></div></div>
+				</article>
+
+				<article class="option">
+					<div class="option-head">
+						<span class="number">03</span>
+						<div><h2>Coordinate</h2><p>An open monoline system borrows from measured drawings and object documentation; square nodes make the D a profile under study.</p></div>
+						<p>Lightest and most technical, with a calm fit beside the platform’s editorial typography.</p>
+					</div>
+					<div class="primary"><img src="option-03-coordinate.svg" alt="PURE3D Coordinate wordmark" /></div>
+					<div class="contexts"><div class="context"><img src="option-03-coordinate.svg" alt="" /><small>32 px header</small></div><div class="context dark"><img src="option-03-coordinate.svg" alt="" /><small>Dark field</small></div></div>
+				</article>
+			</div>
+
+			<section class="criteria" aria-labelledby="criteria-title">
+				<h2 id="criteria-title">Shared constraints</h2>
+				<dl>
+					<div><dt>Spelling</dt><dd>Uppercase PURE3D, presented as one uninterrupted word.</dd></div>
+					<div><dt>Colour</dt><dd>Ink-only master artwork; no dependency on the former blue–green palette.</dd></div>
+					<div><dt>Output</dt><dd>Path-based SVGs with transparent backgrounds and no external fonts.</dd></div>
+					<div><dt>Use</dt><dd>Proofed here at primary, header and reversed-on-dark sizes.</dd></div>
+				</dl>
+			</section>
+			<footer>No live application assets are changed by this study. A selected direction can be optically refined and exported into production lockups after review.</footer>
+		</main>
+	</body>
+</html>

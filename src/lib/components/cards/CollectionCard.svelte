@@ -161,7 +161,7 @@
 		z-index: 0;
 		border: 1px solid var(--color-base-300);
 		border-radius: var(--radius-box);
-		background: var(--color-base-100);
+		background: var(--color-surface);
 		box-shadow: 0 2px 5px oklch(0% 0 0 / 0.04);
 		pointer-events: none;
 		transition: transform 220ms ease-out;

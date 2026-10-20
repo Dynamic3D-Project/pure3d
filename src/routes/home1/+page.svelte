@@ -123,7 +123,7 @@
 </script>
 
 <svelte:head>
-	<title>Pure 3D | Explore 3D Scholarly Editions</title>
+	<title>PURE3D | Explore 3D Scholarly Editions</title>
 	<meta
 		name="description"
 		content="PURE3D is an infrastructure for publishing, preserving, and exploring interactive 3D Scholarly Editions."
@@ -289,7 +289,7 @@
 				</div>
 				<div class="publish-body">
 					<p class="publish-lede">
-						Pure 3D provides the infrastructure and tools to publish interactive 3D research. Join
+						PURE3D provides the infrastructure and tools to publish interactive 3D research. Join
 						our growing community edition editors/authors.
 					</p>
 					<div class="publish-actions">
@@ -446,7 +446,7 @@
 				<p class="eyebrow inverse"><span></span> Editorial infrastructure</p>
 				<h2>From proposal to published edition</h2>
 				<p>
-					Pure3D provides a supportive environment for authors/editors to publish 3D scholarship,
+					PURE3D provides a supportive environment for authors/editors to publish 3D scholarship,
 					including training and mentorship, throughout the publishing process.
 				</p>
 			</div>

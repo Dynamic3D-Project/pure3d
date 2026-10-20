@@ -29,7 +29,10 @@ export function referencedMenuTypes(configs: MenuConfig[]): Set<string> {
 			include(item.direct);
 			include(item.landing);
 			include(item.featured?.link);
-			for (const group of item.groups) group.links.forEach(include);
+			for (const group of item.groups) {
+				include(group.landing);
+				group.links.forEach(include);
+			}
 		}
 	}
 	return types;
@@ -144,11 +147,12 @@ export function resolvedItems(config: MenuConfig, directory: MenuDirectory) {
 			groups: (item.direct ? [] : item.groups)
 				.map((group) => ({
 					...group,
+					landing: resolvedLink(group.landing, directory),
 					links: group.links
 						.map((link) => resolvedLink(link, directory))
 						.filter((link): link is NonNullable<typeof link> => !!link)
 				}))
-				.filter((group) => group.links.length)
+				.filter((group) => group.landing || group.links.length)
 		}))
 		.filter((item) => item.direct || item.landing || item.groups.length || item.featured);
 }

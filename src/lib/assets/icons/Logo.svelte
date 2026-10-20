@@ -2,8 +2,8 @@
 	let { class: className = '' }: { class?: string } = $props();
 </script>
 
-<span class="wm-inline {className}" aria-label="Pure 3D">
-	Pure&nbsp;<span class="wm-3">3</span><svg class="wm-d" viewBox="0 0 24 24" aria-hidden="true">
+<span class="wm-inline {className}" aria-label="PURE3D">
+	PURE<span class="wm-3">3</span><svg class="wm-d" viewBox="0 0 24 24" aria-hidden="true">
 		<path
 			d="M3 3 L15 3 C 21 3, 22 9, 22 12 C 22 15, 21 21, 15 21 L3 21 Z"
 			fill="none"

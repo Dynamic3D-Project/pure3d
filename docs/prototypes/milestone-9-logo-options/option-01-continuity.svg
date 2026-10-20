@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 180" role="img" aria-labelledby="title desc">
+	<title id="title">PURE3D — Continuity wordmark</title>
+	<desc id="desc">A bold, one-line uppercase PURE3D wordmark with a subtly faceted D.</desc>
+	<style>
+		:root { color: #141413; }
+		@media (prefers-color-scheme: dark) { :root { color: #f4f1eb; } }
+	</style>
+	<g fill="currentColor" fill-rule="evenodd">
+		<path d="M20 26h82c39 0 62 20 62 52s-23 52-62 52H58v30H20zm38 31v42h40c18 0 27-7 27-21s-9-21-27-21z" />
+		<path d="M177 26h38v79c0 21 10 31 30 31s30-10 30-31V26h38v81c0 36-25 57-68 57s-68-21-68-57z" />
+		<path d="M330 26h82c39 0 62 19 62 50 0 21-11 37-31 45l37 39h-48l-30-34h-34v34h-38zm38 31v39h40c18 0 27-6 27-20s-9-19-27-19z" />
+		<path d="M489 26h123v31h-85v20h75v30h-75v22h88v31H489z" />
+	</g>
+	<path d="M646 52c10-17 30-26 52-26 34 0 55 17 55 43 0 17-10 29-27 35 20 5 31 17 31 35 0 28-24 45-61 45-25 0-47-9-59-27l27-20c7 10 18 15 31 15 15 0 24-6 24-16 0-11-9-16-28-16h-17V93h17c16 0 24-6 24-16 0-9-8-15-20-15-12 0-22 5-29 14z" fill="currentColor" transform="translate(0 26) scale(1 .8481) translate(0 -26)" />
+	<path d="M786 38v113h30c36 0 59-23 59-57s-23-56-59-56z" fill="none" stroke="currentColor" stroke-width="24" stroke-linejoin="miter" />
+	<path d="M787 39l45 55-45 56M787 94h87M816 39v112M832 94l29-35M832 94l29 35" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="miter" opacity="0.48" />
+</svg>
