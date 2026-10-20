@@ -141,7 +141,7 @@
 <div id="admin-layout" class="flex min-h-[calc(100vh-4rem)] lg:pl-64">
 	<!-- Sidebar -->
 	<aside
-		class="fixed inset-y-0 left-0 z-40 w-64 shrink-0 transform overflow-y-auto bg-primary pt-20 text-primary-content transition-transform duration-200 lg:top-[76px] lg:translate-x-0 lg:pt-0"
+		class="fixed inset-y-0 left-0 z-40 w-64 shrink-0 transform overflow-y-auto border-r border-base-300 bg-base-200 pt-20 transition-transform duration-200 lg:top-[76px] lg:translate-x-0 lg:pt-0"
 		class:translate-x-0={sidebarOpen}
 		class:-translate-x-full={!sidebarOpen}
 	>
@@ -150,14 +150,15 @@
 			<ul class="menu w-full gap-1">
 				{#each navItems as item (item.href)}
 					<li
-						class="border-primary-content/20"
 						class:mt-1={item.separatorBefore}
 						class:border-t={item.separatorBefore}
+						class:border-base-300={item.separatorBefore}
 						class:pt-2={item.separatorBefore}
 					>
 						<a
 							href={resolve(item.href)}
-							class={`flex items-center gap-3 text-primary-content hover:bg-primary-content/10 focus-visible:outline-primary-content ${isNavActive(item.href) ? 'bg-primary-content/15' : ''}`}
+							class="flex items-center gap-3"
+							class:bg-base-300={isNavActive(item.href)}
 							class:font-semibold={isNavActive(item.href)}
 							onclick={() => (sidebarOpen = false)}
 						>
