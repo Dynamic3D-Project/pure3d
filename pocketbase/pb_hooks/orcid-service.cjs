@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- PocketBase Goja supports CommonJS, not ESM. */
 const v = require('./orcid-validation.cjs');
 const proposal = require('./proposal-service.cjs');
+const sandbox = require('./sandbox-service.cjs');
 const identityFields = ['orcid', 'orcidVerifiedAt', 'pendingOrcid'];
 const profileFields = ['nickname', 'affiliation', 'bio', 'titleRole', 'socials'];
 const proofContext = 'pure3d.orcid.proof';
@@ -319,6 +320,7 @@ function createRequest(e) {
 	const user = actor(e);
 	if (name === 'collections' && !admin(e)) deny();
 	if (name === 'editions') {
+		sandbox.rejectExternalCreate(e.record);
 		if (!checked(() => verifiedAccount(e.app, user)))
 			bad('A verified ORCID is required to author an edition');
 		const cid = e.record.getString('collection');
@@ -376,6 +378,11 @@ function updateRequest(e) {
 			if (changed(r, field))
 				bad('Membership targets are immutable; remove and add the membership instead');
 	} else {
+		if (name === 'editions' && sandbox.isSandbox(r.original())) {
+			sandbox.prepareUpdate(e);
+			return e.next();
+		}
+		if (name === 'editions') sandbox.assertNoSandboxMutation(r);
 		const access = roles(e, r.original());
 		const edition = name === 'editions';
 		const statusChanged = edition && changed(r, 'status');
@@ -520,6 +527,13 @@ function updateRequest(e) {
 
 function membershipAccess(e) {
 	const r = e.record;
+	if (e.collection.name === 'editionUsers') {
+		const edition = e.app.findRecordById('editions', r.getString('editionId'));
+		if (sandbox.isSandbox(edition))
+			throw new ForbiddenError(
+				'Private sandboxes cannot be shared or added to the editorial workflow.'
+			);
+	}
 	if (admin(e)) return;
 	actor(e);
 	if (e.collection.name === 'collectionUsers') {
@@ -554,6 +568,10 @@ function deleteRequest(e) {
 		if (!admin(e)) deny();
 	} else if (name === 'collectionUsers' || name === 'editionUsers') membershipAccess(e);
 	else {
+		if (name === 'editions' && sandbox.isSandbox(e.record)) {
+			sandbox.prepareDelete(e);
+			return e.next();
+		}
 		const access = roles(e, e.record);
 		if (!access.admin && !access.owner) deny();
 	}
@@ -610,6 +628,7 @@ function validateRecord(e) {
 			if (
 				r.getString('role') === 'author' &&
 				(r.isNew() || changed(r, 'role') || changed(r, 'userId')) &&
+				!sandbox.isSandbox(e.app.findRecordById('editions', r.getString('editionId'))) &&
 				!checked(() => verifiedAccount(e.app, e.app.findRecordById('users', uid)))
 			)
 				bad('Edition authors require a verified ORCID');

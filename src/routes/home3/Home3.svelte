@@ -78,19 +78,24 @@
 	const storySteps = [
 		{
 			kicker: 'Conceptualise',
-			title: 'Develop your interpretation.',
+			title: 'Build the narrative.',
+			description: 'A 3D scholarly edition begins with a model and a story to tell.',
 			image: '/images/landing/capture.webp',
 			alt: 'Wireframe study for conceptualising a 3D scholarly edition'
 		},
 		{
-			kicker: 'Create',
-			title: 'Create and annotate your edition.',
+			kicker: 'Implement',
+			title: 'Create the edition.',
+			description:
+				'Harnessing the affordances of interface, curate an interactive experience that details model sources, evidence and interpretation.',
 			image: '/images/landing/annotate.webp',
 			alt: 'Wireframe study for authoring a 3D scholarly edition'
 		},
 		{
 			kicker: 'Publish',
-			title: 'Revise your edition for publication.',
+			title: 'Revise from feedback.',
+			description:
+				'The two stage review process collects input on the technical and conceptual implementation.',
 			image: '/images/landing/review.webp',
 			alt: 'Wireframe study for revising a 3D scholarly edition after review'
 		}
@@ -221,6 +226,7 @@
 						<div>
 							<span class="kicker">{step.kicker}</span>
 							<h3>{step.title}</h3>
+							<p>{step.description}</p>
 						</div>
 					</li>
 				{/each}

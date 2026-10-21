@@ -293,6 +293,18 @@ routerAdd(
 	(e) => require(__hooks + '/proposal-review-service.cjs').initialize(e),
 	$apis.requireAuth()
 );
+routerAdd(
+	'POST',
+	'/api/pure3d/sandboxes',
+	(e) => require(__hooks + '/sandbox-service.cjs').create(e),
+	$apis.requireAuth('users')
+);
+routerAdd(
+	'POST',
+	'/api/pure3d/sandboxes/{sandboxId}/transfer',
+	(e) => require(__hooks + '/sandbox-service.cjs').transfer(e),
+	$apis.requireAuth('users')
+);
 
 routerAdd(
 	'GET',

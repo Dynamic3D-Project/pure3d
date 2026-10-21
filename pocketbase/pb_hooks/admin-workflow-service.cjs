@@ -61,6 +61,8 @@ function override(e) {
 	let result;
 	e.app.runInTransaction((tx) => {
 		const edition = tx.findRecordById('editions', id);
+		if (edition.getBool('isSandbox'))
+			throw new ForbiddenError('Private sandboxes cannot enter the editorial workflow.');
 		const from = edition.getString('status') || 'draft';
 		if (expectedStatus !== from)
 			throw new BadRequestError('The workflow changed. Reload before applying an intervention.');
@@ -117,6 +119,8 @@ function unpublish(e) {
 	let result;
 	e.app.runInTransaction((tx) => {
 		const edition = tx.findRecordById('editions', id);
+		if (edition.getBool('isSandbox'))
+			throw new ForbiddenError('Private sandboxes cannot enter the editorial workflow.');
 		if (edition.getString('status') !== body.expectedStatus)
 			throw new BadRequestError('The workflow changed. Reload before unpublishing.');
 		const now = new Date().toISOString();

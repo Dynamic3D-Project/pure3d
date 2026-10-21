@@ -293,6 +293,8 @@ async function main() {
 			{ name: 'mongoId', type: 'text', required: false },
 			{ name: 'title', type: 'text', required: true },
 			{ name: 'isPublished', type: 'bool', required: false },
+			{ name: 'isSandbox', type: 'bool', required: false },
+			relationField('sandboxOwner', collectionIds['users'], { cascadeDelete: true }),
 			{ name: 'pubNum', type: 'number', required: false },
 			{ name: 'thumbnail', type: 'url', required: false },
 			{

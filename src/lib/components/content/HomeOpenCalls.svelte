@@ -61,22 +61,14 @@
 						<p class="eyebrow">
 							<span class="signal" aria-hidden="true"></span> Open for proposals
 						</p>
-						<h2 id="home-open-calls-title">New calls.<br /><em>New perspectives.</em></h2>
-					</div>
-					<div class="introduction">
-						<p>Bring objects, stories and critical perspectives into a new 3D Scholarly Edition.</p>
-						<a href={resolve('/documentation/submission')}
-							>How to submit a proposal <span aria-hidden="true">↗</span></a
-						>
+						<h2 id="home-open-calls-title">Thematic Calls</h2>
 					</div>
 				</header>
 				<div class="calls-grid">
-					{#each calls as call, index (call.id)}
+					{#each calls as call (call.id)}
 						<article class="call-card">
 							<div class="card-top">
-								<span>Thematic call</span><span class="call-number"
-									>{String(index + 1).padStart(2, '0')}</span
-								>
+								<span>Thematic call</span>
 							</div>
 							<h3>{call.title}</h3>
 							{#if call.excerpt}<p class="excerpt">{call.excerpt}</p>{/if}
@@ -168,30 +160,6 @@
 		font: 500 clamp(34px, 4vw, 52px) / 1.04 var(--font-sans);
 		letter-spacing: -0.045em;
 	}
-	h2 em {
-		font-family: var(--font-serif);
-		font-weight: 400;
-		color: var(--color-vermillion-ink);
-	}
-	.introduction {
-		max-width: 340px;
-		padding-bottom: 4px;
-	}
-	.introduction p {
-		font-size: 16px;
-		line-height: 1.6;
-		color: var(--color-ink-3);
-		margin: 0 0 16px;
-	}
-	.introduction a {
-		display: inline-flex;
-		gap: 16px;
-		align-items: center;
-		min-height: 36px;
-		font-size: 13px;
-		text-underline-offset: 5px;
-		text-decoration: underline;
-	}
 	.calls-grid {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -216,11 +184,6 @@
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
 		color: var(--color-ink-3);
-	}
-	.call-number {
-		font: 400 24px/1 var(--font-serif);
-		color: var(--color-ink-4);
-		letter-spacing: -0.04em;
 	}
 	h3 {
 		max-width: 30ch;
@@ -271,6 +234,19 @@
 		font-weight: 500;
 		white-space: nowrap;
 	}
+	.card-footer button::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+	}
+	.card-footer button:focus-visible {
+		outline: none;
+	}
+	.call-card:has(button:focus-visible) {
+		outline: 2px solid var(--color-base-content);
+		outline-offset: 4px;
+	}
 	.arrow {
 		display: grid;
 		place-items: center;
@@ -283,7 +259,7 @@
 			background 0.18s,
 			color 0.18s;
 	}
-	.card-footer button:hover .arrow {
+	.call-card:hover .arrow {
 		background: var(--color-forest);
 		color: white;
 	}
@@ -343,9 +319,6 @@
 			align-items: start;
 			flex-direction: column;
 			gap: 24px;
-		}
-		.introduction {
-			max-width: 100%;
 		}
 		.calls-grid {
 			grid-template-columns: minmax(0, 1fr);

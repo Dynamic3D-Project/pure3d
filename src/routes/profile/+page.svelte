@@ -215,7 +215,11 @@
 		]);
 
 		editions = creditedEditions
-			.filter((record) => readCredits(record.credits).some((credit) => credit.userId === userId))
+			.filter(
+				(record) =>
+					!record.isSandbox &&
+					readCredits(record.credits).some((credit) => credit.userId === userId)
+			)
 			.map(mapEdition);
 
 		const editionCounts: Record<string, number> = {};
@@ -338,7 +342,6 @@
 			)
 		];
 	}
-
 </script>
 
 <div id="page">
@@ -377,7 +380,8 @@
 									onclick={startEdit}
 									aria-label="Edit profile photo"
 									title="Edit profile photo"
-								><IconPencil class="size-4" aria-hidden="true" /></button>
+									><IconPencil class="size-4" aria-hidden="true" /></button
+								>
 							{/if}
 						</div>
 						{#if isEditing}
@@ -472,8 +476,8 @@
 							onclick={() => {
 								authStore.logout();
 								void goto(resolve('/'));
-							}}
-						>Logout</button>
+							}}>Logout</button
+						>
 					</div>
 				</div>
 
@@ -519,16 +523,19 @@
 					<div class="space-y-6">
 						<div>
 							<div class="flex items-center gap-2">
-								<h3 class="text-sm font-semibold tracking-wide text-base-content/50 uppercase">Bio</h3>
+								<h3 class="text-sm font-semibold tracking-wide text-base-content/50 uppercase">
+									Bio
+								</h3>
 								<button
 									type="button"
-									class="btn btn-ghost btn-xs font-normal"
+									class="btn font-normal btn-ghost btn-xs"
 									onclick={refreshOrcidProfile}
 									disabled={isRefreshing || isEditing || !profileData.orcidVerifiedAt}
 									aria-label="Refresh from ORCID"
 									title="Refresh from ORCID"
 									aria-busy={isRefreshing}
-								>{isRefreshing ? 'Refreshing…' : 'Refresh from ORCID'}</button>
+									>{isRefreshing ? 'Refreshing…' : 'Refresh from ORCID'}</button
+								>
 							</div>
 							{#if isEditing}
 								<textarea
@@ -549,7 +556,9 @@
 					<aside class="space-y-3">
 						<div>
 							<div class="flex items-center justify-between gap-2">
-								<span class="text-xs font-semibold tracking-wide text-base-content/50 uppercase">Profile links</span>
+								<span class="text-xs font-semibold tracking-wide text-base-content/50 uppercase"
+									>Profile links</span
+								>
 							</div>
 							{#if isEditing}
 								<label for="orcid" class="mt-3 block text-xs font-medium text-base-content/60"
@@ -589,7 +598,7 @@
 									{#each socialLinks(profileData.socials) as social (social)}
 										<!-- eslint-disable svelte/no-navigation-without-resolve -- External ORCID profile URL, not an app route. -->
 										<a
-											class="link max-w-full break-all text-sm underline-offset-4"
+											class="max-w-full link text-sm break-all underline-offset-4"
 											href={socialHref(social)}
 											target="_blank"
 											rel="noreferrer"

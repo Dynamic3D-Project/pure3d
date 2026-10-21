@@ -75,7 +75,9 @@ export async function alignOrcidSchema(
 				collection.name.endsWith('Users') ||
 				field.name === 'credits' ||
 				(collection.name === 'editions' &&
-					/^(alpha|final|publication|workflowDecision|status$)/.test(field.name)) ||
+					/^(alpha|final|publication|workflowDecision|status$|isSandbox$|sandboxOwner$)/.test(
+						field.name
+					)) ||
 				(collection.name === 'editionReviews' &&
 					!['editionId', 'reviewerId', 'comment'].includes(field.name)) ||
 				(collection.name === 'reviewAssignments' &&

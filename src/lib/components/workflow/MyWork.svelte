@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SandboxIcon from '~icons/tabler/sandbox';
 	import { workflowAnchor } from '$lib/workflow/presentation';
 	import { onMount } from 'svelte';
 	import { SvelteMap } from 'svelte/reactivity';
@@ -23,11 +24,13 @@
 		collectionTitle: string;
 		thumbnail: string;
 		created: string;
+		isSandbox: boolean;
 	}
 
-	let activeTab = $state<'reviews' | 'editions'>('editions');
+	let activeTab = $state<'reviews' | 'editions' | 'sandboxes'>('editions');
 	let isLoading = $state(true);
 	let isCreating = $state(false);
+	let isCreatingSandbox = $state(false);
 	let createdDraftId = $state('');
 
 	async function startProposal() {
@@ -69,12 +72,30 @@
 		}
 	}
 
+	async function createSandbox() {
+		if (isCreatingSandbox || !authStore.appUserId) return;
+		isCreatingSandbox = true;
+		try {
+			const record = await pb.send<{ id: string }>('/api/pure3d/sandboxes', { method: 'POST' });
+			await goto(resolve('/editions/[slug]/workflow', { slug: record.id }));
+		} catch (error) {
+			toast.error(
+				error instanceof Error
+					? error.message
+					: 'Could not create your private sandbox. Please try again.'
+			);
+		} finally {
+			isCreatingSandbox = false;
+		}
+	}
+
 	// My Reviews data
 	let myAssignments = $state<(ReviewAssignment & { edition?: DashEdition })[]>([]);
 	let myReviews = $state<EditionReview[]>([]);
 
 	// My Editions data
 	let myEditions = $state<DashEdition[]>([]);
+	let mySandboxes = $state<DashEdition[]>([]);
 	let decliningId = $state('');
 	function matchingReview(assignment: ReviewAssignment) {
 		return myReviews.find(
@@ -201,7 +222,8 @@
 						status: (r.status as EditionStatus) || EditionStatus.Draft,
 						collectionTitle: col?.title || '',
 						thumbnail,
-						created: r.created
+						created: r.created,
+						isSandbox: !!r.isSandbox
 					});
 				}
 			}
@@ -221,9 +243,11 @@
 				edition: editionMap.get(r.editionId)
 			}));
 
-			myEditions = authorEditionIds
+			const authoredEditions = authorEditionIds
 				.map((id) => editionMap.get(id))
 				.filter((e): e is DashEdition => !!e);
+			myEditions = authoredEditions.filter((edition) => !edition.isSandbox);
+			mySandboxes = authoredEditions.filter((edition) => edition.isSandbox);
 		} catch (error) {
 			console.error('Error loading dashboard data:', error);
 		} finally {
@@ -246,13 +270,15 @@
 
 	async function deleteDraft(edition: DashEdition) {
 		if (edition.status !== EditionStatus.Draft) return;
-		const confirmed = confirm(`Delete draft "${edition.title}"? This cannot be undone.`);
+		const kind = edition.isSandbox ? 'private sandbox' : 'draft';
+		const confirmed = confirm(`Delete ${kind} "${edition.title}"? This cannot be undone.`);
 		if (!confirmed) return;
 
 		deletingId = edition.id;
 		try {
 			await pb.collection('editions').delete(edition.id);
 			myEditions = myEditions.filter((e) => e.id !== edition.id);
+			mySandboxes = mySandboxes.filter((e) => e.id !== edition.id);
 			toast.success(`Deleted "${edition.title}"`);
 		} catch (err) {
 			console.error('Delete failed:', err);
@@ -320,10 +346,25 @@
 		<div>
 			<h2 class="text-2xl font-bold">My Work</h2>
 		</div>
-		<button type="button" class="btn btn-primary" onclick={startProposal} disabled={isCreating}>
-			{#if isCreating}<span class="loading loading-xs loading-spinner"></span>{/if}
-			{isCreating ? 'Starting proposal…' : 'Start a proposal'}
-		</button>
+		<div class="flex flex-wrap gap-2">
+			<button
+				type="button"
+				class="btn btn-outline"
+				onclick={createSandbox}
+				disabled={isCreatingSandbox}
+			>
+				{#if isCreatingSandbox}
+					<span class="loading loading-xs loading-spinner"></span>
+				{:else}
+					<SandboxIcon class="size-5" aria-hidden="true" />
+				{/if}
+				{isCreatingSandbox ? 'Creating sandbox…' : 'New private sandbox'}
+			</button>
+			<button type="button" class="btn btn-primary" onclick={startProposal} disabled={isCreating}>
+				{#if isCreating}<span class="loading loading-xs loading-spinner"></span>{/if}
+				{isCreating ? 'Starting proposal…' : 'Start a proposal'}
+			</button>
+		</div>
 	</div>
 
 	<!-- Tabs -->
@@ -337,6 +378,17 @@
 			My Proposals & Editions
 			{#if myEditions.length > 0}
 				<span class="ml-1 badge badge-sm badge-neutral">{myEditions.length}</span>
+			{/if}
+		</button>
+		<button
+			class="tab"
+			class:tab-active={activeTab === 'sandboxes'}
+			class:font-semibold={activeTab === 'sandboxes'}
+			onclick={() => (activeTab = 'sandboxes')}
+		>
+			Private Sandboxes
+			{#if mySandboxes.length > 0}
+				<span class="ml-1 badge badge-sm badge-neutral">{mySandboxes.length}</span>
 			{/if}
 		</button>
 		<button
@@ -580,6 +632,62 @@
 										</div>{/if}
 								</div>
 							</details>
+						</article>
+					{/each}
+				</div>
+			{/if}
+		{/if}
+
+		{#if activeTab === 'sandboxes'}
+			<div class="mb-5 rounded-box bg-base-200/60 p-4 text-sm text-base-content/75">
+				Private sandboxes let you work with the full editor before a proposal is approved. They are
+				not visible publicly or to the editorial workflow, and cannot be published. When an edition
+				is approved, you can copy this work into it from the editor.
+			</div>
+			{#if mySandboxes.length === 0}
+				<div class="rounded-box border border-base-300 bg-base-100 px-5 py-10 text-center">
+					<h2 class="text-lg font-semibold">Try the editor privately</h2>
+					<p class="mx-auto mt-2 mb-5 max-w-md text-sm text-base-content/65">
+						Upload a model and create annotations, tours, and articles without submitting a
+						proposal.
+					</p>
+					<button
+						type="button"
+						class="btn btn-primary"
+						onclick={createSandbox}
+						disabled={isCreatingSandbox}
+						><SandboxIcon class="size-5" aria-hidden="true" />
+						{isCreatingSandbox ? 'Creating sandbox…' : 'New private sandbox'}</button
+					>
+				</div>
+			{:else}
+				<div class="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
+					{#each mySandboxes as sandbox (sandbox.id)}
+						<article class="ds-card flex min-w-0 flex-col p-4">
+							<div class="mb-3 flex items-start justify-between gap-3">
+								<div>
+									<span class="badge badge-outline badge-sm">Private sandbox</span>
+									<h3 class="mt-2 font-semibold break-words">
+										{sandbox.title || 'Untitled Sandbox'}
+									</h3>
+									<p class="mt-1 text-xs text-base-content/55">
+										Created {formatDate(sandbox.created)}
+									</p>
+								</div>
+								<button
+									type="button"
+									class="btn text-error btn-ghost btn-xs"
+									disabled={deletingId === sandbox.id}
+									onclick={() => deleteDraft(sandbox)}>Delete</button
+								>
+							</div>
+							<p class="mb-4 text-sm text-base-content/70">
+								Private editor work only. It cannot be reviewed or published.
+							</p>
+							<a
+								href={resolve('/editions/[slug]/workflow', { slug: sandbox.id })}
+								class="btn btn-sm btn-primary">Open editor</a
+							>
 						</article>
 					{/each}
 				</div>

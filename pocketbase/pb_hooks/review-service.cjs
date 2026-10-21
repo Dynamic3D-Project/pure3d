@@ -37,6 +37,8 @@ function request(e, action) {
 		}
 	}
 	const edition = e.app.findRecordById('editions', r.getString('editionId'));
+	if (edition.getBool('isSandbox'))
+		throw new ForbiddenError('Private sandboxes do not enter the editorial workflow.');
 	if (name === 'editionReviews' && action === 'create' && r.getInt('reviewStage') === 1) {
 		r.set('reviewRound', 0);
 		r.set('reviewStatus', 'submitted');

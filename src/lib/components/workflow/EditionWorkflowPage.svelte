@@ -73,6 +73,11 @@
 
 	let edition = $state<Edition | null>(null);
 	let editionRecord = $state<RecordModel | null>(null);
+	let isSandbox = $state(false);
+	let sandboxTargets = $state<RecordModel[]>([]);
+	let transferTargetId = $state('');
+	let isTransferring = $state(false);
+	let transferDialog: HTMLDialogElement;
 	let isLoading = $state(true);
 	let assignments = $state<ReviewAssignment[]>([]);
 	let reviews = $state<EditionReview[]>([]);
@@ -90,7 +95,7 @@
 		globalRole: authStore.globalRole,
 		collectionRole
 	});
-	let canDelete = $derived(!!edition && canDeleteEdition(roleContext));
+	let canDelete = $derived(!!edition && (isSandbox || canDeleteEdition(roleContext)));
 	let showDeleteModal = $state(false);
 	let isDeleting = $state(false);
 	let unpublishDialog: HTMLDialogElement;
@@ -282,7 +287,8 @@
 
 	// Can the author manage collaborators?
 	let canManageCollaborators = $derived(
-		isAuthor &&
+		!isSandbox &&
+			isAuthor &&
 			edition !== null &&
 			[
 				EditionStatus.Draft,
@@ -301,15 +307,16 @@
 			edition !== null &&
 			[EditionStatus.AlphaRevisions, EditionStatus.FinalRevisions].includes(edition.status)
 	);
-	let canSubmitConcept = $derived(edition?.status === EditionStatus.Draft);
+	let canSubmitConcept = $derived(edition?.status === EditionStatus.Draft && !isSandbox);
 	let canViewEdition = $derived(
 		edition !== null &&
-			![
-				EditionStatus.Draft,
-				EditionStatus.ConceptSubmitted,
-				EditionStatus.EditorialReview,
-				EditionStatus.ConceptRejected
-			].includes(edition.status)
+			(isSandbox ||
+				![
+					EditionStatus.Draft,
+					EditionStatus.ConceptSubmitted,
+					EditionStatus.EditorialReview,
+					EditionStatus.ConceptRejected
+				].includes(edition.status))
 	);
 
 	const currentWorkflowStageIndex = $derived.by(() => {
@@ -421,6 +428,7 @@
 			});
 			if (workflowDisposed) return;
 			editionRecord = edRecord;
+			isSandbox = !!edRecord.isSandbox;
 			edition = {
 				id: edRecord.id,
 				title: edRecord.dcTitle || edRecord.title || '',
@@ -607,6 +615,21 @@
 									] || 0) &&
 									r.reviewStatus === 'submitted'))
 					) || null;
+			}
+			if (isSandbox && isAuthor && authStore.appUserId) {
+				const memberships = await pb.collection('editionUsers').getFullList({
+					filter: pb.filter('userId = {:user} && role = "author"', { user: authStore.appUserId })
+				});
+				const ids = memberships.map((membership) => membership.editionId).filter(Boolean);
+				sandboxTargets = ids.length
+					? (
+							await pb.collection('editions').getList(1, 100, {
+								filter: ids.map((id) => pb.filter('id = {:id}', { id })).join(' || ')
+							})
+						).items.filter(
+							(record) => !record.isSandbox && record.status === EditionStatus.ConceptAccepted
+						)
+					: [];
 			}
 
 			// Build user lookup for display names
@@ -839,11 +862,40 @@
 			await pb.collection('editions').delete(deletedId);
 			toast.success('Edition deleted');
 			showDeleteModal = false;
-			goto(resolve('/editions'));
+			goto(resolve(isSandbox ? '/profile' : '/editions'));
 		} catch (error) {
 			console.error('Error deleting edition:', error);
 			toast.error('Failed to delete edition');
 			isDeleting = false;
+		}
+	}
+
+	async function transferSandbox() {
+		if (!edition || !isSandbox || !transferTargetId || isTransferring) return;
+		if (editionAssetsBusy || coverBusy || isSaving || effectiveSaveStatus !== 'saved') {
+			toast.error('Finish uploads and save all changes before transferring this sandbox.');
+			return;
+		}
+		isTransferring = true;
+		try {
+			if (!(await persistDraft({ showToast: false })))
+				throw new Error(saveError || 'Save the latest sandbox changes before transferring.');
+			const result = await pb.send<{ editionId: string }>(
+				`/api/pure3d/sandboxes/${edition.id}/transfer`,
+				{
+					method: 'POST',
+					body: { targetEditionId: transferTargetId, expectedUpdated: editionRecord?.updated || '' }
+				}
+			);
+			transferDialog.close();
+			toast.success(
+				'Sandbox work copied. Your private sandbox has been retained for confirmation.'
+			);
+			await goto(resolve('/editions/[slug]/workflow', { slug: result.editionId }));
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : 'Could not transfer this sandbox.');
+		} finally {
+			isTransferring = false;
 		}
 	}
 
@@ -1030,63 +1082,97 @@
 			{/if}
 
 			{#if viewMode === 'concept-form'}
-				<div class="min-w-72 flex-1 rounded-box border border-base-300 bg-base-100 px-4 py-3">
-					<div class="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
-						<div>
-							<span class="font-semibold">Workflow</span>
-							<span class="ml-2 text-base-content/60">{nextWorkflowAction}</span>
-						</div>
-						{#if editionRecord && [EditionStatus.ConceptAccepted, EditionStatus.AlphaRevisions].includes(edition.status) && (isAuthor || isAdmin || collectionRole === CollectionRole.Owner)}
+				{#if isSandbox}
+					<div class="min-w-72 flex-1 rounded-box bg-base-200 px-4 py-3">
+						<div class="flex flex-wrap items-center justify-between gap-3">
+							<div>
+								<p class="font-semibold">Private sandbox</p>
+								<p class="text-sm text-base-content/70">
+									This work is private and uses the full editor. It cannot be reviewed or published.
+								</p>
+							</div>
 							<button
 								type="button"
-								class="btn btn-primary"
-								disabled={isSaving || isSubmitting || editionAssetsBusy || coverBusy}
-								onclick={() => alphaRequestDialog.showModal()}
+								class="btn btn-sm btn-primary"
+								disabled={!sandboxTargets.length ||
+									isTransferring ||
+									editionAssetsBusy ||
+									coverBusy ||
+									isSaving ||
+									effectiveSaveStatus !== 'saved'}
+								onclick={() => transferDialog.showModal()}>Transfer to approved edition</button
 							>
-								Request Alpha Review
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="1.5"
-									class="size-4"
-									aria-hidden="true"
-								>
-									<path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-6-6 6 6-6 6" />
-								</svg>
-							</button>
-						{/if}
-						{#if edition.status !== EditionStatus.ConceptAccepted}
-							<StatusBadge status={edition.status} />
+						</div>
+						{#if !sandboxTargets.length}
+							<p class="mt-2 text-xs text-base-content/60">
+								A transfer destination appears after one of your proposals is approved and still has
+								no editor content.
+							</p>
 						{/if}
 					</div>
-					<ol class="flex items-center gap-2 overflow-x-auto pb-1">
-						{#each workflowStages as stage, index (stage.label)}
-							{@const state = workflowStageState(index)}
-							<li class="flex shrink-0 items-center gap-2">
-								<div
-									class="flex size-5 items-center justify-center rounded-full text-[10px] font-semibold"
-									class:bg-success={state === 'complete'}
-									class:text-success-content={state === 'complete'}
-									class:bg-primary={state === 'current'}
-									class:text-primary-content={state === 'current'}
-									class:bg-base-300={state === 'future'}
-									class:text-base-content={state === 'future'}
-									class:opacity-50={state === 'future'}
+				{:else}
+					<div class="min-w-72 flex-1 rounded-box border border-base-300 bg-base-100 px-4 py-3">
+						<div class="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
+							<div>
+								<span class="font-semibold">Workflow</span>
+								<span class="ml-2 text-base-content/60">{nextWorkflowAction}</span>
+							</div>
+							{#if editionRecord && [EditionStatus.ConceptAccepted, EditionStatus.AlphaRevisions].includes(edition.status) && (isAuthor || isAdmin || collectionRole === CollectionRole.Owner)}
+								<button
+									type="button"
+									class="btn btn-primary"
+									disabled={isSaving || isSubmitting || editionAssetsBusy || coverBusy}
+									onclick={() => alphaRequestDialog.showModal()}
 								>
-									{#if state === 'complete'}✓{:else}{index + 1}{/if}
-								</div>
-								<span class="text-xs whitespace-nowrap" class:opacity-50={state === 'future'}>
-									{stage.label}
-								</span>
-								{#if index < workflowStages.length - 1}
-									<span class="h-px w-6 bg-base-300"></span>
-								{/if}
-							</li>
-						{/each}
-					</ol>
-				</div>
+									Request Alpha Review
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="1.5"
+										class="size-4"
+										aria-hidden="true"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											d="M5 12h14m-6-6 6 6-6 6"
+										/>
+									</svg>
+								</button>
+							{/if}
+							{#if edition.status !== EditionStatus.ConceptAccepted}
+								<StatusBadge status={edition.status} />
+							{/if}
+						</div>
+						<ol class="flex items-center gap-2 overflow-x-auto pb-1">
+							{#each workflowStages as stage, index (stage.label)}
+								{@const state = workflowStageState(index)}
+								<li class="flex shrink-0 items-center gap-2">
+									<div
+										class="flex size-5 items-center justify-center rounded-full text-[10px] font-semibold"
+										class:bg-success={state === 'complete'}
+										class:text-success-content={state === 'complete'}
+										class:bg-primary={state === 'current'}
+										class:text-primary-content={state === 'current'}
+										class:bg-base-300={state === 'future'}
+										class:text-base-content={state === 'future'}
+										class:opacity-50={state === 'future'}
+									>
+										{#if state === 'complete'}✓{:else}{index + 1}{/if}
+									</div>
+									<span class="text-xs whitespace-nowrap" class:opacity-50={state === 'future'}>
+										{stage.label}
+									</span>
+									{#if index < workflowStages.length - 1}
+										<span class="h-px w-6 bg-base-300"></span>
+									{/if}
+								</li>
+							{/each}
+						</ol>
+					</div>
+				{/if}
 			{/if}
 
 			{#if viewMode !== 'concept-form'}
@@ -1525,7 +1611,7 @@
 													>
 														Metadata
 													</button>
-													{#if ![EditionStatus.ConceptAccepted, EditionStatus.AlphaRevisions].includes(edition.status)}<button
+													{#if !isSandbox && ![EditionStatus.ConceptAccepted, EditionStatus.AlphaRevisions].includes(edition.status)}<button
 															type="button"
 															role="tab"
 															class="tab flex-1"
@@ -1535,15 +1621,16 @@
 														>
 															Review
 														</button>{/if}
-													<button
-														type="button"
-														role="tab"
-														class="tab flex-1"
-														class:tab-active={activeFormTab === 'team'}
-														onclick={() => (activeFormTab = 'team')}
-													>
-														Team
-													</button>
+													{#if !isSandbox}<button
+															type="button"
+															role="tab"
+															class="tab flex-1"
+															class:tab-active={activeFormTab === 'team'}
+															onclick={() => (activeFormTab = 'team')}
+														>
+															Team
+														</button>
+													{/if}
 												</div>
 
 												<!-- Tab Content -->
@@ -1882,7 +1969,7 @@
 																</div>
 															{/if}
 														</div>
-													{:else if activeFormTab === 'team'}
+													{:else if !isSandbox && activeFormTab === 'team'}
 														<CollaboratorManager
 															editionId={edition.id}
 															{credits}
@@ -2237,7 +2324,7 @@
 				{/if}
 
 				<!-- Collaborator Management (status view) -->
-				{#if edition && isAuthor}
+				{#if edition && isAuthor && !isSandbox}
 					<div
 						id="collaborators"
 						class="scroll-mt-24 rounded-box border border-base-300 bg-base-100 p-6"
@@ -2262,6 +2349,55 @@
 			</div>
 		{/if}
 	{/if}
+
+	<dialog bind:this={transferDialog} class="modal" aria-labelledby="sandbox-transfer-title">
+		<div class="modal-box">
+			<h2 id="sandbox-transfer-title" class="text-lg font-semibold">Transfer sandbox work</h2>
+			<p class="mt-2 text-sm text-base-content/70">
+				This copies your editor metadata, model files, and Voyager scene into an empty approved
+				edition. The sandbox is retained so you can confirm the copy before deleting it. The approved
+				edition keeps its title, attribution, and review choice.
+			</p>
+			<label class="mt-4 block" for="sandbox-transfer-target">
+				<span class="mb-1 block text-sm font-medium">Approved edition</span>
+				<select
+					id="sandbox-transfer-target"
+					class="select-bordered select w-full"
+					bind:value={transferTargetId}
+				>
+					<option value="" disabled>Select an empty approved edition</option>
+					{#each sandboxTargets as target (target.id)}
+						<option value={target.id}>{target.dcTitle || target.title || 'Untitled Edition'}</option
+						>
+					{/each}
+				</select>
+			</label>
+			<div class="modal-action">
+				<button
+					type="button"
+					class="btn btn-outline"
+					disabled={isTransferring}
+					onclick={() => transferDialog.close()}>Cancel</button
+				>
+				<button
+					type="button"
+					class="btn btn-primary"
+					disabled={!transferTargetId ||
+						isTransferring ||
+						editionAssetsBusy ||
+						coverBusy ||
+						isSaving ||
+						effectiveSaveStatus !== 'saved'}
+					onclick={transferSandbox}
+				>
+					{isTransferring ? 'Transferring…' : 'Copy work'}
+				</button>
+			</div>
+		</div>
+		<form method="dialog" class="modal-backdrop">
+			<button aria-label="Close transfer dialog">close</button>
+		</form>
+	</dialog>
 
 	<dialog bind:this={alphaRequestDialog} class="modal" aria-label="Request Alpha Review">
 		<div class="modal-box w-11/12 max-w-2xl">
