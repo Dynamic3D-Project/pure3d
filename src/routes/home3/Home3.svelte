@@ -860,8 +860,8 @@
 	.call-plate h2 {
 		color: var(--color-panel-content);
 	}
-	.call-plate h2 :global(em) {
-		color: var(--color-hero-accent);
+	#home3 .call-plate h2 :global(em) {
+		color: var(--color-panel-content);
 	}
 	.call-plate p {
 		margin: 0;

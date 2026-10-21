@@ -459,7 +459,7 @@
 	});
 </script>
 
-<!-- The whole hero is the artwork's canvas: open space takes drag, tap and hover; text keeps its own. -->
+<!-- The whole hero is the artwork's canvas; disable text selection during interaction. -->
 <div
 	id="particle-hero"
 	bind:this={root}
@@ -659,6 +659,8 @@
 			var(--hero-ink);
 		color: var(--hero-paper);
 		touch-action: pan-y;
+		-webkit-user-select: none;
+		user-select: none;
 		cursor: grab;
 	}
 	#particle-hero:active {

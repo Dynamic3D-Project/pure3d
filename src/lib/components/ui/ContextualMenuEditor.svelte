@@ -213,6 +213,14 @@
 		changed();
 		linkDialog.close();
 	}
+	function removeLink() {
+		if (busy || !sourceLinkId || !confirm(`Remove link “${editLink.label}”?`)) return;
+		for (const entry of config.items)
+			for (const group of entry.groups)
+				group.links = group.links.filter((link) => link.id !== sourceLinkId);
+		changed();
+		linkDialog.close();
+	}
 	function openFeature(owner = item) {
 		if (busy || !owner) return;
 		selectedId = owner.id;
@@ -802,6 +810,9 @@
 						></label
 					><label>Position <input type="number" min="1" bind:value={linkPosition} /></label>{/if}
 				<div class="dialog-actions">
+					{#if sourceLinkId}
+						<button type="button" class="remove-link" onclick={removeLink}>Remove link</button>
+					{/if}
 					<button type="button" onclick={() => linkDialog.close()}>Cancel</button><button
 						type="submit">Apply</button
 					>
@@ -1151,6 +1162,10 @@
 	.dialog-actions {
 		justify-content: flex-end;
 		margin-top: 10px;
+	}
+	.dialog-actions .remove-link {
+		margin-right: auto;
+		color: var(--color-error);
 	}
 	.style-picker,
 	.type-picker {
