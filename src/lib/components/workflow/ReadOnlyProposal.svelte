@@ -3,10 +3,19 @@
 	import { pb } from '$lib/database/client';
 	import ProposalModelUploads from '$lib/components/uploads/ProposalModelUploads.svelte';
 	import ProposalQuestionnaire from '$lib/components/workflow/ProposalQuestionnaire.svelte';
-	import { MODEL_SOURCES, PROPOSAL_TYPES, isProposalLink } from '$lib/workflow/proposal';
+	import {
+		formatOpenCallDeadline,
+		MODEL_SOURCES,
+		PROPOSAL_TYPES,
+		isProposalLink
+	} from '$lib/workflow/proposal';
 	import toast from 'svelte-french-toast';
 
 	let { record }: { record: RecordModel } = $props();
+	let openCall = $derived.by(() => {
+		const value = record.proposalSnapshot?.openCall;
+		return value && typeof value.id === 'string' && typeof value.title === 'string' ? value : null;
+	});
 
 	function optionLabels(values: unknown, options: ReadonlyArray<readonly [string, string]>) {
 		return Array.isArray(values)
@@ -55,6 +64,16 @@
 					{record.title || 'Untitled edition'}
 				</p>
 			</div>
+		</div>
+		<div>
+			<h3 class="text-sm font-semibold">Thematic call</h3>
+			<p class="mt-1 rounded-lg bg-base-200/50 p-3 text-sm">
+				{#if openCall}
+					{openCall.title}{openCall.deadline
+						? ` · deadline ${formatOpenCallDeadline(openCall.deadline)}`
+						: ''}
+				{:else}General submission{/if}
+			</p>
 		</div>
 		<div>
 			<h3 class="font-semibold">Authors</h3>

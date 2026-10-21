@@ -99,6 +99,18 @@
 							My Work
 						</a>
 					</li>
+					<li class="mt-2 border-t border-base-300 pt-2">
+						<button
+							type="button"
+							class="w-full"
+							onclick={() => {
+								accountMenuOpen = false;
+								authStore.logout();
+							}}
+						>
+							Log out
+						</button>
+					</li>
 				</ul>
 			</FloatingDropdown>
 		</div>

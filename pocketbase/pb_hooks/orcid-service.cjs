@@ -332,6 +332,7 @@ function createRequest(e) {
 			bad('New editions must start as drafts');
 		if (e.record.getBool('isPublished')) bad('New editions must start as drafts');
 		e.record.set('status', 'draft');
+		proposal.validateOpenCallSelection(e.app, e.record);
 		for (const field of [
 			'publishedAt',
 			'publishedBy',
@@ -418,6 +419,7 @@ function updateRequest(e) {
 				].some((field) => changed(r, field))
 			)
 				bad('Proposal submission and file metadata are server-owned');
+			if (changed(r, 'proposalOpenCall')) proposal.validateOpenCallSelection(e.app, r);
 			if (
 				changedFields.some((field) =>
 					['proposalModelFiles', 'proposalModelAssets', 'proposalModelScenes'].includes(field)
@@ -429,9 +431,13 @@ function updateRequest(e) {
 				['draft', 'concept_rejected'].includes(r.original().getString('status')) &&
 				r.getString('status') === 'concept_submitted'
 			) {
-				proposal.validateSubmission(r);
+				proposal.validateSubmission(r, e.app);
 				r.set('proposalSubmittedAt', new Date().toISOString());
-				r.set('proposalSnapshot', { title: r.getString('title'), credits: json(r, 'credits') });
+				r.set('proposalSnapshot', {
+					title: r.getString('title'),
+					credits: json(r, 'credits'),
+					openCall: proposal.openCallSnapshot(e.app, r)
+				});
 			}
 			if (
 				changed(r, 'credits') ||

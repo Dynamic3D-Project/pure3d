@@ -13,6 +13,7 @@ import {
 	preflightPrivilegedAccounts,
 	updateOrcidJwks
 } from '../../scripts/configure-orcid';
+import { ensureOpenCalls, ensureProposalOpenCall } from '../../scripts/open-calls-schema';
 
 // Run with PB_TEST_BINARY=/absolute/path/to/pocketbase bun --no-env-file test pocketbase/tests
 // Never connects to configured app services or reads application credentials.
@@ -133,7 +134,7 @@ beforeAll(async () => {
 			'--hooksDir=' + hooks,
 			'--migrationsDir=' + join(directory, 'migrations')
 		],
-		{ env: { ORCID_ISSUER: issuer }, stdout: 'pipe', stderr: 'pipe' }
+		{ env: { ORCID_ISSUER: issuer, PATH: process.env.PATH || '' }, stdout: 'pipe', stderr: 'pipe' }
 	);
 	for (let i = 0; i < 100; i++) {
 		if (processHandle.exitCode !== null)
@@ -163,6 +164,15 @@ beforeAll(async () => {
 		oauth2: { ...orcidAuthConfig('test-client', 'test-secret', environment).oauth2, enabled: false }
 	});
 	await alignOrcidSchema(root);
+	await ensureOpenCalls(root);
+	await ensureProposalOpenCall(root);
+	console.error(
+		JSON.stringify(
+			(await root.collections.getOne('editions')).fields.find(
+				(field) => field.name === 'proposalOpenCall'
+			)
+		)
+	);
 }, 20000);
 
 afterAll(async () => {
@@ -686,6 +696,22 @@ integration(
 );
 
 integration('proposal round-trip, model groups, private files and submission locks', async () => {
+	const selectedCall = await root.collection('open_calls').create({
+		title: 'Material histories',
+		deadline: '2099-11-13 00:00:00.000Z',
+		isPublished: true
+	});
+	expect((await root.collection('open_calls').getOne(selectedCall.id)).isPublished).toBe(true);
+	expect((await author.collection('open_calls').getOne(selectedCall.id)).id).toBe(selectedCall.id);
+	const unpublishedCall = await root.collection('open_calls').create({
+		title: 'Unpublished call',
+		isPublished: false
+	});
+	const expiredCall = await root.collection('open_calls').create({
+		title: 'Expired call',
+		deadline: '2000-01-01 00:00:00.000Z',
+		isPublished: true
+	});
 	let edition = await author
 		.collection('editions')
 		.create({ title: 'Proposal round-trip', credits: [credit] });
@@ -708,12 +734,34 @@ integration('proposal round-trip, model groups, private files and submission loc
 		})
 	).rejects.toBeDefined();
 	expect((await author.collection('editions').getOne(edition.id)).status).toBe('draft');
-	await author
-		.collection('editions')
-		.update(edition.id, { ...proposalPayload(), proposalPurpose: 'Saved draft' });
+	expect(
+		await root.collection('editions').update(edition.id, { proposalOpenCall: [selectedCall.id] })
+	).toMatchObject({ proposalOpenCall: selectedCall.id });
+	await root.collection('editions').update(edition.id, { proposalOpenCall: '' });
+	try {
+		await author.collection('editions').update(edition.id, {
+			...proposalPayload(),
+			proposalPurpose: 'Saved draft',
+			proposalOpenCall: selectedCall.id
+		});
+	} catch (error) {
+		console.error(JSON.stringify((error as { response?: unknown }).response));
+		processHandle.kill();
+		await processHandle.exited;
+		console.error(await new Response(processHandle.stdout).text());
+		console.error(await new Response(processHandle.stderr).text());
+		throw error;
+	}
 	expect((await author.collection('editions').getOne(edition.id)).proposalPurpose).toBe(
 		'Saved draft'
 	);
+	expect((await author.collection('editions').getOne(edition.id)).proposalOpenCall).toBe(
+		selectedCall.id
+	);
+	for (const proposalOpenCall of [unpublishedCall.id, expiredCall.id])
+		await expect(
+			author.collection('editions').update(edition.id, { proposalOpenCall })
+		).rejects.toBeDefined();
 	const form = new FormData();
 	form.append('proposalModelFiles+', new File(['{"asset":{"version":"2.0"}}'], 'first.gltf'));
 	form.append('proposalModelAssets+', new File(['companion'], 'first.bin'));
@@ -758,8 +806,17 @@ integration('proposal round-trip, model groups, private files and submission loc
 	expect(edition.proposalSubmittedAt).toBeTruthy();
 	expect(edition.proposalSnapshot).toMatchObject({
 		title: 'Proposal round-trip',
-		credits: [credit]
+		credits: [credit],
+		openCall: {
+			id: selectedCall.id,
+			title: 'Material histories',
+			deadline: selectedCall.deadline
+		}
 	});
+	await root.collection('open_calls').update(selectedCall.id, { isPublished: false });
+	expect((await author.collection('editions').getOne(edition.id)).proposalOpenCall).toBe(
+		selectedCall.id
+	);
 	for (const client of [author, other]) {
 		for (const body of [
 			{ title: 'Locked' },
@@ -772,11 +829,36 @@ integration('proposal round-trip, model groups, private files and submission loc
 			await expect(client.collection('editions').update(edition.id, body)).rejects.toBeDefined();
 	}
 	await admin.collection('editions').update(edition.id, { status: 'editorial_review' });
+	await admin.collection('editions').update(edition.id, { status: 'concept_rejected' });
+	await author.collection('editions').update(edition.id, { status: 'draft' });
+	edition = await author
+		.collection('editions')
+		.update(edition.id, { proposalPurpose: 'Revised after the call closed.' });
+	edition = await author.collection('editions').update(edition.id, {
+		...proposalPayload(),
+		proposalPurpose: 'Revised after the call closed.',
+		status: 'concept_submitted'
+	});
+	expect(edition.proposalSnapshot.openCall).toMatchObject({
+		id: selectedCall.id,
+		title: 'Material histories'
+	});
+	await admin.collection('editions').update(edition.id, { status: 'editorial_review' });
 	await admin.collection('editions').update(edition.id, { status: 'concept_accepted' });
 	await author.collection('editions').update(edition.id, { title: 'Edition development' });
 	expect((await author.collection('editions').getOne(edition.id)).proposalSnapshot.title).toBe(
 		'Proposal round-trip'
 	);
+	const general = await author
+		.collection('editions')
+		.create({ title: 'General proposal', credits: [credit] });
+	const generalSubmitted = await author.collection('editions').update(general.id, {
+		...proposalPayload(),
+		status: 'concept_submitted'
+	});
+	expect(generalSubmitted.proposalOpenCall).toBe('');
+	expect(generalSubmitted.proposalSnapshot.openCall).toBeNull();
+	await root.collection('editions').delete(general.id);
 	await root.collection('editions').delete(edition.id);
 });
 

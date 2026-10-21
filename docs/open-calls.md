@@ -13,11 +13,27 @@ The CMS **Insert component → Open calls** picker stores record IDs, not copies
 
 Editing a record updates every placement. Unpublished or missing records do not appear publicly.
 Do not embed open calls inside another open call.
+Concurrent editor changes are protected by record-version checks. Calls referenced by pages or
+proposals cannot be deleted; unpublish a call instead, or remove its references first.
 
 The landing page automatically displays published calls immediately below the hero, in display
 order, excluding calls whose deadline has passed (UTC calendar date). Calls without a deadline stay
 visible. Each card opens the live rich-text body and example editions in a keyboard-accessible dialog.
 The section is hidden when there are no current calls or the backend is unavailable.
+
+Proposals optionally reference a call through `editions.proposalOpenCall`; an empty relation means
+**General submission**. New selections must be published and within their deadline. Submitted
+proposals retain their selected call and submission metadata after a call closes.
+
+The additive production relation migration is separate from the initial call extraction:
+
+```sh
+bun --env-file=.env scripts/migrate-proposal-open-call.ts
+bun --env-file=.env scripts/migrate-proposal-open-call.ts --apply
+```
+
+It verifies a fresh ZIP and SQLite backup before writes, retains all existing field IDs and rules,
+and reads the relation schema back without changing existing edition content.
 
 ## Production migration
 

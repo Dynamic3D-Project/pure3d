@@ -27,6 +27,7 @@ export const MODEL_SOURCES = [
 ] as const;
 
 export type ProposalData = {
+	proposalOpenCall: string;
 	proposalType: string;
 	title: string;
 	credits: Array<{ role?: string }>;
@@ -42,6 +43,23 @@ export type ProposalData = {
 	hasModelFile: boolean;
 	supportingLinks?: string[];
 };
+
+export type ProposalOpenCallSnapshot = {
+	id: string;
+	title: string;
+	deadline: string;
+};
+
+export function formatOpenCallDeadline(deadline: string): string {
+	const date = new Date(deadline);
+	if (Number.isNaN(date.getTime())) return '';
+	return new Intl.DateTimeFormat('en-GB', {
+		day: 'numeric',
+		month: 'long',
+		year: 'numeric',
+		timeZone: 'UTC'
+	}).format(date);
+}
 
 const writtenFields: Array<
 	[

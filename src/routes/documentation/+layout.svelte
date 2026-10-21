@@ -13,7 +13,10 @@
 <div id="documentation-layout" class="container mx-auto max-w-7xl px-4 py-8">
 	<div class="flex flex-col gap-8 lg:flex-row">
 		<!-- Sidebar -->
-		<nav class="shrink-0 lg:sticky lg:top-16 lg:w-64 lg:self-start">
+		<nav
+			aria-label="Publishing guide"
+			class="shrink-0 lg:sticky lg:top-[calc(var(--site-header-height,76px)+2rem)] lg:w-64 lg:self-start"
+		>
 			<!-- Mobile: horizontal scrollable tabs -->
 			<div class="flex gap-2 overflow-x-auto border-b border-base-300 pb-3 lg:hidden">
 				<a
@@ -42,7 +45,7 @@
 
 			<!-- Desktop: vertical sidebar -->
 			<div class="hidden lg:block">
-				<h2 class="mt-2 mb-5 text-2xl font-bold tracking-tight text-[#800020]">
+				<h2 class="mt-2 mb-5 text-2xl font-bold tracking-tight text-base-content">
 					Publish with us
 				</h2>
 				<ul class="w-full border-t border-base-300">

@@ -2,6 +2,7 @@
 	import type { RecordModel } from 'pocketbase';
 	import { pb } from '$lib/database/client';
 	import {
+		formatOpenCallDeadline,
 		MODEL_SOURCES,
 		PROPOSAL_AUDIENCES,
 		PROPOSAL_TYPES,
@@ -17,6 +18,10 @@
 		['proposalContextualMaterial', 'Contextual material']
 	];
 	const compactLabels = ['Purpose', 'Research argument', 'Why 3D', 'Context'];
+	let openCall = $derived.by(() => {
+		const value = record.proposalSnapshot?.openCall;
+		return value && typeof value.id === 'string' && typeof value.title === 'string' ? value : null;
+	});
 	function labels(values: unknown, options: ReadonlyArray<readonly [string, string]>) {
 		return Array.isArray(values)
 			? values.map((value) => options.find(([id]) => id === value)?.[1] || value).join(', ')
@@ -44,6 +49,16 @@
 		<div class={embedded ? 'grid grid-cols-[5rem_1fr] gap-2' : ''}>
 			<dt class="font-semibold">Type</dt>
 			<dd>{PROPOSAL_TYPES.find(([id]) => id === record.proposalType)?.[1] || 'Not provided'}</dd>
+		</div>
+		<div class={embedded ? 'grid grid-cols-[5rem_1fr] gap-2' : ''}>
+			<dt class="font-semibold">Call</dt>
+			<dd>
+				{#if openCall}
+					{openCall.title}{openCall.deadline
+						? ` · deadline ${formatOpenCallDeadline(openCall.deadline)}`
+						: ''}
+				{:else}General submission{/if}
+			</dd>
 		</div>
 		<div class={embedded ? 'grid grid-cols-[5rem_1fr] gap-2' : ''}>
 			<dt class="font-semibold">Authors</dt>

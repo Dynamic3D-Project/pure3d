@@ -39,6 +39,11 @@ accounts, and temporary databases. They exercise authorization, proposal/review/
 identity verification, configuration backup, transactional rollback, and durable feedback
 queueing. They do not connect to the configured application backend or send real email.
 
+`pocketbase/tests/open-calls.integration.test.ts` also exercises administrator call creation,
+save/reopen, publication and live page references through the real CMS hooks, including draft
+privacy, unauthorised writes, stale-save rejection, invalid references, recursive embedding
+rejection and prevention of deletion while pages or proposals still reference the call.
+
 For a separate sandbox-issuer rehearsal, set `PB_TEST_ORCID_ENVIRONMENT=sandbox` as well.
 Neither issuer fixture is a real ORCID login.
 
@@ -52,7 +57,7 @@ save/reopen journey; a mocked transaction is not proof of persistence or atomici
 There is no maintained browser journey for editor save/reopen, menu editing, autosave,
 search cancellation, or Voyager rendering. Removing their unit/source checks does not make
 those features integration-tested. The native backend suite also does not currently cover
-CMS/menu persistence or storage-dashboard HTTP behavior. Verify affected features directly
+menu persistence or storage-dashboard HTTP behavior. Verify affected features directly
 when changing them; add a focused public-entry-point regression when warranted, rather than
 recreating the deleted helper assertions.
 

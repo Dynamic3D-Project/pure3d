@@ -43,7 +43,14 @@
 	import { DraftAutosave, type SaveState } from '$lib/workflow/autosave';
 	import VoyagerPreview from '$lib/components/uploads/VoyagerPreview.svelte';
 	import CoverImageUpload from '$lib/components/uploads/CoverImageUpload.svelte';
-	import { MODEL_SOURCES, PROPOSAL_TYPES, proposalErrors, wordCount } from '$lib/workflow/proposal';
+	import {
+		formatOpenCallDeadline,
+		MODEL_SOURCES,
+		PROPOSAL_TYPES,
+		proposalErrors,
+		type ProposalOpenCallSnapshot,
+		wordCount
+	} from '$lib/workflow/proposal';
 	import {
 		metadataOptions,
 		metadataValues,
@@ -116,6 +123,9 @@
 	let conceptDcProvenance = $state('');
 	let metadataVocabulary = $state<Array<{ category?: string; name?: string; value?: string }>>([]);
 	let proposalType = $state('');
+	let proposalOpenCall = $state('');
+	let proposalOpenCalls = $state<ProposalOpenCallSnapshot[]>([]);
+	let proposalOpenCallSnapshot = $state<ProposalOpenCallSnapshot | null>(null);
 	let proposalPurpose = $state('');
 	let proposalArgument = $state('');
 	let proposalThreeDRationale = $state('');
@@ -164,6 +174,16 @@
 			.split(',')
 			.map((s) => s.trim())
 			.filter(Boolean);
+	}
+
+	function openCallSnapshot(value: unknown): ProposalOpenCallSnapshot | null {
+		if (!value || typeof value !== 'object') return null;
+		const call = (value as { openCall?: unknown }).openCall;
+		if (!call || typeof call !== 'object') return null;
+		const { id, title, deadline } = call as Partial<ProposalOpenCallSnapshot>;
+		return typeof id === 'string' && typeof title === 'string' && typeof deadline === 'string'
+			? { id, title, deadline }
+			: null;
 	}
 
 	function toggleSelection(values: string[], value: string, checked: boolean): string[] {
@@ -441,6 +461,8 @@
 			conceptDcDatePublished = edRecord.dcDatePublished || '';
 			conceptDcProvenance = edRecord.dcProvenance || '';
 			proposalType = edRecord.proposalType || '';
+			proposalOpenCall = edRecord.proposalOpenCall || '';
+			proposalOpenCallSnapshot = openCallSnapshot(edRecord.proposalSnapshot);
 			proposalPurpose = edRecord.proposalPurpose || '';
 			proposalArgument = edRecord.proposalArgument || '';
 			proposalThreeDRationale = edRecord.proposalThreeDRationale || '';
@@ -485,6 +507,18 @@
 			} catch {
 				// The editor remains usable when an optional controlled vocabulary has not been imported.
 				metadataVocabulary = [];
+			}
+			try {
+				proposalOpenCalls = await pb.collection('open_calls').getFullList({
+					filter: pb.filter('isPublished = true && (deadline = "" || deadline >= {:today})', {
+						today: `${new Date().toISOString().slice(0, 10)} 00:00:00.000Z`
+					}),
+					sort: 'order,deadline,title',
+					fields: 'id,title,deadline'
+				});
+			} catch {
+				// General submission remains available while open calls are unavailable or not yet migrated.
+				proposalOpenCalls = [];
 			}
 
 			// Initialize viewer/scene data
@@ -625,6 +659,7 @@
 			title: conceptTitle.trim(),
 			dcTitle: conceptTitle.trim(),
 			credits: readCredits(credits),
+			proposalOpenCall,
 			proposalType,
 			proposalPurpose: proposalPurpose.trim(),
 			proposalArgument: proposalArgument.trim(),
@@ -820,6 +855,7 @@
 			return;
 		}
 		const errors = proposalErrors({
+			proposalOpenCall,
 			proposalType,
 			title: conceptTitle,
 			credits,
@@ -1116,6 +1152,29 @@
 									<input class="input-bordered input w-full" bind:value={conceptTitle} required />
 								</label>
 							</div>
+							<label class="form-control">
+								<span class="label-text mb-1 font-semibold">Thematic call</span>
+								<select class="select-bordered select w-full" bind:value={proposalOpenCall}>
+									<option value="">General submission</option>
+									{#if proposalOpenCall && !proposalOpenCalls.some((call) => call.id === proposalOpenCall)}
+										<option value={proposalOpenCall}>
+											{proposalOpenCallSnapshot?.title || 'Previously selected thematic call'} (no longer
+											open)
+										</option>
+									{/if}
+									{#each proposalOpenCalls as call (call.id)}
+										<option value={call.id}>
+											{call.title}{call.deadline
+												? ` · deadline ${formatOpenCallDeadline(call.deadline)}`
+												: ''}
+										</option>
+									{/each}
+								</select>
+								<span class="label-text-alt mt-1 text-base-content/60"
+									>Select a published thematic call, or leave this as General submission. Deadlines
+									include the stated UTC calendar day.</span
+								>
+							</label>
 							<div>
 								<h2 class="font-semibold">Authors</h2>
 								<div class="mt-3">

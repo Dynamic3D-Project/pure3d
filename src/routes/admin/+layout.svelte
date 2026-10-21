@@ -25,15 +25,22 @@
 			});
 			submissionCount = result.totalItems;
 		} catch (error) {
-			if (!(error as { isAbort?: boolean }).isAbort) console.error('Could not load submission count', error);
+			if (!(error as { isAbort?: boolean }).isAbort)
+				console.error('Could not load submission count', error);
 		}
 	}
-	afterNavigate(() => { void refreshSubmissionCount(); });
+	afterNavigate(() => {
+		void refreshSubmissionCount();
+	});
 	onMount(() => {
 		if (!authStore.isAuthenticated || authStore.globalRole !== GlobalRole.Admin) return;
 		let disposed = false;
 		let unsubscribe: (() => Promise<void>) | undefined;
-		void pb.collection('editions').subscribe('*', () => { void refreshSubmissionCount(); })
+		void pb
+			.collection('editions')
+			.subscribe('*', () => {
+				void refreshSubmissionCount();
+			})
 			.then((cleanup) => {
 				if (disposed) void cleanup();
 				else unsubscribe = cleanup;
@@ -180,7 +187,10 @@
 							</svg>
 							{item.label}
 							{#if item.href === '/admin/workflow' && submissionCount > 0}
-								<span class="ml-auto badge badge-sm badge-neutral" aria-label={`${submissionCount} pending submissions`}>{submissionCount}</span>
+								<span
+									class="ml-auto badge badge-sm badge-neutral"
+									aria-label={`${submissionCount} pending submissions`}>{submissionCount}</span
+								>
 							{/if}
 						</a>
 					</li>
@@ -229,6 +239,7 @@
 				>
 					{#each contentTabs as tab (tab.label)}
 						{@const Icon = tab.icon}
+						<!-- eslint-disable svelte/no-navigation-without-resolve -- Resolve the typed route before appending its query string. -->
 						<a
 							class="flex shrink-0 items-center gap-2 rounded-md px-5 py-2.5 text-sm font-semibold transition-colors"
 							class:bg-base-100={isContentTabActive(tab)}
@@ -242,6 +253,7 @@
 							<Icon class="size-4" aria-hidden="true" />
 							{tab.label}
 						</a>
+						<!-- eslint-enable svelte/no-navigation-without-resolve -->
 					{/each}
 				</nav>
 				{#if $page.url.pathname.startsWith(resolve('/admin/pages')) || $page.url.pathname.startsWith(resolve('/admin/posts'))}

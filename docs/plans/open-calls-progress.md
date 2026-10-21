@@ -1,7 +1,8 @@
 # Open calls implementation checkpoint
 
-- Approved: first-class database records, admin management and reusable CMS component; production
-  schema/data migration authorised. No frontend release, hook deployment, commit or push authorised.
+- Approved: first-class database records, admin management, reusable CMS component and landing-page
+  section. User subsequently authorised deployment of everything and the optional thematic-call
+  proposal selector. Finalisation and production hook/frontend release are now authorised.
 - Production schema `open_calls` created and both thematic calls copied with deadlines and edition
   references. Record, permission/schema and anonymous published-read readbacks succeeded.
 - Fresh verified backup: `open-calls-before-1792587133172.zip` (PocketBase backup store; private local
@@ -17,8 +18,33 @@
   simulated client-side admin state with all API writes blocked and anonymous published-data reads.
   The list rendered both real published calls; opening the first editor showed its correct title,
   deadline and preserved edition grid. This does not verify an authenticated save journey.
-- Worker checks passed: Svelte compilation of changed components, hook syntax, focused component
-  validation assertions, diff whitespace. Scoped lint has a pre-existing admin-layout navigation
-  diagnostic. No full typecheck/build or authenticated CRUD/browser save test was run.
-- Next requires explicit authorisation: final quality gates, production hook/frontend deployments,
-  then `--apply --link-page`. Do not deploy or change the existing production page prematurely.
+- Initial worker checks passed: Svelte compilation of changed components, hook syntax, focused
+  component validation assertions and diff whitespace. Coordinator corrected the pre-existing
+  admin-layout navigation lint diagnostic; focused lint/format now pass. Final integrated
+  typecheck/build and authenticated browser journeys remain pending below.
+- Production optional `editions.proposalOpenCall` relation has been added and verified without
+  changing existing fields, permissions or record count (115). Fresh ZIP/SQLite-verified backup:
+  `proposal-open-call-before-1792589949191.zip`.
+- Worker `ses_ea152c0d2ffekbE5bUHqZGaYCe` implements proposal selection, snapshots, review display,
+  backend enforcement and focused integration coverage. Coordinator owns schema/migration scripts,
+  CMS integration coverage, final checks and deployment. Do not concurrently alter worker files.
+- Proposal code was returned, but its focused native roundtrip failed HTTP 400 on relation save.
+  The same worker is correcting this with actual response/log evidence; deployment is paused.
+  Coordinator fixed nullable deletion callback typing and the SvelteKit route/query type mismatch.
+  Fresh `bun run check` now passes with 0 errors and 6 existing warnings; focused ESLint passes.
+- CMS feature-level integration passes 19 assertions against disposable production-matched
+  PocketBase 0.40.3 (image digest `ab3f2357cce7`) through a temporary executable adapter, with real
+  admin/reader/anonymous API clients. Tests cover stale saves and referenced-call deletion guards
+  in addition to public/draft visibility, live references, writes and recursive-component rejection.
+- Independent read-only CMS security review completed; both actionable findings addressed and
+  tested. Open-call writes now require the loaded record version; page editor and page migration
+  send version headers. Calls referenced by pages or proposals cannot be deleted.
+- Homepage browser probes passed at 1440, 768, 390 and 360px: two cards, no horizontal overflow,
+  dialog opens with preserved edition grid and closes with Escape. Preview used blocked production
+  writes and simulated admin state; realtime errors are expected from that read-only harness.
+- Remote service/mounts/health rediscovered. Complete installed hook directory copied privately for
+  comparison. Production is behind local committed hooks in several unrelated areas; deploy only
+  required feature hooks/dependencies after reviewing drift, with root-owned backup and rollback.
+- Next: finish proposal feature, run integrated gates/browser checks, back up/deploy scoped hooks,
+  release frontend with the canonical local release workflow, verify live Pages, then link the Calls
+  guide to records with `scripts/migrate-open-calls.ts --apply --link-page` and verify rendering.

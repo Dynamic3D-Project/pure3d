@@ -1,4 +1,5 @@
 const proposalFields = [
+	'proposalOpenCall',
 	'proposalType',
 	'proposalPurpose',
 	'proposalArgument',
@@ -73,7 +74,54 @@ function list(record, field) {
 	const value = json(record, field);
 	return Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [];
 }
-function submissionErrors(record) {
+function openCallId(record) {
+	const value = record.get ? record.get('proposalOpenCall') : record.proposalOpenCall;
+	if (Array.isArray(value)) return typeof value[0] === 'string' ? value[0] : '';
+	return typeof value === 'string' ? value : '';
+}
+function utcCalendarDate() {
+	return new Date().toISOString().slice(0, 10);
+}
+function openCallError(app, record) {
+	const id = openCallId(record);
+	if (!id) return '';
+	const original = record.isNew && record.isNew() ? null : record.original();
+	if (original && id === openCallId(original)) return '';
+	let call;
+	try {
+		call = app.findRecordById('open_calls', id);
+	} catch {
+		return 'Select an available thematic call or General submission.';
+	}
+	const deadline = text(call, 'deadline').slice(0, 10);
+	if (!bool(call, 'isPublished') || (deadline && deadline < utcCalendarDate()))
+		return 'Select an available thematic call or General submission.';
+	return '';
+}
+function validateOpenCallSelection(app, record) {
+	const error = openCallError(app, record);
+	if (error) throw new BadRequestError(error);
+}
+function openCallSnapshot(app, record) {
+	const id = openCallId(record);
+	if (!id) return null;
+	const previous = json(record.original(), 'proposalSnapshot')?.openCall;
+	if (
+		previous &&
+		previous.id === id &&
+		typeof previous.title === 'string' &&
+		typeof previous.deadline === 'string'
+	)
+		return { id, title: previous.title, deadline: previous.deadline };
+	let call;
+	try {
+		call = app.findRecordById('open_calls', id);
+	} catch {
+		throw new BadRequestError('The selected thematic call is no longer available.');
+	}
+	return { id, title: text(call, 'title'), deadline: text(call, 'deadline') };
+}
+function submissionErrors(record, app) {
 	if (!proposalTypes.includes(text(record, 'proposalType'))) return ['Select a proposal type.'];
 	if (!text(record, 'title').trim()) return ['Title is required.'];
 	const credits = json(record, 'credits');
@@ -117,10 +165,14 @@ function submissionErrors(record) {
 			))
 	)
 		return ['Supporting links must be valid HTTP or HTTPS URLs.'];
+	if (app) {
+		const error = openCallError(app, record);
+		if (error) return [error];
+	}
 	return [];
 }
-function validateSubmission(record) {
-	const errors = submissionErrors(record);
+function validateSubmission(record, app) {
+	const errors = submissionErrors(record, app);
 	if (errors.length) throw new BadRequestError(errors[0]);
 }
 function canAuthorEditProposal(status, changedFields) {
@@ -169,6 +221,8 @@ module.exports = {
 	proposalFields,
 	submissionErrors,
 	validateSubmission,
+	validateOpenCallSelection,
+	openCallSnapshot,
 	canAuthorEditProposal,
 	syncModels
 };

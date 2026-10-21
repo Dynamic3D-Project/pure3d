@@ -3,11 +3,9 @@
 // Add --link-page only AFTER deploying the frontend and CMS hook support.
 import PocketBase from 'pocketbase';
 import { createHash } from 'node:crypto';
-import { chmod, mkdtemp } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import sanitizeHtml from 'sanitize-html';
 import { ensureOpenCalls } from './open-calls-schema';
+import { verifiedProductionBackup } from './production-backup';
 
 const args = process.argv.slice(2);
 if (args.some((arg) => !['--apply', '--link-page'].includes(arg)))
@@ -66,22 +64,7 @@ console.log(`Preflight: ${calls.length} thematic calls; ${existing.length} exist
 if (!apply) process.exit(0);
 
 // A fresh, downloaded and integrity-checked database backup is required before any schema writes.
-const backupKey = `open-calls-before-${Date.now()}.zip`;
-await pb.backups.create(backupKey);
-const backup = (await pb.backups.getFullList()).find((entry) => entry.key === backupKey);
-if (!backup || backup.size <= 0) throw new Error('Backup was not created.');
-const response = await fetch(pb.backups.getDownloadURL(await pb.files.getToken(), backupKey));
-if (!response.ok) throw new Error('Could not download backup for verification.');
-const bytes = new Uint8Array(await response.arrayBuffer());
-if (bytes.length !== backup.size) throw new Error('Backup download size mismatch.');
-const directory = await mkdtemp(join(tmpdir(), 'pure3d-open-calls-'));
-await chmod(directory, 0o700);
-const backupPath = join(directory, backupKey);
-await Bun.write(backupPath, bytes);
-await chmod(backupPath, 0o600);
-const integrity = Bun.spawnSync(['unzip', '-t', backupPath], { stdout: 'pipe', stderr: 'pipe' });
-if (integrity.exitCode !== 0) throw new Error('Backup ZIP integrity verification failed.');
-console.log(`Verified backup: ${backupKey}; private local copy: ${backupPath}`);
+await verifiedProductionBackup(pb, 'open-calls-before');
 await ensureOpenCalls(pb);
 for (const call of calls) {
 	if (!existing.some((record) => record.id === call.id))
@@ -107,7 +90,13 @@ if (args.includes('--link-page')) {
 		first = false;
 		return component;
 	});
-	await pb.collection('content').update(page.id, { body });
+	await pb.collection('content').update(
+		page.id,
+		{ body },
+		{
+			headers: { 'X-Pure3D-Content-Version': page.updated }
+		}
+	);
 	if ((await pb.collection('content').getOne(page.id)).body !== body)
 		throw new Error('Linked page readback mismatch.');
 	console.log('Source page now references live open call records.');

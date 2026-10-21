@@ -35,6 +35,10 @@
 	let mobile = $state(false);
 	let root: HTMLElement;
 	let headerHeight = $state(76);
+	$effect(() => {
+		document.documentElement.style.setProperty('--site-header-height', `${headerHeight}px`);
+		return () => document.documentElement.style.removeProperty('--site-header-height');
+	});
 	let trigger: HTMLButtonElement | null = null;
 	let editing = $state(false);
 	let previewing = $state(false);

@@ -63,7 +63,9 @@
 		isPublished = $state(false),
 		learningMaterial = $state(false),
 		learningMaterialOrder = $state(0);
-	let learningMaterialsOnly = $derived($page.url.searchParams.get('filter') === 'learning-materials');
+	let learningMaterialsOnly = $derived(
+		$page.url.searchParams.get('filter') === 'learning-materials'
+	);
 	let saving = $state(false),
 		loading = $state(true),
 		dirty = $state(false),
@@ -216,7 +218,9 @@
 				learningMaterialOrder
 			};
 			const row = selected
-				? await pb.collection('content').update(selected.id, payload)
+				? await pb.collection('content').update(selected.id, payload, {
+						headers: { 'X-Pure3D-Content-Version': selected.updated }
+					})
 				: await pb.collection('content').create(payload);
 			dirty = false;
 			await load();
@@ -317,9 +321,9 @@
 		);
 		const orderField = learningMaterialsOnly ? 'learningMaterialOrder' : 'order';
 		const positions = new Map(next.map((item, index) => [item.id, index]));
-		items = items.map((item) => positions.has(item.id)
-			? { ...item, [orderField]: positions.get(item.id) }
-			: item);
+		items = items.map((item) =>
+			positions.has(item.id) ? { ...item, [orderField]: positions.get(item.id) } : item
+		);
 		pendingOrder = { entries: next, field: orderField };
 		if (reordering) return;
 		reordering = true;
@@ -354,19 +358,25 @@
 					)
 					.map((item) => ({ ...item, depth: 0 }))
 			: kindFilter === 'page' && !query && !kind && !status
-			? orderedPages(items.filter((i) => i.kind === 'page')).map((r) => ({
-					...r.item,
-					depth: r.depth
-				}))
-			: filtered.map((item) => ({ ...item, depth: 0 }))
+				? orderedPages(items.filter((i) => i.kind === 'page')).map((r) => ({
+						...r.item,
+						depth: r.depth
+					}))
+				: filtered.map((item) => ({ ...item, depth: 0 }))
 	);
 	function reorderSiblings(item: RecordModel) {
 		const orderField = learningMaterialsOnly ? 'learningMaterialOrder' : 'order';
 		return items
-			.filter((i) => i.kind === 'page' && (learningMaterialsOnly
-				? i.learningMaterial
-				: i.parent === item.parent && i.layout === item.layout))
-			.sort((a, b) => (a[orderField] || 0) - (b[orderField] || 0) || a.title.localeCompare(b.title));
+			.filter(
+				(i) =>
+					i.kind === 'page' &&
+					(learningMaterialsOnly
+						? i.learningMaterial
+						: i.parent === item.parent && i.layout === item.layout)
+			)
+			.sort(
+				(a, b) => (a[orderField] || 0) - (b[orderField] || 0) || a.title.localeCompare(b.title)
+			);
 	}
 	function neighbor(item: RecordModel, delta: number) {
 		const siblings = reorderSiblings(item);
@@ -730,7 +740,8 @@
 				>
 			</div>
 			<p class="mb-4 text-xs opacity-50">
-				{#if learningMaterialsOnly}Learning materials · {/if}
+				{#if learningMaterialsOnly}Learning materials ·
+				{/if}
 				{filtered.length} entries · {filtered.filter((i) => !i.isPublished).length} drafts
 				{#if kindFilter === 'page' && filteredOrder}
 					· Clear filters to reorder pages.{/if}

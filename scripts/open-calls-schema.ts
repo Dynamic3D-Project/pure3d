@@ -43,3 +43,23 @@ export async function ensureOpenCalls(pb: PocketBase) {
 		deleteRule: openCallsAdminRule
 	});
 }
+
+export async function ensureProposalOpenCall(pb: PocketBase) {
+	const calls = await pb.collections.getOne('open_calls');
+	const editions = await pb.collections.getOne('editions');
+	const definition = {
+		name: 'proposalOpenCall',
+		type: 'relation',
+		collectionId: calls.id,
+		maxSelect: 1,
+		required: false,
+		cascadeDelete: false
+	};
+	const existing = editions.fields.find((field) => field.name === definition.name);
+	if (existing) {
+		if (Object.entries(definition).some(([key, value]) => existing[key] !== value))
+			throw new Error('Existing proposalOpenCall relation differs. Reconcile manually.');
+		return editions;
+	}
+	return pb.collections.update(editions.id, { fields: [...editions.fields, definition] });
+}

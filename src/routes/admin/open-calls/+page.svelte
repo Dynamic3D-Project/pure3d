@@ -100,7 +100,9 @@
 				order
 			};
 			const record = selected
-				? await pb.collection('open_calls').update(selected.id, payload)
+				? await pb.collection('open_calls').update(selected.id, payload, {
+						headers: { 'X-Pure3D-Open-Call-Version': selected.updated }
+					})
 				: await pb.collection('open_calls').create(payload);
 			dirty = false;
 			await load();
@@ -231,7 +233,7 @@
 					{#if selected}<button
 							class="btn w-full text-error btn-ghost"
 							disabled={saving}
-							onclick={() => remove(selected)}>Delete open call</button
+							onclick={() => selected && remove(selected)}>Delete open call</button
 						>{/if}
 				</aside>
 			</div>

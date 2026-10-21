@@ -411,6 +411,32 @@ function enforceContentVersion(e) {
 		e.next();
 	});
 }
+function enforceOpenCallVersion(e) {
+	const expected = e.requestInfo().headers['x_pure3d_open_call_version'];
+	e.app.runInTransaction((tx) => {
+		e.app = tx;
+		const current = tx.findRecordById('open_calls', e.record.id);
+		if (!expected || expected !== current.getString('updated'))
+			throw new BadRequestError(
+				'This open call changed. Reload before saving. Your changes have not been saved.'
+			);
+		e.next();
+	});
+}
+function deleteOpenCall(e) {
+	e.app.runInTransaction((tx) => {
+		e.app = tx;
+		if (
+			tx.findRecordsByFilter('content', 'body ~ {:id}', '', 1, 0, { id: e.record.id }).length ||
+			tx.findRecordsByFilter('editions', 'proposalOpenCall = {:id}', '', 1, 0, { id: e.record.id })
+				.length
+		)
+			throw new BadRequestError(
+				'This open call is used by a page or proposal. Unpublish it, or remove its references before deleting it.'
+			);
+		e.next();
+	});
+}
 function deleteContent(e) {
 	if (e.record.getString('layout') === 'guide' && e.record.getString('slug') === 'documentation')
 		throw new BadRequestError(
@@ -437,6 +463,8 @@ module.exports = {
 	validateMenu,
 	enforceMenuVersion,
 	enforceContentVersion,
+	enforceOpenCallVersion,
+	deleteOpenCall,
 	deleteContent,
 	deleteMedia
 };
