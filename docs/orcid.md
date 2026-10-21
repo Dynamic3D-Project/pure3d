@@ -509,8 +509,8 @@ The issue-70 target's operator-specified backend version is PocketBase **0.40.3*
 backend suite on the official native binary against disposable loopback databases, never the OVH origin:
 
 ```sh
-PB_TEST_BINARY=/ABSOLUTE/PRIVATE/PATH/pocketbase bun --no-env-file test pocketbase/tests scripts/configure-orcid.test.ts
-PB_TEST_BINARY=/ABSOLUTE/PRIVATE/PATH/pocketbase PB_TEST_ORCID_ENVIRONMENT=sandbox bun --no-env-file test pocketbase/tests scripts/configure-orcid.test.ts
+PB_TEST_BINARY=/ABSOLUTE/PRIVATE/PATH/pocketbase bun --no-env-file test pocketbase/tests
+PB_TEST_BINARY=/ABSOLUTE/PRIVATE/PATH/pocketbase PB_TEST_ORCID_ENVIRONMENT=sandbox bun --no-env-file test pocketbase/tests
 ```
 
 The integration rehearsal exercises strict rejection, missing report/admin gates, exclusive private

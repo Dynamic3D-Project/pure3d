@@ -12,6 +12,7 @@ A web platform for exploring 3D digital collections and editions in cultural her
 
 - [Quick Start](./setup/quick-start.md) - Get up and running in 3 steps
 - [Setup From Scratch](./setup/from-scratch.md) - Complete setup guide with all details
+- [Testing](./testing.md) - Feature integrations, local backend journeys, and coverage limits
 
 ### PocketBase (Backend)
 

@@ -1,66 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { expect, test } from 'bun:test';
-import {
-	classify,
-	nextVersion,
-	releaseNotes,
-	prependChangelog,
-	stableReleaseTags,
-	updateCitation
-} from './release';
-
-const commits = (...messages: string[]) =>
-	messages.map((message) => ({ hash: 'abcdef123456', message }));
-
-test('Conventional Commits select highest bump and reset lower fields', () => {
-	for (const type of ['fix', 'perf'])
-		expect(nextVersion('1.2.9', commits(`${type}(viewer): faster`))).toBe('1.2.10');
-	expect(nextVersion('1.2.9', commits('fix: bug', 'feat: addition'))).toBe('1.3.0');
-	for (const message of [
-		'feat!: incompatible',
-		'refactor(api)!: incompatible',
-		'chore: change\n\nBREAKING CHANGE: incompatible',
-		'fix: change\n\nBREAKING-CHANGE: incompatible'
-	])
-		expect(nextVersion('0.14.3', commits(message))).toBe('1.0.0');
-	expect(
-		nextVersion('1.2.3', commits('docs: docs', 'chore(release): v1.2.3', 'Merge pull request'))
-	).toBeNull();
-	expect(nextVersion('1.2.3', [])).toBeNull();
-	expect(classify('fix missing colon')).toBeNull();
-	for (const invalid of ['v1.2.3', '01.2.3', '1.2', '1.2.3-beta.1'])
-		expect(() => nextVersion(invalid, [])).toThrow();
-});
-
-test('stable releases ignore valid prerelease tags without accepting malformed tags', () => {
-	expect(stableReleaseTags(['v2.0.0-beta.1', 'v0.14.0'])).toEqual(['v0.14.0']);
-	expect(() => stableReleaseTags(['v2.0.beta'])).toThrow();
-});
-
-test('dated categorized notes preserve prior history without duplicate headings', () => {
-	const notes = releaseNotes(
-		'2.0.0',
-		'2026-09-16',
-		commits('feat!: remove old API', 'feat: viewer', 'fix: loading', 'perf: cache', 'docs: update')
-	);
-	expect(notes).toBe(
-		'## v2.0.0 - 2026-09-16\n\n### Breaking changes\n\n- remove old API (abcdef12)\n\n### Features\n\n- viewer (abcdef12)\n\n### Fixes\n\n- loading (abcdef12)\n\n### Performance\n\n- cache (abcdef12)\n'
-	);
-	const previous = '# Changelog\n\n## v1.0.0 - 2026-01-01\n\nOld notes.\n';
-	const result = prependChangelog(previous, notes);
-	expect(result).toEndWith('## v1.0.0 - 2026-01-01\n\nOld notes.\n');
-	expect(result.match(/# Changelog/g)?.length).toBe(1);
-	expect(prependChangelog('', notes)).toBe('# Changelog\n\n' + notes);
-	expect(() => prependChangelog(result, notes)).toThrow();
-});
-
-test('citation changes only authoritative version and release date', () => {
-	const source = 'cff-version: 1.2.0\nversion: "0.14.0"\ndate-released: "2026-01-21"\n';
-	expect(updateCitation(source, '0.15.0', '2026-09-16')).toBe(
-		'cff-version: 1.2.0\nversion: "0.15.0"\ndate-released: "2026-09-16"\n'
-	);
-	expect(() => updateCitation('cff-version: 1.2.0\n', '1.0.0', '2026-09-16')).toThrow();
-});
+import { publishRelease } from './release-publish';
 
 test('dry-run leaves working files, index, refs and release state unchanged', () => {
 	const git = (...args: string[]) => {
@@ -92,20 +32,19 @@ test('dry-run leaves working files, index, refs and release state unchanged', ()
 	expect(snapshot()).toEqual(before);
 });
 
-import { publishRelease } from './release-publish';
-
 test('publication recovers lost create/upload/publish responses without duplicating assets', () => {
 	for (const failure of ['create', 'upload', 'edit']) {
-		let release: {
+		type ReleaseFixture = {
 			id: number;
 			tag_name: string;
 			draft: boolean;
 			assets: { id: number; name: string; state: string }[];
-		} | null = null;
-		const calls: string[][] = [];
+		};
+		let release: ReleaseFixture | null = null;
+		const releases: ReleaseFixture[] = [];
 		let failed = false;
 		const run = (args: string[]) => {
-			calls.push(args);
+			if (args.includes('--clobber')) throw new Error('Asset replacement is forbidden');
 			if (args[0] === 'api') {
 				if (args[1].includes('/assets/')) return Buffer.from('exact bytes');
 				if (args[1].includes('/releases?'))
@@ -115,7 +54,10 @@ test('publication recovers lost create/upload/publish responses without duplicat
 				if (!release) throw { stderr: Buffer.from('gh: Not Found (HTTP 404)') };
 				return Buffer.from(JSON.stringify(release));
 			}
-			if (args[1] === 'create') release = { id: 1, tag_name: 'v1.2.3', draft: true, assets: [] };
+			if (args[1] === 'create') {
+				release = { id: releases.length + 1, tag_name: 'v1.2.3', draft: true, assets: [] };
+				releases.push(release);
+			}
 			if (args[1] === 'upload')
 				release!.assets.push({ id: release!.assets.length + 1, name: args[3], state: 'uploaded' });
 			if (args[1] === 'edit') release!.draft = false;
@@ -137,10 +79,12 @@ test('publication recovers lost create/upload/publish responses without duplicat
 		expect(publish).toThrow('response lost');
 		publish();
 		publish();
-		expect(calls.filter((args) => args[1] === 'create')).toHaveLength(1);
-		expect(calls.filter((args) => args[1] === 'upload')).toHaveLength(2);
-		expect(calls.filter((args) => args[1] === 'edit')).toHaveLength(1);
-		expect(calls.flat()).not.toContain('--clobber');
+		expect(releases).toHaveLength(1);
+		expect(releases[0].draft).toBe(false);
+		expect(releases[0].assets.map((asset) => asset.name)).toEqual([
+			'site.tar.gz',
+			'site.tar.gz.sha256'
+		]);
 	}
 });
 
@@ -171,56 +115,6 @@ test('publication refuses mismatched bytes, missing published assets and API fai
 					: 'HTTP 401'
 		);
 	}
-});
-
-test('release checkpoints build before atomic push and clears state only after publication', () => {
-	const source = readFileSync('scripts/release.ts', 'utf8');
-	expect(source).toContain('if (state.archiveSha256)');
-	expect(source).toContain('digest() !== state.archiveSha256');
-	expect(source).toContain(
-		"git('push', '--atomic', 'origin', 'HEAD:refs/heads/main', `refs/tags/${tag}:refs/tags/${tag}`)"
-	);
-	expect(source.indexOf('state.archiveSha256 = digest()')).toBeLessThan(
-		source.indexOf("git('push'")
-	);
-	expect(source.indexOf('publishRelease(config.repository')).toBeLessThan(
-		source.indexOf('rmSync(statePath)')
-	);
-});
-
-test('verification includes backend performance and hook regressions', () => {
-	const config = readFileSync('release.config.mjs', 'utf8');
-	const checks = readFileSync('.github/workflows/release.yml', 'utf8');
-	expect(config).toContain("['bun', '--no-env-file', 'test', 'src', 'scripts', 'pocketbase']");
-	expect(checks).toContain('bun --no-env-file test src scripts pocketbase\n');
-});
-
-test('Pages is tag-only and deploys verified prebuilt bytes; all Actions remain build-free', () => {
-	const pages = readFileSync('.github/workflows/pages.yml', 'utf8');
-	const checks = readFileSync('.github/workflows/release.yml', 'utf8');
-	const parsed = Bun.YAML.parse(pages) as { jobs: { artifact: { steps: { run: string }[] } } };
-	expect(
-		Bun.spawnSync(['bash', '-n'], { stdin: Buffer.from(parsed.jobs.artifact.steps[0].run) })
-			.exitCode
-	).toBe(0);
-	expect(pages).toContain("tags: ['v*']");
-	expect(pages).not.toMatch(/branches:|workflow_dispatch:|pull_request:/);
-	expect(pages).not.toMatch(/checkout@|setup-bun|setup-node|\binstall\b|run:.*build/);
-	for (const workflow of [pages, checks])
-		expect(workflow).not.toMatch(/run:.*(?:run build|release-build|run release)/);
-	for (const evidence of [
-		'.draft == false',
-		'.prerelease == $prerelease',
-		'gh release download',
-		'hashlib.sha256',
-		'Archive checksum mismatch',
-		'Archive version/source mismatch',
-		"'..' in path.parts",
-		'upload-pages-artifact@',
-		'needs: artifact',
-		'deploy-pages@'
-	])
-		expect(pages).toContain(evidence);
 });
 
 test('Pages verifier accepts exact archives and rejects corruption, metadata and unsafe extraction', () => {

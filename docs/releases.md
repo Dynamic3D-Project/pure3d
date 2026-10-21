@@ -1,7 +1,7 @@
 # Releases
 
 Releases are intentional local operations for `Dynamic3D-Project/pure3d`. Pushing `main`
-only runs read-only CI (Conventional Commit PR title, unit tests, Svelte/TypeScript checks).
+only runs read-only CI (Conventional Commit PR title, feature integration tests, Svelte/TypeScript checks).
 CI does not create releases or build. Tag pushes deploy verified prebuilt Release archives to Pages. No npm/store publisher applies
 because this is a private-package static web app.
 
@@ -40,12 +40,12 @@ and prepends UTC-dated categorized notes to `CHANGELOG.md`. Bun's lockfile has n
 field. Schema, CFF format, dependency and bundled Voyager versions are independent, not bumped.
 Existing historical versions are not fabricated into a new changelog.
 
-`release.config.mjs` lists actual local gates: Bun tests under `src`, `scripts`, and `pocketbase`
-(including backend performance/hook regressions and Docker Compose configuration tests, requiring
-Docker CLI), Svelte/TypeScript checks, the existing ORCID backend
+`release.config.mjs` lists actual local gates: feature integration tests under `src`, `scripts`,
+and `pocketbase`, Svelte/TypeScript checks, the existing ORCID backend
 readiness gate (network access only during an authorized real release), then existing production
 build and tar packaging. PocketBase binary integration tests remain separately opt-in and are
-not claimed as part of these gates. Dependencies must already be installed; no release-time install.
+not claimed as part of these gates unless `PB_TEST_BINARY` is supplied. See [Testing](testing.md)
+for the retained workflows and coverage limits. Dependencies must already be installed; no release-time install.
 The build retains organization Pages base `/pure3d` and existing public backend/asset endpoints.
 It creates `build/404.html`, `build/version.json`, and ignored `pure3d-vX.Y.Z.tar.gz`.
 The version metadata records the tested source commit before the version-only release commit;

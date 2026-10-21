@@ -162,15 +162,13 @@ Until a provider is configured, the login screen displays an explicit
 configuration message and disables sign-in instead of opening a popup that
 immediately closes. Reload the page after completing provider configuration.
 
-## Configuration Tests
+## Testing
 
 ```sh
-bun test scripts/dev-commands.test.ts
+bun --no-env-file test src scripts pocketbase
 ```
 
-These tests use `docker compose --env-file /dev/null ... config --format json`
-with synthetic production values and `make -n` for command inspection. They
-check default/custom ports, proxy targets, credential isolation, real issuer, exact OVH
-endpoints, and production `--no-deps`. Certificate commands are inspected with `make -n` only;
-tests never install a CA. They do not start or stop containers, contact services, or print
-full resolved configuration or secrets.
+The maintained suite exercises feature entry points and observable outcomes, not source text,
+configuration snapshots, or isolated helpers. See [Testing](testing.md) for scope and the
+disposable native PocketBase integration command. Backend HTTP journeys are skipped unless
+`PB_TEST_BINARY` is supplied; a passing default run does not verify those journeys.

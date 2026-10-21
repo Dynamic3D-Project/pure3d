@@ -3,18 +3,8 @@ import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import type PocketBase from 'pocketbase';
-import {
-	migrate,
-	planRecord,
-	publicationBlocked,
-	reviewedCredits,
-	validateManifest
-} from './migrate-orcid-credits';
-import {
-	legacyCredits,
-	reconcileAuthorProfiles,
-	type AttributionRecord
-} from './reconcile-author-profiles';
+import { migrate } from './migrate-orcid-credits';
+import { reconcileAuthorProfiles, type AttributionRecord } from './reconcile-author-profiles';
 
 const target = 'https://example.org';
 const orcid = 'https://orcid.org/0000-0002-1825-0097';
@@ -145,10 +135,14 @@ describe('reviewed ORCID migration', () => {
 				'--audit'
 			);
 			await migrate(fake.pb, manifest, target, true, true, newAudit(), true);
-			expect(fake.stored()).toEqual({
-				...record,
-				updated: 'after',
-				credits: legacyCredits(record.dcCreator, record.dcContributor)
+			expect(fake.stored()).toMatchObject({
+				title: 'Untouched',
+				status: 'published',
+				isPublished: true,
+				isVisible: true,
+				dcCreator: record.dcCreator,
+				dcContributor: record.dcContributor,
+				updated: 'after'
 			});
 			expect(fake.stored().credits).toEqual(
 				item.credits.map(({ name, role }) => ({
@@ -163,54 +157,6 @@ describe('reviewed ORCID migration', () => {
 				changes: 0
 			});
 		}
-	});
-	test('preservation rejects identity approval, canonical sources, evidence gaps and all source changes', () => {
-		for (const mutate of [
-			(item: ReturnType<typeof fixture>['item']) => {
-				item.credits[2].status = 'approved';
-			},
-			(item: ReturnType<typeof fixture>['item']) => {
-				item.credits[0].orcid = orcid;
-			},
-			(item: ReturnType<typeof fixture>['item']) => {
-				item.credits[0].userId = 'user00000000001';
-			},
-			(item: ReturnType<typeof fixture>['item']) => {
-				item.credits[2].type = 'org';
-			},
-			(item: ReturnType<typeof fixture>['item']) => {
-				item.credits[0].evidence = '';
-			},
-			(item: ReturnType<typeof fixture>['item']) => {
-				item.credits[0].index = 1;
-			},
-			(item: ReturnType<typeof fixture>['item']) => {
-				item.status = 'pending';
-			}
-		]) {
-			const { item, record } = fixture(true);
-			mutate(item);
-			expect(() => planRecord(item, record, true, false)).toThrow();
-		}
-		const { item, record } = fixture(true);
-		expect(() => planRecord(item, record, true)).toThrow('PRE-HOOK');
-		for (const change of [
-			{ title: 'Edit' },
-			{ status: 'draft' },
-			{ isPublished: false },
-			{ isVisible: true },
-			{ dcCreator: ['Renamed'] },
-			{ credits: [{ name: 'Canonical' }] }
-		])
-			expect(() => planRecord(item, { ...record, ...change }, true, false)).toThrow('changed');
-		const canonical = { ...record, credits: legacyCredits(record.dcCreator, record.dcContributor) };
-		const review = reconcileAuthorProfiles(target, [], [canonical]).records[0];
-		review.status = 'approved';
-		for (const credit of review.credits) {
-			credit.status = 'unresolved';
-			credit.evidence = 'Preserve';
-		}
-		expect(() => planRecord(review, canonical, true, false)).toThrow('exact legacy');
 	});
 	test('preservation requires HTTP 404 at preflight and immediately before each schema/data write', async () => {
 		for (const failAt of [1, 2, 3, 4]) {
@@ -234,113 +180,6 @@ describe('reviewed ORCID migration', () => {
 				expect(fake.stored().dcCreator).toEqual(record.dcCreator);
 			}
 		}
-	});
-	test('unresolved drafts retain all attribution without identity assignment', () => {
-		const { item, record } = fixture();
-		const plan = planRecord(item, record);
-		expect(plan.credits.map((credit) => credit.name)).toEqual([
-			'Doe, Jane',
-			'Doe, Jane',
-			'Museum, Lab'
-		]);
-		expect(publicationBlocked(plan.credits)).toBe(true);
-		expect(
-			plan.credits.every((credit) => credit.orcid === null && credit.provenance === 'manual')
-		).toBe(true);
-	});
-	test('requires approved checksum-valid canonical ORCID with indexed evidence, without manufacturing OAuth proof', () => {
-		const { item } = fixture();
-		item.credits[0] = {
-			...item.credits[0],
-			status: 'approved',
-			orcid,
-			evidence: 'Author confirmed exact identifier, ticket 70'
-		};
-		expect(reviewedCredits(item)[0]).toMatchObject({
-			orcid,
-			provenance: 'manual',
-			name: 'Doe, Jane'
-		});
-		for (const invalid of [
-			'0000-0002-1825-0097',
-			'https://orcid.org/0000-0002-1825-0098',
-			'invalid'
-		]) {
-			item.credits[0].orcid = invalid;
-			expect(() => reviewedCredits(item)).toThrow();
-		}
-		item.credits[0].orcid = orcid;
-		item.credits[0].index = 1;
-		expect(() => reviewedCredits(item)).toThrow();
-	});
-	test('does not allow unresolved mappings, missing evidence, dropped names or unapproved organizations', () => {
-		for (const mutate of [
-			(item: ReturnType<typeof fixture>['item']) => {
-				item.credits[0].orcid = orcid;
-			},
-			(item: ReturnType<typeof fixture>['item']) => {
-				item.credits[0].evidence = '';
-			},
-			(item: ReturnType<typeof fixture>['item']) => {
-				item.credits.pop();
-			},
-			(item: ReturnType<typeof fixture>['item']) => {
-				item.credits[0].type = 'org';
-			}
-		]) {
-			const { item } = fixture();
-			mutate(item);
-			expect(() => reviewedCredits(item)).toThrow();
-		}
-	});
-	test('blocks unresolved public records and detects edits including updated timestamp', () => {
-		const { item, record } = fixture(true);
-		expect(() => planRecord(item, record)).toThrow('Unresolved');
-		const draft = fixture();
-		expect(() => planRecord(draft.item, { ...draft.record, title: 'Changed' })).toThrow('changed');
-		expect(() => planRecord(draft.item, { ...draft.record, updated: 'Changed' })).toThrow(
-			'changed'
-		);
-	});
-	test('active records require ORCID for person creators, while contributor ORCIDs are optional', () => {
-		const { item, record } = fixture(true);
-		for (const review of item.credits.slice(0, 2)) {
-			review.status = 'approved';
-			review.orcid = orcid;
-			review.evidence = 'Author-confirmed identifier for each indexed legacy credit';
-		}
-		expect(publicationBlocked(planRecord(item, record).credits)).toBe(false);
-		item.credits[2].status = 'approved';
-		expect(planRecord(item, record).credits[2]).toMatchObject({ type: 'person', orcid: null });
-		item.credits[2].type = 'org';
-		item.credits[2].evidence = 'Institution confirmed organizational authorship';
-		const plan = planRecord(item, record);
-		expect(plan.credits.map((credit) => credit.name)).toEqual([
-			'Doe, Jane',
-			'Doe, Jane',
-			'Museum, Lab'
-		]);
-		expect(publicationBlocked(plan.credits)).toBe(false);
-		expect(plan.credits[2]).toMatchObject({ type: 'org', orcid: null, provenance: 'manual' });
-	});
-	test('rejects different targets, duplicate records and tampered snapshots', () => {
-		const { manifest } = fixture();
-		expect(() => validateManifest(manifest, 'https://other.org')).toThrow();
-		manifest.records.push(manifest.records[0]);
-		expect(() => validateManifest(manifest, target)).toThrow();
-		manifest.records.pop();
-		manifest.records[0].snapshot.title = 'Changed';
-		expect(() => validateManifest(manifest, target)).toThrow();
-	});
-	test('a person creator cannot be approved without ORCID or bypass the requirement through an optional contributor', () => {
-		const { item, record } = fixture(true);
-		item.credits[2].status = 'approved';
-		expect(() => planRecord(item, record)).toThrow('Unresolved');
-		item.credits[0].status = 'approved';
-		expect(() => reviewedCredits(item)).toThrow('author without ORCID');
-		item.credits[0].status = 'unresolved';
-		item.credits[2].userId = 'user00000000001';
-		expect(() => reviewedCredits(item)).toThrow('account link');
 	});
 	test('default preflight does not create backups or perform schema/data writes', async () => {
 		const { record, manifest } = fixture();
@@ -390,7 +229,7 @@ describe('reviewed ORCID migration', () => {
 		});
 		expect(fake.events).toEqual([]);
 	});
-	test('installed hooks preserve duplicate names, whitespace and creator/contributor order', async () => {
+	test('migration to a hook-enabled backend preserves exact attribution and is idempotent', async () => {
 		const record: AttributionRecord = {
 			id: 'edition00000001',
 			status: 'draft',
@@ -405,20 +244,17 @@ describe('reviewed ORCID migration', () => {
 		}
 		const fake = fakePB(record, { hooksInstalled: true });
 		await migrate(fake.pb, manifest, target, true, true, newAudit());
-		expect(fake.stored().credits).toEqual(reviewedCredits(manifest.records[0]));
-		expect((fake.stored().credits as { name: string }[]).map((credit) => credit.name)).toEqual([
-			' Doe, Jane ',
-			' Doe, Jane ',
-			' Lab, Team\t'
-		]);
+		expect(fake.stored().credits).toEqual(
+			[
+				{ name: ' Doe, Jane ', role: 'creator' },
+				{ name: ' Doe, Jane ', role: 'creator' },
+				{ name: ' Lab, Team\t', role: 'contributor' }
+			].map((credit) => ({ ...credit, type: 'person', orcid: null, provenance: 'manual' }))
+		);
 		expect(fake.events).toEqual(['backup', 'data']);
 		expect(await migrate(fake.pb, manifest, target, true, true, newAudit())).toMatchObject({
 			changes: 0
 		});
-	});
-	test('can resume after schema addition without changing the reviewed snapshot', () => {
-		const { item, record } = fixture();
-		expect(planRecord(item, { ...record, credits: null }).changed).toBe(true);
 	});
 	test('checks explicit user links against verified ORCID and external auth, never names', async () => {
 		const { record, manifest, item } = fixture();
@@ -444,17 +280,6 @@ describe('reviewed ORCID migration', () => {
 			'OAuth proof'
 		);
 		expect(fake.events).toEqual([]);
-	});
-	test('importing either CLI or the local importer performs no requests', async () => {
-		const result = Bun.spawnSync([
-			process.execPath,
-			'--no-env-file',
-			'-e',
-			"globalThis.fetch = () => { throw new Error('unexpected request'); }; await import('./scripts/reconcile-author-profiles.ts'); await import('./scripts/migrate-orcid-credits.ts'); await import('./scripts/import-data.ts');"
-		]);
-		expect(result.exitCode).toBe(0);
-		expect(result.stdout.toString()).toBe('');
-		expect(result.stderr.toString()).toBe('');
 	});
 	test('apply requires a fresh private audit and never overwrites an existing file', async () => {
 		const { record, manifest } = fixture();

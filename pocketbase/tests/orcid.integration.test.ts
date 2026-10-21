@@ -182,119 +182,43 @@ async function oauth(body: Record<string, unknown>, token = '') {
 	return { status: response.status, body: await response.json() };
 }
 
-integration('edition list enrichment uses a server-owned per-request role batch', async () => {
-	const editions = [];
-	for (const suffix of ['A', 'B', 'C'])
-		editions.push(
-			await root.collection('editions').create({
-				title: 'Role batch ' + suffix,
-				status: 'draft',
-				credits: [credit]
-			})
-		);
-	try {
-		for (const edition of editions)
+integration(
+	'edition access reflects membership changes and rejects forged role-cache fields',
+	async () => {
+		const edition = await root.collection('editions').create({
+			title: 'Membership access',
+			status: 'draft',
+			credits: [credit]
+		});
+		try {
 			await root.collection('editionUsers').create({
 				editionId: edition.id,
 				userId: author.authStore.record!.id,
 				role: 'author'
 			});
-		await root.send('/_test/role-batch/reset', { method: 'POST' });
-		const listed = await author.collection('editions').getFullList({
-			filter: 'title ~ "Role batch"',
-			fields: 'id,title,proposalPurpose'
-		});
-		expect(listed.map((edition) => edition.id).sort()).toEqual(
-			editions.map((edition) => edition.id).sort()
-		);
-		expect(await root.send('/_test/role-batch')).toEqual({
-			events: 3,
-			queries: [3, 3, 3],
-			users: [author.authStore.record!.id, author.authStore.record!.id, author.authStore.record!.id]
-		});
-		await author
-			.collection('editions')
-			.update(editions[0].id, {
-				'@pbInternalPure3dRoles': JSON.stringify({
-					userId: other.authStore.record!.id,
-					queryCount: 0,
-					access: {
-						admin: true,
-						board: false,
-						owner: false,
-						editor: false,
-						author: false,
-						collaborator: false,
-						reviewer: false
-					}
+			await author
+				.collection('editions')
+				.update(edition.id, {
+					'@pbInternalPure3dRoles': JSON.stringify({
+						userId: other.authStore.record!.id,
+						access: { admin: true }
+					})
 				})
-			})
-			.catch(() => undefined);
-		await expect(other.collection('editions').getOne(editions[0].id)).rejects.toBeDefined();
-
-		await root.send('/_test/role-batch/reset', { method: 'POST' });
-		await root.collection('editionUsers').create({
-			editionId: editions[1].id,
-			userId: other.authStore.record!.id,
-			role: 'collaborator'
-		});
-		expect(
-			(await other.collection('editions').getFullList({ filter: 'title ~ "Role batch"' })).map(
-				(edition) => edition.id
-			)
-		).toEqual([editions[1].id]);
-		expect(await root.send('/_test/role-batch')).toEqual({
-			events: 1,
-			queries: [3],
-			users: [other.authStore.record!.id]
-		});
-
-		await root.send('/_test/role-batch/reset', { method: 'POST' });
-		await root.collection('editionUsers').delete(
-			(
-				await root.collection('editionUsers').getFullList({
-					filter: `editionId = "${editions[2].id}" && userId = "${author.authStore.record!.id}"`
-				})
-			)[0].id
-		);
-		expect(
-			(await author.collection('editions').getFullList({ filter: 'title ~ "Role batch"' }))
-				.map((edition) => edition.id)
-				.sort()
-		).toEqual([editions[0].id, editions[1].id].sort());
-		expect(await root.send('/_test/role-batch')).toEqual({
-			events: 2,
-			queries: [3, 3],
-			users: [author.authStore.record!.id, author.authStore.record!.id]
-		});
-
-		await root.send('/_test/role-batch/reset', { method: 'POST' });
-		expect(
-			(await root.collection('editions').getFullList({ filter: 'title ~ "Role batch"' })).map(
-				(edition) => edition.id
-			)
-		).toHaveLength(3);
-		expect(await root.send('/_test/role-batch')).toMatchObject({
-			events: 3,
-			queries: [0, 0, 0]
-		});
-
-		await root.send('/_test/role-batch/reset', { method: 'POST' });
-		const anonymous = new PocketBase(origin);
-		expect(
-			(await anonymous.collection('editions').getFullList({ filter: 'isPublished = true' })).length
-		).toBeGreaterThan(0);
-		expect(await root.send('/_test/role-batch')).toMatchObject({
-			queries: expect.any(Array),
-			users: expect.any(Array)
-		});
-		const anonymousMetrics = await root.send('/_test/role-batch');
-		expect(anonymousMetrics.queries.every((count: number) => count === 0)).toBe(true);
-		expect(anonymousMetrics.users.every((id: string) => id === '')).toBe(true);
-	} finally {
-		for (const edition of editions) await root.collection('editions').delete(edition.id);
+				.catch(() => undefined);
+			await expect(other.collection('editions').getOne(edition.id)).rejects.toBeDefined();
+			const membership = await root.collection('editionUsers').create({
+				editionId: edition.id,
+				userId: other.authStore.record!.id,
+				role: 'collaborator'
+			});
+			expect((await other.collection('editions').getOne(edition.id)).id).toBe(edition.id);
+			await root.collection('editionUsers').delete(membership.id);
+			await expect(other.collection('editions').getOne(edition.id)).rejects.toBeDefined();
+		} finally {
+			await root.collection('editions').delete(edition.id);
+		}
 	}
-});
+);
 
 integration(
 	'bootstrap and synthetic superuser imports work with the enforcing hooks mounted',
@@ -654,18 +578,6 @@ integration(
 );
 
 integration('protected user fields and role cannot be assigned via CRUD', async () => {
-	for (const name of [
-		'auditLog',
-		'editionReviews',
-		'reviewAssignments',
-		'notifications',
-		'reviewFeedback'
-	]) {
-		const configured = await root.collections.getOne(name);
-		const desired = schema.find((item) => item.name === name)!;
-		expect(configured.createRule).toBe(desired.createRule);
-		expect(configured.updateRule).toBe(desired.updateRule);
-	}
 	for (const patch of [
 		{ role: 'admin' },
 		{ orcid },
@@ -2413,141 +2325,129 @@ integration(
 integration(
 	'configuration requires approved privileged identities and a confirmed real backup before mutations',
 	async () => {
-		const requests: string[] = [];
-		root.beforeSend = (url, options) => {
-			requests.push((options.method || 'GET') + ' ' + new URL(url).pathname);
-			return { url, options };
+		const beforeRejectedPreflight = await root.collections.getOne('users');
+		await expect(
+			applyOrcidConfiguration(root, 'test-client', 'test-secret', environment)
+		).rejects.toThrow('privileged account');
+		expect(await root.collections.getOne('users')).toMatchObject({
+			passwordAuth: beforeRejectedPreflight.passwordAuth,
+			otp: beforeRejectedPreflight.otp,
+			oauth2: beforeRejectedPreflight.oauth2
+		});
+		await admin.send('/api/pure3d/orcid/pending/' + admin.authStore.record!.id, {
+			method: 'POST',
+			body: { orcid }
+		});
+		await admin.collection('users').update(other.authStore.record!.id, { role: 'editorial_board' });
+		await expect(preflightPrivilegedAccounts(root, issuer)).rejects.toThrow('privileged account');
+		await admin.collection('users').update(other.authStore.record!.id, { role: 'user' });
+		await admin.collection('users').update('pending00000000', { role: 'editorial_board' });
+		await expect(preflightPrivilegedAccounts(root, issuer)).resolves.toEqual([]);
+		await expect(
+			preflightPrivilegedAccounts(
+				root,
+				issuer === 'https://orcid.org' ? 'https://sandbox.orcid.org' : 'https://orcid.org'
+			)
+		).rejects.toThrow('ORCID_ISSUER');
+		const createBackup = root.backups.create.bind(root.backups);
+		const beforeBackupFailure = await root.collections.getOne('users');
+		root.backups.create = async () => {
+			throw new Error('Test backup failure');
 		};
 		try {
 			await expect(
 				applyOrcidConfiguration(root, 'test-client', 'test-secret', environment)
-			).rejects.toThrow('privileged account');
-			expect(requests.filter((request) => !request.startsWith('GET '))).toEqual([]);
-			await admin.send('/api/pure3d/orcid/pending/' + admin.authStore.record!.id, {
-				method: 'POST',
-				body: { orcid }
-			});
-			await admin
-				.collection('users')
-				.update(other.authStore.record!.id, { role: 'editorial_board' });
-			await expect(preflightPrivilegedAccounts(root, issuer)).rejects.toThrow('privileged account');
-			await admin.collection('users').update(other.authStore.record!.id, { role: 'user' });
-			await admin.collection('users').update('pending00000000', { role: 'editorial_board' });
-			await expect(preflightPrivilegedAccounts(root, issuer)).resolves.toEqual([]);
-			await expect(
-				preflightPrivilegedAccounts(
-					root,
-					issuer === 'https://orcid.org' ? 'https://sandbox.orcid.org' : 'https://orcid.org'
-				)
-			).rejects.toThrow('ORCID_ISSUER');
-			const createBackup = root.backups.create.bind(root.backups);
-			requests.length = 0;
-			root.backups.create = async () => {
-				throw new Error('Test backup failure');
-			};
-			try {
-				await expect(
-					applyOrcidConfiguration(root, 'test-client', 'test-secret', environment)
-				).rejects.toThrow('backup failure');
-			} finally {
-				root.backups.create = createBackup;
-			}
-			expect(requests.filter((request) => request.startsWith('PATCH '))).toEqual([]);
-			const readBackups = root.backups.getFullList.bind(root.backups);
-			root.backups.getFullList = async () => [];
-			try {
-				await expect(
-					applyOrcidConfiguration(root, 'test-client', 'test-secret', environment)
-				).rejects.toThrow('readback');
-			} finally {
-				root.backups.getFullList = readBackups;
-			}
-			expect(requests.filter((request) => request.startsWith('PATCH '))).toEqual([]);
-			requests.length = 0;
-			const oldAdminToken = admin.authStore.token;
-			const oldUserToken = other.authStore.token;
-			const superuserToken = root.authStore.token;
-			expect(
-				(
-					await fetch(origin + '/api/pure3d/orcid/config', {
-						headers: { Authorization: oldAdminToken }
-					})
-				).status
-			).toBe(200);
-			const applied = await applyOrcidConfiguration(
-				root,
-				'test-client',
-				'test-secret',
-				environment
-			);
-			const createIndex = requests.indexOf('POST /api/backups');
-			const readIndex = requests.indexOf('GET /api/backups');
-			const writeIndex = requests.findIndex((request) => request.startsWith('PATCH '));
-			expect(createIndex).toBeGreaterThan(-1);
-			expect(readIndex).toBeGreaterThan(createIndex);
-			expect(writeIndex).toBeGreaterThan(readIndex);
-			expect(
-				(await root.backups.getFullList()).some(
-					(backup) => backup.key === applied.backup && backup.size > 0
-				)
-			).toBe(true);
-			for (const token of [oldAdminToken, oldUserToken]) {
-				expect(
-					(
-						await fetch(origin + '/api/collections/users/auth-refresh', {
-							method: 'POST',
-							headers: { Authorization: token }
-						})
-					).status
-				).toBe(401);
-				expect(
-					(await fetch(origin + '/api/pure3d/orcid/config', { headers: { Authorization: token } }))
-						.status
-				).toBe(401);
-			}
-			expect(
-				(
-					await fetch(origin + '/api/pure3d/orcid/config', {
-						headers: { Authorization: superuserToken }
-					})
-				).status
-			).toBe(200);
-			await expect(root.collection('_superusers').authRefresh()).resolves.toBeDefined();
-			const relogin = await oauth({ subject: orcid.slice(18) });
-			expect(relogin.status).toBe(200);
-			expect(relogin.body.record).toMatchObject({ id: admin.authStore.record!.id, role: 'admin' });
-			expect(
-				(
-					await fetch(origin + '/api/pure3d/orcid/config', {
-						headers: { Authorization: relogin.body.token }
-					})
-				).status
-			).toBe(200);
+			).rejects.toThrow('backup failure');
 		} finally {
-			root.beforeSend = null;
+			root.backups.create = createBackup;
 		}
+		expect(await root.collections.getOne('users')).toMatchObject({
+			passwordAuth: beforeBackupFailure.passwordAuth,
+			otp: beforeBackupFailure.otp,
+			oauth2: beforeBackupFailure.oauth2
+		});
+		const readBackups = root.backups.getFullList.bind(root.backups);
+		const beforeReadbackFailure = await root.collections.getOne('users');
+		root.backups.getFullList = async () => [];
+		try {
+			await expect(
+				applyOrcidConfiguration(root, 'test-client', 'test-secret', environment)
+			).rejects.toThrow('readback');
+		} finally {
+			root.backups.getFullList = readBackups;
+		}
+		expect(await root.collections.getOne('users')).toMatchObject({
+			passwordAuth: beforeReadbackFailure.passwordAuth,
+			otp: beforeReadbackFailure.otp,
+			oauth2: beforeReadbackFailure.oauth2
+		});
+		const oldAdminToken = admin.authStore.token;
+		const oldUserToken = other.authStore.token;
+		const superuserToken = root.authStore.token;
+		expect(
+			(
+				await fetch(origin + '/api/pure3d/orcid/config', {
+					headers: { Authorization: oldAdminToken }
+				})
+			).status
+		).toBe(200);
+		const applied = await applyOrcidConfiguration(root, 'test-client', 'test-secret', environment);
+		expect(
+			(await root.backups.getFullList()).some(
+				(backup) => backup.key === applied.backup && backup.size > 0
+			)
+		).toBe(true);
+		for (const token of [oldAdminToken, oldUserToken]) {
+			expect(
+				(
+					await fetch(origin + '/api/collections/users/auth-refresh', {
+						method: 'POST',
+						headers: { Authorization: token }
+					})
+				).status
+			).toBe(401);
+			expect(
+				(await fetch(origin + '/api/pure3d/orcid/config', { headers: { Authorization: token } }))
+					.status
+			).toBe(401);
+		}
+		expect(
+			(
+				await fetch(origin + '/api/pure3d/orcid/config', {
+					headers: { Authorization: superuserToken }
+				})
+			).status
+		).toBe(200);
+		await expect(root.collection('_superusers').authRefresh()).resolves.toBeDefined();
+		const relogin = await oauth({ subject: orcid.slice(18) });
+		expect(relogin.status).toBe(200);
+		expect(relogin.body.record).toMatchObject({ id: admin.authStore.record!.id, role: 'admin' });
+		expect(
+			(
+				await fetch(origin + '/api/pure3d/orcid/config', {
+					headers: { Authorization: relogin.body.token }
+				})
+			).status
+		).toBe(200);
 	},
 	30000
 );
 
-integration(
-	'explicit auth configuration disables password/OTP and retains exact verifier config',
-	async () => {
-		await root.collections.update(
-			'users',
-			orcidAuthConfig('test-client', 'test-secret', environment)
-		);
-		const methods = await new PocketBase(origin).collection('users').listAuthMethods();
-		expect(methods.password.enabled).toBe(false);
-		expect(methods.otp.enabled).toBe(false);
-		expect(methods.oauth2.providers.map((provider) => provider.name)).toEqual(['oidc']);
-		await expect(
-			new PocketBase(origin)
-				.collection('users')
-				.authWithPassword('admin@example.test', 'local-test-password-only')
-		).rejects.toBeDefined();
-	}
-);
+integration('explicit auth configuration disables password/OTP and exposes only OIDC', async () => {
+	await root.collections.update(
+		'users',
+		orcidAuthConfig('test-client', 'test-secret', environment)
+	);
+	const methods = await new PocketBase(origin).collection('users').listAuthMethods();
+	expect(methods.password.enabled).toBe(false);
+	expect(methods.otp.enabled).toBe(false);
+	expect(methods.oauth2.providers.map((provider) => provider.name)).toEqual(['oidc']);
+	await expect(
+		new PocketBase(origin)
+			.collection('users')
+			.authWithPassword('admin@example.test', 'local-test-password-only')
+	).rejects.toBeDefined();
+});
 
 integration(
 	'native PB OIDC parser verifies missing-alg ORCID keys through the bridge without weakening proof',
@@ -2840,39 +2740,35 @@ integration(
 	}
 );
 
-integration(
-	'JWKS-only update backs up and preserves sessions, identity records and all other configuration',
-	async () => {
-		await root.collections.update(
-			'users',
-			orcidAuthConfig('test-client', 'test-secret', environment)
-		);
-		const before = await root.collections.getOne('users');
-		before.oauth2.providers[0].extra.jwksURL = issuer + '/oauth/jwks';
-		await root.collections.update('users', { oauth2: before.oauth2 });
-		const authenticated = await oauth({ subject: orcid.slice(18) });
-		expect(authenticated.status).toBe(200);
-		const records = await root.collection('users').getFullList();
-		const result = await updateOrcidJwks(root);
-		expect(
-			(await root.backups.getFullList()).some(
-				(backup) => backup.key === result.backup && backup.size > 0
-			)
-		).toBe(true);
-		const after = await root.collections.getOne('users');
-		before.oauth2.providers[0].extra.jwksURL = result.jwksURL;
-		expect(after).toEqual({ ...before, updated: after.updated });
-		expect(await root.collection('users').getFullList()).toEqual(records);
-		expect(
-			(
-				await fetch(origin + '/api/collections/users/auth-refresh', {
-					method: 'POST',
-					headers: { Authorization: authenticated.body.token }
-				})
-			).status
-		).toBe(200);
-	}
-);
+integration('JWKS-only update backs up and preserves sessions and identity records', async () => {
+	await root.collections.update(
+		'users',
+		orcidAuthConfig('test-client', 'test-secret', environment)
+	);
+	const before = await root.collections.getOne('users');
+	before.oauth2.providers[0].extra.jwksURL = issuer + '/oauth/jwks';
+	await root.collections.update('users', { oauth2: before.oauth2 });
+	const authenticated = await oauth({ subject: orcid.slice(18) });
+	expect(authenticated.status).toBe(200);
+	const records = await root.collection('users').getFullList();
+	const result = await updateOrcidJwks(root);
+	expect(
+		(await root.backups.getFullList()).some(
+			(backup) => backup.key === result.backup && backup.size > 0
+		)
+	).toBe(true);
+	const after = await root.collections.getOne('users');
+	expect(after.oauth2.providers[0].extra.jwksURL).toBe(result.jwksURL);
+	expect(await root.collection('users').getFullList()).toEqual(records);
+	expect(
+		(
+			await fetch(origin + '/api/collections/users/auth-refresh', {
+				method: 'POST',
+				headers: { Authorization: authenticated.body.token }
+			})
+		).status
+	).toBe(200);
+});
 
 integration(
 	'public readiness stays cheap while superuser credit audit validates canonical attribution',

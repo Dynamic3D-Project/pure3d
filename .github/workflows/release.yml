@@ -49,5 +49,5 @@ jobs:
           bunx --no-install paraglide-js compile --project ./locale/project.inlang --outdir ./src/lib/paraglide
           bun run check
 
-      - name: Unit tests
+      - name: Feature integration tests
         run: bun --no-env-file test src scripts pocketbase
