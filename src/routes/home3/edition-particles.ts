@@ -1,10 +1,7 @@
+import { EDITION_PARTICLE_FORMS } from './particle-forms';
+
 const HEADER_BYTES = 12;
 const MAX_POINTS = 18_000;
-
-const EDITION_CLOUDS = [
-	['rembrandts-birthplace', 'rembrandts-birthplace.bin'],
-	['petrol-lamp', 'petrol-lamp.bin']
-] as const;
 
 export function decodeParticleFile(buffer: ArrayBuffer, filename = 'particle file') {
 	if (buffer.byteLength < HEADER_BYTES || buffer.byteLength > HEADER_BYTES + MAX_POINTS * 6) {
@@ -53,9 +50,9 @@ export async function loadEditionParticles(
 	basePath = ''
 ) {
 	const results = await Promise.allSettled(
-		EDITION_CLOUDS.map(
-			async ([id, filename]) =>
-				[id, await loadParticleFile(filename, signal, fetcher, basePath)] as const
+		EDITION_PARTICLE_FORMS.map(
+			async ({ id }) =>
+				[id, await loadParticleFile(`${id}.bin`, signal, fetcher, basePath)] as const
 		)
 	);
 	return Object.fromEntries(

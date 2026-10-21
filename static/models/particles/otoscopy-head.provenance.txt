@@ -1,0 +1,11 @@
+Otoscopy Training Head particle cloud
+
+PURE3D record: j16rjyx1w2fzj74
+Source scene: project/22/edition/1/scene.svx.json
+Source mesh: Head_Low.glb (model 0)
+Selection: training head and its embedded components; separate document models excluded.
+Method: scripts/sample-edition-particles.ts, --model 0 --yaw 90.
+18,000 deterministic area-weighted surface samples, fitted and quantized to int16 xyz.
+Source assets read from the local pure3d-assets MinIO bucket; originals are not redistributed.
+Edition metadata remains authoritative for creator and rights information.
+Orange highlights are conceptual, not source annotation coordinates.

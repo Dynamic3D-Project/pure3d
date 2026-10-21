@@ -1,0 +1,11 @@
+Lele, the Mexican Rag Doll particle cloud
+
+PURE3D record: q6kzym3qu84b030
+Source scene: project/13/edition/3/scene.svx.json
+Source mesh: MexicanRagDoll_GLB.glb (model 0)
+Selection: doll only; map excluded.
+Method: scripts/sample-edition-particles.ts, --model 0 --yaw 0.
+18,000 deterministic area-weighted surface samples, fitted and quantized to int16 xyz.
+Source assets read from the local pure3d-assets MinIO bucket; originals are not redistributed.
+Edition metadata remains authoritative for creator and rights information.
+Orange highlights are conceptual, not source annotation coordinates.

@@ -1,0 +1,11 @@
+Whale-bottle-shoe particle cloud
+
+PURE3D record: 6o2lzuxngvx24nf
+Source scene: project/18/edition/4/scene.svx.json
+Source mesh: IT_surface_32k_TangentSpace_4k_32k_TangentSpace_4k.glb (model 0)
+Selection: exterior surface only; alternative surface and CT slice models excluded.
+Method: scripts/sample-edition-particles.ts, --model 0 --yaw 0.
+18,000 deterministic area-weighted surface samples, fitted and quantized to int16 xyz.
+Source assets read from the local pure3d-assets MinIO bucket; originals are not redistributed.
+Edition metadata remains authoritative for creator and rights information.
+Orange highlights are conceptual, not source annotation coordinates.

@@ -1,0 +1,15 @@
+Muffin's Journey particle cloud
+
+PURE3D record: q24p5va0h2j106l
+Source scene: project/21/edition/1/scene.svx.json
+Source meshes: illium.glb, vert10.glb, vert9.glb, vert8.glb, vert7.glb, vert6.glb,
+vert5.glb, vert4.glb, vert3.glb, vert2.glb, vert1.glb (models 1 through 11).
+Selection: actual digitized bones only. full_skeleton.glb is a photograph plane,
+not skeleton geometry; it and the maps are intentionally excluded.
+Method: combine the eleven meshes, preserving embedded GLB transforms and each
+Voyager model/node transform, then scripts/sample-edition-particles.ts --yaw 0.
+18,000 deterministic area-weighted surface samples across the assembled bones,
+uniformly fitted and quantized to int16 xyz.
+Source assets read from the local pure3d-assets MinIO bucket; originals are not redistributed.
+Edition metadata remains authoritative for creator and rights information.
+Orange highlights are conceptual, not source annotation coordinates.

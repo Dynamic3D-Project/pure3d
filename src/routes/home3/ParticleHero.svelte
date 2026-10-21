@@ -359,8 +359,8 @@
 				editionPoints
 			});
 			activeForms = cloud.formDefinitions;
-			formIndex = 0;
-			frame.from = frame.to = 0;
+			formIndex = Math.floor(Math.random() * activeForms.length);
+			frame.from = frame.to = formIndex;
 			const options = {
 				pointScale: density.size[tier],
 				maxPointSize: density.maxSize,

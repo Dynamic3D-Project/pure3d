@@ -28,6 +28,62 @@ export const EDITION_PARTICLE_FORMS: ParticleForm[] = [
 		note: 'Surface points sampled from the published edition mesh. Orange highlights are conceptual and do not represent its annotations.',
 		sourceSlug: '8mlt1kcw2pimn3c',
 		sourceTitle: 'Petrol Lamp'
+	},
+	{
+		id: 'whale-bottle-shoe',
+		label: 'Whale-bottle-shoe',
+		title: 'Whale-bottle-shoe',
+		note: 'Surface points sampled from the published edition’s exterior mesh.',
+		sourceSlug: '6o2lzuxngvx24nf',
+		sourceTitle: 'Whale-bottle-shoe'
+	},
+	{
+		id: 'otoscopy-head',
+		label: 'Otoscopy head',
+		title: 'Otoscopy Training Head',
+		note: 'Surface points sampled from the published training-head mesh, excluding separate document models.',
+		sourceSlug: 'j16rjyx1w2fzj74',
+		sourceTitle: 'Otoscopy Training Head'
+	},
+	{
+		id: 'akua-ba',
+		label: 'Akua’ba child figure',
+		title: 'Akua’ba child figure',
+		note: 'Surface points sampled from the published edition’s figure mesh.',
+		sourceSlug: '4ze4q66v8wbs87n',
+		sourceTitle: 'Akua’ba child figure'
+	},
+	{
+		id: 'muffin',
+		label: 'Muffin’s bones',
+		title: 'Muffin’s Journey',
+		note: 'Surface points sampled from the eleven published bone meshes in their edition positions, excluding photographs and maps.',
+		sourceSlug: 'q24p5va0h2j106l',
+		sourceTitle: 'Muffin’s Journey'
+	},
+	{
+		id: 'duwelsteene',
+		label: '3D Düwelsteene',
+		title: '3D Düwelsteene',
+		note: 'Surface points sampled from the published 2017 monument mesh, excluding alternative reconstructions and maps.',
+		sourceSlug: 'vidpkd5s7dp09oe',
+		sourceTitle: '3D Düwelsteene'
+	},
+	{
+		id: 'mexican-doll',
+		label: 'Mexican doll',
+		title: 'Lelé, the Mexican Rag Doll',
+		note: 'Surface points sampled from the published doll mesh, excluding the map.',
+		sourceSlug: 'q6kzym3qu84b030',
+		sourceTitle: 'Lelé, the Mexican Rag Doll'
+	},
+	{
+		id: 'diaconie-weeshuis',
+		label: 'Diaconie Weeshuis',
+		title: 'Diaconie Weeshuis',
+		note: 'Surface points sampled from the published old-phase building reconstruction, excluding historical image planes.',
+		sourceSlug: '9b6vrxpd42ezxq0',
+		sourceTitle: 'Diaconie Weeshuis'
 	}
 ];
 

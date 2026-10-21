@@ -1,0 +1,11 @@
+Diaconie Weeshuis particle cloud
+
+PURE3D record: 9b6vrxpd42ezxq0
+Source scene: project/7/edition/1/scene.svx.json
+Source mesh: diaconieweeshuis_old_phase.glb (model 2)
+Selection: old-phase building reconstruction; historical image planes excluded.
+Method: scripts/sample-edition-particles.ts, --model 2 --yaw 45.
+18,000 deterministic area-weighted surface samples, fitted and quantized to int16 xyz.
+Source assets read from the local pure3d-assets MinIO bucket; originals are not redistributed.
+Edition metadata remains authoritative for creator and rights information.
+Orange highlights are conceptual, not source annotation coordinates.

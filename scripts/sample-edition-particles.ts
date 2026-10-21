@@ -3,7 +3,7 @@
  *
  * Usage:
  *   bun scripts/sample-edition-particles.ts INPUT.glb [SCENE.svx.json] OUTPUT.bin \
- *     [--include-node REGEXP] [--yaw DEGREES]
+ *     [--model INDEX] [--include-node REGEXP] [--yaw DEGREES]
  * Without a scene document, only the embedded GLB transforms are applied.
  */
 
@@ -45,6 +45,7 @@ interface Gltf {
 		}>;
 	}>;
 	nodes: Array<{
+		name?: string;
 		mesh?: number;
 		children?: number[];
 		matrix?: number[];
@@ -63,7 +64,7 @@ const paths = optionsStart < 0 ? args : args.slice(0, optionsStart);
 const rawOptions = optionsStart < 0 ? [] : args.slice(optionsStart);
 if (paths.length !== 2 && paths.length !== 3) {
 	throw new Error(
-		'Expected INPUT.glb [SCENE.svx.json] OUTPUT.bin [--include-node REGEXP] [--yaw DEGREES]'
+		'Expected INPUT.glb [SCENE.svx.json] OUTPUT.bin [--model INDEX] [--include-node REGEXP] [--yaw DEGREES]'
 	);
 }
 const inputPath = paths[0];
@@ -79,6 +80,12 @@ function option(name: string) {
 }
 
 const includeNode = option('--include-node');
+const modelOption = option('--model');
+const modelIndex = Number(modelOption ?? 0);
+if (!Number.isSafeInteger(modelIndex) || modelIndex < 0) {
+	throw new Error('--model must be a non-negative integer.');
+}
+if (modelOption !== undefined && !scenePath) throw new Error('--model requires a scene document.');
 const includeNodePattern = includeNode ? new RegExp(includeNode) : undefined;
 const displayYawDegrees = Number(option('--yaw') ?? DEFAULT_DISPLAY_YAW);
 if (!Number.isFinite(displayYawDegrees)) throw new Error('--yaw must be finite.');
@@ -192,16 +199,17 @@ function readAccessor(index: number): number[][] {
 let voyagerTransform = compose();
 if (scenePath) {
 	const sceneDocument = JSON.parse(await Bun.file(scenePath).text());
-	if (sceneDocument.models?.length !== 1) {
+	if (sceneDocument.models?.length !== 1 && modelOption === undefined) {
 		throw new Error(
-			`Scene contains ${sceneDocument.models?.length ?? 0} models; choose and combine them explicitly before sampling.`
+			`Scene contains ${sceneDocument.models?.length ?? 0} models; select one with --model INDEX.`
 		);
 	}
-	const sceneModel = sceneDocument.models[0];
+	const sceneModel = sceneDocument.models?.[modelIndex];
+	if (!sceneModel) throw new Error(`Scene model ${modelIndex} does not exist.`);
 	const sceneNodes =
-		sceneDocument.nodes?.filter((node: { model?: number }) => node.model === 0) ?? [];
+		sceneDocument.nodes?.filter((node: { model?: number }) => node.model === modelIndex) ?? [];
 	if (sceneNodes.length !== 1) {
-		throw new Error(`Expected one scene node for model 0, found ${sceneNodes.length}.`);
+		throw new Error(`Expected one scene node for model ${modelIndex}, found ${sceneNodes.length}.`);
 	}
 	const sceneNode = sceneNodes[0];
 	voyagerTransform = multiply(
@@ -319,6 +327,7 @@ const scale = Math.min(
 );
 const rotatedCentreX = (rotatedMinX + rotatedMaxX) * 0.5;
 const rotatedCentreZ = (rotatedMinZ + rotatedMaxZ) * 0.5;
+const verticalOffset = TARGET_BOTTOM + (TARGET_HEIGHT - (max[1] - min[1]) * scale) * 0.5;
 const output = new ArrayBuffer(12 + SAMPLE_COUNT * 3 * 2);
 const outputView = new DataView(output);
 for (const [index, character] of [...'P3DP'].entries())
@@ -330,7 +339,7 @@ for (let i = 0; i < sampled.length; i++) {
 	const z = sampled[i][2];
 	const normalized = [
 		(x * Math.cos(displayYaw) + z * Math.sin(displayYaw)) * scale - rotatedCentreX * scale,
-		TARGET_BOTTOM + (sampled[i][1] - min[1]) * scale,
+		verticalOffset + (sampled[i][1] - min[1]) * scale,
 		(-x * Math.sin(displayYaw) + z * Math.cos(displayYaw)) * scale - rotatedCentreZ * scale
 	];
 	for (let axis = 0; axis < 3; axis++) {
@@ -352,6 +361,7 @@ console.log(
 		sourceBounds: { min, max },
 		scale,
 		displayYawDegrees,
+		modelIndex,
 		includeNode: includeNode ?? null
 	})
 );

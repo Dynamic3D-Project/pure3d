@@ -1,0 +1,11 @@
+Akua'ba child figure particle cloud
+
+PURE3D record: 4ze4q66v8wbs87n
+Source scene: project/4/edition/2/scene.svx.json
+Source mesh: fertility_1024.glb (model 0)
+Method: scripts/sample-edition-particles.ts, --model 0 --yaw 0.
+18,000 deterministic area-weighted surface samples, fitted and quantized to int16 xyz.
+Embedded GLB and Voyager model/node transforms applied.
+Source assets read from the local pure3d-assets MinIO bucket; originals are not redistributed.
+Edition metadata remains authoritative for creator and rights information.
+Orange highlights are conceptual, not source annotation coordinates.

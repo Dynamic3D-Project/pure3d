@@ -30,7 +30,7 @@ Working on `main`; user will test and close issues. No commits, pushes, deployme
 - #82 implemented CMS-backed contact design at `/resources/contact`; user decision on mail-client fallback pending.
 - #83 implemented Activities & Outputs heading/description.
 - #84 three rendered SVG options delivered; awaiting choice, no replacement of selected design.
-- #85 partial: copy, approved two-model rotation, edition links and no unrelated fallback done; seven further edition mappings found but scenes return HTTP 403; local Docker/OrbStack unavailable. Bolex record not found. Need local service access and Bolex mapping. Accent-colour comment deferred explicitly for discussion.
+- #85 partial (20 October follow-up): OrbStack assets now accessible. Nine requested editions rotate: existing lamp/Rembrandt plus whale-bottle-shoe, otoscopy head, Akua’ba, Muffin’s eleven actual bone meshes, Düwelsteene, Mexican doll and Diaconie Weeshuis. Derived clouds and provenance added; unused Baby Yoda assets removed. Browser-cycled all nine, confirmed source titles/links and captured actual artwork. Bolex absent from public local/production edition records and local asset filenames; need its edition link/assets for the tenth. Routine quality gates deferred during live iteration. Get Started CTA and accent-colour discussion remain outside this model-only follow-up.
 - #86 partial: supplied heading/description/stage labels done; replacement object and new descriptive sentences explicitly TBD, user answer pending.
 - #87 implemented workflow heading/copy/five-stage graphic.
 - #88 implemented collection description.
