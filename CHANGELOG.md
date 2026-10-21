@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.21.0 - 2026-10-21
+
+### Features
+
+- add private workspaces and editor transfer (b52a5eaa)
+
 ## v0.20.0 - 2026-10-21
 
 ### Features
