@@ -22,13 +22,25 @@ export function publishRelease(
 	read: (file: string) => Buffer = readFileSync
 ) {
 	const endpoint = `repos/${repository}/releases/tags/${tag}`;
+	let releaseId: number | undefined;
 	const lookup = (): Release | null => {
 		try {
-			return JSON.parse(run(['api', endpoint]).toString());
+			const release: Release = JSON.parse(
+				run(['api', releaseId ? `repos/${repository}/releases/${releaseId}` : endpoint]).toString()
+			);
+			releaseId = release.id;
+			return release;
 		} catch (error) {
-			if (/\(HTTP 404\)/.test(String((error as { stderr?: Buffer }).stderr))) return null;
-			throw error;
+			if (!/\(HTTP 404\)/.test(String((error as { stderr?: Buffer }).stderr))) throw error;
 		}
+		// The tag endpoint omits drafts; the authenticated list includes them.
+		const pages: Release[][] = JSON.parse(
+			run(['api', `repos/${repository}/releases?per_page=100`, '--paginate', '--slurp']).toString()
+		);
+		const matches = pages.flat().filter((release) => release.tag_name === tag);
+		if (matches.length > 1) throw new Error(`Multiple releases found for ${tag}`);
+		releaseId = matches[0]?.id;
+		return matches[0] ?? null;
 	};
 	let release = lookup();
 	if (!release) {

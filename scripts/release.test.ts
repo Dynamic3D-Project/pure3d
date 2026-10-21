@@ -108,6 +108,10 @@ test('publication recovers lost create/upload/publish responses without duplicat
 			calls.push(args);
 			if (args[0] === 'api') {
 				if (args[1].includes('/assets/')) return Buffer.from('exact bytes');
+				if (args[1].includes('/releases?'))
+					return Buffer.from(JSON.stringify([[], release ? [release] : []]));
+				if (args[1].includes('/tags/') && release?.draft)
+					throw { stderr: Buffer.from('gh: Not Found (HTTP 404)') };
 				if (!release) throw { stderr: Buffer.from('gh: Not Found (HTTP 404)') };
 				return Buffer.from(JSON.stringify(release));
 			}
