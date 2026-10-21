@@ -1,6 +1,72 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { expect, test } from 'bun:test';
 import { publishRelease } from './release-publish';
+
+test('explicit patch previews maintenance changes without reducing feature bumps or releasing an empty range', () => {
+	const directory = mkdtempSync(join(tmpdir(), 'pure3d-release-preview-'));
+	const run = (command: string[]) => {
+		const result = Bun.spawnSync(command, {
+			cwd: directory,
+			env: { PATH: process.env.PATH!, HOME: process.env.HOME! }
+		});
+		if (result.exitCode !== 0) throw new Error(result.stderr.toString());
+		return result.stdout.toString();
+	};
+	const git = (...args: string[]) => run(['git', ...args]);
+	const commit = (message: string) => {
+		git('add', '.');
+		git(
+			'-c',
+			'user.name=Synthetic release test',
+			'-c',
+			'user.email=release@example.test',
+			'-c',
+			'core.hooksPath=/dev/null',
+			'-c',
+			'commit.gpgSign=false',
+			'commit',
+			'-m',
+			message
+		);
+		git('update-ref', 'refs/remotes/origin/main', git('rev-parse', 'HEAD').trim());
+	};
+	const preview = (...args: string[]) =>
+		run([
+			process.execPath,
+			'--no-env-file',
+			new URL('./release.ts', import.meta.url).pathname,
+			'--dry-run',
+			...args
+		]);
+	try {
+		git('init', '--initial-branch=main');
+		writeFileSync(join(directory, 'package.json'), '{"version":"1.2.3"}\n');
+		writeFileSync(
+			join(directory, 'CITATION.cff'),
+			'version: "1.2.3"\ndate-released: "2026-01-01"\n'
+		);
+		writeFileSync(join(directory, 'CHANGELOG.md'), '# Changelog\n');
+		commit('chore: baseline');
+		git('-c', 'tag.gpgSign=false', 'tag', 'v1.2.3');
+		expect(preview('--patch')).toContain('No releasable commits since v1.2.3');
+		writeFileSync(join(directory, 'README.md'), 'Test maintenance\n');
+		commit('test: focus suite on feature integrations');
+		expect(preview()).toContain('No releasable commits since v1.2.3');
+		const patch = preview('--patch');
+		expect(patch).toContain('Preview: v1.2.4');
+		expect(patch).toContain('### Maintenance');
+		expect(patch).toContain('test: focus suite on feature integrations');
+		expect(readFileSync(join(directory, 'package.json'), 'utf8')).toBe('{"version":"1.2.3"}\n');
+		expect(git('status', '--porcelain')).toBe('');
+		writeFileSync(join(directory, 'README.md'), 'Feature addition\n');
+		commit('feat: add a feature');
+		expect(preview('--patch')).toContain('Preview: v1.3.0');
+	} finally {
+		rmSync(directory, { recursive: true, force: true });
+	}
+});
 
 test('dry-run leaves working files, index, refs and release state unchanged', () => {
 	const git = (...args: string[]) => {

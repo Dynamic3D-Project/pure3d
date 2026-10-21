@@ -6,6 +6,7 @@ help:
 	@echo "Pure3D commands"
 	@echo "  make release     Build locally, commit/tag, atomically push and publish release"
 	@echo "  make release-dry-run  Read-only offline release preview"
+	@echo "  Add RELEASE_ARGS=--patch to release maintenance-only changes"
 	@echo "  make install     Install deps and provision local MinIO/PocketBase/Voyager"
 	@echo "  make db          Start local MinIO + PocketBase and print URLs"
 	@echo "  make db-logs     Follow PocketBase logs"
@@ -89,7 +90,7 @@ stack-stop:
 	$(LOCAL_COMPOSE) down
 
 release:
-	bun --no-env-file scripts/release.ts
+	bun --no-env-file scripts/release.ts $(RELEASE_ARGS)
 
 release-dry-run:
-	bun --no-env-file scripts/release.ts --dry-run
+	bun --no-env-file scripts/release.ts --dry-run $(RELEASE_ARGS)

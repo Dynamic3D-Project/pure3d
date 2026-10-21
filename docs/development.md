@@ -6,18 +6,18 @@ Use `make dev` for a Docker frontend, PocketBase, and MinIO. Use `make dev-web`
 for the same local services with a native Bun frontend. Neither command needs a
 production `.env` to be replaced or edited.
 
-| Command                         | Behavior                                                     |
-| ------------------------------- | ------------------------------------------------------------ |
-| `make dev`                      | Full local Docker development stack                          |
-| `make dev-cert`                 | Trust mkcert CA and generate missing HTTPS certificate       |
-| `make dev-web` / `make bun-dev` | Local Docker services, native Bun frontend                   |
-| `make install`                  | Provision local services, Voyager, and available assets      |
-| `make db`                       | Start local PocketBase and MinIO                             |
-| `make seed-assets`              | Mirror `static/project/` into the local MinIO bucket         |
-| `make stack`                    | Start all local Compose services                             |
-| `make db-logs` / `make db-stop` | Follow logs / stop local backend services                    |
-| `make stack-stop`               | Stop the local Compose stack                                 |
-| `make dev-prod`                 | Native Bun frontend connected to live OVH, no Docker         |
+| Command                         | Behavior                                                |
+| ------------------------------- | ------------------------------------------------------- |
+| `make dev`                      | Full local Docker development stack                     |
+| `make dev-cert`                 | Trust mkcert CA and generate missing HTTPS certificate  |
+| `make dev-web` / `make bun-dev` | Local Docker services, native Bun frontend              |
+| `make install`                  | Provision local services, Voyager, and available assets |
+| `make db`                       | Start local PocketBase and MinIO                        |
+| `make seed-assets`              | Mirror `static/project/` into the local MinIO bucket    |
+| `make stack`                    | Start all local Compose services                        |
+| `make db-logs` / `make db-stop` | Follow logs / stop local backend services               |
+| `make stack-stop`               | Stop the local Compose stack                            |
+| `make dev-prod`                 | Native Bun frontend connected to live OVH, no Docker    |
 
 Obtain private seed data from a maintainer for `data/json-output/` and assets for
 `static/project/`. Run `make seed-assets` after adding assets. Legacy

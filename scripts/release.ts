@@ -25,9 +25,12 @@ export function classify(message: string) {
 	return null;
 }
 
-export function nextVersion(version: string, commits: Commit[]) {
+export function nextVersion(version: string, commits: Commit[], minimumPatch = false) {
 	if (!semver.test(version)) throw new Error(`Invalid stable SemVer: ${version}`);
-	const level = Math.max(0, ...commits.map((commit) => classify(commit.message)?.level ?? 0));
+	const level = Math.max(
+		minimumPatch && commits.length ? 1 : 0,
+		...commits.map((commit) => classify(commit.message)?.level ?? 0)
+	);
 	if (!level) return null;
 	const parts = version.split('.').map(BigInt);
 	const index = 3 - level;
@@ -36,14 +39,25 @@ export function nextVersion(version: string, commits: Commit[]) {
 	return parts.join('.');
 }
 
-export function releaseNotes(version: string, date: string, commits: Commit[]) {
-	const sections = ['Breaking changes', 'Features', 'Fixes', 'Performance'].flatMap((category) => {
-		const entries = commits.flatMap(({ hash, message }) => {
-			const change = classify(message);
-			return change?.category === category ? [`- ${change.subject} (${hash.slice(0, 8)})`] : [];
-		});
-		return entries.length ? [`### ${category}\n\n${entries.join('\n')}`] : [];
-	});
+export function releaseNotes(
+	version: string,
+	date: string,
+	commits: Commit[],
+	includeMaintenance = false
+) {
+	const sections = ['Breaking changes', 'Features', 'Fixes', 'Performance', 'Maintenance'].flatMap(
+		(category) => {
+			const entries = commits.flatMap(({ hash, message }) => {
+				const change =
+					classify(message) ??
+					(includeMaintenance
+						? { category: 'Maintenance', subject: message.split('\n')[0] }
+						: null);
+				return change?.category === category ? [`- ${change.subject} (${hash.slice(0, 8)})`] : [];
+			});
+			return entries.length ? [`### ${category}\n\n${entries.join('\n')}`] : [];
+		}
+	);
 	return `## v${version} - ${date}\n\n${sections.join('\n\n')}\n`;
 }
 
@@ -80,9 +94,10 @@ type State = {
 
 function main() {
 	const args = process.argv.slice(2);
-	if (args.some((arg) => arg !== '--dry-run'))
-		throw new Error('Usage: bun scripts/release.ts [--dry-run]');
+	if (args.some((arg) => !['--dry-run', '--patch'].includes(arg)))
+		throw new Error('Usage: bun scripts/release.ts [--dry-run] [--patch]');
 	const dry = args.includes('--dry-run');
+	const patch = args.includes('--patch');
 	const plan =
 		'Steps: fetch/preflight; version/changelog; checks; build/archive + SHA-256; release commit; annotated tag; atomic push main + tag; create/update draft GitHub Release; verify/upload exact archive + checksum; publish Release; tag-triggered Pages verifies and deploys archive (no build).';
 	console.log(plan);
@@ -147,7 +162,7 @@ function main() {
 				const [hash, message] = record.trim().split('\0');
 				return { hash, message };
 			});
-		const version = nextVersion(latest.slice(1), commits);
+		const version = nextVersion(latest.slice(1), commits, patch);
 		if (!version) {
 			console.log('No releasable commits since ' + latest);
 			if (blockers.length) console.log(blockers.join('\n'));
@@ -155,7 +170,7 @@ function main() {
 			return;
 		}
 		const date = new Date().toISOString().slice(0, 10);
-		const notes = releaseNotes(version, date, commits);
+		const notes = releaseNotes(version, date, commits, patch);
 		const pkg = JSON.parse(read('package.json')!);
 		pkg.version = version;
 		const outputs = {

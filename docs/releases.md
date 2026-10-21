@@ -11,6 +11,9 @@ because this is a private-package static web app.
 make release-dry-run
 # Only after explicit authorization, from clean main with dependencies installed:
 make release
+# Explicitly release maintenance-only commits as a patch:
+make release-dry-run RELEASE_ARGS=--patch
+make release RELEASE_ARGS=--patch
 ```
 
 Dry-run reads local files and Git history only. It prints the proposed version, dated notes,
@@ -32,7 +35,10 @@ The highest reachable stable version is the baseline; commits in `tag..HEAD` det
 | Any Conventional Commit with `!`, `BREAKING CHANGE:`, or `BREAKING-CHANGE:` | major   |
 | Other commits                                                               | none    |
 
-Major bumps apply literally, including 0.x. No qualifying commits means no release.
+Major bumps apply literally, including 0.x. No qualifying commits means no release by default.
+An explicit `--patch` includes maintenance commits in the notes and applies at least a patch bump
+when there are commits since the last release. It never reduces an inferred minor/major bump or
+creates a release with no new commits. Retry journals retain their original version and notes.
 Squash PR titles must use Conventional Commit syntax; squash titles become main's commit messages.
 
 The Bun script updates `package.json` and `CITATION.cff` version plus citation release date,
@@ -58,6 +64,10 @@ prebuilt archive and its `.sha256` sidecar, verifies downloaded bytes, then publ
 Existing matching assets are reused; conflicting assets are never overwritten. Published releases
 are treated as immutable: missing/different assets block recovery. The GitHub CLI and existing
 Git/gh authentication must be configured before an explicitly authorized real release.
+Git pushes that change `.github/workflows/` need a workflow-capable credential. If HTTPS
+rejects a workflow update for missing OAuth `workflow` scope, use an already-authorized SSH
+key for this repository or explicitly reauthorize HTTPS; do not remove workflow changes to
+bypass the rejection. Git transport and GitHub CLI release authentication are independent.
 
 The tag-triggered `pages.yml` waits up to 20 minutes for local publication, downloads only the
 archive and checksum, verifies SHA-256, version and source parent commit, rejects unsafe tar
