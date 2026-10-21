@@ -9,8 +9,10 @@ import {
 	normaliseProfileCards,
 	normaliseProjectFacts,
 	parseEditionIds,
+	parseOpenCallIds,
 	safeContentUrl,
-	serialiseEditionIds
+	serialiseEditionIds,
+	serialiseOpenCallIds
 } from './content-components';
 
 const purifier = typeof window !== 'undefined' ? createDOMPurify(window) : null;
@@ -26,6 +28,12 @@ purifier?.addHook('afterSanitizeAttributes', (node) => {
 		}
 		if (!attribute.name.startsWith('data-')) continue;
 		if (!attribute.name.startsWith('data-cms-')) {
+			if (
+				attribute.name === 'data-open-call-ids' &&
+				node.tagName === 'DIV' &&
+				node.getAttribute('data-cms-open-calls') === 'true'
+			)
+				continue;
 			const profileAttribute =
 				[
 					'data-name',
@@ -54,6 +62,10 @@ purifier?.addHook('afterSanitizeAttributes', (node) => {
 			(attribute.name === 'data-cms-callout' && node.tagName === 'ASIDE') ||
 			(attribute.name === 'data-cms-actions' && node.tagName === 'DIV') ||
 			(attribute.name === 'data-cms-editions' && node.tagName === 'DIV') ||
+			(attribute.name === 'data-cms-open-calls' && node.tagName === 'DIV') ||
+			(attribute.name === 'data-open-call-ids' &&
+				node.tagName === 'DIV' &&
+				node.getAttribute('data-cms-open-calls') === 'true') ||
 			(attribute.name === 'data-cms-action' && node.tagName === 'A') ||
 			(attribute.name === 'data-cms-expandable' && node.tagName === 'DETAILS') ||
 			(attribute.name === 'data-cms-columns' && node.tagName === 'SECTION') ||
@@ -92,6 +104,14 @@ purifier?.addHook('afterSanitizeAttributes', (node) => {
 		const ids = serialiseEditionIds(parseEditionIds(node.getAttribute('data-cms-editions') || ''));
 		if (ids) node.setAttribute('data-cms-editions', ids);
 		else node.remove();
+	}
+	if (node.tagName === 'DIV' && node.hasAttribute('data-cms-open-calls')) {
+		const ids = serialiseOpenCallIds(
+			parseOpenCallIds(node.getAttribute('data-open-call-ids') || '')
+		);
+		if (node.getAttribute('data-cms-open-calls') === 'true' && ids) {
+			node.setAttribute('data-open-call-ids', ids);
+		} else node.remove();
 	}
 	if (node.tagName === 'DETAILS' && node.hasAttribute('data-cms-expandable')) {
 		if (node.getAttribute('data-cms-expandable') !== 'true')
@@ -219,6 +239,8 @@ export function cleanContent(html: string): string {
 			'data-cms-actions',
 			'data-cms-action',
 			'data-cms-editions',
+			'data-cms-open-calls',
+			'data-open-call-ids',
 			'data-cms-expandable',
 			'data-cms-columns',
 			'data-cms-column',

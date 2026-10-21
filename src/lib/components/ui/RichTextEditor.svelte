@@ -21,6 +21,7 @@
 		CmsEditionGrid,
 		CmsExpandable,
 		CmsLogoGrid,
+		CmsOpenCalls,
 		CmsProfileCards,
 		CmsProjectFacts,
 		CmsSummary,
@@ -37,6 +38,7 @@
 		isCmsColumnCount,
 		maxEditionReferences,
 		maxLogoItems,
+		maxOpenCallReferences,
 		maxProfileCards,
 		maxProfileLinks,
 		maxProjectFacts,
@@ -45,8 +47,10 @@
 		normaliseProfileCards,
 		normaliseProjectFacts,
 		parseEditionIds,
+		parseOpenCallIds,
 		safeContentUrl,
 		serialiseEditionIds,
+		serialiseOpenCallIds,
 		type CalloutStyle,
 		type ContentImage,
 		type LogoItem,
@@ -74,6 +78,7 @@
 	import ListIcon from '~icons/lucide/list';
 	import ListChecksIcon from '~icons/lucide/list-checks';
 	import ListOrderedIcon from '~icons/lucide/list-ordered';
+	import MegaphoneIcon from '~icons/lucide/megaphone';
 	import PanelTopOpenIcon from '~icons/lucide/panel-top-open';
 	import PencilIcon from '~icons/lucide/pencil';
 	import PlusIcon from '~icons/lucide/plus';
@@ -94,6 +99,8 @@
 		onchange?: (html: string) => void;
 		cmsComponents?: boolean;
 		cmsEditions?: { id: string; title: string }[];
+		cmsOpenCalls?: { id: string; title: string }[];
+		cmsOpenCallsEnabled?: boolean;
 	}
 
 	let {
@@ -104,7 +111,9 @@
 		uploadImage,
 		onchange,
 		cmsComponents = false,
-		cmsEditions = []
+		cmsEditions = [],
+		cmsOpenCalls = [],
+		cmsOpenCallsEnabled = true
 	}: Props = $props();
 
 	let element: HTMLDivElement;
@@ -114,6 +123,10 @@
 	let editionQuery = $state('');
 	let editionIds = $state<string[]>([]);
 	let editionLimitReached = $state(false);
+	let openCallPickerOpen = $state(false);
+	let openCallQuery = $state('');
+	let openCallIds = $state<string[]>([]);
+	let openCallLimitReached = $state(false);
 	let insertMenu = $state<HTMLDetailsElement>();
 	let insertMenuSummary = $state<HTMLElement>();
 	type ComponentEditorKind = 'profiles' | 'logos' | 'facts' | 'image';
@@ -130,6 +143,13 @@
 			(edition) =>
 				edition.title.toLowerCase().includes(editionQuery.toLowerCase()) &&
 				!editionIds.includes(edition.id)
+		)
+	);
+	let matchingOpenCalls = $derived(
+		cmsOpenCalls.filter(
+			(call) =>
+				call.title.toLowerCase().includes(openCallQuery.toLowerCase()) &&
+				!openCallIds.includes(call.id)
 		)
 	);
 
@@ -158,6 +178,14 @@
 								editionTitle: (id: string) =>
 									cmsEditions.find((edition) => edition.id === id)?.title || id
 							}),
+							...(cmsOpenCallsEnabled
+								? [
+										CmsOpenCalls.configure({
+											openCallTitle: (id: string) =>
+												cmsOpenCalls.find((call) => call.id === id)?.title || id
+										})
+									]
+								: []),
 							CmsSummary,
 							CmsExpandable,
 							CmsProfileCards,
@@ -512,6 +540,40 @@
 		editionPickerOpen = false;
 	}
 
+	function editOpenCalls() {
+		if (!editor) return;
+		openCallIds = editor.isActive('cmsOpenCalls')
+			? parseOpenCallIds(editor.getAttributes('cmsOpenCalls').ids || '')
+			: [];
+		openCallQuery = '';
+		openCallLimitReached = false;
+		openCallPickerOpen = true;
+		closeInsertMenu();
+	}
+
+	function addOpenCall(id: string) {
+		if (openCallIds.length >= maxOpenCallReferences) {
+			openCallLimitReached = true;
+			return;
+		}
+		openCallIds = [...openCallIds, id];
+	}
+
+	function saveOpenCalls() {
+		if (!editor || openCallIds.length === 0) return;
+		let attrs: { ids: string };
+		try {
+			attrs = { ids: serialiseOpenCallIds(openCallIds) };
+		} catch (error) {
+			openCallLimitReached = error instanceof Error;
+			return;
+		}
+		if (editor.isActive('cmsOpenCalls'))
+			editor.chain().focus().updateAttributes('cmsOpenCalls', attrs).run();
+		else editor.chain().focus().insertContent({ type: 'cmsOpenCalls', attrs }).run();
+		openCallPickerOpen = false;
+	}
+
 	async function handlePaste(event: ClipboardEvent) {
 		if (!enableImagePaste || !uploadImage || !editor) return;
 		const files = Array.from(event.clipboardData?.files ?? []).filter((file) =>
@@ -730,6 +792,9 @@
 						<button type="button" onclick={editEditionGrid}
 							><BookOpenCheckIcon /><span>Edition grid</span></button
 						>
+						{#if cmsOpenCallsEnabled}<button type="button" onclick={editOpenCalls}
+								><MegaphoneIcon /><span>Open calls</span></button
+							>{/if}
 						<button
 							type="button"
 							onclick={() => {
@@ -765,6 +830,15 @@
 						aria-label="Edit edition grid"
 						title="Edit edition grid"
 						onclick={editEditionGrid}><LayoutGridIcon /></button
+					>
+				{/if}
+				{#if editor?.isActive('cmsOpenCalls')}
+					<button
+						type="button"
+						class="toolbar-button"
+						aria-label="Edit open calls"
+						title="Edit open calls"
+						onclick={editOpenCalls}><MegaphoneIcon /></button
 					>
 				{/if}
 				{#if editor?.isActive('cmsColumns')}
@@ -887,6 +961,90 @@
 					onclick={saveEditionGrid}>Insert edition grid</button
 				>
 				<button type="button" class="btn btn-sm" onclick={() => (editionPickerOpen = false)}
+					>Cancel</button
+				>
+			</div>
+		</div>
+	{/if}
+	{#if openCallPickerOpen}
+		<div class="space-y-3 border-b border-base-300 p-3">
+			<label class="block text-sm font-medium"
+				>Choose published open calls<input
+					class="input mt-1 w-full"
+					type="search"
+					placeholder="Search open calls…"
+					bind:value={openCallQuery}
+				/></label
+			>
+			{#if openCallIds.length}
+				<ul class="space-y-2" aria-label="Selected open calls">
+					{#each openCallIds as id, index (id)}
+						{@const call = cmsOpenCalls.find((item) => item.id === id)}
+						<li class="flex items-center gap-2 text-sm">
+							<span class="min-w-0 flex-1 truncate">{call?.title || id}</span>
+							<button
+								type="button"
+								class="picker-icon-button"
+								aria-label={`Move ${call?.title || id} up`}
+								title="Move up"
+								disabled={index === 0}
+								onclick={() =>
+									(openCallIds = openCallIds.map((value, position) =>
+										position === index - 1
+											? openCallIds[index]
+											: position === index
+												? openCallIds[index - 1]
+												: value
+									))}><ArrowUpIcon /></button
+							>
+							<button
+								type="button"
+								class="picker-icon-button"
+								aria-label={`Move ${call?.title || id} down`}
+								title="Move down"
+								disabled={index === openCallIds.length - 1}
+								onclick={() =>
+									(openCallIds = openCallIds.map((value, position) =>
+										position === index + 1
+											? openCallIds[index]
+											: position === index
+												? openCallIds[index + 1]
+												: value
+									))}><ArrowDownIcon /></button
+							>
+							<button
+								type="button"
+								class="picker-icon-button danger"
+								aria-label={`Remove ${call?.title || id}`}
+								title="Remove"
+								onclick={() => (openCallIds = openCallIds.filter((value) => value !== id))}
+								><TrashIcon /></button
+							>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+			<p class="text-xs opacity-60">Up to {maxOpenCallReferences} published open calls.</p>
+			{#if openCallLimitReached}<p role="alert" class="text-sm text-error">
+					Remove an open call before adding another.
+				</p>{/if}
+			<div class="max-h-40 overflow-y-auto rounded border border-base-300">
+				{#each matchingOpenCalls as call (call.id)}
+					<button
+						type="button"
+						class="block min-h-11 w-full px-3 text-left text-sm hover:bg-base-200"
+						onclick={() => addOpenCall(call.id)}>{call.title}</button
+					>
+				{/each}
+			</div>
+			<div class="flex flex-wrap gap-2">
+				<button
+					type="button"
+					class="btn btn-sm btn-primary"
+					disabled={!openCallIds.length}
+					onclick={saveOpenCalls}>Insert open calls</button
+				>
+				<button type="button" class="btn btn-sm" onclick={() => (openCallPickerOpen = false)}
 					>Cancel</button
 				>
 			</div>
@@ -1413,7 +1571,8 @@
 		background: color-mix(in oklch, var(--color-warning) 12%, transparent);
 	}
 	.editor-wrapper :global(.cms-editor-actions),
-	.editor-wrapper :global(.cms-editor-edition-grid) {
+	.editor-wrapper :global(.cms-editor-edition-grid),
+	.editor-wrapper :global(.cms-editor-open-calls) {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.5rem;
@@ -1428,7 +1587,8 @@
 		background: var(--color-base-content);
 		color: var(--color-base-100);
 	}
-	.editor-wrapper :global(.cms-editor-edition-grid span) {
+	.editor-wrapper :global(.cms-editor-edition-grid span),
+	.editor-wrapper :global(.cms-editor-open-calls span) {
 		width: 100%;
 		font-size: 0.875rem;
 	}

@@ -296,7 +296,7 @@
 				<a href="#foundations">Foundations</a>
 				<a href="#identity">Identity</a>
 				<a href="#type">Type</a>
-				<a href="#color">Color</a>
+				<a href="#color">Colour</a>
 				<a href="#viewer">Viewer</a>
 				<a href="#components">Components</a>
 				<a href="#motion">Motion</a>
@@ -358,7 +358,7 @@
 						</div>
 						<div>
 							<dt>Built for</dt>
-							<dd>Web, print catalog, kiosk</dd>
+							<dd>Web, print catalogue, kiosk</dd>
 						</div>
 					</dl>
 				</div>
@@ -373,7 +373,7 @@
 					<div>
 						<h2 class="sec-title">Three <em>principles</em> that govern everything.</h2>
 						<p class="sec-sub">
-							Before colors and type, the stance. Every component in this system should be
+							Before colours and type, the stance. Every component in this system should be
 							interrogable against these three questions.
 						</p>
 					</div>
@@ -400,7 +400,7 @@
 						<div class="n">03</div>
 						<h3>Permanence first.</h3>
 						<p>
-							What we publish outlives us. The system favors quiet defaults and long-read typography
+							What we publish outlives us. The system favours quiet defaults and long-read typography
 							— it should still feel current in ten years.
 						</p>
 					</div>
@@ -687,7 +687,7 @@
 		<section id="color" class="sec">
 			<div class="shell">
 				<div class="sec-head">
-					<div class="sec-num">§ 04 — Color</div>
+					<div class="sec-num">§ 04 — Colour</div>
 					<div>
 						<h2 class="sec-title">Paper, ink, <em>forest,</em> and vermillion.</h2>
 						<p class="sec-sub">
@@ -908,7 +908,7 @@
 							Everything inward of the viewer shell is ink-on-ink: a near-black studio backdrop,
 							off-white type, and the accent reserved for active annotations and the current tool.
 							Metadata floats as labels, not a sidebar. The model is always composed into the
-							optical center — never aligned to a panel.
+							optical centre — never aligned to a panel.
 						</p>
 					</div>
 				</div>
@@ -988,7 +988,7 @@
 					<div class="viewer-metadata">
 						<h3 class="vm-title">Bronze Ewer<br /><em>Khorasan, c. 1180</em></h3>
 						<p class="vm-sub">
-							"The face of the vessel turns three ways — toward the hand, the eye, and the altar."
+							"The face of the vessel turns three ways — towards the hand, the eye, and the altar."
 						</p>
 						<dl class="vm-dl">
 							<dt>Acc. No.</dt>

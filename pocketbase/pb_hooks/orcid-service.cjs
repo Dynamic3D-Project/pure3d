@@ -10,7 +10,7 @@ function bad(message) {
 	throw new BadRequestError(message);
 }
 function deny() {
-	throw new ForbiddenError('Not authorized for this operation');
+	throw new ForbiddenError('Not authorised for this operation');
 }
 function checked(fn) {
 	try {

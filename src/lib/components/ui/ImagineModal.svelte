@@ -565,7 +565,7 @@
 					<!-- Generated image (background, full width) -->
 					<img
 						src={generatedImageUrl}
-						alt="AI generated visualization of {edition.title}"
+						alt="AI generated visualisation of {edition.title}"
 						class="block w-full"
 						draggable="false"
 					/>
@@ -614,7 +614,7 @@
 				<p class="mb-2 text-sm font-semibold">Generated Image</p>
 				<img
 					src={generatedImageUrl}
-					alt="AI generated visualization of {edition.title}"
+					alt="AI generated visualisation of {edition.title}"
 					class="w-full rounded-lg shadow-lg"
 				/>
 			</div>
@@ -772,7 +772,7 @@
 			<div class="mb-4 flex flex-col items-center gap-3 py-8">
 				<span class="loading loading-lg loading-spinner text-primary"></span>
 				<p class="text-sm text-base-content/60">
-					Generating a realistic visualization of <strong>{edition.title}</strong>...
+					Generating a realistic visualisation of <strong>{edition.title}</strong>...
 				</p>
 				<p class="text-xs text-base-content/40">This may take a few seconds</p>
 			</div>

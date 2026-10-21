@@ -36,7 +36,9 @@ export interface ContentImage {
 }
 
 const editionIdPattern = /^[a-zA-Z0-9_-]{1,64}$/;
+const pocketbaseIdPattern = /^[a-z0-9]{15}$/;
 export const maxEditionReferences = 24;
+export const maxOpenCallReferences = 24;
 export const maxProfileCards = 12;
 export const maxProfileLinks = 8;
 export const maxLogoItems = 24;
@@ -125,6 +127,26 @@ export function serialiseEditionIds(ids: string[]): string {
 	);
 	if (validIds.length > maxEditionReferences)
 		throw new RangeError(`Select at most ${maxEditionReferences} editions.`);
+	return validIds.join(',');
+}
+
+export function parseOpenCallIds(value: string): string[] {
+	return Array.from(
+		new Set(
+			value
+				.split(',')
+				.map((id) => id.trim())
+				.filter((id) => pocketbaseIdPattern.test(id))
+		)
+	).slice(0, maxOpenCallReferences);
+}
+
+export function serialiseOpenCallIds(ids: string[]): string {
+	const validIds = Array.from(
+		new Set(ids.map((id) => id.trim()).filter((id) => pocketbaseIdPattern.test(id)))
+	);
+	if (validIds.length > maxOpenCallReferences)
+		throw new RangeError(`Select at most ${maxOpenCallReferences} open calls.`);
 	return validIds.join(',');
 }
 

@@ -164,7 +164,7 @@ export function formatBytes(bytes: number): string {
 }
 
 export function formatCount(value: number): string {
-	return new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(
+	return new Intl.NumberFormat('en-GB', { notation: 'compact', maximumFractionDigits: 1 }).format(
 		value
 	);
 }

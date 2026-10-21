@@ -925,7 +925,7 @@
 		if (!dateStr) return '';
 		const d = new Date(dateStr);
 		if (isNaN(d.getTime())) return '';
-		return d.toLocaleDateString('en-US', {
+		return d.toLocaleDateString('en-GB', {
 			month: 'short',
 			day: 'numeric',
 			year: 'numeric'
@@ -1737,7 +1737,7 @@
 																</div>
 																<div class="form-control">
 																	<label class="label py-0.5" for="concept-license">
-																		<span class="label-text text-sm">License</span>
+																		<span class="label-text text-sm">Licence</span>
 																	</label>
 																	{#if vocabularyFor('license').length}
 																		<select

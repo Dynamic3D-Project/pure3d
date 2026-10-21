@@ -113,7 +113,7 @@
 				socials: user.socials || '',
 				role: user.role || authStore.globalRole,
 				orcidVerifiedAt: user.orcidVerifiedAt || '',
-				joinDate: new Date(user.created).toLocaleDateString('en-US', {
+				joinDate: new Date(user.created).toLocaleDateString('en-GB', {
 					year: 'numeric',
 					month: 'long'
 				})

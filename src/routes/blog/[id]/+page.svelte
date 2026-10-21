@@ -40,7 +40,7 @@
 				</h1>
 				<div class="mt-4 flex items-center gap-4 text-sm text-base-content/70">
 					<time datetime={post.created}>
-						Published: {new Date(post.created).toLocaleDateString('en-US', {
+						Published: {new Date(post.created).toLocaleDateString('en-GB', {
 							year: 'numeric',
 							month: 'long',
 							day: 'numeric'
@@ -49,7 +49,7 @@
 					{#if post.updated !== post.created}
 						<span>•</span>
 						<time datetime={post.updated}>
-							Updated: {new Date(post.updated).toLocaleDateString('en-US', {
+							Updated: {new Date(post.updated).toLocaleDateString('en-GB', {
 								year: 'numeric',
 								month: 'long',
 								day: 'numeric'

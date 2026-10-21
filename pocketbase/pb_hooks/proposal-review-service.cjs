@@ -246,7 +246,7 @@ function initialize(e) {
 		if (!access.admin && !access.owner && !access.author && !access.collaborator)
 			throw new ForbiddenError('Edition author access is required.');
 		if (edition.getString('status') !== 'concept_accepted')
-			throw new BadRequestError('Draft assets can only be initialized after proposal acceptance.');
+			throw new BadRequestError('Draft assets can only be initialised after proposal acceptance.');
 		const closeDraftFiles = initializeDraftAssets(tx, edition);
 		if (closeDraftFiles)
 			try {

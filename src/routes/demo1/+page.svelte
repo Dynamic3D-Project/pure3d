@@ -192,8 +192,8 @@
 							<div>
 								<dt>Mesh</dt>
 								<dd>
-									{facts.vertices.toLocaleString('en')} vertices, {facts.triangles.toLocaleString(
-										'en'
+									{facts.vertices.toLocaleString('en-GB')} vertices, {facts.triangles.toLocaleString(
+										'en-GB'
 									)}
 									triangles
 								</dd>

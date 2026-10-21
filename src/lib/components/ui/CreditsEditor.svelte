@@ -31,7 +31,7 @@
 	<p class="text-sm text-base-content/70">
 		{#if authorsOnly}Each individual author needs an ORCID before submission. Adding a co-author
 			credits them; it does not grant editing access.
-		{:else}Every individual creator needs an ORCID to submit or publish. Organizations do not.
+		{:else}Every individual creator needs an ORCID to submit or publish. Organisations do not.
 			Contributors are optional. Linking a user does not grant access.{/if}
 	</p>
 	{#each credits as credit, index (credit)}
@@ -74,7 +74,7 @@
 				{:else}
 					<label class="form-control"
 						>Type<select class="select-bordered select w-full" bind:value={credit.type}
-							><option value="person">Person</option><option value="org">Organization</option
+							><option value="person">Person</option><option value="org">Organisation</option
 							></select
 						></label
 					>

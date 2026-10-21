@@ -1,0 +1,45 @@
+import PocketBase, { ClientResponseError } from 'pocketbase';
+
+export const openCallsAdminRule = '@request.auth.id != "" && @request.auth.role = "admin"';
+export const openCallsReadRule = `isPublished = true || (${openCallsAdminRule})`;
+export const openCallsFields = [
+	{ name: 'title', type: 'text', required: true, max: 500 },
+	{ name: 'body', type: 'editor', maxSize: 2000000 },
+	{ name: 'deadline', type: 'date' },
+	{ name: 'isPublished', type: 'bool' },
+	{ name: 'order', type: 'number' },
+	{ name: 'created', type: 'autodate', onCreate: true },
+	{ name: 'updated', type: 'autodate', onCreate: true, onUpdate: true }
+];
+
+export async function ensureOpenCalls(pb: PocketBase) {
+	try {
+		const existing = await pb.collections.getOne('open_calls');
+		for (const field of openCallsFields) {
+			const actual = existing.fields.find((candidate) => candidate.name === field.name);
+			if (!actual || Object.entries(field).some(([key, value]) => actual[key] !== value))
+				throw new Error(`Existing open_calls schema differs: ${field.name}. Reconcile manually.`);
+		}
+		if (
+			existing.listRule !== openCallsReadRule ||
+			existing.viewRule !== openCallsReadRule ||
+			[existing.createRule, existing.updateRule, existing.deleteRule].some(
+				(rule) => rule !== openCallsAdminRule
+			)
+		)
+			throw new Error('Existing open_calls permissions differ. Reconcile manually.');
+		return existing;
+	} catch (error) {
+		if (!(error instanceof ClientResponseError) || error.status !== 404) throw error;
+	}
+	return pb.collections.create({
+		name: 'open_calls',
+		type: 'base',
+		fields: openCallsFields,
+		listRule: openCallsReadRule,
+		viewRule: openCallsReadRule,
+		createRule: openCallsAdminRule,
+		updateRule: openCallsAdminRule,
+		deleteRule: openCallsAdminRule
+	});
+}

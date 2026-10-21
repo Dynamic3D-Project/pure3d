@@ -1,4 +1,5 @@
 const editionIdPattern = /^[a-zA-Z0-9_-]{1,64}$/;
+const pocketbaseIdPattern = /^[a-z0-9]{15}$/;
 function attribute(tag, name) {
 	const match = tag.match(new RegExp(`(?:^|\\s)${name}=(['"])(.*?)\\1`, 'i'));
 	return match ? match[2] : null;
@@ -43,6 +44,16 @@ function componentText(value, maxLength) {
 		typeof value === 'string' && value.trim() && value.length <= maxLength && !/[<>]/.test(value)
 	);
 }
+function validOpenCallIds(value) {
+	if (typeof value !== 'string') return false;
+	const ids = value.split(',');
+	return (
+		ids.length >= 1 &&
+		ids.length <= 24 &&
+		new Set(ids).size === ids.length &&
+		ids.every((id) => pocketbaseIdPattern.test(id))
+	);
+}
 function validateComponentHtml(html) {
 	for (const match of html.matchAll(/\sdata-cms-[\w-]+=(['"])(.*?)\1/gi)) {
 		if (/[<>]/.test(match[2])) return 'Invalid content component.';
@@ -52,8 +63,9 @@ function validateComponentHtml(html) {
 		const profile = tagName === 'article' && attribute(tag[0], 'data-cms-profile') === 'true';
 		const logo = tagName === 'figure' && attribute(tag[0], 'data-cms-logo') === 'true';
 		const fact = tagName === 'div' && attribute(tag[0], 'data-cms-project-fact') === 'true';
+		const openCalls = tagName === 'div' && attribute(tag[0], 'data-cms-open-calls') === 'true';
 		for (const match of tag[0].matchAll(
-			/\s(data-(?:cms-[\w-]+|name|role|bio|image|alt|href|link-label|label|value|content-image))=(['"])(.*?)\2/gi
+			/\s(data-(?:cms-[\w-]+|open-call-ids|name|role|bio|image|alt|href|link-label|label|value|content-image))=(['"])(.*?)\2/gi
 		)) {
 			const [, name, , value] = match;
 			if (
@@ -69,6 +81,8 @@ function validateComponentHtml(html) {
 					tagName === 'div' &&
 					value.split(',').length <= 24 &&
 					value.split(',').every((id) => editionIdPattern.test(id.trim()))) ||
+				(name === 'data-cms-open-calls' && tagName === 'div' && value === 'true') ||
+				(name === 'data-open-call-ids' && openCalls && validOpenCallIds(value)) ||
 				(name === 'data-cms-columns' && tagName === 'section' && ['2', '3', '4'].includes(value)) ||
 				(name === 'data-cms-column' && tagName === 'div' && value === 'true') ||
 				(name === 'data-cms-profiles' && tagName === 'section' && value === 'true') ||
@@ -94,6 +108,14 @@ function validateComponentHtml(html) {
 			return 'Invalid content component.';
 		}
 	}
+	let withoutOpenCalls = html;
+	for (const tag of html.matchAll(/<div\b[^>]*\bdata-cms-open-calls=(['"])true\1[^>]*><\/div>/gi)) {
+		const ids = attribute(tag[0], 'data-open-call-ids');
+		if (!validOpenCallIds(ids)) return 'Invalid open calls component.';
+		withoutOpenCalls = withoutOpenCalls.replace(tag[0], '');
+	}
+	if (/\bdata-cms-open-calls=|\bdata-open-call-ids=/i.test(withoutOpenCalls))
+		return 'Invalid open calls component.';
 	for (const match of html.matchAll(
 		/<section\b[^>]*\bdata-cms-columns=(['"])([234])\1[^>]*>([\s\S]*?)<\/section>/gi
 	)) {
@@ -230,6 +252,14 @@ function validateContent(e) {
 		throw new BadRequestError('Move child pages before changing this layout.');
 	if (!r.getBool('isPublished') && children.some((c) => c.getBool('isPublished')))
 		throw new BadRequestError('Unpublish child pages first.');
+	e.next();
+}
+function validateOpenCall(e) {
+	const body = e.record.getString('body');
+	if (/\bdata-cms-open-calls=/i.test(body))
+		throw new BadRequestError('Open calls cannot contain another open calls component.');
+	const componentError = validateComponentHtml(body);
+	if (componentError) throw new BadRequestError(componentError);
 	e.next();
 }
 function validateMenu(e) {
@@ -402,6 +432,7 @@ function deleteMedia(e) {
 }
 module.exports = {
 	validateContent,
+	validateOpenCall,
 	validateComponentHtml,
 	validateMenu,
 	enforceMenuVersion,

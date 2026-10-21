@@ -216,7 +216,7 @@
 		const date = new Date(value);
 		return Number.isNaN(date.getTime())
 			? ''
-			: date.toLocaleDateString('en', { year: 'numeric', month: 'long', day: 'numeric' });
+			: date.toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
 	}
 
 	function resetInteraction() {

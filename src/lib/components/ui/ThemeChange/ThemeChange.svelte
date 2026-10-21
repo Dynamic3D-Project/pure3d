@@ -26,7 +26,7 @@
 			localStorage.setItem(storageKey, JSON.stringify({ selected, colors, darkHero }));
 			storageError = '';
 		} catch {
-			storageError = 'Colors applied, but this browser could not save them.';
+			storageError = 'Colours applied, but this browser could not save them.';
 		}
 	}
 
@@ -179,7 +179,7 @@
 									class="h-8 w-9 cursor-pointer rounded border-0 bg-transparent p-0"
 								/>
 								<input
-									aria-label={`${label} hex color`}
+									aria-label={`${label} hex colour`}
 									class="input input-sm w-24 font-mono text-xs"
 									value={colors[key]}
 									maxlength="7"
@@ -209,7 +209,7 @@
 						/>
 					</label>
 					<p class="mt-3 text-xs opacity-70">
-						Text and button colors adjust automatically when needed for readable contrast.
+						Text and button colours adjust automatically when needed for readable contrast.
 					</p>
 					{#if storageError}<p role="status" class="mt-2 text-xs">{storageError}</p>{/if}
 					<button type="button" class="btn mt-4 w-full btn-sm btn-primary" onclick={close}

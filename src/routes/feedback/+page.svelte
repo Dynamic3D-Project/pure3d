@@ -136,7 +136,7 @@
 			<h2 class="text-xl font-semibold">Feedback form</h2>
 			<p class="mt-1 text-sm text-base-content/60">
 				Anything you find is valid: bugs, confusing wording, missing labels, visual issues,
-				unexpected behavior, or ideas. You can paste screenshots directly into the rich text box.
+				unexpected behaviour, or ideas. You can paste screenshots directly into the rich text box.
 			</p>
 		</div>
 

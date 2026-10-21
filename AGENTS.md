@@ -91,6 +91,10 @@ make release      # explicitly authorized local release only
 
 ## Conventions
 
+- Use standard British English for all authored user-facing copy, including labels, help text,
+  errors, accessibility text and seeded content: organise, colour, centre, cancelled, modelling,
+  and licence (noun; license as a verb). Use `en-GB` for English date and number formatting.
+  Preserve proper names, quotations, URLs, technical identifiers, API fields and vendor code.
 - Formatting is Prettier-controlled: tabs, single quotes, no trailing commas, 100-character width.
 - Every Svelte component must have one root HTML element with an `id` matching the filename in
   kebab-case, for example `ProfileCard.svelte` uses `id="profile-card"`.
@@ -99,6 +103,8 @@ make release      # explicitly authorized local release only
 
 ## Rich Content Editing
 
+- Open calls live in `open_calls` and are reused through record-reference CMS components; see
+  [docs/open-calls.md](docs/open-calls.md) for administration and the staged production migration.
 - Continue extending the existing Tiptap editor with reusable components that make content editing
   and public pages richer. Build on the Insert component menu and existing callouts, action links,
   edition grids, and expandable sections; do not replace the editor with a separate page builder.

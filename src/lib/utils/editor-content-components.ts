@@ -8,8 +8,10 @@ import {
 	normaliseProfileCards,
 	normaliseProjectFacts,
 	parseEditionIds,
+	parseOpenCallIds,
 	safeContentUrl,
 	serialiseEditionIds,
+	serialiseOpenCallIds,
 	type CalloutStyle,
 	type ContentImage,
 	type CmsColumnCount,
@@ -429,6 +431,51 @@ export const CmsEditionGrid = Node.create({
 			const editions = document.createElement('span');
 			editions.textContent = ids.map((id) => this.options.editionTitle(id)).join(' · ');
 			dom.append(title, editions);
+			return { dom };
+		};
+	}
+});
+
+export const CmsOpenCalls = Node.create({
+	name: 'cmsOpenCalls',
+	group: 'block',
+	atom: true,
+	selectable: true,
+	addOptions() {
+		return { openCallTitle: (id: string) => id };
+	},
+	addAttributes() {
+		return { ids: { default: '' } };
+	},
+	parseHTML() {
+		return [
+			{
+				tag: 'div[data-cms-open-calls="true"][data-open-call-ids]',
+				getAttrs: (element) => {
+					const ids = serialiseOpenCallIds(
+						parseOpenCallIds((element as HTMLElement).getAttribute('data-open-call-ids') || '')
+					);
+					return ids ? { ids } : false;
+				}
+			}
+		];
+	},
+	renderHTML({ HTMLAttributes }) {
+		return ['div', { 'data-cms-open-calls': 'true', 'data-open-call-ids': HTMLAttributes.ids }];
+	},
+	addNodeView() {
+		return ({ node }) => {
+			const ids = parseOpenCallIds(node.attrs.ids);
+			const dom = document.createElement('div');
+			dom.className = 'cms-editor-open-calls';
+			dom.contentEditable = 'false';
+			dom.dataset.cmsOpenCalls = 'true';
+			dom.dataset.openCallIds = node.attrs.ids;
+			const title = document.createElement('strong');
+			title.textContent = `Open calls · ${ids.length}`;
+			const calls = document.createElement('span');
+			calls.textContent = ids.map((id) => this.options.openCallTitle(id)).join(' · ');
+			dom.append(title, calls);
 			return { dom };
 		};
 	}

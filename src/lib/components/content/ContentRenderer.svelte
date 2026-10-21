@@ -1,21 +1,24 @@
 <script lang="ts">
 	import { mount, unmount } from 'svelte';
 	import ContentEditionGrid from './ContentEditionGrid.svelte';
+	import ContentOpenCalls from './ContentOpenCalls.svelte';
 	import { cleanContent } from '$lib/utils/content-html';
-	import { parseEditionIds } from '$lib/utils/content-components';
+	import { parseEditionIds, parseOpenCallIds } from '$lib/utils/content-components';
 
 	interface Props {
 		content?: string;
 		className?: string;
 		imported?: boolean;
 		team?: boolean;
+		renderOpenCalls?: boolean;
 	}
 
 	let {
 		content = '',
 		className = 'prose max-w-none',
 		imported = false,
-		team = false
+		team = false,
+		renderOpenCalls = true
 	}: Props = $props();
 	let element = $state<HTMLElement>();
 	let prepared = $derived.by(() => {
@@ -95,12 +98,21 @@
 	$effect(() => {
 		void html;
 		if (!element) return;
-		const mounted = Array.from(
+		const editionComponents = Array.from(
 			element.querySelectorAll<HTMLElement>('[data-cms-editions]')
 		).flatMap((target) => {
 			const ids = parseEditionIds(target.dataset.cmsEditions || '');
 			return ids.length ? [mount(ContentEditionGrid, { target, props: { ids } })] : [];
 		});
+		const openCallComponents = renderOpenCalls
+			? Array.from(
+					element.querySelectorAll<HTMLElement>('[data-cms-open-calls="true"][data-open-call-ids]')
+				).flatMap((target) => {
+					const ids = parseOpenCallIds(target.dataset.openCallIds || '');
+					return ids.length ? [mount(ContentOpenCalls, { target, props: { ids } })] : [];
+				})
+			: [];
+		const mounted = [...editionComponents, ...openCallComponents];
 		return () => mounted.forEach((component) => void unmount(component));
 	});
 </script>

@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { base, resolve } from '$app/paths';
 	import CollectionCard from '$lib/components/cards/CollectionCard.svelte';
+	import HomeOpenCalls from '$lib/components/content/HomeOpenCalls.svelte';
 	import { pb } from '$lib/database/client';
 	import { homeStore, fetchHomeData, isStale } from '$lib/stores/data.store';
 	import ParticleHero from './ParticleHero.svelte';
@@ -76,20 +77,20 @@
 
 	const storySteps = [
 		{
-			kicker: '01 · Conceptualise',
-			title: 'Build the narrative.',
+			kicker: 'Conceptualise',
+			title: 'Develop your interpretation.',
 			image: '/images/landing/capture.webp',
 			alt: 'Wireframe study for conceptualising a 3D scholarly edition'
 		},
 		{
-			kicker: '02 · Implement',
-			title: 'Author using interface.',
+			kicker: 'Create',
+			title: 'Create and annotate your edition.',
 			image: '/images/landing/annotate.webp',
 			alt: 'Wireframe study for authoring a 3D scholarly edition'
 		},
 		{
-			kicker: '03 · Publish',
-			title: 'Revise from feedback.',
+			kicker: 'Publish',
+			title: 'Revise your edition for publication.',
 			image: '/images/landing/review.webp',
 			alt: 'Wireframe study for revising a 3D scholarly edition after review'
 		}
@@ -198,6 +199,8 @@
 	<section class="hero" aria-labelledby="home3-title">
 		<ParticleHero copy={heroCopy} {glyphs} minimal />
 	</section>
+
+	<HomeOpenCalls />
 
 	<section class="evidence" aria-labelledby="home3-evidence">
 		<div class="shell">

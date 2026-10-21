@@ -161,7 +161,7 @@
 		<div class="metadata-heading"><h2>Rights &amp; access</h2></div>
 		<dl class="metadata-list">
 			<div class="metadata-row">
-				<dt>License</dt>
+				<dt>Licence</dt>
 				<dd>{edition.dcRightsLicense || edition.usageConditions || 'Not specified'}</dd>
 			</div>
 			<div class="metadata-row">

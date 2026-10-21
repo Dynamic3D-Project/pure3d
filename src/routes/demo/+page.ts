@@ -97,7 +97,7 @@ export const load: PageLoad = async () => {
 			{
 				title: 'Citation Sheet',
 				type: 'Reference export',
-				description: 'Chicago-style citation, DOI, license, and attribution text for reuse.',
+				description: 'Chicago-style citation, DOI, licence, and attribution text for reuse.',
 				size: '1 page',
 				url: makeTextResource(
 					'Citation Sheet',

@@ -188,8 +188,8 @@
 					</tr>
 					<tr>
 						<td><code class="text-sm">setBackgroundColor(color0, color1?)</code></td>
-						<td>Set background color(s)</td>
-						<td>color0, color1: CSS color values</td>
+						<td>Set background colour(s)</td>
+						<td>color0, color1: CSS colour values</td>
 					</tr>
 					<tr>
 						<td><code class="text-sm">setLanguage(id)</code></td>

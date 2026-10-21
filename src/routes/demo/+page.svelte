@@ -63,7 +63,7 @@
 					<div>
 						<p class="font-semibold">API Controls Sandbox</p>
 						<p class="text-sm">
-							This preserves the original `/demo` behavior: a separate Voyager model with the full
+							This preserves the original `/demo` behaviour: a separate Voyager model with the full
 							control panel for testing camera controls, annotations, tours, tools, measurement, and
 							background options.
 						</p>

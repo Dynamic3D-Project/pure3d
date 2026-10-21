@@ -128,7 +128,7 @@
 		<div class="flex flex-wrap items-center justify-between gap-x-5 gap-y-2 px-1 pt-3 text-xs">
 			<div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-base-content/60">
 				{#if edition.usageConditions}<span
-						><span class="font-mono text-[9px] tracking-[0.1em] uppercase">License</span><span
+						><span class="font-mono text-[9px] tracking-[0.1em] uppercase">Licence</span><span
 							class="ml-1 font-medium text-base-content/80">{edition.usageConditions}</span
 						></span
 					>{/if}

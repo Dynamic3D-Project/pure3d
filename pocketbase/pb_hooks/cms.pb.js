@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- PocketBase handlers use isolated Goja contexts. */
 onRecordValidate((e) => require(__hooks + '/cms-service.cjs').validateContent(e), 'content');
+onRecordValidate((e) => require(__hooks + '/cms-service.cjs').validateOpenCall(e), 'open_calls');
 onRecordValidate(
 	(e) => require(__hooks + '/cms-service.cjs').validateMenu(e),
 	'cms_menus',

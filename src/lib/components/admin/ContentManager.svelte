@@ -23,6 +23,7 @@
 		categoryIds = $state<string[]>([]),
 		categoryOptions = $state<RecordModel[]>([]),
 		cmsEditions = $state<{ id: string; title: string }[]>([]),
+		cmsOpenCalls = $state<{ id: string; title: string }[]>([]),
 		library = $state<RecordModel[]>([]),
 		showLibrary = $state(false);
 	let dragId = $state('');
@@ -83,7 +84,7 @@
 		loading = true;
 		failure = '';
 		try {
-			const [content, categories, media, editions] = await Promise.all([
+			const [content, categories, media, editions, openCalls] = await Promise.all([
 				pb.collection('content').getFullList({ sort: '-updated' }),
 				pb.collection('cms_categories').getFullList({ sort: 'name' }),
 				pb.collection('content_assets').getFullList(),
@@ -91,6 +92,11 @@
 					filter: 'isPublished = true',
 					fields: 'id,title,dcTitle',
 					sort: 'dcTitle,title'
+				}),
+				pb.collection('open_calls').getFullList({
+					filter: 'isPublished = true',
+					fields: 'id,title',
+					sort: 'order,title'
 				})
 			]);
 			items = content;
@@ -100,6 +106,7 @@
 				id: edition.id,
 				title: edition.dcTitle || edition.title || 'Untitled edition'
 			}));
+			cmsOpenCalls = openCalls.map((call) => ({ id: call.id, title: call.title }));
 		} catch (e) {
 			failure = e instanceof Error ? e.message : 'Could not load content';
 		} finally {
@@ -459,6 +466,7 @@
 								uploadImage={upload}
 								cmsComponents
 								{cmsEditions}
+								{cmsOpenCalls}
 								onchange={(html) => {
 									body = html;
 									dirty = true;

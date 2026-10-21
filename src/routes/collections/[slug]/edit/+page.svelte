@@ -380,7 +380,7 @@
 									type="text"
 									class={inputClass}
 									bind:value={dcSubject}
-									placeholder="archaeology, 3D modeling"
+									placeholder="archaeology, 3D modelling"
 								/>
 								<p class="mt-1 text-xs text-base-content/50">
 									Separate tags or subjects with commas.

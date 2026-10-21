@@ -2526,7 +2526,7 @@ integration(
 				// A valid token reaches our fixed-origin config guard; invalid tokens never reach the hook.
 				expect(body.message).toBe(
 					scenario === 'valid'
-						? 'Not authorized for this operation.'
+						? 'Not authorised for this operation.'
 						: 'Failed to fetch OAuth2 user.'
 				);
 				expect(response.status).toBe(scenario === 'valid' ? 403 : 400);

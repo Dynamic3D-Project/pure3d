@@ -243,7 +243,7 @@
 	<title>Explore Our Collections | Pure 3D</title>
 	<meta
 		name="description"
-		content="Discover our curated 3D collections showcasing digital humanities and cultural heritage artifacts."
+		content="Discover our curated 3D collections showcasing digital humanities and cultural heritage artefacts."
 	/>
 </svelte:head>
 

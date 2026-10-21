@@ -1573,19 +1573,19 @@
 										</button>
 									</div>
 
-									<h3 class="text-sm font-semibold">Quick Colors</h3>
+									<h3 class="text-sm font-semibold">Quick Colours</h3>
 									<div class="grid grid-cols-3 gap-2">
 										<button
 											class="btn btn-outline btn-xs"
 											onclick={() => setBackgroundColor('#1a1a1a', '#0a0a0a')}
-											title="Dark gray gradient"
+											title="Dark grey gradient"
 										>
 											Dark
 										</button>
 										<button
 											class="btn btn-outline btn-xs"
 											onclick={() => setBackgroundColor('#ffffff', '#e0e0e0')}
-											title="White to light gray"
+											title="White to light grey"
 										>
 											Light
 										</button>

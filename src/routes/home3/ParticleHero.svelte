@@ -503,7 +503,7 @@
 					<span>Form {pad(formIndex + 1)} / {pad(activeForms.length)}</span>
 					<span>
 						{particleCount
-							? `${particleCount.toLocaleString('en')} ${unit} · `
+							? `${particleCount.toLocaleString('en-GB')} ${unit} · `
 							: ''}{form.sourceSlug ? 'Mesh sample' : 'Procedural'}
 					</span>
 				</div>

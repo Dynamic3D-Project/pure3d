@@ -138,7 +138,7 @@ function credits(value, previous, requireCreators, lookupUser, allowCreatorWitho
 			credit.type === 'org' &&
 			(credit.orcid !== null || credit.userId !== undefined || credit.provenance !== 'manual')
 		)
-			throw new Error('Organizations cannot have an ORCID, userId or OAuth provenance');
+			throw new Error('Organisations cannot have an ORCID, userId or OAuth provenance');
 		if (credit.userId !== undefined) {
 			if (typeof credit.userId !== 'string' || !/^[a-z0-9]{15}$/.test(credit.userId))
 				throw new Error('Invalid credit userId');

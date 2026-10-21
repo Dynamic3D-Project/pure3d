@@ -72,7 +72,7 @@
 							{post.title}
 						</h2>
 						<div class="mt-2 text-sm text-base-content/60">
-							{new Date(post.created).toLocaleDateString('en-US', {
+							{new Date(post.created).toLocaleDateString('en-GB', {
 								year: 'numeric',
 								month: 'long',
 								day: 'numeric'

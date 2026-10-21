@@ -327,7 +327,7 @@
 		<div class="plate-bar" aria-hidden="true">
 			<span>Form {pad(formIndex + 1)} / {pad(PARTICLE_FORMS.length)}</span>
 			<span>
-				{particleCount ? `${particleCount.toLocaleString('en')} points · ` : ''}Procedural
+				{particleCount ? `${particleCount.toLocaleString('en-GB')} points · ` : ''}Procedural
 			</span>
 		</div>
 

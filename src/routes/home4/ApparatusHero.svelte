@@ -453,7 +453,7 @@
 			<div class="plate-bar" aria-hidden="true">
 				<span>Fig. 1 · The apparatus</span>
 				<span>
-					{evidenceCount ? `${evidenceCount.toLocaleString('en')} points · ` : ''}Procedural
+					{evidenceCount ? `${evidenceCount.toLocaleString('en-GB')} points · ` : ''}Procedural
 				</span>
 			</div>
 

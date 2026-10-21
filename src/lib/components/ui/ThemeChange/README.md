@@ -1,6 +1,6 @@
 # ThemeChange Component
 
-A Svelte component that provides theme switching functionality using DaisyUI themes. This component creates a dropdown menu that allows users to switch between different color themes in your application.
+A Svelte component that provides theme switching functionality using DaisyUI themes. This component creates a dropdown menu that allows users to switch between different colour themes in your application.
 
 ## Requirements
 
@@ -79,7 +79,7 @@ export default {
 };
 ```
 
-The `ctw` theme is a custom theme with specific color configurations, while the other themes are pre-defined DaisyUI themes.
+The `ctw` theme is a custom theme with specific colour configurations, while the other themes are pre-defined DaisyUI themes.
 
 ## Usage
 
@@ -127,14 +127,14 @@ The component includes 30 pre-configured themes:
 | forest    | 🌲 forest    | Dark green nature theme     |
 | aqua      | 🐟 aqua      | Water-inspired theme        |
 | lofi      | 👓 lofi      | Minimal, calm theme         |
-| pastel    | 🖍 pastel    | Soft color theme            |
+| pastel    | 🖍 pastel    | Soft colour theme           |
 | fantasy   | 🧚‍♀️ fantasy   | Magical theme               |
 | wireframe | 📝 Wireframe | Minimal black and white     |
 | black     | 🏴 black     | Pure black theme            |
 | luxury    | 💎 luxury    | Elegant dark theme          |
 | dracula   | 🧛‍♂️ dracula   | Dark vampire theme          |
 | cmyk      | 🖨 CMYK      | Print-inspired theme        |
-| autumn    | 🍁 Autumn    | Fall colors theme           |
+| autumn    | 🍁 Autumn    | Autumn colours theme        |
 | business  | 💼 Business  | Professional theme          |
 | acid      | 💊 Acid      | Bright, psychedelic theme   |
 | lemonade  | 🍋 Lemonade  | Fresh yellow theme          |
@@ -163,7 +163,7 @@ The component uses the `theme-change` package to handle theme switching. When a 
 1. The selected theme is stored in localStorage
 2. The theme is applied to the document using DaisyUI's theme system
 3. The theme persists across page reloads
-4. The component automatically initializes theme handling on mount
+4. The component automatically initialises theme handling on mount
 
 ## Accessibility
 
