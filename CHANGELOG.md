@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.18.0 - 2026-10-21
+
+### Features
+
+- update particle models and provenance files; remove Baby Yoda (382ce5a4)
+- refresh admin sidebar styling (04b6628a)
+- manage learning materials and stabilize edition cards (29ceee4a)
+- improve navigation, themes, and editorial pages (bb6bf063)
+
+### Fixes
+
+- repair validation and outdated gate expectations (9f2c108d)
+
 ## v0.17.1 - 2026-10-17
 
 ### Fixes
