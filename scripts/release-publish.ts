@@ -44,20 +44,26 @@ export function publishRelease(
 	};
 	let release = lookup();
 	if (!release) {
-		run([
-			'release',
-			'create',
-			tag,
-			'--repo',
-			repository,
-			'--verify-tag',
-			'--draft',
-			'--title',
-			tag,
-			'--notes',
-			notes
-		]);
-		release = lookup();
+		// Verify the pushed tag: the create API would otherwise create a missing tag itself.
+		run(['api', `repos/${repository}/git/ref/tags/${encodeURIComponent(tag)}`]);
+		// Use the create response directly; the list/tag endpoints can lag behind a new draft.
+		release = JSON.parse(
+			run([
+				'api',
+				`repos/${repository}/releases`,
+				'--method',
+				'POST',
+				'-f',
+				`tag_name=${tag}`,
+				'-f',
+				`name=${tag}`,
+				'-f',
+				`body=${notes}`,
+				'-F',
+				'draft=true'
+			]).toString()
+		);
+		releaseId = release?.id;
 	}
 	if (!release || release.tag_name !== tag) throw new Error('Release identity mismatch');
 	for (const file of files) {
@@ -75,7 +81,16 @@ export function publishRelease(
 				throw new Error(`Remote asset differs: ${file}; refusing replacement`);
 		} else {
 			if (!release.draft) throw new Error(`Published release missing ${file}; refusing mutation`);
-			run(['release', 'upload', tag, file, '--repo', repository]);
+			run([
+				'api',
+				`https://uploads.github.com/repos/${repository}/releases/${release.id}/assets?name=${encodeURIComponent(file)}`,
+				'--method',
+				'POST',
+				'-H',
+				'Content-Type: application/octet-stream',
+				'--input',
+				file
+			]);
 			const uploaded = lookup()?.assets.find((item) => item.name === file);
 			if (
 				!uploaded ||
@@ -94,16 +109,16 @@ export function publishRelease(
 	}
 	if (release.draft)
 		run([
-			'release',
-			'edit',
-			tag,
-			'--repo',
-			repository,
-			'--title',
-			tag,
-			'--notes',
-			notes,
-			'--draft=false'
+			'api',
+			`repos/${repository}/releases/${release.id}`,
+			'--method',
+			'PATCH',
+			'-f',
+			`name=${tag}`,
+			'-f',
+			`body=${notes}`,
+			'-F',
+			'draft=false'
 		]);
 	if (lookup()?.draft !== false) throw new Error('Release publication not confirmed');
 }

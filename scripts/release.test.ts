@@ -99,7 +99,7 @@ test('dry-run leaves working files, index, refs and release state unchanged', ()
 });
 
 test('publication recovers lost create/upload/publish responses without duplicating assets', () => {
-	for (const failure of ['create', 'upload', 'edit']) {
+	for (const failure of [null, 'create', 'upload', 'edit']) {
 		type ReleaseFixture = {
 			id: number;
 			tag_name: string;
@@ -111,27 +111,41 @@ test('publication recovers lost create/upload/publish responses without duplicat
 		let failed = false;
 		const run = (args: string[]) => {
 			if (args.includes('--clobber')) throw new Error('Asset replacement is forbidden');
-			if (args[0] === 'api') {
+			const action =
+				args[0] === 'api' && args[1] === 'repos/org/repo/releases' && args.includes('POST')
+					? 'create'
+					: args[1].startsWith('https://uploads.github.com/') && args.includes('POST')
+						? 'upload'
+						: args.includes('PATCH')
+							? 'edit'
+							: null;
+			if (args[0] === 'api' && !action) {
+				if (args[1].includes('/git/ref/tags/'))
+					return Buffer.from(JSON.stringify({ ref: 'refs/tags/v1.2.3' }));
 				if (args[1].includes('/assets/')) return Buffer.from('exact bytes');
 				if (args[1].includes('/releases?'))
-					return Buffer.from(JSON.stringify([[], release ? [release] : []]));
+					return Buffer.from(JSON.stringify([[], release && failure ? [release] : []]));
 				if (args[1].includes('/tags/') && release?.draft)
 					throw { stderr: Buffer.from('gh: Not Found (HTTP 404)') };
 				if (!release) throw { stderr: Buffer.from('gh: Not Found (HTTP 404)') };
 				return Buffer.from(JSON.stringify(release));
 			}
-			if (args[1] === 'create') {
+			if (action === 'create') {
 				release = { id: releases.length + 1, tag_name: 'v1.2.3', draft: true, assets: [] };
 				releases.push(release);
 			}
-			if (args[1] === 'upload')
-				release!.assets.push({ id: release!.assets.length + 1, name: args[3], state: 'uploaded' });
-			if (args[1] === 'edit') release!.draft = false;
-			if (args[1] === failure && !failed) {
+			if (action === 'upload')
+				release!.assets.push({
+					id: release!.assets.length + 1,
+					name: new URL(args[1]).searchParams.get('name')!,
+					state: 'uploaded'
+				});
+			if (action === 'edit') release!.draft = false;
+			if (failure && action === failure && !failed) {
 				failed = true;
 				throw new Error('response lost');
 			}
-			return Buffer.from('');
+			return Buffer.from(action === 'create' ? JSON.stringify(release) : '');
 		};
 		const publish = () =>
 			publishRelease(
@@ -142,7 +156,8 @@ test('publication recovers lost create/upload/publish responses without duplicat
 				run,
 				() => Buffer.from('exact bytes')
 			);
-		expect(publish).toThrow('response lost');
+		if (failure) expect(publish).toThrow('response lost');
+		else publish();
 		publish();
 		publish();
 		expect(releases).toHaveLength(1);
