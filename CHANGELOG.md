@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.20.0 - 2026-10-21
+
+### Features
+
+- add proposal call selection and safeguards (26be7797)
+- add CMS calls and proposal selection (d5b82773)
+
+### Fixes
+
+- enforce deadlines on first proposal submission (b60cdb1a)
+- publish drafts by their returned release ID (cf34372c)
+
 ## v0.19.1 - 2026-10-21
 
 ### Fixes
