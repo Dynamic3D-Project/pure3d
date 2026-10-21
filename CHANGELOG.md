@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.19.1 - 2026-10-21
+
+### Fixes
+
+- support explicit maintenance patch releases (74b2d12a)
+
+### Maintenance
+
+- test: focus suite on feature integrations (09e90400)
+
 ## v0.19.0 - 2026-10-21
 
 ### Features
