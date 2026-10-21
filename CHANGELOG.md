@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.19.0 - 2026-10-21
+
+### Features
+
+- add particle forms for more editions (5ff7dab7)
+
+### Fixes
+
+- find draft releases during publication recovery (0f029289)
+
 ## v0.18.0 - 2026-10-21
 
 ### Features
