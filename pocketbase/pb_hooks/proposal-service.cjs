@@ -86,7 +86,14 @@ function openCallError(app, record) {
 	const id = openCallId(record);
 	if (!id) return '';
 	const original = record.isNew && record.isNew() ? null : record.original();
-	if (original && id === openCallId(original)) return '';
+	const previous = original && json(original, 'proposalSnapshot')?.openCall;
+	if (
+		original &&
+		id === openCallId(original) &&
+		previous?.id === id &&
+		text(original, 'proposalSubmittedAt')
+	)
+		return '';
 	let call;
 	try {
 		call = app.findRecordById('open_calls', id);

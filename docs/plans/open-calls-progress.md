@@ -1,5 +1,7 @@
 # Open calls implementation checkpoint
 
+- Rollout issue created and read back in milestone **2.0 Fixes**:
+  https://github.com/Dynamic3D-Project/pure3d/issues/100 (related to existing #98).
 - Approved: first-class database records, admin management, reusable CMS component and landing-page
   section. User subsequently authorised deployment of everything and the optional thematic-call
   proposal selector. Finalisation and production hook/frontend release are now authorised.
@@ -28,10 +30,20 @@
 - Worker `ses_ea152c0d2ffekbE5bUHqZGaYCe` implements proposal selection, snapshots, review display,
   backend enforcement and focused integration coverage. Coordinator owns schema/migration scripts,
   CMS integration coverage, final checks and deployment. Do not concurrently alter worker files.
-- Proposal code was returned, but its focused native roundtrip failed HTTP 400 on relation save.
-  The same worker is correcting this with actual response/log evidence; deployment is paused.
-  Coordinator fixed nullable deletion callback typing and the SvelteKit route/query type mismatch.
-  Fresh `bun run check` now passes with 0 errors and 6 existing warnings; focused ESLint passes.
+- Coordinator traced the HTTP 400 to the fixture's missing `proposal-review-service.cjs`, not stale
+  relation metadata. Fixed fixture dependencies and removed the unnecessary duplicate schema setup.
+  Also fixed and regression-tested first submissions after a saved draft's call expires; only
+  previously submitted snapshots may retain a closed call. Native proposal/workflow selection:
+  6 tests, 120 assertions passed; CMS lifecycle: 1 test, 19 assertions passed. Default suite:
+  40 passed, 30 opt-in skips, 0 failures. Typecheck: 0 errors, 6 existing warnings; scoped lint passes.
+- Real browser journeys on disposable local PocketBase now pass: CMS insert/save/reopen/public
+  rendering, live record edit reflected in a referenced page, proposal selector default/filtering,
+  autosave/reopen, full author UI submission, and assigned reviewer seeing frozen title/deadline
+  after call closure/unpublication. Proposal control has no overflow at 1440/768/390px.
+- Two feature commits were added/pushed concurrently by another actor (`d5b8277`, `26be779`).
+  Preserve these; coordinator's remaining fix will be a new commit. Newer uncommitted Resources
+  edits must remain untouched. Use an isolated local clone of the committed main snapshot for the
+  canonical clean-main release; retain this checkout as the user's active working directory.
 - CMS feature-level integration passes 19 assertions against disposable production-matched
   PocketBase 0.40.3 (image digest `ab3f2357cce7`) through a temporary executable adapter, with real
   admin/reader/anonymous API clients. Tests cover stale saves and referenced-call deletion guards
