@@ -255,9 +255,9 @@ function validateMenu(e) {
 	}
 	function link(item, active = true) {
 		identity(item);
-		// Direct menus retain inactive submenu drafts, including incomplete links.
-		if (!active) return;
 		const t = item.target;
+		// Retain incomplete inactive drafts, but never retain an unsafe external URL.
+		if (!active && t?.type !== 'external') return;
 		if (
 			!t ||
 			!['content', 'category', 'collection', 'edition', 'route', 'external'].includes(t.type) ||

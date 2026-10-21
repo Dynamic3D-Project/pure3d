@@ -119,17 +119,18 @@ for (const custom of [false, true]) {
 }
 
 test('production frontend pins OVH even when public settings point elsewhere', () => {
-	const services = config('prod', {
+	const output = run(['make', '-n', 'dev-prod'], {
 		PUBLIC_POCKETBASE_URL: 'http://localhost:1',
 		PUBLIC_ASSET_BASE_URL: 'http://localhost:2'
 	});
-	expect(services.frontend.environment.PUBLIC_POCKETBASE_URL === production).toBe(true);
-	expect(services.frontend.environment.PUBLIC_ASSET_BASE_URL === `${production}/assets`).toBe(true);
-	expect(services.frontend.environment.DEV_HTTPS === '0').toBe(true);
-	expect(services.frontend.environment.PUBLIC_DEMO_LOGIN === '0').toBe(true);
+	expect(output.includes(`export PUBLIC_POCKETBASE_URL="${production}"`)).toBe(true);
+	expect(output.includes(`export PUBLIC_ASSET_BASE_URL="${production}/assets"`)).toBe(true);
+	expect(output.includes('export DEV_HTTPS=0; unset DEV_PUBLIC_URL;')).toBe(true);
+	expect(output.includes('export PUBLIC_DEMO_LOGIN=0;')).toBe(true);
+	expect(output.indexOf('export PUBLIC_POCKETBASE_URL=') > output.indexOf('. ./.env')).toBe(true);
 });
 
-test('Make targets select explicit overrides; production starts only frontend', () => {
+test('Make targets select explicit overrides; production runs the native frontend', () => {
 	for (const target of [
 		'dev',
 		'dev-web',
@@ -176,14 +177,9 @@ test('Make targets select explicit overrides; production starts only frontend', 
 	const output = run(['make', '-n', 'dev-prod']);
 	expect(output.includes('mkcert')).toBe(false);
 	expect(output.includes('Connected to production: changes affect live data.')).toBe(true);
-	const commands = output.split('\n').filter((line) => line.includes('docker compose'));
-	expect(commands.length === 2).toBe(true);
-	expect(commands[0].trim()).toBe(
-		'docker compose -f docker-compose.yml -f docker-compose.prod.yml stop minio minio-setup pocketbase pocketbase-setup voyager-setup'
-	);
+	expect(output.includes('docker')).toBe(false);
 	expect(
-		commands[1].trim() ===
-			'docker compose -f docker-compose.yml -f docker-compose.prod.yml up --no-deps frontend'
+		output.includes('bun install && bun run dev --host 0.0.0.0 --port "${FRONTEND_PORT:-60020}"')
 	).toBe(true);
 });
 

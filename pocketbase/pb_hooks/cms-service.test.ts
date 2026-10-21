@@ -141,7 +141,10 @@ test('direct menus retain missing submenu targets but still enforce safe links a
 	expect(() => validateMenu(event)).toThrow('Unsafe link URL.');
 	examples.target = { type: 'content', value: 'missing' };
 	config.items[0].direct = null;
-	expect(() => validateMenu(event)).toThrow('Select an existing link destination.');
+	validateMenu(event);
+	const live = validateEvent(config, 'cms_menus');
+	live.app.findRecordById = event.app.findRecordById;
+	expect(() => validateMenu(live)).toThrow('points to a destination that no longer exists');
 });
 
 test('menu validation accepts introductions and checks landing links', () => {

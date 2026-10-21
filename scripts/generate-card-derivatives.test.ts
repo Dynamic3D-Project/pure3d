@@ -54,8 +54,8 @@ describe('generateCardDerivatives', () => {
 		const outputs = manifest.images['/assets/project/1/icon.avif'];
 
 		expect(outputs).toEqual([
-			{ url: '/card-images/project/1/icon-card-380.avif', width: 380 },
-			{ url: '/card-images/project/1/icon-card-500.avif', width: 500 }
+			{ url: '/card-images/project/1/icon-card-380.avif', width: 380, height: 228 },
+			{ url: '/card-images/project/1/icon-card-500.avif', width: 500, height: 300 }
 		]);
 		expect((await sharp(join(outputRoot, 'project/1/icon-card-380.avif')).metadata()).width).toBe(
 			380
