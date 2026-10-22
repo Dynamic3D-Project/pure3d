@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.23.1 - 2026-10-22
+
+### Maintenance
+
+- docs: streamline README and clarify local development setup (64278411)
+
 ## v0.23.0 - 2026-10-22
 
 ### Features
