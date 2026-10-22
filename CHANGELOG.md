@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.0.0 - 2026-10-22
+
+### Maintenance
+
+- chore: mark PURE3D 2.0 go-live milestone (c754e2b2)
+
 ## v0.24.1 - 2026-10-22
 
 ### Fixes
