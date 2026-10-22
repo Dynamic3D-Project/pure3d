@@ -80,9 +80,8 @@ make dev-prod
 **Connected to production: changes affect live data.**
 
 This installs dependencies and runs Vite directly with Bun, without Docker.
-It forces PocketBase to
-`https://main.57-129-98-223.sslip.io` and assets to
-`https://main.57-129-98-223.sslip.io/assets`, regardless of `.env` public settings.
+It forces PocketBase to `https://api.pure3d.eu` and assets to
+`https://api.pure3d.eu/assets`, regardless of `.env` public settings.
 It does not start backend/setup dependencies, stop existing local services, or
 manage any production services. No UI mode flag is required; the actual
 PocketBase URL identifies the connection.
@@ -117,8 +116,9 @@ In the existing ORCID application's registration, **add** this exact redirect UR
 https://127.0.0.1:60020/api/oauth2-redirect
 ```
 
-Keep every existing OVH callback and leave the real application URL pointing at OVH.
-Do not replace the old callback. A custom `FRONTEND_PORT` requires an additional exact
+Keep the production callback `https://api.pure3d.eu/api/oauth2-redirect` and leave the real
+application URL pointing at `https://pure3d.eu`. Do not replace the production callback. A custom
+`FRONTEND_PORT` requires an additional exact
 allowlist entry with that port; changing only the Make port does not update ORCID.
 
 Keep the existing real client ID and secret in private `.env`. Local frontend/setup

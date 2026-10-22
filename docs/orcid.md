@@ -20,7 +20,7 @@ For an already configured ORCID-only deployment, deploy the current `pocketbase/
 files and restart PocketBase first. Then, with superuser credentials injected privately:
 
 ```sh
-POCKETBASE_URL=https://main.57-129-98-223.sslip.io bun --no-env-file scripts/configure-orcid.ts --update-jwks
+POCKETBASE_URL=https://api.pure3d.eu bun --no-env-file scripts/configure-orcid.ts --update-jwks
 ```
 
 This command confirms a new PocketBase backup, changes only the existing provider's
@@ -379,16 +379,15 @@ in protected operator storage. Aggregate console counts alone do not establish w
 
 ## Deployment and Cutover
 
-The confirmed, user-authorized OVH rollout target is `https://main.57-129-98-223.sslip.io`, on
-`ubuntu@57.129.98.223` with containers under `/opt/pure3d-archive`. PocketBase uses that origin's
-`/api`; assets use `/assets/project/...`, retaining all legacy project paths. `pure3d.eu` DNS has
-**not moved**. `pure3d-database.ctwhome.com` points to a different legacy server and must not be used
-for this rollout. GitHub Pages remains a separate frontend build with `APP_BASE_PATH=/pure3d`.
+The production backend is `https://api.pure3d.eu` on the existing OVH service. PocketBase uses that
+origin's `/api`; assets use `/assets/project/...`, retaining all legacy project paths. GitHub Pages
+serves the separate frontend at `https://pure3d.eu` with an empty `APP_BASE_PATH`, and
+`https://www.pure3d.eu` redirects to the apex.
 
 The existing ORCID application needs the exact callback
-`https://main.57-129-98-223.sslip.io/api/oauth2-redirect` registered. Registration is pending the
-main session's browser step; this documentation does not claim it is registered or that cutover has
-executed. Verify the SDK-generated redirect against that registration before enabling sign-in.
+`https://api.pure3d.eu/api/oauth2-redirect` registered and its application URL set to
+`https://pure3d.eu`. This documentation does not claim that the external registration or DNS cutover
+has executed. Verify the SDK-generated redirect against that registration before enabling sign-in.
 
 The SvelteKit app is a **static SPA**. Deploying the frontend does not deploy PocketBase hooks.
 Production needs a separate deployment of the complete `pocketbase/pb_hooks/` directory, including

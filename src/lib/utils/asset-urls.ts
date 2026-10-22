@@ -12,7 +12,7 @@ import { dev } from '$app/environment';
 import { pb } from '$lib/database/client';
 import { getPocketBaseFileUrl } from '$lib/utils/pocketbase-file-url';
 
-const DEFAULT_ASSET_BASE_URL = 'https://main.57-129-98-223.sslip.io/assets';
+const DEFAULT_ASSET_BASE_URL = 'https://api.pure3d.eu/assets';
 
 /**
  * Returns the base URL for assets.

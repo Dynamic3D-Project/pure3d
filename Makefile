@@ -58,8 +58,8 @@ dev-prod:
 	@set -a; [ ! -f .env ] || . ./.env; set +a; \
 		export DEV_HTTPS=0; unset DEV_PUBLIC_URL; \
 		export PUBLIC_DEMO_LOGIN=0; \
-		export PUBLIC_POCKETBASE_URL="https://main.57-129-98-223.sslip.io"; \
-		export PUBLIC_ASSET_BASE_URL="https://main.57-129-98-223.sslip.io/assets"; \
+		export PUBLIC_POCKETBASE_URL="https://api.pure3d.eu"; \
+		export PUBLIC_ASSET_BASE_URL="https://api.pure3d.eu/assets"; \
 		bun install && bun run dev --host 0.0.0.0 --port "$${FRONTEND_PORT:-60020}"
 
 dev-web: dev-cert

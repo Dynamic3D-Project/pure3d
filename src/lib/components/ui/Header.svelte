@@ -62,7 +62,7 @@
 	let ContextualMenuEditor = $state<
 		Awaited<typeof import('$lib/components/ui/ContextualMenuEditor.svelte')>['default'] | null
 	>(null);
-	const productionDb = dev && /^https:\/\/main\.57-129-98-223\.sslip\.io/.test(pb.baseURL);
+	const productionDb = dev && /^https:\/\/api\.pure3d\.eu(?:\/|$)/.test(pb.baseURL);
 	let editingView = $derived(editing && !previewing);
 	let navigation = $derived(resolvedItems($menus.main, $menus.directory));
 	let selected = $derived(navigation.find((item) => item.id === open));

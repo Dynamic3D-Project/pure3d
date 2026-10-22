@@ -48,7 +48,7 @@ Get private database seed data from a project maintainer and place it in `data/j
 - MinIO console: `http://localhost:60024`
 - Local assets: `http://localhost:60023/pure3d-assets`
 
-Local ORCID sign-in reuses the **existing real ORCID application and account**, with a separate local application database. Add `https://127.0.0.1:60020/api/oauth2-redirect` to the application's allowed callbacks without replacing the OVH callback or application URL. No sandbox is needed. See [Development](docs/development.md) for certificate trust, custom-port callbacks, and explicit provider configuration.
+Local ORCID sign-in reuses the **existing real ORCID application and account**, with a separate local application database. Add `https://127.0.0.1:60020/api/oauth2-redirect` to the application's allowed callbacks without replacing the production callback or application URL. No sandbox is needed. See [Development](docs/development.md) for certificate trust, custom-port callbacks, and explicit provider configuration.
 
 ### Local frontend against live OVH (explicit opt-in)
 
@@ -66,12 +66,12 @@ Open `http://localhost:60020` in this mode. The frontend runs directly with Bun;
 
 `make dev` and all local aliases select local services. Only `make dev-prod` selects these live endpoints:
 
-| Service    | URL                                          | Purpose                                           |
-| ---------- | -------------------------------------------- | ------------------------------------------------- |
-| PocketBase | `https://main.57-129-98-223.sslip.io`        | Collections, editions, users (same-origin `/api`) |
-| Assets     | `https://main.57-129-98-223.sslip.io/assets` | 3D models, scenes, thumbnails                     |
+| Service    | URL                            | Purpose                       |
+| ---------- | ------------------------------ | ----------------------------- |
+| PocketBase | `https://api.pure3d.eu`        | Collections, editions, users  |
+| Assets     | `https://api.pure3d.eu/assets` | 3D models, scenes, thumbnails |
 
-The confirmed OVH target is `ubuntu@57.129.98.223`, with containers under `/opt/pure3d-archive`. `pure3d.eu` DNS has not moved; `pure3d-database.ctwhome.com` points to a different legacy server, not this target.
+The production API and assets run on the existing OVH service at `api.pure3d.eu`. The frontend runs separately on GitHub Pages at `pure3d.eu`; `www.pure3d.eu` redirects to the apex.
 
 `PUBLIC_*` settings do not select the mode of these Make commands. Existing port variables and `R2_BUCKET` still customize local URLs.
 
@@ -114,14 +114,14 @@ The [Smithsonian Voyager](https://smithsonian.github.io/dpo-voyager/) 3D viewer 
 
 ## Deployment
 
-The app deploys to **GitHub Pages** as a static site. Pushing to `main` triggers checks, semantic release analysis, and deployment through `.github/workflows/release.yml`.
+The app deploys to **GitHub Pages** as a static site at `https://pure3d.eu`. Pushing to `main` runs checks; an explicitly published release tag deploys its verified prebuilt archive.
 
 Build environment:
 
 ```env
-APP_BASE_PATH=/pure3d
-PUBLIC_POCKETBASE_URL=https://main.57-129-98-223.sslip.io
-PUBLIC_ASSET_BASE_URL=https://main.57-129-98-223.sslip.io/assets
+APP_BASE_PATH=
+PUBLIC_POCKETBASE_URL=https://api.pure3d.eu
+PUBLIC_ASSET_BASE_URL=https://api.pure3d.eu/assets
 ```
 
 # Features

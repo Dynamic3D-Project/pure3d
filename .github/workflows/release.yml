@@ -11,9 +11,9 @@ permissions:
   contents: read
 
 env:
-  APP_BASE_PATH: /pure3d
-  PUBLIC_POCKETBASE_URL: https://main.57-129-98-223.sslip.io
-  PUBLIC_ASSET_BASE_URL: https://main.57-129-98-223.sslip.io/assets
+  APP_BASE_PATH: ''
+  PUBLIC_POCKETBASE_URL: https://api.pure3d.eu
+  PUBLIC_ASSET_BASE_URL: https://api.pure3d.eu/assets
 
 concurrency:
   group: checks-${{ github.ref }}

@@ -1,0 +1,26 @@
+$TTL 300
+@ IN SOA dns111.ovh.net. tech.ovh.net. (2026102201 86400 3600 3600000 300)
+@ IN NS dns111.ovh.net.
+@ IN NS ns111.ovh.net.
+@ IN A 185.199.108.153
+@ IN A 185.199.109.153
+@ IN A 185.199.110.153
+@ IN A 185.199.111.153
+www IN CNAME pure3d-eu.github.io.
+api IN A 57.129.98.223
+@ IN MX 1 mx1.mail.ovh.net.
+@ IN MX 5 mx2.mail.ovh.net.
+@ IN MX 100 mx3.mail.ovh.net.
+@ IN TXT "v=spf1 include:mx.ovh.com -all"
+_dmarc IN TXT "v=DMARC1; p=none"
+ovhmo-selector-1._domainkey IN CNAME ovhmo-selector-1._domainkey.4941893.mj.dkim.mail.ovh.net.
+ovhmo-selector-2._domainkey IN CNAME ovhmo-selector-2._domainkey.4941894.mj.dkim.mail.ovh.net.
+_autodiscover._tcp IN SRV 0 0 443 mailconfig.ovh.net.
+_imaps._tcp IN SRV 0 0 993 ssl0.ovh.net.
+_submission._tcp IN SRV 0 0 465 ssl0.ovh.net.
+autoconfig IN CNAME mailconfig.ovh.net.
+autodiscover IN CNAME mailconfig.ovh.net.
+imap IN CNAME ssl0.ovh.net.
+mail IN CNAME ssl0.ovh.net.
+pop3 IN CNAME ssl0.ovh.net.
+smtp IN CNAME ssl0.ovh.net.

@@ -2,7 +2,7 @@ import PocketBase, { LocalAuthStore } from 'pocketbase';
 import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
 import { dev } from '$app/environment';
 
-const backendUrl = (PUBLIC_POCKETBASE_URL || 'https://main.57-129-98-223.sslip.io').replace(
+const backendUrl = (PUBLIC_POCKETBASE_URL || 'https://api.pure3d.eu').replace(
 	/\/+$/,
 	''
 );

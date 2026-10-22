@@ -1,6 +1,6 @@
 # Releases
 
-Releases are intentional local operations for `Dynamic3D-Project/pure3d`. Pushing `main`
+Releases are intentional local operations for `PURE3D-EU/pure3d`. Pushing `main`
 only runs read-only CI (Conventional Commit PR title, feature integration tests, Svelte/TypeScript checks).
 CI does not create releases or build. Tag pushes deploy verified prebuilt Release archives to Pages. No npm/store publisher applies
 because this is a private-package static web app.
@@ -52,7 +52,8 @@ readiness gate (network access only during an authorized real release), then exi
 build and tar packaging. PocketBase binary integration tests remain separately opt-in and are
 not claimed as part of these gates unless `PB_TEST_BINARY` is supplied. See [Testing](testing.md)
 for the retained workflows and coverage limits. Dependencies must already be installed; no release-time install.
-The build retains organization Pages base `/pure3d` and existing public backend/asset endpoints.
+The build targets the custom-domain root at `https://pure3d.eu` and the public API/assets at
+`https://api.pure3d.eu`.
 It creates `build/404.html`, `build/version.json`, and ignored `pure3d-vX.Y.Z.tar.gz`.
 The version metadata records the tested source commit before the version-only release commit;
 retries retain that same source SHA. Build outputs are never committed.
