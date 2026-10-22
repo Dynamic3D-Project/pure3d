@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.22.0 - 2026-10-22
+
+### Features
+
+- improve mobile layout and add edition deletion (318c4c6d)
+
+### Fixes
+
+- format responsive hero and search components (45c2162c)
+- prevent header search from overflowing (2fcb022b)
+- improve mobile hero layout and source edition link (89e9b5f7)
+
 ## v0.21.1 - 2026-10-22
 
 ### Fixes
