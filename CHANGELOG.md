@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.24.0 - 2026-10-22
+
+### Features
+
+- add SSHOC-NL logo to the footer (30d3b934)
+
 ## v0.23.1 - 2026-10-22
 
 ### Maintenance
