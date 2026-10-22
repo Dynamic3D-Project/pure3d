@@ -1,4 +1,5 @@
-// Checks/build run locally; GitHub receives the exact prebuilt archive.
+// Checks/build run in the automatic main-push workflow or the optional local fallback.
+// GitHub Pages receives the exact prebuilt archive; it never rebuilds a release.
 export default {
 	repository: 'PURE3D-EU/pure3d',
 	checks: [

@@ -3,6 +3,16 @@ name: Deploy prebuilt release
 on:
   push:
     tags: ['v*']
+  workflow_call:
+    inputs:
+      tag:
+        description: Published release tag
+        required: true
+        type: string
+      release_commit:
+        description: Commit targeted by the annotated release tag
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -20,8 +30,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          TAG: ${{ github.ref_name }}
-          RELEASE_COMMIT: ${{ github.sha }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+          RELEASE_COMMIT: ${{ inputs.release_commit || github.sha }}
         shell: bash
         run: |
           set -euo pipefail
@@ -29,7 +39,7 @@ jobs:
           prerelease=false
           [[ "$TAG" != *-* ]] || prerelease=true
           archive="pure3d-${TAG}.tar.gz"
-          # Tag push starts this job before local publication finishes. Never rebuild.
+          # A manual tag push can start this job before local publication finishes. Never rebuild.
           ready=false
           for attempt in {1..60}; do
             if gh api "repos/$GH_REPO/releases/tags/$TAG" > release.json &&
@@ -41,7 +51,7 @@ jobs:
             fi
             sleep 20
           done
-          "$ready" || { echo 'Release unavailable; finish make release then rerun this job.' >&2; exit 1; }
+          "$ready" || { echo 'Published release unavailable; finish or rerun the release workflow.' >&2; exit 1; }
           gh release download "$TAG" --repo "$GH_REPO" --pattern "$archive" --pattern "$archive.sha256"
           export SOURCE_COMMIT
           SOURCE_COMMIT="$(gh api "repos/$GH_REPO/commits/$RELEASE_COMMIT" --jq '.parents[0].sha')"

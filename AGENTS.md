@@ -9,12 +9,14 @@
 - Keep changes minimal and follow existing SvelteKit 2/Svelte 5 patterns.
 - Do not commit, push, or open a pull request unless explicitly requested.
 - Report failed checks and blockers clearly.
-- Releases are intentional and local: `make release-dry-run` is read-only; `make release`
-  requires explicit release authorization and clean synchronized `main`; builds locally, creates a
-  commit/annotated tag, atomically pushes both, and publishes the exact archive plus checksum.
-- Main pushes run checks only. Tag pushes deploy verified prebuilt Release archives via Pages;
-  Actions must never build. Never push, publish, upload, sign, or access credentials
-  as part of release implementation/testing. Preserve pending release state on failures.
+- Every non-release push to `main` runs the serialized automatic semantic release workflow. It
+  applies at least a patch bump, while `feat` and breaking commits produce minor and major bumps.
+  The workflow builds, creates the release commit/annotated tag, atomically pushes both, publishes
+  the exact archive plus checksum, then explicitly invokes the reusable Pages deployment.
+- `make release-dry-run` remains a read-only preview and `make release` an optional, explicitly
+  authorised manual fallback from clean synchronized `main`. Pages verifies prebuilt Release
+  archives and must never build. Never run a mutating release merely to test release tooling;
+  preserve pending release state on failures.
 - Follow [docs/releases.md](docs/releases.md) for release and GitHub Pages behavior.
 
 ## Commands
@@ -30,7 +32,7 @@ bun run check     # Svelte and TypeScript checks
 bun run lint      # Prettier and ESLint checks
 bun run build     # production build
 make release-dry-run # offline preview; no writes or checks
-make release      # explicitly authorized local release only
+make release      # optional explicitly authorised local release fallback
 ```
 
 ## Verification

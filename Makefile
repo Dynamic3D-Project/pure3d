@@ -4,9 +4,9 @@ LOCAL_COMPOSE = docker compose -f docker-compose.yml -f docker-compose.local.yml
 
 help:
 	@echo "Pure3D commands"
-	@echo "  make release     Build locally, commit/tag, atomically push and publish release"
+	@echo "  make release     Optional manual fallback: build, commit/tag, push and publish"
 	@echo "  make release-dry-run  Read-only offline release preview"
-	@echo "  Add RELEASE_ARGS=--patch to release maintenance-only changes"
+	@echo "  Main pushes release automatically; add RELEASE_ARGS=--patch for manual maintenance releases"
 	@echo "  make install     Install deps and provision local MinIO/PocketBase/Voyager"
 	@echo "  make db          Start local MinIO + PocketBase and print URLs"
 	@echo "  make db-logs     Follow PocketBase logs"

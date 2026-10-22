@@ -63,6 +63,15 @@ test('explicit patch previews maintenance changes without reducing feature bumps
 		writeFileSync(join(directory, 'README.md'), 'Feature addition\n');
 		commit('feat: add a feature');
 		expect(preview('--patch')).toContain('Preview: v1.3.0');
+		git(
+			'update-ref',
+			'refs/remotes/origin/main',
+			git('rev-list', '--max-parents=0', 'HEAD').trim()
+		);
+		const moved = preview('--patch');
+		expect(moved).toContain('Blocked:');
+		expect(moved).toContain('main must equal origin/main (no ahead/behind commits).');
+		expect(readFileSync(join(directory, 'package.json'), 'utf8')).toBe('{"version":"1.2.3"}\n');
 	} finally {
 		rmSync(directory, { recursive: true, force: true });
 	}

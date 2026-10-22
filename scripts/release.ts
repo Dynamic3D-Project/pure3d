@@ -99,7 +99,7 @@ function main() {
 	const dry = args.includes('--dry-run');
 	const patch = args.includes('--patch');
 	const plan =
-		'Steps: fetch/preflight; version/changelog; checks; build/archive + SHA-256; release commit; annotated tag; atomic push main + tag; create/update draft GitHub Release; verify/upload exact archive + checksum; publish Release; tag-triggered Pages verifies and deploys archive (no build).';
+		'Steps: fetch/preflight; version/changelog; checks; build/archive + SHA-256; release commit; annotated tag; atomic push main + tag; create/update draft GitHub Release; verify/upload exact archive + checksum; publish Release; Pages verifies and deploys archive (no build).';
 	console.log(plan);
 	if (dry)
 		console.log(
@@ -225,7 +225,7 @@ function main() {
 		blockers.push(`${tag} already exists with conflicting target/type.`);
 	console.log(`${dry ? 'Preview' : 'Release'}: ${tag}\n${state.notes}`);
 	console.log(
-		`Update: ${paths.join(', ')}\nChecks: ${config.checks.map((command) => command.join(' ')).join('; ')}\nPackage: pure3d-${tag}.tar.gz\nCommit: ${message}\nAnnotated tag: ${tag}\nPublish: GitHub Release archive + SHA-256; Pages via tag workflow. No signing.`
+		`Update: ${paths.join(', ')}\nChecks: ${config.checks.map((command) => command.join(' ')).join('; ')}\nPackage: pure3d-${tag}.tar.gz\nCommit: ${message}\nAnnotated tag: ${tag}\nPublish: GitHub Release archive + SHA-256; Pages via release workflow or tag fallback. No signing.`
 	);
 	if (dry) {
 		console.log(blockers.length ? `Blocked:\n${blockers.join('\n')}` : 'Local preflight passed.');
