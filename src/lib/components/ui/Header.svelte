@@ -1147,6 +1147,7 @@
 		}
 		.header-search {
 			margin-left: auto;
+			min-width: 0;
 			width: auto;
 			flex: 0 0 auto;
 		}
