@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.23.0 - 2026-10-22
+
+### Features
+
+- release and deploy automatically on main pushes (6a052ea4)
+
+### Fixes
+
+- show mobile hero text before the model (35e791b2)
+
 ## v0.22.0 - 2026-10-22
 
 ### Features
