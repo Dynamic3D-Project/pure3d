@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.21.1 - 2026-10-22
+
+### Fixes
+
+- migrate production domains to pure3d.eu (03e95e74)
+- rebase derivative URLs to the app base path (cb985b35)
+
 ## v0.21.0 - 2026-10-21
 
 ### Features
