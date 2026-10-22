@@ -1,3 +1,4 @@
+import { base } from '$app/paths';
 import publishedManifest from './card-image-derivatives.json';
 import editionCoverDimensions from './edition-cover-dimensions.json';
 
@@ -11,6 +12,15 @@ export interface CardImageSources {
 export interface CardImageDerivativeManifest {
 	version: 1;
 	images: Record<string, Array<{ url: string; width: number; height?: number }>>;
+}
+
+function resolveDerivativeUrl(url: string): string {
+	const legacyPrefix = 'https://dynamic3d-project.github.io/pure3d/card-images/';
+	if (url.startsWith(legacyPrefix)) {
+		return `${base}/card-images/${url.slice(legacyPrefix.length)}`;
+	}
+	if (url.startsWith('/card-images/')) return `${base}${url}`;
+	return url;
 }
 
 function manifestKeys(url: string): string[] {
@@ -59,8 +69,9 @@ export function getCardImageSources(
 				typeof candidate.url === 'string' &&
 				candidate.url.length > 0 &&
 				Number.isInteger(candidate.width) &&
-				candidate.width > 0
+					candidate.width > 0
 		)
+		.map((candidate) => ({ ...candidate, url: resolveDerivativeUrl(candidate.url) }))
 		.sort((left, right) => left.width - right.width);
 
 	if (candidates?.length) {

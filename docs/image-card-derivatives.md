@@ -4,6 +4,13 @@ PocketBase's `thumb` query does not resize the production AVIF files sampled on 
 frontend therefore does not synthesize `thumb` candidates. It uses responsive sources only when
 they are listed in the checked manifest at `src/lib/utils/card-image-derivatives.json`.
 
+Site-hosted derivatives resolve against the app's configured base path, not a fixed domain.
+The frontend rebases the checked manifest's legacy GitHub Pages URLs and `/card-images/...`
+URLs to that path, so repository transfers and custom-domain moves need no database changes.
+Use `--output-url-prefix /card-images` for new site-hosted manifests; external asset URLs
+remain unchanged. Keep `APP_BASE_PATH` aligned with the deployment (`/pure3d` on project
+Pages, empty when serving at the root of `pure3d.eu`).
+
 For AVIF and legacy `project/.../icon.avif` sources, generate independent card files locally:
 
 ```sh
