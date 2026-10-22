@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.0.1 - 2026-10-22
+
+### Fixes
+
+- improve responsive partner logo grid (f0a8d475)
+
 ## v2.0.0 - 2026-10-22
 
 ### Maintenance
