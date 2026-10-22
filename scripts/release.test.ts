@@ -63,6 +63,15 @@ test('explicit patch previews maintenance changes without reducing feature bumps
 		writeFileSync(join(directory, 'README.md'), 'Feature addition\n');
 		commit('feat: add a feature');
 		expect(preview('--patch')).toContain('Preview: v1.3.0');
+		writeFileSync(join(directory, 'README.md'), 'Go-live milestone\n');
+		commit('chore: celebrate the go-live milestone\n\nRelease-As: 2.0.0');
+		expect(preview('--patch')).toContain('Preview: v2.0.0');
+		expect(readFileSync(join(directory, 'package.json'), 'utf8')).toBe('{"version":"1.2.3"}\n');
+		expect(git('status', '--porcelain')).toBe('');
+		writeFileSync(join(directory, 'README.md'), 'Conflicting milestone\n');
+		commit('chore: conflicting milestone\n\nRelease-As: 3.0.0');
+		expect(() => preview('--patch')).toThrow('Conflicting Release-As versions.');
+		git('reset', '--hard', 'HEAD^');
 		git(
 			'update-ref',
 			'refs/remotes/origin/main',

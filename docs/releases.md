@@ -55,6 +55,11 @@ when there are commits since the last release. It never reduces an inferred mino
 creates a release with no new commits. Retry journals retain their original version and notes.
 Squash PR titles must use Conventional Commit syntax; squash titles become main's commit messages.
 
+For an explicitly authorised milestone, add a `Release-As: 2.0.0` trailer to the source commit.
+The automatic pipeline uses that exact stable version. It must exceed the latest stable release
+and cannot reduce the inferred semantic bump. Conflicting version trailers block the release.
+This still runs all normal gates, archive verification and Pages deployment.
+
 The Bun script updates `package.json` and `CITATION.cff` version plus citation release date,
 and prepends UTC-dated categorised notes to `CHANGELOG.md`. Bun's lockfile has no root version
 field. Schema, CFF format, dependency and bundled Voyager versions are independent, not bumped.

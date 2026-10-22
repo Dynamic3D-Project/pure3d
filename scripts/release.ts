@@ -31,11 +31,31 @@ export function nextVersion(version: string, commits: Commit[], minimumPatch = f
 		minimumPatch && commits.length ? 1 : 0,
 		...commits.map((commit) => classify(commit.message)?.level ?? 0)
 	);
-	if (!level) return null;
 	const parts = version.split('.').map(BigInt);
-	const index = 3 - level;
-	parts[index] += 1n;
-	for (let i = index + 1; i < 3; i++) parts[i] = 0n;
+	if (level) {
+		const index = 3 - level;
+		parts[index] += 1n;
+		for (let i = index + 1; i < 3; i++) parts[i] = 0n;
+	}
+	const requested = new Set(
+		commits.flatMap(({ message }) =>
+			[...message.matchAll(/^Release-As:\s*(.*?)\s*$/gm)].map((match) => match[1])
+		)
+	);
+	if (requested.size > 1) throw new Error('Conflicting Release-As versions.');
+	if (requested.size) {
+		const explicit = [...requested][0];
+		if (!semver.test(explicit)) throw new Error(`Invalid Release-As version: ${explicit}`);
+		const target = explicit.split('.').map(BigInt);
+		const compare = (other: bigint[]) => {
+			const index = target.findIndex((part, i) => part !== other[i]);
+			return index < 0 ? 0 : target[index] > other[index] ? 1 : -1;
+		};
+		if (compare(version.split('.').map(BigInt)) <= 0 || compare(parts) < 0)
+			throw new Error('Release-As must advance the baseline and not reduce the inferred bump.');
+		return explicit;
+	}
+	if (!level) return null;
 	return parts.join('.');
 }
 
