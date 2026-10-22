@@ -160,17 +160,22 @@
 <div id="home3">
 	{#snippet heroCopy()}
 		<h1 id="home3-title" class="rise" style="--i: 1">
-			<span class="hero-copy-desktop">An infrastructure for the publication and preservation of <em>3D scholarship.</em></span>
+			<span class="hero-copy-desktop"
+				>An infrastructure for the publication and preservation of <em>3D scholarship.</em></span
+			>
 			<span class="hero-copy-mobile">Publish and preserve <em>3D scholarship.</em></span>
 		</h1>
 		<p class="lede rise" style="--i: 2">
 			<span class="hero-copy-desktop">
-			PURE3D is an infrastructure for publishing, preserving, and exploring interactive 3D Scholarly
-			Editions. These editions bring together 3D models and the evidence, interpretation, and
-			paradata that make them meaningful, creating annotated, reviewable, and citable records that
-			remain accessible for the long term.
+				PURE3D is an infrastructure for publishing, preserving, and exploring interactive 3D
+				Scholarly Editions. These editions bring together 3D models and the evidence,
+				interpretation, and paradata that make them meaningful, creating annotated, reviewable, and
+				citable records that remain accessible for the long term.
 			</span>
-			<span class="hero-copy-mobile">Explore interactive 3D Scholarly Editions, bringing models, evidence, and interpretation together in lasting, citable records.</span>
+			<span class="hero-copy-mobile"
+				>Explore interactive 3D Scholarly Editions, bringing models, evidence, and interpretation
+				together in lasting, citable records.</span
+			>
 		</p>
 		<div class="actions rise" style="--i: 3">
 			<a href={resolve('/editions')} class="button button-primary">
