@@ -1,159 +1,49 @@
-![](https://raw.githubusercontent.com/NLeSC/.github/24b2ff028f19395c636c2aea9fb9570f6fa35e59/profile/escience.png)
+![Netherlands eScience Center](https://raw.githubusercontent.com/NLeSC/.github/24b2ff028f19395c636c2aea9fb9570f6fa35e59/profile/escience.png)
 
 # Pure3D
 
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Research Software Directory](https://img.shields.io/badge/rsd-Pure_3D_Platform-00a3e3.svg)](https://research-software-directory.org/projects/pure3d-20)
 
-A web platform for exploring 3D digital collections and editions in cultural heritage, built with modern web technologies.
+A web platform for exploring 3D digital collections and editions in cultural heritage,
+with interactive viewing powered by [Smithsonian Voyager](https://smithsonian.github.io/dpo-voyager/).
 
-![readme](./README.excalidraw.png)
+[Visit Pure3D](https://pure3d.eu) · [Documentation](docs/README.md)
 
-## About
+Built with SvelteKit 2, Svelte 5, Tailwind CSS 4, DaisyUI, PocketBase and Bun.
 
-Pure3D provides an interactive way to view and explore 3D digitized artifacts, artworks, and cultural heritage objects. The platform features:
+## Local development
 
-- Browse curated collections of 3D editions
-- Interactive 3D viewing powered by Smithsonian Voyager
-- Fast, seamless navigation between 3D models
-- Responsive design for desktop and mobile
-
-## Tech Stack
-
-- **Frontend**: SvelteKit 2 + Svelte 5
-- **Styling**: TailwindCSS 4 + DaisyUI
-- **3D Viewer**: Smithsonian Voyager
-- **Backend**: PocketBase
-- **Runtime**: Bun
-
-## Quick Start
-
-### Full local stack (recommended)
-
-Use local PocketBase and MinIO so development changes stay off live services. Docker Compose, Bun, and mkcert are required for the workflows below (`brew install mkcert` on macOS).
+Install [Bun](https://bun.sh/), Docker with Docker Compose, and
+[mkcert](https://github.com/FiloSottile/mkcert), then run:
 
 ```sh
-git clone <your-repo-url>
-cd pure3D-26
+git clone https://github.com/PURE3D-EU/pure3d.git
+cd pure3d
 make dev
 ```
 
-Open `https://127.0.0.1:60020`. `make dev` first runs `make dev-cert` to trust the development CA and generate missing certificates, then selects local endpoints even if an existing `.env` points to production. You do not need to replace that file. For a new checkout, `.env.example` documents optional local settings.
+Open **https://127.0.0.1:60020**. This provisions the local PocketBase and MinIO services,
+installs Voyager, and starts the Docker frontend. Certificate setup may require administrator
+approval. Local commands use local services even if an existing `.env` points to production.
 
-Startup provisions local MinIO, PocketBase schema and available seed data, installs Voyager, and starts the Docker frontend. It does not apply an ORCID OAuth cutover. For a native Bun frontend with the same local services, use `make dev-web` (`make bun-dev` is an alias).
+Private seed data and 3D assets are not included; obtain them from a project maintainer.
+For setup details, asset provisioning, local ORCID sign-in and alternative workflows
+(including a native Bun frontend), see [Development](docs/development.md).
 
-Get private database seed data from a project maintainer and place it in `data/json-output/`. Obtain local 3D assets separately under `static/project/`, then run `make seed-assets` to mirror them into MinIO. `make install` provisions services and seeds available assets without starting the frontend.
+**Production access is explicit:** `make dev-prod` connects a local frontend to live services;
+changes affect production data. See [Live OVH opt-in](docs/development.md#live-ovh-opt-in).
 
-- PocketBase admin UI: `http://localhost:60021/_/`
-- MinIO console: `http://localhost:60024`
-- Local assets: `http://localhost:60023/pure3d-assets`
+## Documentation
 
-Local ORCID sign-in reuses the **existing real ORCID application and account**, with a separate local application database. Add `https://127.0.0.1:60020/api/oauth2-redirect` to the application's allowed callbacks without replacing the production callback or application URL. No sandbox is needed. See [Development](docs/development.md) for certificate trust, custom-port callbacks, and explicit provider configuration.
+- [Development](docs/development.md) — setup, commands, configuration, certificates and assets
+- [Testing](docs/testing.md) — feature tests and backend verification
+- [Roles and permissions](docs/ROLES.md) — access control
+- [ORCID](docs/orcid.md) — authentication configuration and operations
+- [Open calls](docs/open-calls.md) — CMS administration and migration
+- [Releases](docs/releases.md) — automatic releases from `main` and GitHub Pages deployment
+- [Documentation index](docs/README.md) — architecture, PocketBase and Voyager guides
 
-### Local frontend against live OVH (explicit opt-in)
+## Licence
 
-**Connected to production: changes affect live data.**
-
-```sh
-make dev-prod
-```
-
-Open `http://localhost:60020` in this mode. The frontend runs directly with Bun; Docker is not required. No certificate prerequisite, local setup, or production service management runs. HTTPS development routing is explicitly disabled. Its endpoints are fixed to the OVH URLs below, regardless of `PUBLIC_*` values in `.env`. Existing local services are not stopped.
-
-## Data and Assets
-
-### Explicit service selection
-
-`make dev` and all local aliases select local services. Only `make dev-prod` selects these live endpoints:
-
-| Service    | URL                            | Purpose                       |
-| ---------- | ------------------------------ | ----------------------------- |
-| PocketBase | `https://api.pure3d.eu`        | Collections, editions, users  |
-| Assets     | `https://api.pure3d.eu/assets` | 3D models, scenes, thumbnails |
-
-The production API and assets run on the existing OVH service at `api.pure3d.eu`. The frontend runs separately on GitHub Pages at `pure3d.eu`; `www.pure3d.eu` redirects to the apex.
-
-`PUBLIC_*` settings do not select the mode of these Make commands. Existing port variables and `R2_BUCKET` still customize local URLs.
-
-### Database seed data (Docker only)
-
-The `data/` directory is git-ignored because it contains user information. It is only needed when running a local PocketBase with Docker Compose.
-
-- `data/json-output/` - JSON files imported automatically by `make dev`
-- `data/db/` - BSON source files for regenerating the JSON seed data
-
-To regenerate JSON from BSON:
-
-```sh
-bun scripts/read-bson.ts
-```
-
-Ask a project maintainer for the seed data files if you need a local database.
-
-### 3D assets
-
-The 3D project assets (~7.5 GB) are served through the OVH `/assets` prefix and are not included in the repository. Legacy `project/...` paths are unchanged. The `static/project/` directory is git-ignored.
-
-Local commands force MinIO asset URLs; `make dev-prod` forces the OVH assets endpoint. Neither inherits `PUBLIC_ASSET_BASE_URL` from `.env`. Direct build commands still use their supplied build environment.
-
-Local asset structure (for offline development):
-
-```text
-static/project/{collectionPubNum}/
-├── icon.png
-└── edition/{editionPubNum}/
-    ├── scene.svx.json
-    ├── icon.png
-    ├── *.glb
-    └── articles/
-```
-
-### Voyager runtime
-
-The [Smithsonian Voyager](https://smithsonian.github.io/dpo-voyager/) 3D viewer is committed under `static/voyager/0.59.0/` (production-minified files only). It is served from the app's static folder in both development and on GitHub Pages.
-
-## Deployment
-
-The app deploys to **GitHub Pages** as a static site at `https://pure3d.eu`. Pushing to `main` runs checks; an explicitly published release tag deploys its verified prebuilt archive.
-
-Build environment:
-
-```env
-APP_BASE_PATH=
-PUBLIC_POCKETBASE_URL=https://api.pure3d.eu
-PUBLIC_ASSET_BASE_URL=https://api.pure3d.eu/assets
-```
-
-# Features
-
-### Pure3D Frontend
-
-- [-] Fix scrollbar layout shift on navigation (added `scrollbar-gutter: stable`)
-- [x] Optimize Voyager iframe loading with persistent iframe architecture
-- [x] Add SvelteKit prefetching to all navigation links
-- [x] Add Voyager background gradient for seamless loading
-  - [ ] Add next/previous navigation on edition pages
-  - [ ] Implement edition comparison view
-  - [ ] Add keyboard shortcuts for navigation
-
-### Pure3D Backend
-
-### Installation scripts
-
-- [x] Docker compose
-- [ ] Automigration files on first run
-- [ ]
-- Docs
-  - [ ] Docker Compose
-
-## Versioning & Releases
-
-Releases and GitHub Pages deployments are automated from `main`. See
-[docs/releases.md](docs/releases.md).
-
-## Resources
-
-- [Smithsonian Voyager](https://smithsonian.github.io/dpo-voyager/)
-- [SvelteKit](https://svelte.dev/docs/kit)
-- [PocketBase](https://pocketbase.io/docs/)
-- [TailwindCSS](https://tailwindcss.com/docs)
+[Apache 2.0](LICENSE).
