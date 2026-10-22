@@ -526,7 +526,7 @@
 					<p class="source-credit">
 						{#if form.sourceSlug}
 							<a href={resolve('/editions/[slug]', { slug: form.sourceSlug })}>
-								Source Edition - {form.sourceTitle ?? form.title}
+								{form.sourceTitle ?? form.title}
 								<span aria-hidden="true">↗</span>
 							</a>
 						{/if}
@@ -1122,11 +1122,17 @@
 	}
 
 	@media (max-width: 640px) {
+		.is-minimal .copy {
+			padding-top: 84px;
+		}
+		.model-navigation.minimal-navigation {
+			transform: translateY(calc(100% + 16px));
+		}
 		.is-minimal .stage {
 			padding-top: 0;
 		}
 		.is-minimal .art {
-			margin-top: -14px;
+			margin-top: -24px;
 		}
 		.plate-bar {
 			right: 30px;
