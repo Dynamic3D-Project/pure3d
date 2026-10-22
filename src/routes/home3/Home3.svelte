@@ -145,6 +145,11 @@
 			name: 'Lorentz Center',
 			href: 'https://www.lorentzcenter.nl',
 			image: '/images/landing/supporters/lorentz-center.jpg'
+		},
+		{
+			name: 'SSHOC-NL',
+			href: 'https://sshoc.nl/',
+			image: '/images/sshoc-nl.png'
 		}
 	];
 </script>
