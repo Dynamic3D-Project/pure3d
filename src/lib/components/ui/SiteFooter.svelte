@@ -278,6 +278,16 @@
 		<div
 			class="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-base-300 pt-6 text-sm"
 		>
+			<a class="inline-block rounded bg-white p-3" href="https://sshoc.nl/">
+				<img
+					src={`${base}/images/sshoc-nl.png`}
+					alt="SSHOC-NL"
+					width="194"
+					height="49"
+					class="h-auto w-[194px] max-w-full"
+					loading="lazy"
+				/>
+			</a>
 			<p>
 				{$menus.footer.helpText}
 				{#if help}<a class="underline" href={href(help.href)}>{help.label}</a>{/if}
