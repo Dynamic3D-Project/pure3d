@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.24.1 - 2026-10-22
+
+### Fixes
+
+- move SSHOC-NL logo into supporters section (b38a379a)
+
 ## v0.24.0 - 2026-10-22
 
 ### Features
