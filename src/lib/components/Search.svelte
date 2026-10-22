@@ -5,7 +5,7 @@
 	import type { RecordModel } from 'pocketbase';
 	import { pb } from '$lib/database';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { computePosition, flip, shift, offset, size, autoUpdate } from '@floating-ui/dom';
 
 	import { getEditionThumbnailUrl, getCollectionThumbnailUrl } from '$lib/utils/asset-urls';
@@ -22,6 +22,8 @@
 		url: string;
 	}
 
+	let { compactOnMobile = false }: { compactOnMobile?: boolean } = $props();
+	let mobileOpen = $state(false);
 	let searchQuery = $state('');
 	let searching = $state(false);
 	let results = $state<SearchResult[]>([]);
@@ -30,6 +32,7 @@
 	let keyboardSelected = $state(false);
 
 	let containerElement: HTMLDivElement | undefined = $state();
+	let searchFieldElement: HTMLLabelElement | undefined = $state();
 	let searchInputElement: HTMLInputElement | undefined = $state();
 	let dropdownElement: HTMLDivElement | undefined = $state();
 	let resultsListElement: HTMLElement | undefined = $state();
@@ -193,7 +196,7 @@
 			const containerWidth = containerElement.getBoundingClientRect().width;
 			dropdownElement.style.width = `${Math.min(window.innerWidth - 24, Math.max(containerWidth, 400))}px`;
 
-			computePosition(containerElement, dropdownElement, {
+			computePosition(searchFieldElement || containerElement, dropdownElement, {
 				placement: 'bottom-start',
 				strategy: 'fixed',
 				middleware: [
@@ -224,7 +227,7 @@
 	$effect(() => {
 		if (showResults && containerElement && dropdownElement) {
 			cleanupAutoUpdate?.();
-			cleanupAutoUpdate = autoUpdate(containerElement, dropdownElement, updatePosition, {
+			cleanupAutoUpdate = autoUpdate(searchFieldElement || containerElement, dropdownElement, updatePosition, {
 				ancestorScroll: true,
 				ancestorResize: true,
 				elementResize: true,
@@ -412,8 +415,37 @@
 
 <svelte:window onclick={handleClickOutside} />
 
-<div id="search" class="search-container relative" bind:this={containerElement}>
-	<label class="input-bordered input flex items-center gap-2">
+<style>
+	.mobile-search-toggle { display: none; }
+	@media (max-width: 650px) {
+		.compact-on-mobile .mobile-search-toggle { display: inline-flex; }
+		.compact-on-mobile .search-field { display: none; }
+		.compact-on-mobile.mobile-open .search-field {
+			display: flex;
+			position: fixed;
+			z-index: 50;
+			top: calc(var(--header-height, 68px) + 8px);
+			left: 16px;
+			right: 16px;
+			background: var(--color-base-100);
+			box-shadow: 0 8px 24px #0002;
+		}
+	}
+</style>
+
+<div id="search" class="search-container relative" class:compact-on-mobile={compactOnMobile} class:mobile-open={mobileOpen} bind:this={containerElement}>
+	{#if compactOnMobile}
+		<button type="button" class="mobile-search-toggle btn btn-square btn-ghost" aria-label={mobileOpen ? 'Close search' : 'Open search'} aria-expanded={mobileOpen} onclick={async () => {
+			mobileOpen = !mobileOpen;
+			if (mobileOpen) {
+				await tick();
+				searchInputElement?.focus();
+			} else showResults = false;
+		}}>
+			<svg aria-hidden="true" class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+		</button>
+	{/if}
+	<label bind:this={searchFieldElement} class="search-field input-bordered input flex items-center gap-2">
 		<svg class="h-5 w-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<path
 				stroke-linecap="round"

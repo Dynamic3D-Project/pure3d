@@ -310,10 +310,7 @@
 
 	@media (max-width: 640px) {
 		.feedback-pill {
-			right: 0.75rem;
-			bottom: 0.75rem;
-			min-height: 2.75rem;
-			padding-inline: 1rem;
+			display: none;
 		}
 	}
 </style>

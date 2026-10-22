@@ -36,6 +36,7 @@
 	let statusFilter = $state('');
 	let collectionFilter = $state('');
 	let expandedId = $state<string | null>(null);
+	let deletingId = $state<string | null>(null);
 	let filteredEditions = $derived(
 		editions.filter((e) => {
 			const query = searchQuery.toLowerCase();
@@ -114,6 +115,24 @@
 	}
 
 	let canManageAllMembers = $derived(authStore.globalRole === GlobalRole.Admin);
+
+	async function deleteEdition(edition: AdminEdition) {
+		if (!canManageAllMembers || deletingId) return;
+		if (!confirm(`Delete edition "${edition.title}"? This cannot be undone.`)) return;
+
+		deletingId = edition.id;
+		try {
+			await pb.collection('editions').delete(edition.id);
+			editions = editions.filter((item) => item.id !== edition.id);
+			if (expandedId === edition.id) expandedId = null;
+			toast.success('Edition deleted');
+		} catch (error) {
+			console.error('Error deleting edition:', error);
+			toast.error('Failed to delete edition. Please try again.');
+		} finally {
+			deletingId = null;
+		}
+	}
 
 	function workflowStepHref(editionId: string, status: EditionStatus): string {
 		const workflowPath = `${base}/editions/${editionId}/workflow`;
@@ -237,6 +256,17 @@
 								href={resolve('/editions/[slug]', { slug: edition.id })}
 								class="btn btn-outline btn-sm">Open</a
 							>
+							{#if canManageAllMembers}
+								<button
+									type="button"
+									class="btn btn-outline btn-sm"
+									onclick={() => deleteEdition(edition)}
+									disabled={deletingId !== null}
+									aria-label={`Delete edition ${edition.title}`}
+								>
+									{deletingId === edition.id ? 'Deleting…' : 'Delete'}
+								</button>
+							{/if}
 							<button
 								class="btn btn-square btn-ghost btn-sm"
 								onclick={() => toggleExpand(edition.id)}

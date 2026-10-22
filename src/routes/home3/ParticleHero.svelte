@@ -543,7 +543,7 @@
 				{#if !reducedMotion}
 					<button
 						type="button"
-						class="minimal-pause"
+						class="minimal-pause sr-only focus:not-sr-only"
 						aria-label={paused ? 'Resume artwork motion' : 'Pause artwork motion'}
 						aria-pressed={paused}
 						onclick={togglePause}
@@ -623,7 +623,7 @@
 </div>
 
 <style>
-	.minimal-pause {
+	.minimal-pause:focus-visible {
 		position: absolute;
 		z-index: 3;
 		right: 0;
@@ -1085,15 +1085,6 @@
 				color-mix(in srgb, var(--hero-ink) 78%, transparent) 100%
 			);
 		}
-		.is-minimal .veil {
-			background: linear-gradient(
-				180deg,
-				color-mix(in srgb, var(--hero-ink) 94%, transparent) 0,
-				color-mix(in srgb, var(--hero-ink) 85%, transparent) 38%,
-				transparent 65%,
-				color-mix(in srgb, var(--hero-ink) 60%, transparent) 100%
-			);
-		}
 		.stage {
 			grid-template-columns: minmax(0, 1fr);
 			grid-template-rows: none;
@@ -1116,11 +1107,9 @@
 		.is-minimal .stage {
 			padding-block: 36px 100px;
 		}
-		.is-minimal .art {
-			order: 0;
-		}
 		.is-minimal .copy {
 			gap: 24px;
+			padding-top: 64px;
 		}
 		.foot {
 			grid-column: 1;
@@ -1133,6 +1122,12 @@
 	}
 
 	@media (max-width: 640px) {
+		.is-minimal .stage {
+			padding-top: 0;
+		}
+		.is-minimal .art {
+			margin-top: -14px;
+		}
 		.plate-bar {
 			right: 30px;
 			left: 30px;

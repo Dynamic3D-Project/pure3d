@@ -74,7 +74,7 @@
 - [x] Update current operational documentation; preserve historical records.
 - [x] Verify the final build and affected public feature workflows before release.
       Baseline lint failures and transitional preview transport are recorded below.
-- [ ] Coordinate root-based frontend release, Pages custom domain and apex DNS.
+- [x] Coordinate root-based frontend release, Pages custom domain and apex DNS.
       Do not switch the current public site before the replacement is ready.
 - [ ] Verify apex/www HTTPS, deep links, login, assets, Voyager, metadata and
       old URL behaviour. Browser storage does not migrate: users must sign in again.
@@ -119,8 +119,21 @@ prebuilt frontend archive; changing DNS alone is not a complete rollback.
 
 ## Release checkpoint
 
-- Source implementation is local and uncommitted, based on
-  `cb985b35e36fc820bfcc78a480a427c9f33c6796`. No push or release has occurred.
+- Migration source committed and pushed as
+  `03e95e740ceda9dab933e0530ae27ff1e70ee7a3`.
+- Checked local release `v0.21.1` published with release commit
+  `b126a29c35e9a3346d52918141aedb43dfa4e0b1`. Release archive SHA-256:
+  `f275fee51c6b33763bb4f9404621b05cfcbc184a9fdeb6913df6b42b0f25a42d`.
+- Pages workflow `39764916721` completed successfully. No Actions build was run;
+  the workflow verified and deployed the prebuilt release archive.
+- Final apex A records and www CNAME from `docs/pure3d.eu.zone` are now installed.
+  Both OVH nameservers and Cloudflare/Google public recursive DNS verified them.
+  An HTTP request directly to the Pages address with the real domain returned
+  `version.json` identifying `v0.21.1` and source `03e95e74...`.
+- Pages `cname=pure3d.eu` was read back. At the last check, GitHub had not yet
+  provisioned its apex/www certificate. A bounded task-owned background check
+  verifies TLS without bypasses and will enable HTTPS enforcement only when
+  both hostnames have valid certificates. Do not claim HTTPS acceptance yet.
 - Frontend verification: `bun --no-env-file test src scripts pocketbase` passed
   (40 passed, 30 skipped); `bun --no-env-file run check` passed (0 errors,
   7 existing warnings); production `bun --no-env-file run build` passed with
@@ -141,14 +154,28 @@ prebuilt frontend archive; changing DNS alone is not a complete rollback.
 - ORCID callback registration completed in the existing production application;
   its public client ID was checked against production PocketBase. Updated
   application website to `https://pure3d.eu/`, retained the existing callbacks,
-  and reloaded settings to verify persistence. No client or users token secret
-  was changed. The developer page unexpectedly exposed its client secret in
-  browser text output; user was informed to rotate it after cutover. Do not
-  repeat or commit that value. Full end-user sign-in remains to be exercised.
-- Then configure Pages custom domain, commit/push migration under the explicitly
-  granted authorisation, run checked local release, and switch apex/www to the
-  final zone records. Coordinate these to avoid serving an old `/pure3d` build
-  at the apex. Capture prior Pages settings first and read back every mutation.
+  and reloaded settings to verify persistence. The developer page unexpectedly
+  exposed its client secret in browser text output; user was informed and then
+  explicitly authorised rotation. Do not repeat or commit any credential.
+- ORCID secret rotation completed after a fresh verified PocketBase backup
+  `pure3d-before-orcid-secret-rotation-20261022-1792666338896.zip`. Captured the
+  replacement privately, verified it persisted after reloading ORCID, updated
+  only the matching provider credential, and privately updated the existing
+  local `.env` credential. Read-back showed all non-OAuth collection settings
+  unchanged. The users token secret was not included in the update payload.
+  An ORCID token request with a deliberately invalid authorisation code returned
+  `invalid_grant`, rather than `invalid_client`; backend readiness also passed.
+  Deleted the temporary plaintext credential file. ORCID states that the previous
+  secret is discarded within 24 hours. Full end-user sign-in remains unverified.
+- User authorised exactly one standard SMTP test to `info@pure3d.eu`. The request
+  timed out at 30 seconds; nginx recorded client cancellation (499), so it was
+  not resent. Do not claim delivery or send another test without authorisation.
+  Direct TLS/TCP probes from the VPS to OVH SMTP ports 465 and 587 timed out;
+  host iptables OUTPUT policy was ACCEPT. A local probe reached the same SMTP
+  service, so credentials cannot yet be blamed. Investigate source-IP/network
+  restrictions with OVH before changing passwords, firewall rules or providers.
+- Remaining: valid Pages TLS/HTTPS enforcement and final live acceptance, final
+  DKIM activation state, actual mail delivery, and a user-driven sign-in journey.
 - The local DNS resolver (Tailscale/router) still returned NXDOMAIN while both
   public recursive resolvers and the VPS resolved the API. A local cache flush
   did not resolve this. Do not change the user's network/Tailscale settings.

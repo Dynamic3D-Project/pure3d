@@ -375,7 +375,7 @@
 					>{productionDb ? 'production db' : 'local preview'}</small
 				>{/if}</a
 		>
-		{#if showSearch}<div class="header-search"><Search /></div>{/if}
+		{#if showSearch}<div class="header-search"><Search compactOnMobile /></div>{/if}
 		<div class="desktop-links">
 			{#if editingView}
 				{#each editorConfig.items as item (item.id)}
@@ -1143,14 +1143,15 @@
 	}
 	@media (max-width: 650px) {
 		.bar {
-			flex-wrap: wrap;
-			padding-top: 12px;
-			padding-bottom: 14px;
+			gap: 4px;
 		}
 		.header-search {
-			order: 4;
-			width: 100%;
-			flex-basis: 100%;
+			margin-left: auto;
+			width: auto;
+			flex: 0 0 auto;
+		}
+		.tools {
+			margin-left: 0;
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
