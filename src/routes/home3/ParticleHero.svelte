@@ -1123,16 +1123,24 @@
 
 	@media (max-width: 640px) {
 		.is-minimal .copy {
-			padding-top: 84px;
+			padding-top: 0;
+		}
+		.is-minimal .veil {
+			background: linear-gradient(
+				180deg,
+				color-mix(in srgb, var(--hero-ink) 85%, transparent) 0,
+				transparent 65%
+			);
 		}
 		.model-navigation.minimal-navigation {
 			transform: translateY(calc(100% + 16px));
 		}
 		.is-minimal .stage {
-			padding-top: 0;
+			padding-top: 28px;
 		}
 		.is-minimal .art {
-			margin-top: -24px;
+			order: 0;
+			margin-top: 0;
 		}
 		.plate-bar {
 			right: 30px;
