@@ -14,6 +14,18 @@
 	let creating = $state(false);
 	let title = $state('');
 	let body = $state('');
+	let cover = $state<File | null>(null);
+	let coverPreview = $state('');
+	let removeCover = $state(false);
+	$effect(() => {
+		if (!cover) {
+			coverPreview = '';
+			return;
+		}
+		const url = URL.createObjectURL(cover);
+		coverPreview = url;
+		return () => URL.revokeObjectURL(url);
+	});
 	let deadline = $state('');
 	let isPublished = $state(false);
 	let order = $state(0);
@@ -57,6 +69,8 @@
 		if (dirty && !confirm('Discard unsaved changes?')) return;
 		selected = null;
 		creating = true;
+		cover = null;
+		removeCover = false;
 		title = '';
 		body = '';
 		deadline = '';
@@ -68,6 +82,8 @@
 	function edit(call: RecordModel) {
 		if (dirty && !confirm('Discard unsaved changes?')) return;
 		selected = call;
+		cover = null;
+		removeCover = false;
 		creating = false;
 		title = call.title || '';
 		body = cleanContent(call.body || '');
@@ -97,7 +113,8 @@
 				body: cleanContent(body),
 				deadline: deadline ? `${deadline}T00:00:00.000Z` : '',
 				isPublished,
-				order
+				order,
+				...(cover ? { cover } : removeCover ? { cover: '' } : {})
 			};
 			const record = selected
 				? await pb.collection('open_calls').update(selected.id, payload, {
@@ -205,6 +222,50 @@
 				</div>
 				<aside class="space-y-5 self-start rounded-xl border border-base-300 bg-base-200 p-5">
 					<h2 class="font-semibold">Publication settings</h2>
+					<div class="space-y-3">
+						<label class="block text-sm" for="call-cover">Cover image</label>
+						{#if coverPreview || (selected?.cover && !removeCover)}
+							<img
+								src={coverPreview || pb.files.getURL(selected!, selected!.cover)}
+								alt="Cover preview"
+								class="aspect-square w-full rounded object-contain"
+							/>
+							<button
+								type="button"
+								class="btn btn-sm"
+								onclick={() => {
+									cover = null;
+									removeCover = true;
+									dirty = true;
+								}}>Remove image</button
+							>
+						{/if}
+						<input
+							id="call-cover"
+							type="file"
+							accept="image/jpeg,image/png,image/webp"
+							class="file-input w-full"
+							onchange={(event) => {
+								const file = event.currentTarget.files?.[0];
+								if (!file) return;
+								if (
+									!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ||
+									file.size > 10000000
+								) {
+									toast.error('Choose a JPEG, PNG or WebP image up to 10 MB.');
+									event.currentTarget.value = '';
+									return;
+								}
+								cover = file;
+								removeCover = false;
+								dirty = true;
+							}}
+						/>
+						<p class="text-xs opacity-60">
+							Use square artwork. The complete image is shown without cropping. JPEG, PNG or WebP,
+							up to 10 MB.
+						</p>
+					</div>
 					<label class="flex items-center justify-between text-sm"
 						>Published<input
 							type="checkbox"

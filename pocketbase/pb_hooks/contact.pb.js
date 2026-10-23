@@ -37,7 +37,7 @@ routerAdd(
 			event.app.newMailClient().send(
 				new MailerMessage({
 					from: { address: settings.meta.senderAddress, name: settings.meta.senderName },
-					to: [{ address: 'pure3d-fasos@maastrichtuniversity.nl' }],
+					to: [{ address: 'info@pure3d.eu' }],
 					headers: { 'Reply-To': values.email },
 					subject: 'PURE3D contact: ' + values.subject,
 					text: 'Name: ' + values.name + '\nEmail: ' + values.email + '\n\n' + values.message

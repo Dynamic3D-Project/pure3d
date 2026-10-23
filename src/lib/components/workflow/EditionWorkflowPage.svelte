@@ -28,6 +28,7 @@
 	import ReviewFeedbackForm from '$lib/components/workflow/ReviewFeedbackForm.svelte';
 	import ReviewFeedbackList from '$lib/components/workflow/ReviewFeedbackList.svelte';
 	import RichTextEditor from '$lib/components/ui/RichTextEditor.svelte';
+	import SearchableSelect from '$lib/components/ui/SearchableSelect.svelte';
 	import EditionAssetsPanel from '$lib/components/uploads/EditionAssetsPanel.svelte';
 	import ProposalModelUploads from '$lib/components/uploads/ProposalModelUploads.svelte';
 	import ProposalSummary from '$lib/components/workflow/ProposalSummary.svelte';
@@ -1676,16 +1677,11 @@
 																	<span class="label-text text-sm">Subjects</span>
 																</label>
 																{#if vocabularyFor('subject').length}
-																	<select
+																	<SearchableSelect
 																		id="concept-subject"
-																		class="select-bordered select min-h-24 w-full select-sm"
-																		multiple
-																		size="4"
-																		bind:value={conceptDcSubject}
-																		>{#each optionsFor('subject', conceptDcSubject) as value (value)}<option
-																				{value}>{value}</option
-																			>{/each}</select
-																	>
+																		options={optionsFor('subject', conceptDcSubject)}
+																		bind:values={conceptDcSubject}
+																	/>
 																{:else}
 																	<input
 																		id="concept-subject"
@@ -1715,16 +1711,11 @@
 																		<span class="label-text text-sm">Languages</span>
 																	</label>
 																	{#if vocabularyFor('language').length}
-																		<select
+																		<SearchableSelect
 																			id="concept-language"
-																			class="select-bordered select min-h-24 w-full select-sm"
-																			multiple
-																			size="4"
-																			bind:value={conceptDcLanguage}
-																			>{#each optionsFor('language', conceptDcLanguage) as value (value)}<option
-																					{value}>{value}</option
-																				>{/each}</select
-																		>
+																			options={optionsFor('language', conceptDcLanguage)}
+																			bind:values={conceptDcLanguage}
+																		/>
 																	{:else}
 																		<input
 																			id="concept-language"
@@ -1754,17 +1745,11 @@
 																	><span class="label-text text-sm">Audience</span></label
 																>
 																{#if vocabularyFor('audience').length}
-																	<select
+																	<SearchableSelect
 																		id="concept-audience"
-																		class="select-bordered select min-h-24 w-full select-sm"
-																		multiple
-																		size="4"
-																		bind:value={conceptDcAudience}
-																	>
-																		{#each optionsFor('audience', conceptDcAudience) as value (value)}<option
-																				{value}>{value}</option
-																			>{/each}
-																	</select>
+																		options={optionsFor('audience', conceptDcAudience)}
+																		bind:values={conceptDcAudience}
+																	/>
 																{:else}
 																	<input
 																		id="concept-audience"
@@ -1782,16 +1767,11 @@
 																		><span class="label-text text-sm">Countries</span></label
 																	>
 																	{#if vocabularyFor('country').length}
-																		<select
+																		<SearchableSelect
 																			id="concept-country"
-																			class="select-bordered select min-h-24 w-full select-sm"
-																			multiple
-																			size="4"
-																			bind:value={conceptDcCoverageCountry}
-																			>{#each optionsFor('country', conceptDcCoverageCountry) as value (value)}<option
-																					{value}>{value}</option
-																				>{/each}</select
-																		>
+																			options={optionsFor('country', conceptDcCoverageCountry)}
+																			bind:values={conceptDcCoverageCountry}
+																		/>
 																	{:else}
 																		<input
 																			id="concept-country"
@@ -1809,16 +1789,11 @@
 																		><span class="label-text text-sm">Period</span></label
 																	>
 																	{#if vocabularyFor('period').length}
-																		<select
+																		<SearchableSelect
 																			id="concept-period"
-																			class="select-bordered select min-h-24 w-full select-sm"
-																			multiple
-																			size="4"
-																			bind:value={conceptDcCoveragePeriod}
-																			>{#each optionsFor('period', conceptDcCoveragePeriod) as value (value)}<option
-																					{value}>{value}</option
-																				>{/each}</select
-																		>
+																			options={optionsFor('period', conceptDcCoveragePeriod)}
+																			bind:values={conceptDcCoveragePeriod}
+																		/>
 																	{:else}
 																		<input
 																			id="concept-period"
@@ -1848,16 +1823,11 @@
 																	><span class="label-text text-sm">Sources</span></label
 																>
 																{#if vocabularyFor('source').length}
-																	<select
+																	<SearchableSelect
 																		id="concept-source"
-																		class="select-bordered select min-h-24 w-full select-sm"
-																		multiple
-																		size="4"
-																		bind:value={conceptDcSource}
-																		>{#each optionsFor('source', conceptDcSource) as value (value)}<option
-																				{value}>{value}</option
-																			>{/each}</select
-																	>
+																		options={optionsFor('source', conceptDcSource)}
+																		bind:values={conceptDcSource}
+																	/>
 																{:else}
 																	<input
 																		id="concept-source"
@@ -1886,15 +1856,13 @@
 																		<span class="label-text text-sm">Licence</span>
 																	</label>
 																	{#if vocabularyFor('license').length}
-																		<select
+																		<SearchableSelect
 																			id="concept-license"
-																			class="select-bordered select select-sm"
-																			bind:value={conceptDcRightsLicense}
-																			><option value="">Not specified</option
-																			>{#each optionsFor( 'license', [conceptDcRightsLicense] ) as value (value)}<option
-																					{value}>{value}</option
-																				>{/each}</select
-																		>
+																			options={optionsFor('license', [conceptDcRightsLicense])}
+																			values={conceptDcRightsLicense ? [conceptDcRightsLicense] : []}
+																			multiple={false}
+																			onchange={(values) => (conceptDcRightsLicense = values[0] ?? '')}
+																		/>
 																	{:else}
 																		<input
 																			id="concept-license"

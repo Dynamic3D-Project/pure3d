@@ -1,7 +1,16 @@
 # Open calls
 
 Open calls are records in `open_calls`, editable by administrators under **Admin → Open Calls**.
-Each record has a title, optional deadline, rich-text body, publication flag and sort order.
+Each record has a title, optional cover image and deadline, rich-text body, publication flag and sort order.
+Upload square cover artwork under **Admin → Open Calls** (JPEG, PNG or WebP, up to 10 MB).
+Cards show the complete artwork without cropping; calls without covers retain their text layout.
+Existing production installations need the separately authorised additive schema migration before uploads:
+
+```sh
+bun --env-file=.env scripts/migrate-open-call-covers.ts         # read-only preflight
+bun --env-file=.env scripts/migrate-open-call-covers.ts --apply # verified backup and field addition
+```
+
 Only published calls are publicly readable; administrators can also read drafts. All writes
 require an administrator. Rich content references published editions rather than copying metadata.
 

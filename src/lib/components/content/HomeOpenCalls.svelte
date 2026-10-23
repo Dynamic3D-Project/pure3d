@@ -67,6 +67,16 @@
 				<div class="calls-grid">
 					{#each calls as call (call.id)}
 						<article class="call-card">
+							{#if call.cover}
+								<img
+									class="call-cover"
+									src={pb.files.getURL(call, call.cover)}
+									alt=""
+									loading="lazy"
+									width="800"
+									height="800"
+								/>
+							{/if}
 							<div class="card-top">
 								<span>Thematic call</span>
 							</div>
@@ -107,6 +117,9 @@
 				>
 			</div>
 			<div class="dialog-body">
+				{#if selected.cover}
+					<img class="dialog-cover" src={pb.files.getURL(selected, selected.cover)} alt="" />
+				{/if}
 				<h2 id="home-call-dialog-title">{selected.title}</h2>
 				{#if selected.deadline}<p class="dialog-deadline">
 						Proposal deadline · {date(selected.deadline)}
@@ -184,6 +197,20 @@
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
 		color: var(--color-ink-3);
+	}
+	.call-cover {
+		width: calc(100% + 2 * clamp(24px, 3vw, 36px));
+		max-width: none;
+		aspect-ratio: 1;
+		object-fit: contain;
+		margin: calc(-1 * clamp(24px, 3vw, 36px)) calc(-1 * clamp(24px, 3vw, 36px)) 28px;
+		border-radius: 4px 4px 0 0;
+	}
+	.dialog-cover {
+		width: 100%;
+		max-height: 60dvh;
+		object-fit: contain;
+		margin-bottom: 28px;
 	}
 	h3 {
 		max-width: 30ch;

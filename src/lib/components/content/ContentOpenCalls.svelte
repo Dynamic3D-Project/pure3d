@@ -46,7 +46,17 @@
 			<summary
 				class="flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 marker:hidden"
 			>
-				<span class="font-semibold">{call.title}</span>
+				<span class="flex min-w-0 items-center gap-4">
+					{#if call.cover}<img
+							src={pb.files.getURL(call, call.cover)}
+							alt=""
+							loading="lazy"
+							width="80"
+							height="80"
+							class="aspect-square w-20 shrink-0 rounded object-contain"
+						/>{/if}
+					<span class="font-semibold">{call.title}</span>
+				</span>
 				<span class="flex shrink-0 items-center gap-3 text-sm opacity-65">
 					{#if call.deadline}<span>Deadline {deadline(call.deadline)}</span>{/if}
 					<span aria-hidden="true" class="text-lg transition-transform group-open:rotate-45">+</span

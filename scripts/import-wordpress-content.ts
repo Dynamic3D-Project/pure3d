@@ -193,7 +193,7 @@ for (const item of items) {
 	let body = cleanContent(item.content);
 	if (item.slug === 'contact') {
 		body =
-			'<h2>Get in touch</h2><p>Contact the PURE3D team at <a href="mailto:pure3d-fasos@maastrichtuniversity.nl">pure3d-fasos@maastrichtuniversity.nl</a>.</p>';
+			'<h2>Get in touch</h2><p>Contact the PURE3D team at <a href="mailto:info@pure3d.eu">info@pure3d.eu</a>.</p>';
 		notes.push(
 			'WordPress contact form replaced with the contact email published on the submission page. Review before publishing.'
 		);

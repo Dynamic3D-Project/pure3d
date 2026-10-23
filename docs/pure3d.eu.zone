@@ -8,6 +8,7 @@ $TTL 300
 @ IN A 185.199.111.153
 www IN CNAME pure3d-eu.github.io.
 api IN A 57.129.98.223
+editions IN A 57.129.98.223
 @ IN MX 1 mx1.mail.ovh.net.
 @ IN MX 5 mx2.mail.ovh.net.
 @ IN MX 100 mx3.mail.ovh.net.

@@ -11,7 +11,7 @@
 	}
 
 	let { content = '', imported = false, isPublished = true, editHref }: Props = $props();
-	const contactEmail = 'pure3d-fasos@maastrichtuniversity.nl';
+	const contactEmail = 'info@pure3d.eu';
 	let name = $state('');
 	let email = $state('');
 	let subject = $state('');

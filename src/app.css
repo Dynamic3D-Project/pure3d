@@ -93,6 +93,12 @@
 	}
 }
 
+/* Native listboxes must not inherit the single-select control's flex layout. */
+select.select[multiple] {
+	display: block;
+	min-width: 0;
+}
+
 /* Status labels need to remain readable even when a view asks for a compact badge. */
 .badge:is(.badge-info, .badge-success, .badge-warning, .badge-error) {
 	font-weight: 600;

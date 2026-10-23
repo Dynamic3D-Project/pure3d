@@ -2,8 +2,17 @@ import PocketBase, { ClientResponseError } from 'pocketbase';
 
 export const openCallsAdminRule = '@request.auth.id != "" && @request.auth.role = "admin"';
 export const openCallsReadRule = `isPublished = true || (${openCallsAdminRule})`;
+export const openCallCoverField = {
+	name: 'cover',
+	type: 'file',
+	maxSelect: 1,
+	maxSize: 10000000,
+	mimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+	protected: false
+};
 export const openCallsFields = [
 	{ name: 'title', type: 'text', required: true, max: 500 },
+	openCallCoverField,
 	{ name: 'body', type: 'editor', maxSize: 2000000 },
 	{ name: 'deadline', type: 'date' },
 	{ name: 'isPublished', type: 'bool' },
@@ -17,7 +26,13 @@ export async function ensureOpenCalls(pb: PocketBase) {
 		const existing = await pb.collections.getOne('open_calls');
 		for (const field of openCallsFields) {
 			const actual = existing.fields.find((candidate) => candidate.name === field.name);
-			if (!actual || Object.entries(field).some(([key, value]) => actual[key] !== value))
+			if (!actual && field.name === 'cover') continue;
+			if (
+				!actual ||
+				Object.entries(field).some(
+					([key, value]) => JSON.stringify(actual[key]) !== JSON.stringify(value)
+				)
+			)
 				throw new Error(`Existing open_calls schema differs: ${field.name}. Reconcile manually.`);
 		}
 		if (
@@ -28,7 +43,9 @@ export async function ensureOpenCalls(pb: PocketBase) {
 			)
 		)
 			throw new Error('Existing open_calls permissions differ. Reconcile manually.');
-		return existing;
+		return existing.fields.some((field) => field.name === 'cover')
+			? existing
+			: pb.collections.update(existing.id, { fields: [...existing.fields, openCallCoverField] });
 	} catch (error) {
 		if (!(error instanceof ClientResponseError) || error.status !== 404) throw error;
 	}
