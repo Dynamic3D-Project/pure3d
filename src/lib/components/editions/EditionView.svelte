@@ -15,6 +15,8 @@
 	import EditionStories from '$lib/components/voyager/EditionStories.svelte';
 	import EditionMetadata from '$lib/components/editions/EditionMetadata.svelte';
 	import OriginalEditionViewer from '$lib/components/voyager/OriginalEditionViewer.svelte';
+	import KompakktViewer from '$lib/components/kompakkt/KompakktViewer.svelte';
+	import { env } from '$env/dynamic/public';
 	import {
 		canPreviewEditionViewer,
 		editionViewerPreferenceKey,
@@ -64,6 +66,17 @@
 	}
 
 	let { data, embedded = false }: { data: EditionViewData; embedded?: boolean } = $props();
+	let kompakktOwner = $state('');
+	const kompakktEnabled = $derived(env.PUBLIC_KOMPAKKT_VIEWER === '1');
+
+	function selectRuntime(kompakkt: boolean) {
+		if (kompakkt === useKompakkt) return;
+		voyagerAPI?.stopTour();
+		voyagerAPI = null;
+		activeVoyagerPanel = null;
+		isFullWindow = false;
+		kompakktOwner = kompakkt ? viewerIdentity : '';
+	}
 	let previewOwner = $state<string | null>(null);
 	let previewEnabled = $state(false);
 	const canPreview = $derived(canPreviewEditionViewer(authStore.globalRole, authStore.appUserId));
@@ -75,6 +88,8 @@
 			previewEnabled
 		)
 	);
+	const viewerIdentity = $derived(`${data.edition.id}:${useExperimentalLayout}`);
+	const useKompakkt = $derived(kompakktEnabled && kompakktOwner === viewerIdentity);
 
 	$effect(() => {
 		const owner = canPreview ? authStore.appUserId : null;
@@ -343,10 +358,12 @@
 	}
 
 	function handleModelLoaded(totalBytes: number) {
+		if (useKompakkt) return;
 		loadedModelSize = totalBytes;
 	}
 
 	function handleViewerReady(api: VoyagerAPI) {
+		if (useKompakkt) return;
 		voyagerAPI = api;
 		activeVoyagerPanel = null;
 		if (!useExperimentalLayout) return;
@@ -462,6 +479,7 @@
 	$effect(() => {
 		void edition.id;
 		void useExperimentalLayout;
+		kompakktOwner = '';
 		isFullWindow = false;
 		isSidebarCollapsed = false;
 		loadedScene = null;
@@ -728,438 +746,464 @@
 					class="ds-card-frame viewer-frame p-3 transition-all duration-300"
 					class:full-window-viewer={isFullWindow}
 				>
-					{#key useExperimentalLayout}
-						{#if !useExperimentalLayout}
-							{#key loadedScene ?? edition.id}
-								{#if needsPreparedScene && useDirectMode && !loadedScene}
-									<div
-										class="flex h-[495px] items-center justify-center text-sm text-base-content/60"
-									>
-										{sceneLoading ? 'Loading edition…' : '3D preview unavailable.'}
-									</div>
-								{:else}
-									<OriginalEditionViewer
-										{edition}
-										{isFullWindow}
-										doi={primaryDoi}
-										coverUrl={editionCoverUrl}
-										hasHelp={!!(viewerHelp || viewerHelpVideoUrl)}
-										fetchOverrides={runtimeSceneOverride}
-										onReady={handleViewerReady}
-										onModelLoaded={handleModelLoaded}
-										onHelp={() => (helpModalOpen = true)}
-										onMetadata={showMetadata}
-									/>
-								{/if}
-							{/key}
-						{:else}
-							<div
-								bind:this={viewerSurface}
-								class="relative scroll-mt-24 overflow-hidden rounded-lg bg-base-200"
+					{#if kompakktEnabled}
+						<div class="mb-3 flex flex-wrap items-center gap-2" role="group" aria-label="3D viewer">
+							<button
+								type="button"
+								class="btn btn-sm"
+								class:btn-accent={!useKompakkt}
+								class:btn-outline={useKompakkt}
+								aria-pressed={!useKompakkt}
+								onclick={() => selectRuntime(false)}>Voyager</button
 							>
+							<button
+								type="button"
+								class="btn btn-sm"
+								class:btn-accent={useKompakkt}
+								class:btn-outline={!useKompakkt}
+								aria-pressed={useKompakkt}
+								onclick={() => selectRuntime(true)}>Kompakkt · external preview</button
+							>
+						</div>
+					{/if}
+					{#if useKompakkt}
+						{#key viewerIdentity}
+							<KompakktViewer {edition} />
+						{/key}
+					{:else}
+						{#key useExperimentalLayout}
+							{#if !useExperimentalLayout}
 								{#key loadedScene ?? edition.id}
-									{#if useDirectMode && !loadedScene}
+									{#if needsPreparedScene && useDirectMode && !loadedScene}
 										<div
 											class="flex h-[495px] items-center justify-center text-sm text-base-content/60"
 										>
-											{sceneLoading
-												? 'Loading edition content…'
-												: '3D preview unavailable until edition content loads.'}
+											{sceneLoading ? 'Loading edition…' : '3D preview unavailable.'}
 										</div>
 									{:else}
-										<VoyagerViewer
-											url={useDirectMode ? edition.voyagerRoot : edition.voyagerUrl}
-											document={edition.sceneFile}
-											title={edition.title}
-											coverUrl={editionCoverUrl}
-											direct={useDirectMode}
-											voyagerVersion={edition.voyagerVersion}
-											resourceRoot={edition.voyagerResourceRoot}
-											uiMode={showVoyagerMenu ? 'menu|title|language' : 'none'}
-											fetchOverrides={runtimeSceneOverride}
-											companionAssets={edition.uploadedAssetMap
-												? { baseDir: edition.voyagerRoot, byBasename: edition.uploadedAssetMap }
-												: undefined}
-											onModelLoaded={handleModelLoaded}
-											onReady={handleViewerReady}
-											onAnnotationCategoriesChange={(categories) => {
-												if (voyagerAPI) activeAnnotationCategories = categories;
-											}}
-											onActiveArticleChange={revealStory}
-											onTourChange={(tourIndex, stepIndex) =>
-												handleTourChange(tourIndex, stepIndex)}
-											onPanelVisibilityChange={(panel) => (activeVoyagerPanel = panel)}
-											onFullWindowToggle={toggleFullWindow}
-											externalContent={useDirectMode}
-											height={isFullWindow ? '100%' : '495px'}
+										<OriginalEditionViewer
+											{edition}
 											{isFullWindow}
-											{showVoyagerMenu}
+											doi={primaryDoi}
+											coverUrl={editionCoverUrl}
+											hasHelp={!!(viewerHelp || viewerHelpVideoUrl)}
+											fetchOverrides={runtimeSceneOverride}
+											onReady={handleViewerReady}
+											onModelLoaded={handleModelLoaded}
+											onHelp={() => (helpModalOpen = true)}
+											onMetadata={showMetadata}
 										/>
 									{/if}
 								{/key}
-
-								<!-- Top right controls -->
+							{:else}
 								<div
-									class="absolute right-3 z-10 flex gap-2 transition-all duration-300"
-									class:top-3={!isFullWindow}
-									class:top-20={isFullWindow}
+									bind:this={viewerSurface}
+									class="relative scroll-mt-24 overflow-hidden rounded-lg bg-base-200"
 								>
-									{#if activeVoyagerPanel}
-										<button
-											type="button"
-											class="viewer-glass-action viewer-glass-action-icon"
-											onclick={closeVoyagerPanel}
-											aria-label={`Close ${activeVoyagerPanel}`}
-											title={`Close ${activeVoyagerPanel}`}
-										>
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke-width="2"
-												stroke="currentColor"
-												class="h-5 w-5"
-												aria-hidden="true"
+									{#key loadedScene ?? edition.id}
+										{#if useDirectMode && !loadedScene}
+											<div
+												class="flex h-[495px] items-center justify-center text-sm text-base-content/60"
 											>
-												<path stroke-linecap="round" d="M6 6l12 12M18 6 6 18" />
-											</svg>
-										</button>
-									{/if}
-								</div>
+												{sceneLoading
+													? 'Loading edition content…'
+													: '3D preview unavailable until edition content loads.'}
+											</div>
+										{:else}
+											<VoyagerViewer
+												url={useDirectMode ? edition.voyagerRoot : edition.voyagerUrl}
+												document={edition.sceneFile}
+												title={edition.title}
+												coverUrl={editionCoverUrl}
+												direct={useDirectMode}
+												voyagerVersion={edition.voyagerVersion}
+												resourceRoot={edition.voyagerResourceRoot}
+												uiMode={showVoyagerMenu ? 'menu|title|language' : 'none'}
+												fetchOverrides={runtimeSceneOverride}
+												companionAssets={edition.uploadedAssetMap
+													? { baseDir: edition.voyagerRoot, byBasename: edition.uploadedAssetMap }
+													: undefined}
+												onModelLoaded={handleModelLoaded}
+												onReady={handleViewerReady}
+												onAnnotationCategoriesChange={(categories) => {
+													if (voyagerAPI) activeAnnotationCategories = categories;
+												}}
+												onActiveArticleChange={revealStory}
+												onTourChange={(tourIndex, stepIndex) =>
+													handleTourChange(tourIndex, stepIndex)}
+												onPanelVisibilityChange={(panel) => (activeVoyagerPanel = panel)}
+												onFullWindowToggle={toggleFullWindow}
+												externalContent={useDirectMode}
+												height={isFullWindow ? '100%' : '495px'}
+												{isFullWindow}
+												{showVoyagerMenu}
+											/>
+										{/if}
+									{/key}
 
-								<!-- Custom command bar - only visible when enabled and API ready -->
-								{#if showCustomControls && voyagerAPI && !activeVoyagerPanel}
-									<div class="viewer-command-bar" role="toolbar" aria-label="3D viewer controls">
-										{#if viewerFeatureNeeds.annotations}
+									<!-- Top right controls -->
+									<div
+										class="absolute right-3 z-10 flex gap-2 transition-all duration-300"
+										class:top-3={!isFullWindow}
+										class:top-20={isFullWindow}
+									>
+										{#if activeVoyagerPanel}
+											<button
+												type="button"
+												class="viewer-glass-action viewer-glass-action-icon"
+												onclick={closeVoyagerPanel}
+												aria-label={`Close ${activeVoyagerPanel}`}
+												title={`Close ${activeVoyagerPanel}`}
+											>
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													fill="none"
+													viewBox="0 0 24 24"
+													stroke-width="2"
+													stroke="currentColor"
+													class="h-5 w-5"
+													aria-hidden="true"
+												>
+													<path stroke-linecap="round" d="M6 6l12 12M18 6 6 18" />
+												</svg>
+											</button>
+										{/if}
+									</div>
+
+									<!-- Custom command bar - only visible when enabled and API ready -->
+									{#if showCustomControls && voyagerAPI && !activeVoyagerPanel}
+										<div class="viewer-command-bar" role="toolbar" aria-label="3D viewer controls">
+											{#if viewerFeatureNeeds.annotations}
+												<button
+													type="button"
+													class="viewer-command-item"
+													onclick={() => voyagerAPI?.toggleAnnotations()}
+													disabled={!viewerCapabilities.annotations}
+													aria-label="Toggle annotations"
+												>
+													<MessageCircleIcon class="h-5 w-5" aria-hidden="true" />
+													<span class="viewer-command-label"
+														>{viewerCapabilities.annotations
+															? 'Annotations'
+															: 'Annotations unavailable'}</span
+													>
+												</button>
+											{/if}
+
 											<button
 												type="button"
 												class="viewer-command-item"
-												onclick={() => voyagerAPI?.toggleAnnotations()}
-												disabled={!viewerCapabilities.annotations}
-												aria-label="Toggle annotations"
+												onclick={toggleFullWindow}
+												aria-label={isFullWindow ? 'Exit full window' : 'Full window'}
 											>
-												<MessageCircleIcon class="h-5 w-5" aria-hidden="true" />
+												{#if isFullWindow}
+													<svg
+														xmlns="http://www.w3.org/2000/svg"
+														fill="none"
+														viewBox="0 0 24 24"
+														stroke-width="2"
+														stroke="currentColor"
+														class="h-5 w-5"
+														aria-hidden="true"
+													>
+														<path
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															d="M9 9V4.5M9 9H4.5M9 9 3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5 5.25 5.25"
+														/>
+													</svg>
+												{:else}
+													<svg
+														xmlns="http://www.w3.org/2000/svg"
+														fill="none"
+														viewBox="0 0 24 24"
+														stroke-width="2"
+														stroke="currentColor"
+														class="h-5 w-5"
+														aria-hidden="true"
+													>
+														<path
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"
+														/>
+													</svg>
+												{/if}
 												<span class="viewer-command-label"
-													>{viewerCapabilities.annotations
-														? 'Annotations'
-														: 'Annotations unavailable'}</span
+													>{isFullWindow ? 'Exit full screen' : 'Full screen'}</span
 												>
 											</button>
-										{/if}
 
-										<button
-											type="button"
-											class="viewer-command-item"
-											onclick={toggleFullWindow}
-											aria-label={isFullWindow ? 'Exit full window' : 'Full window'}
-										>
-											{#if isFullWindow}
-												<svg
-													xmlns="http://www.w3.org/2000/svg"
-													fill="none"
-													viewBox="0 0 24 24"
-													stroke-width="2"
-													stroke="currentColor"
-													class="h-5 w-5"
-													aria-hidden="true"
-												>
-													<path
-														stroke-linecap="round"
-														stroke-linejoin="round"
-														d="M9 9V4.5M9 9H4.5M9 9 3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5 5.25 5.25"
-													/>
-												</svg>
-											{:else}
-												<svg
-													xmlns="http://www.w3.org/2000/svg"
-													fill="none"
-													viewBox="0 0 24 24"
-													stroke-width="2"
-													stroke="currentColor"
-													class="h-5 w-5"
-													aria-hidden="true"
-												>
-													<path
-														stroke-linecap="round"
-														stroke-linejoin="round"
-														d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"
-													/>
-												</svg>
-											{/if}
-											<span class="viewer-command-label"
-												>{isFullWindow ? 'Exit full screen' : 'Full screen'}</span
-											>
-										</button>
+											<details class="viewer-more">
+												<summary class="viewer-command-item" aria-label="More viewer controls">
+													<EllipsisIcon class="h-5 w-5" aria-hidden="true" />
+													<span class="viewer-command-label">More</span>
+												</summary>
 
-										<details class="viewer-more">
-											<summary class="viewer-command-item" aria-label="More viewer controls">
-												<EllipsisIcon class="h-5 w-5" aria-hidden="true" />
-												<span class="viewer-command-label">More</span>
-											</summary>
-
-											<div class="viewer-more-menu">
-												<button
-													type="button"
-													onclick={() => (imagineModalOpen = true)}
-													title="Generate an AI image from this view"
-												>
-													<SparklesIcon class="h-5 w-5" aria-hidden="true" />
-													<span>Imagine</span>
-												</button>
-												{#if viewerHelp || viewerHelpVideoUrl}
-													<button type="button" onclick={() => (helpModalOpen = true)}>
-														<CircleHelpIcon class="h-5 w-5" aria-hidden="true" />
-														<span>Viewer help</span>
-													</button>
-												{/if}
-												<button
-													type="button"
-													onclick={() => voyagerAPI?.toggleTools()}
-													disabled={!viewerCapabilities.tools}
-													title={viewerCapabilities.tools
-														? 'Toggle tools'
-														: 'Unavailable in this Voyager API version'}
-												>
-													<WrenchIcon class="h-5 w-5" aria-hidden="true" />
-													<span>Tools</span>
-												</button>
-												<button
-													type="button"
-													onclick={() => voyagerAPI?.toggleMeasurement()}
-													disabled={!viewerCapabilities.measurement}
-													title={viewerCapabilities.measurement
-														? 'Toggle measurement'
-														: 'Unavailable in this Voyager API version'}
-												>
-													<RulerIcon class="h-5 w-5" aria-hidden="true" />
-													<span>Measure</span>
-												</button>
-												<button
-													type="button"
-													onclick={() => voyagerAPI?.enableAR()}
-													disabled={!viewerCapabilities.ar}
-													title={viewerCapabilities.ar
-														? 'View in AR (supported devices only)'
-														: 'AR is not available on this device or browser'}
-												>
-													<SmartphoneIcon class="h-5 w-5" aria-hidden="true" />
-													<span>View in AR</span>
-												</button>
-												<button
-													type="button"
-													onclick={() => voyagerAPI?.resetViewer()}
-													disabled={!viewerCapabilities.reset}
-													title={viewerCapabilities.reset
-														? 'Reset viewer'
-														: 'Unavailable in this Voyager API version'}
-												>
-													<RotateCcwIcon class="h-5 w-5" aria-hidden="true" />
-													<span>Reset view</span>
-												</button>
-												{#if viewerFeatureNeeds.audio}
+												<div class="viewer-more-menu">
 													<button
 														type="button"
-														disabled={!viewerCapabilities.audio}
-														title="Audio controls are not exposed by the Voyager Explorer API"
+														onclick={() => (imagineModalOpen = true)}
+														title="Generate an AI image from this view"
 													>
-														<Volume2Icon class="h-5 w-5" aria-hidden="true" />
-														<span>Audio · API unavailable</span>
+														<SparklesIcon class="h-5 w-5" aria-hidden="true" />
+														<span>Imagine</span>
 													</button>
-												{/if}
-
-												{#if viewerLanguages.length > 1}
-													<div class="viewer-language-options">
-														<span>Language</span>
-														<div>
-															{#each viewerLanguages as language (language)}
-																<button
-																	type="button"
-																	class:active={language === activeViewerLanguage}
-																	onclick={(event) => setViewerLanguage(language, event)}
-																>
-																	<LanguagesIcon class="h-4 w-4" aria-hidden="true" />
-																	{language.toUpperCase()}
-																</button>
-															{/each}
-														</div>
-													</div>
-												{/if}
-											</div>
-										</details>
-									</div>
-								{/if}
-							</div>
-
-							{#if useDirectMode && !isFullWindow && sceneContent && (sceneContent.tours.length || sceneContent.annotations.length)}
-								<div class="viewer-card-footer mt-3 rounded-md bg-base-200 p-3">
-									{#if sceneContent.tours.length}
-										{@const tour = sceneContent.tours[activeTour.tourIndex]}
-										<div class="tour-navigator" aria-label="Guided tour">
-											<label>
-												<span class="section-label"
-													><MapIcon class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />Guided tour</span
-												>
-												<select
-													value={activeTour.tourIndex}
-													onchange={(event) => {
-														const tourIndex = Number(event.currentTarget.value);
-														if (tourIndex < 0) exitTour();
-														else selectTourStep(tourIndex, 0);
-													}}
-												>
-													<option value={-1}>Explore freely</option>
-													{#each sceneContent.tours as item, index (item.sourceIndex)}
-														<option value={index}
-															>{localizedValue(
-																item,
-																'title',
-																'titles',
-																activeViewerLanguage
-															)}</option
+													{#if viewerHelp || viewerHelpVideoUrl}
+														<button type="button" onclick={() => (helpModalOpen = true)}>
+															<CircleHelpIcon class="h-5 w-5" aria-hidden="true" />
+															<span>Viewer help</span>
+														</button>
+													{/if}
+													<button
+														type="button"
+														onclick={() => voyagerAPI?.toggleTools()}
+														disabled={!viewerCapabilities.tools}
+														title={viewerCapabilities.tools
+															? 'Toggle tools'
+															: 'Unavailable in this Voyager API version'}
+													>
+														<WrenchIcon class="h-5 w-5" aria-hidden="true" />
+														<span>Tools</span>
+													</button>
+													<button
+														type="button"
+														onclick={() => voyagerAPI?.toggleMeasurement()}
+														disabled={!viewerCapabilities.measurement}
+														title={viewerCapabilities.measurement
+															? 'Toggle measurement'
+															: 'Unavailable in this Voyager API version'}
+													>
+														<RulerIcon class="h-5 w-5" aria-hidden="true" />
+														<span>Measure</span>
+													</button>
+													<button
+														type="button"
+														onclick={() => voyagerAPI?.enableAR()}
+														disabled={!viewerCapabilities.ar}
+														title={viewerCapabilities.ar
+															? 'View in AR (supported devices only)'
+															: 'AR is not available on this device or browser'}
+													>
+														<SmartphoneIcon class="h-5 w-5" aria-hidden="true" />
+														<span>View in AR</span>
+													</button>
+													<button
+														type="button"
+														onclick={() => voyagerAPI?.resetViewer()}
+														disabled={!viewerCapabilities.reset}
+														title={viewerCapabilities.reset
+															? 'Reset viewer'
+															: 'Unavailable in this Voyager API version'}
+													>
+														<RotateCcwIcon class="h-5 w-5" aria-hidden="true" />
+														<span>Reset view</span>
+													</button>
+													{#if viewerFeatureNeeds.audio}
+														<button
+															type="button"
+															disabled={!viewerCapabilities.audio}
+															title="Audio controls are not exposed by the Voyager Explorer API"
 														>
-													{/each}
-												</select>
-											</label>
-											{#if activeTour.tourIndex >= 0 && tour?.steps.length}
-												<div class="tour-actions">
-													<button
-														type="button"
-														onclick={() =>
-															selectTourStep(activeTour.tourIndex, activeTour.stepIndex - 1)}
-														disabled={activeTour.stepIndex <= 0}
-														aria-label="Previous tour step">‹</button
-													>
-													<span>{activeTour.stepIndex + 1} / {tour.steps.length}</span>
-													<span class="tour-step-title"
-														>{localizedValue(
-															tour.steps[activeTour.stepIndex],
-															'title',
-															'titles',
-															activeViewerLanguage
-														)}</span
-													>
-													<button
-														type="button"
-														onclick={() =>
-															selectTourStep(activeTour.tourIndex, activeTour.stepIndex + 1)}
-														disabled={activeTour.stepIndex >= tour.steps.length - 1}
-														aria-label="Next tour step">›</button
-													>
-													<button type="button" class="tour-exit" onclick={exitTour}
-														>Exit tour</button
-													>
+															<Volume2Icon class="h-5 w-5" aria-hidden="true" />
+															<span>Audio · API unavailable</span>
+														</button>
+													{/if}
+
+													{#if viewerLanguages.length > 1}
+														<div class="viewer-language-options">
+															<span>Language</span>
+															<div>
+																{#each viewerLanguages as language (language)}
+																	<button
+																		type="button"
+																		class:active={language === activeViewerLanguage}
+																		onclick={(event) => setViewerLanguage(language, event)}
+																	>
+																		<LanguagesIcon class="h-4 w-4" aria-hidden="true" />
+																		{language.toUpperCase()}
+																	</button>
+																{/each}
+															</div>
+														</div>
+													{/if}
 												</div>
-											{/if}
-										</div>
-									{/if}
-									{#if sceneContent.annotations.length}
-										<div
-											class="viewer-card-details"
-											class:with-tour={sceneContent.tours.length > 0}
-										>
-											<EditionAnnotations
-												annotations={sceneContent.annotations}
-												language={activeViewerLanguage}
-												activeCategories={activeAnnotationCategories}
-												onCategories={selectCategories}
-												onAnnotation={selectAnnotation}
-											/>
+											</details>
 										</div>
 									{/if}
 								</div>
-							{/if}
 
-							{#if useDirectMode && isFullWindow && sceneContent}
-								<aside class="fullwindow-reading" aria-label="Edition reading">
-									{#if viewerLanguages.length > 1}
-										<div class="edition-language">
-											<select
-												aria-label="Edition language"
-												value={activeViewerLanguage}
-												onchange={(event) => setViewerLanguage(event.currentTarget.value)}
-												>{#each viewerLanguages as language (language)}<option value={language}
-														>{language}</option
-													>{/each}</select
-											>
-										</div>
-									{/if}
-									{#if sceneContent.tours.length}
-										{@const tour = sceneContent.tours[activeTour.tourIndex]}
-										<div class="tour-navigator">
-											<label>
-												<span class="section-label"
-													><MapIcon class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />Guided tour</span
-												>
-												<select
-													value={activeTour.tourIndex}
-													onchange={(event) => {
-														const tourIndex = Number(event.currentTarget.value);
-														if (tourIndex < 0) exitTour();
-														else selectTourStep(tourIndex, 0);
-													}}
-												>
-													<option value={-1}>Explore freely</option>
-													{#each sceneContent.tours as item, index (item.sourceIndex)}
-														<option value={index}
+								{#if useDirectMode && !isFullWindow && sceneContent && (sceneContent.tours.length || sceneContent.annotations.length)}
+									<div class="viewer-card-footer mt-3 rounded-md bg-base-200 p-3">
+										{#if sceneContent.tours.length}
+											{@const tour = sceneContent.tours[activeTour.tourIndex]}
+											<div class="tour-navigator" aria-label="Guided tour">
+												<label>
+													<span class="section-label"
+														><MapIcon class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />Guided tour</span
+													>
+													<select
+														value={activeTour.tourIndex}
+														onchange={(event) => {
+															const tourIndex = Number(event.currentTarget.value);
+															if (tourIndex < 0) exitTour();
+															else selectTourStep(tourIndex, 0);
+														}}
+													>
+														<option value={-1}>Explore freely</option>
+														{#each sceneContent.tours as item, index (item.sourceIndex)}
+															<option value={index}
+																>{localizedValue(
+																	item,
+																	'title',
+																	'titles',
+																	activeViewerLanguage
+																)}</option
+															>
+														{/each}
+													</select>
+												</label>
+												{#if activeTour.tourIndex >= 0 && tour?.steps.length}
+													<div class="tour-actions">
+														<button
+															type="button"
+															onclick={() =>
+																selectTourStep(activeTour.tourIndex, activeTour.stepIndex - 1)}
+															disabled={activeTour.stepIndex <= 0}
+															aria-label="Previous tour step">‹</button
+														>
+														<span>{activeTour.stepIndex + 1} / {tour.steps.length}</span>
+														<span class="tour-step-title"
 															>{localizedValue(
-																item,
+																tour.steps[activeTour.stepIndex],
 																'title',
 																'titles',
 																activeViewerLanguage
-															)}</option
+															)}</span
 														>
-													{/each}
-												</select>
-											</label>
-											{#if activeTour.tourIndex >= 0 && tour?.steps.length}
-												<div class="tour-actions">
-													<button
-														type="button"
-														onclick={() =>
-															selectTourStep(activeTour.tourIndex, activeTour.stepIndex - 1)}
-														disabled={activeTour.stepIndex <= 0}
-														aria-label="Previous tour step">‹</button
+														<button
+															type="button"
+															onclick={() =>
+																selectTourStep(activeTour.tourIndex, activeTour.stepIndex + 1)}
+															disabled={activeTour.stepIndex >= tour.steps.length - 1}
+															aria-label="Next tour step">›</button
+														>
+														<button type="button" class="tour-exit" onclick={exitTour}
+															>Exit tour</button
+														>
+													</div>
+												{/if}
+											</div>
+										{/if}
+										{#if sceneContent.annotations.length}
+											<div
+												class="viewer-card-details"
+												class:with-tour={sceneContent.tours.length > 0}
+											>
+												<EditionAnnotations
+													annotations={sceneContent.annotations}
+													language={activeViewerLanguage}
+													activeCategories={activeAnnotationCategories}
+													onCategories={selectCategories}
+													onAnnotation={selectAnnotation}
+												/>
+											</div>
+										{/if}
+									</div>
+								{/if}
+
+								{#if useDirectMode && isFullWindow && sceneContent}
+									<aside class="fullwindow-reading" aria-label="Edition reading">
+										{#if viewerLanguages.length > 1}
+											<div class="edition-language">
+												<select
+													aria-label="Edition language"
+													value={activeViewerLanguage}
+													onchange={(event) => setViewerLanguage(event.currentTarget.value)}
+													>{#each viewerLanguages as language (language)}<option value={language}
+															>{language}</option
+														>{/each}</select
+												>
+											</div>
+										{/if}
+										{#if sceneContent.tours.length}
+											{@const tour = sceneContent.tours[activeTour.tourIndex]}
+											<div class="tour-navigator">
+												<label>
+													<span class="section-label"
+														><MapIcon class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />Guided tour</span
 													>
-													<span>{activeTour.stepIndex + 1} / {tour.steps.length}</span>
-													<button
-														type="button"
-														onclick={() =>
-															selectTourStep(activeTour.tourIndex, activeTour.stepIndex + 1)}
-														disabled={activeTour.stepIndex >= tour.steps.length - 1}
-														aria-label="Next tour step">›</button
+													<select
+														value={activeTour.tourIndex}
+														onchange={(event) => {
+															const tourIndex = Number(event.currentTarget.value);
+															if (tourIndex < 0) exitTour();
+															else selectTourStep(tourIndex, 0);
+														}}
 													>
-													<button type="button" class="tour-exit" onclick={exitTour}>Exit</button>
-												</div>
-											{/if}
-										</div>
-									{/if}
-									{#if sceneContent.articles.length}
-										<EditionStories
-											articles={sceneContent.articles}
-											editionId={edition.id}
-											language={activeViewerLanguage}
-											root={edition.voyagerRoot || ''}
-											activeArticleId={selectedStoryId}
-											linkedArticleId={linkedTourArticleId}
-											onArticle={selectStory}
-										/>
-									{/if}
-									{#if sceneContent.annotations.length}
-										<details class="fullwindow-annotations">
-											<summary>Explore details</summary>
-											<EditionAnnotations
-												annotations={sceneContent.annotations}
+														<option value={-1}>Explore freely</option>
+														{#each sceneContent.tours as item, index (item.sourceIndex)}
+															<option value={index}
+																>{localizedValue(
+																	item,
+																	'title',
+																	'titles',
+																	activeViewerLanguage
+																)}</option
+															>
+														{/each}
+													</select>
+												</label>
+												{#if activeTour.tourIndex >= 0 && tour?.steps.length}
+													<div class="tour-actions">
+														<button
+															type="button"
+															onclick={() =>
+																selectTourStep(activeTour.tourIndex, activeTour.stepIndex - 1)}
+															disabled={activeTour.stepIndex <= 0}
+															aria-label="Previous tour step">‹</button
+														>
+														<span>{activeTour.stepIndex + 1} / {tour.steps.length}</span>
+														<button
+															type="button"
+															onclick={() =>
+																selectTourStep(activeTour.tourIndex, activeTour.stepIndex + 1)}
+															disabled={activeTour.stepIndex >= tour.steps.length - 1}
+															aria-label="Next tour step">›</button
+														>
+														<button type="button" class="tour-exit" onclick={exitTour}>Exit</button>
+													</div>
+												{/if}
+											</div>
+										{/if}
+										{#if sceneContent.articles.length}
+											<EditionStories
+												articles={sceneContent.articles}
+												editionId={edition.id}
 												language={activeViewerLanguage}
-												activeCategories={activeAnnotationCategories}
-												onCategories={selectCategories}
-												onAnnotation={selectAnnotation}
+												root={edition.voyagerRoot || ''}
+												activeArticleId={selectedStoryId}
+												linkedArticleId={linkedTourArticleId}
+												onArticle={selectStory}
 											/>
-										</details>
-									{/if}
-								</aside>
+										{/if}
+										{#if sceneContent.annotations.length}
+											<details class="fullwindow-annotations">
+												<summary>Explore details</summary>
+												<EditionAnnotations
+													annotations={sceneContent.annotations}
+													language={activeViewerLanguage}
+													activeCategories={activeAnnotationCategories}
+													onCategories={selectCategories}
+													onAnnotation={selectAnnotation}
+												/>
+											</details>
+										{/if}
+									</aside>
+								{/if}
 							{/if}
-						{/if}
-					{/key}
+						{/key}
+					{/if}
 				</div>
 			</div>
 
