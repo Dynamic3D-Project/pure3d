@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.1.1 - 2026-10-23
+
+### Fixes
+
+- keep Voyager hidden until a visible model loads (a70074d4)
+
 ## v2.1.0 - 2026-10-23
 
 ### Features
