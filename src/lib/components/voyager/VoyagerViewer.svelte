@@ -571,11 +571,24 @@
 		// Listen for Voyager error events
 		contentScope.listen(voyagerElement, 'error', handleVoyagerError);
 		contentScope.listen(voyagerElement, 'load-error', handleVoyagerError);
-		// Voyager emits this after attaching each loaded quality level to the scene.
-		// Reveal the first usable model without marking the whole scene as ready.
+		// Hidden models also emit model-load. They must not uncover an empty viewport.
 		contentScope.listen(voyagerElement, 'model-load', () => {
 			if (disposed || hasError) return;
-			firstModelVisible = true;
+			const components = (voyagerElement as CategoryViewer | undefined)?.application?.system
+				?.components as
+				| {
+						getArray?: (type: string) => {
+							activeDerivative?: { model?: unknown };
+							object3D?: { visible?: boolean };
+						}[];
+				  }
+				| undefined;
+			if (
+				components?.getArray?.('CVModel2').some(
+					(model) => model.activeDerivative?.model && model.object3D?.visible
+				)
+			)
+				firstModelVisible = true;
 			// Standalone meshes do not set CVViewer.sceneLoaded (only SVX scenes do).
 			const busy = (voyagerElement as CategoryViewer | undefined)?.application?.system
 				?.components?.get?.('CVAssetManager')?.outs?.busy;

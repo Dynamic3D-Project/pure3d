@@ -67,13 +67,59 @@ acceptance. Frontend release, DNS/TLS activation and redirect checks are separat
 The supplied example `/project/18/edition/1/index.html` maps to
 `https://pure3d.eu/editions/94bh25om9r9mskf` (The Private Library of Pieter De Graeff).
 
-Implementation is local until separately released. No DNS, TLS or proxy changes have yet been
-applied by this redirect task.
+## Live activation — 23 October 2026
+
+The user explicitly authorised using their open, signed-in OVH browser instance to add the
+record. Added only `editions IN A 57.129.98.223`; a full before/after zone comparison verified
+that all other records remained unchanged, excluding the automatically advanced SOA serial.
+Both authoritative servers and Cloudflare/Google recursive resolvers returned the correct A
+record. Private zone exports are retained under ignored `data/legacy-redirects-zone-*.txt`.
+
+Installed the generated redirect map and dedicated HTTP/HTTPS virtual hosts on the existing
+`pure3d-archive-proxy-1` nginx proxy. Existing proxy blocks were retained unchanged. Nginx
+configuration validated before graceful reload; PocketBase was neither restarted nor modified.
+The proxy configuration is a single-file bind mount, so installation preserved its inode rather
+than replacing the mount source with a different inode. Before each write, its previous checksum
+was checked against the captured version.
+
+- Root-owned private rollback directory:
+  `/var/backups/pure3d-legacy-redirects-20261023.XYy19w/`.
+- Original proxy SHA-256:
+  `8f979d653ef047bf58a908441f780430281ad100bb8235d67e9483eaeca9e90b`.
+- Installed proxy SHA-256:
+  `46b4fd931b659788a7c067c5b3fd0605d0e1dacc089e61a89b41682225e01e89`.
+- Certificate: `/etc/letsencrypt/live/editions.pure3d.eu/`, expires 21 January 2027.
+  Private keys remain on the server. Renewal uses the existing ACME webroot and scheduled
+  Certbot renewal, with a scoped nginx validation/reload deploy hook.
+  `certbot renew --cert-name editions.pure3d.eu --dry-run --run-deploy-hooks
+--no-random-sleep-on-renew` passed, including the proxy validation/reload hook. The first
+  dry run exceeded the command timeout while waiting in Certbot's random delay; only that
+  exact task-owned sleeping process was stopped before the successful bounded retry.
+- Actual public HTTPS request to the supplied URL returned HTTP301 with Location
+  `https://pure3d.eu/editions/94bh25om9r9mskf`; query strings were retained.
+- All 648 public redirect checks passed: every mapped publication slot over both HTTP and
+  HTTPS, with bare, slash, index and versioned-index paths, retaining query parameters.
+  Machine-readable results are in ignored `data/legacy-live-redirect-checks.json`.
+- Fresh isolated headless-browser acceptance followed the real old hostname to the real apex,
+  verified the Pieter De Graeff edition heading, and retained `?tour=2#annotation-example`.
+  No routing overrides, mocked responses or TLS bypasses were used for live acceptance.
+- A direct legacy scene URL redirected to the corresponding API asset path, not an edition
+  page. A legacy image request followed its redirect and returned HTTP206, `image/png` and the
+  requested byte range. Public API and backend health remained healthy.
+
+The map includes every unambiguous currently public publication slot. One archived edition,
+Clanwilliam House at `/project/1/edition/2/`, is not currently public and is deliberately not
+re-published or exposed by the redirect task. The existing duplicate Petrol Lamp slot has the
+explicit reviewed canonical destination described below. Refresh the map for later publications.
+
+Frontend source changes were incorporated by a separate concurrent task in commit `7c33c8a`;
+this task did not commit, push or release them. Current known legacy URLs redirect directly at
+nginx and do not depend on a new frontend release. Verify any future frontend release separately.
 
 Local browser checks passed for the supplied URL, imported editions, versioned Voyager paths,
 collection links, HTML index pages, query strings, fragments and unknown-publication 404s. These
 checks used the running local frontend with isolated read-only transport to the real production
-API; they do not establish that the old hostname works live. The initial browser check caught
+API; live acceptance is recorded above separately. The initial browser check caught
 SvelteKit's prohibition on reading fragments in `load`; fragments are now retained in the browser
 after navigation instead. The duplicate Petrol Lamp publication slot uses an explicit reviewed
 destination matching the published backup, without editing either database record.

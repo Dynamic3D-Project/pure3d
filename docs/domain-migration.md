@@ -176,6 +176,23 @@ prebuilt frontend archive; changing DNS alone is not a complete rollback.
   restrictions with OVH before changing passwords, firewall rules or providers.
 - Remaining: valid Pages TLS/HTTPS enforcement and final live acceptance, final
   DKIM activation state, actual mail delivery, and a user-driven sign-in journey.
+- Contact repair, 23 October 2026: production had no `contact.pb.js` hook. Installed
+  the repository hook with recipient `info@pure3d.eu`; SHA-256
+  `24ebfcae634eed9d91d262b8ab1a23cce62ea1955bdc8bb5e28e857aabcb8c08`.
+  Complete pre-deployment hooks backup: root-owned, mode 700 directory
+  `/var/backups/pure3d-contact-yYsCsySc/pb_hooks`. No schema or SMTP settings changes.
+  The first health probe hit a transient connection reset and triggered rollback;
+  the second deployment used bounded retries and passed. Local and both public
+  API health checks passed; production admin authentication passed. Both public
+  contact endpoints rejected an empty request with the expected 400 validation
+  error, without sending mail. Rollback is removal of this newly installed hook
+  and restart of only `pure3d-archive-pocketbase-1`.
+- SMTP remains blocked: VPS TCP probes to OVH ports 25, 465 and 587 timed out;
+  Gmail 587 also timed out, while HTTPS worked. Host OUTPUT policy is ACCEPT.
+  An initial port 2525 TCP connection did not provide an SMTP banner; a later
+  implicit-TLS probe was refused. It is not a verified alternative mail port.
+  No credentials, provider or firewall changes were made and no email was sent.
+  Actual delivery remains unverified pending provider/network investigation.
 - The local DNS resolver (Tailscale/router) still returned NXDOMAIN while both
   public recursive resolvers and the VPS resolved the API. A local cache flush
   did not resolve this. Do not change the user's network/Tailscale settings.
