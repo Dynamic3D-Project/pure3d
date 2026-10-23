@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.1.0 - 2026-10-23
+
+### Features
+
+- add open-call covers and legacy URL redirects (7c33c8aa)
+
 ## v2.0.1 - 2026-10-22
 
 ### Fixes
